@@ -238,7 +238,8 @@ export class Pools {
 			const delay = (1 - i / 23) * 0.2;
 			const fly = seg(k, delay, delay + 0.3);
 			const inside = inOut(seg(k, 0.5, 0.68));
-			arcPoint(this.feedFrom[i], to, 2.2, inOut(fly), this.a);
+			// Each row flies at its own height, so no two can meet in the air.
+			arcPoint(this.feedFrom[i], to, 2.2 + Math.floor(i / 8) * 0.55, inOut(fly), this.a);
 			this.a.z -= inside * 3.2;
 			d.position.copy(this.a);
 			d.scale.setScalar(k > 0 && inside < 1 ? 1 : 0.0001);
