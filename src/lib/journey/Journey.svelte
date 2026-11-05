@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { HARNESSES, FORMS, type HarnessId } from './content';
+	import { GLOSSARY, HARNESSES, FORMS, type HarnessId } from './content';
 	import type { Attachment } from 'svelte/attachments';
 	import type { World } from './world';
 	import { PACE, Playhead } from './playhead';
@@ -32,64 +32,64 @@
 
 	const callouts = $derived({
 		prompt: {
-			claude: 'The terminal, the VS Code extension and the desktop app all host the same binary, so the journey starts the same way in each.',
-			codex: 'The TUI runs the agent loop in its own process. The VS Code extension and desktop app reach the same engine through codex app-server.',
-			copilot: 'VS Code owns the editor, the extension gathers context, and since mid-2026 the loop itself runs in a separate process, the Agent Host.'
+			claude: 'The terminal, the VS Code extension and the desktop app all run the same program, so the journey starts the same way in each.',
+			codex: 'The [[terminal app|tui]] runs the agent loop in its own process. The VS Code extension and desktop app reach the same engine through codex app-server.',
+			copilot: 'VS Code owns the editor and the extension gathers context. Since mid-2026 the loop itself runs in a separate process, the Agent Host.'
 		}[harness],
 		wire: {
-			claude: 'HTTPS to api.anthropic.com/v1/messages with stream: true, signed with an API key or a Claude account login.',
-			codex: 'The Responses API over SSE or a WebSocket, signed with an API key or a ChatGPT login.',
-			copilot: 'To api.githubcopilot.com with a short-lived Copilot token, exchanged from your GitHub login. Your GitHub token itself never reaches the model service.'
+			claude: 'HTTPS to api.anthropic.com/v1/messages with stream: true, signed with an API key or your Claude login.',
+			codex: 'The Responses API, streaming over [[SSE]] or a WebSocket, signed with an API key or your ChatGPT login.',
+			copilot: 'To api.githubcopilot.com with a short-lived Copilot token, swapped for your GitHub login. Your GitHub token itself never reaches the model service.'
 		}[harness],
 		cache: {
-			claude: 'Marks explicit cache breakpoints in the request. Cache reads bill at a tenth of the normal input price.',
-			codex: 'Relies on the Responses API’s automatic prefix caching, and keeps its instructions fixed for the session so the prefix stays identical.',
-			copilot: 'GitHub’s service sits in between, so the extension cannot see hits or misses. Any caching at GitHub is undisclosed.'
+			claude: 'Marks explicit cache breakpoints in the request. Reading from the cache costs a tenth of the normal input price.',
+			codex: 'Relies on the Responses API’s automatic prefix caching, and keeps its instructions fixed for the session so the start stays identical.',
+			copilot: 'GitHub’s service sits in between, so the extension can’t see hits or misses. Any caching at GitHub is undisclosed.'
 		}[harness],
 		thinking: {
 			claude: 'Thinking blocks carry a signature, so they can come back unmodified on the next turn.',
-			codex: 'Reasoning items can travel as encrypted content the client cannot read but must resend.',
-			copilot: 'It depends on the model you picked. The extension shows either kind as a collapsible section.'
+			codex: 'Reasoning can travel as encrypted items, which the client can’t read but must send back.',
+			copilot: 'It depends on the model you picked. The extension shows either kind as a section you can fold away.'
 		}[harness],
 		toolcall: {
-			claude: 'Grep is a tool of its own. The harness wraps ripgrep and returns matching lines with file names and numbers.',
-			codex: 'There is no search tool: the model writes rg into the shell tool. Simpler catalog, same behavior.',
+			claude: 'Grep is a tool of its own. The harness wraps [[ripgrep]] and returns matching lines with file names and numbers.',
+			codex: 'There’s no search tool: the model writes [[rg|ripgrep]] into the shell tool. A simpler catalog, the same behavior.',
 			copilot: 'Text search sits beside the language server’s symbols and a semantic index. The model picks one.'
 		}[harness],
 		stream: {
 			claude: 'The Messages API streams thinking_delta, text_delta and input_json_delta events, then a stop reason.',
-			codex: 'The Responses API streams typed events such as response.function_call_arguments.delta.',
+			codex: 'The Responses API streams typed events, such as response.function_call_arguments.delta.',
 			copilot: 'GitHub’s API streams OpenAI-style chat chunks, whichever vendor is behind them.'
 		}[harness],
 		policy: {
 			claude: 'Permission modes, allow, ask and deny rules, hooks, and in auto mode a classifier that reviews each call.',
-			codex: 'Two dials: an approval policy for when to ask, and a sandbox mode for what is allowed, plus execpolicy rules.',
+			codex: 'Two dials: an approval policy for when to ask, and a sandbox mode for what’s allowed, plus execpolicy rules.',
 			copilot: 'A confirmation card in the editor, with auto-approve lists and a cap on requests per session.'
 		}[harness],
 		sandbox: {
-			claude: 'Seatbelt on macOS, bubblewrap on Linux. A proxy enforces a domain allowlist, so this request goes nowhere.',
-			codex: 'Seatbelt, bwrap or MXC. In workspace-write mode the network is off by default.',
-			copilot: 'No OS sandbox by default locally, and the network is unrestricted. The confirmation card has to catch this. The cloud agent runs in GitHub Actions.'
+			claude: '[[Seatbelt]] on macOS, bubblewrap on Linux. A proxy only lets approved domains through, so this request goes nowhere.',
+			codex: '[[Seatbelt]], bwrap or MXC. In workspace-write mode the network is off by default.',
+			copilot: 'No OS [[sandbox]] by default locally, and the network is wide open. The confirmation card has to catch this. The cloud agent runs in GitHub Actions.'
 		}[harness],
 		search: {
-			claude: 'Grep wraps ripgrep. Read returns numbered lines, so the model can quote exact positions.',
-			codex: 'No separate search tools: the model runs rg and sed through the shell.',
-			copilot: 'Text search, the language server’s symbols, and semantic search over an embedding index.'
+			claude: 'Grep wraps [[ripgrep]]. Read returns numbered lines, so the model can quote exact positions.',
+			codex: 'No separate search tools: the model runs [[rg|ripgrep]] and sed through the shell.',
+			copilot: 'Text search, the language server’s symbols, and semantic search over an [[embedding]] index.'
 		}[harness],
 		edit: {
 			claude: 'Exact-string replacement. The old string must appear exactly once, and the file must have been read this session.',
-			codex: 'apply_patch: a diff-like text format, applied hunk by hunk. The API can enforce its grammar at generation time.',
-			copilot: 'Edit tools plus a review surface: the diff lands in the editor to accept or reject, hunk by hunk.'
+			codex: 'apply_patch: a diff-like text format, applied one [[hunk]] at a time. The API can enforce its grammar while the model writes.',
+			copilot: 'Edit tools plus a review surface: the diff lands in your editor to accept or reject, one [[hunk]] at a time.'
 		}[harness],
 		test: {
 			claude: 'Two minutes by default. The result is a tool_result block carrying the tool_use_id it answers.',
-			codex: 'The shell has a persistent PTY mode, so a process can keep running across turns. The result carries a call_id.',
-			copilot: 'Commands run in the integrated terminal, visible to you, which doubles as a place to intervene.'
+			codex: 'The shell has a persistent [[PTY]] mode, so a process can keep running across turns. The result carries a call_id.',
+			copilot: 'Commands run in the integrated terminal where you can see them, which doubles as a place to step in.'
 		}[harness],
 		loop: {
-			claude: 'Resends everything. The API is stateless, and the prefix cache makes that cheap.',
-			codex: 'Also resends, with reasoning sealed as encrypted items. The API can alternatively keep state server-side.',
-			copilot: 'Rebuilds the prompt from components every turn, pruning low-priority parts when the budget is tight.'
+			claude: 'Resends everything. The API is [[stateless]], and the prefix cache makes that cheap.',
+			codex: 'Also resends, with reasoning sealed as encrypted items. The API can keep state on its side instead.',
+			copilot: 'Rebuilds the prompt from its parts every turn, trimming low-priority ones when the budget is tight.'
 		}[harness],
 		compact: {
 			claude: 'Compacts automatically near the limit, or on /compact. Durable notes can live in CLAUDE.md and auto memory.',
@@ -98,37 +98,67 @@
 		}[harness],
 		turns: {
 			claude: 'Grep, Read, Edit, Bash. A classifier approves the edit in auto mode.',
-			codex: 'rg and sed in the shell, apply_patch for edits, pytest in a sandbox with no network.',
+			codex: '[[rg|ripgrep]] and sed in the shell, apply_patch for edits, pytest in a [[sandbox]] with no network.',
 			copilot: 'Text search and usages, editFiles with a reviewable diff, and the Problems panel before any test runs.'
 		}[harness],
 		door: {
-			claude: 'One front door: Anthropic’s, or Bedrock, Vertex or Foundry for the same models.',
+			claude: 'One front door: Anthropic’s own, or Bedrock, Vertex or Foundry for the same models.',
 			codex: 'One front door. With a ChatGPT login the request goes to ChatGPT’s backend rather than the public API host.',
 			copilot: 'Two front doors. GitHub checks your plan, policies and content exclusions, then forwards to the vendor, whose own door runs this list again.'
 		}[harness]
 	});
 
 	const DRAWERS = $derived([
-		{ name: 'Instructions', text: `What the agent is, plus your project’s rules from ${spec.ruleFile}.` },
-		{ name: 'Environment', text: 'Working directory, git branch, operating system, date, shell.' },
-		{ name: 'Tools', text: 'Built-in ones plus any from MCP servers. A name, a description and a JSON Schema each, costing tokens on every turn.' },
+		{ name: 'Instructions', text: `Who the agent is, plus your project’s rules from ${spec.ruleFile}.` },
+		{ name: 'Environment', text: 'Where you are: folder, git branch, operating system, date, shell.' },
+		{ name: 'Tools', text: 'Everything it may ask to do, built in or from [[MCP]] servers. Each has a name, a description and a [[JSON Schema]], and each costs tokens on every turn.' },
 		{ name: 'Conversation', text: 'Your prompt. On turn one, nothing else.' }
 	]);
 
 	const GATES = [
-		{ name: 'Valid shape?', text: 'Known tool, arguments match the schema.' },
-		{ name: 'Allowed path?', text: 'Inside the project, not on a deny list.' },
+		{ name: 'Valid shape?', text: 'Is this a real tool, with arguments that fit?' },
+		{ name: 'Allowed path?', text: 'Inside the project, and not on a deny list?' },
 		{ name: 'Policy', text: 'May this run without asking?' },
-		{ name: 'You, if asked', text: 'Reads often pass automatically. Writes and commands may not.' }
+		{ name: 'You, if asked', text: 'Reads often pass on their own. Writes and commands may come to you.' }
 	];
 
 	const CHECKS = [
-		{ name: 'Decrypt', text: 'TLS ends here.' },
-		{ name: 'Who are you?', text: 'Is this credential valid, and whose is it?' },
+		{ name: 'Decrypt', text: 'The encryption ends here.' },
+		{ name: 'Who are you?', text: 'Is this key valid, and whose is it?' },
 		{ name: 'Rate limit', text: 'Too many requests or tokens this minute?' },
-		{ name: 'Budget', text: 'Any quota or spend left?' },
-		{ name: 'Capacity', text: 'If the cluster is full, you get a queue or a 529, and the harness backs off and retries.' }
+		{ name: 'Budget', text: 'Any quota or money left?' },
+		{ name: 'Capacity', text: 'If every chip is busy, you wait or get a [[529]], and the harness quietly tries again.' }
 	];
+
+	/** Words the reader may not know get a dotted underline. Hover, focus or tap shows what they mean. */
+	let tip = $state<{ key: string; text: string; x: number; y: number; below: boolean } | null>(null);
+	const TIP_W = 290;
+
+	let tipShownAt = 0;
+
+	function showTip(el: HTMLElement, key: string) {
+		tipShownAt = performance.now();
+		const r = el.getBoundingClientRect();
+		const w = Math.min(TIP_W, window.innerWidth - 24);
+		const below = r.top < 150;
+		tip = {
+			key,
+			text: GLOSSARY[key],
+			x: Math.max(12, Math.min(window.innerWidth - w - 12, r.left + r.width / 2 - w / 2)),
+			y: below ? r.bottom + 9 : r.top - 9,
+			below
+		};
+	}
+
+	/** Copy is written with [[shown|key]] marking a term, or just [[term]] when they are the same. */
+	const pieces = (text: string) =>
+		text
+			.split(/(\[\[[^\]]+\]\])/)
+			.filter(Boolean)
+			.map((piece) => {
+				const m = piece.match(/^\[\[([^|\]]+)(?:\|([^\]]+))?\]\]$/);
+				return m ? { text: m[1], key: (m[2] ?? m[1]).toLowerCase() } : { text: piece, key: '' };
+			});
 
 	/** The pages that really do read or look different for each agent. */
 	const DIFFERS = new Set([0, 1, 2, 3, 4, 5, 11, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 29]);
@@ -244,10 +274,8 @@
 						el.style.opacity = String(k);
 						const moving = k > 0 && k < 1;
 						el.style.transform = moving ? `translateY(${(1 - inK) * 14 - outK * 10}px)` : 'none';
-						if (n === 0) {
-							el.style.pointerEvents = k > 0.6 ? 'auto' : 'none';
-							el.inert = k < 0.1;
-						}
+						if (n === 0) el.style.pointerEvents = k > 0.6 ? 'auto' : 'none';
+						el.inert = k < 0.1;
 					});
 					diveEl.style.opacity = String(w.state.dive);
 				};
@@ -353,6 +381,39 @@
 	</div>
 {/snippet}
 
+{#snippet rich(text: string)}
+	{#each pieces(text) as piece, i (i)}
+		{#if piece.key}<button
+				type="button"
+				class="term"
+				aria-expanded={tip?.key === piece.key}
+				onpointerenter={(e) => {
+					if (e.pointerType === 'mouse') showTip(e.currentTarget, piece.key);
+				}}
+				onpointerleave={(e) => {
+					if (e.pointerType === 'mouse') tip = null;
+				}}
+				onfocus={(e) => showTip(e.currentTarget, piece.key)}
+				onblur={() => (tip = null)}
+				onclick={(e) => {
+					e.stopPropagation();
+					// A tap focuses first, which already showed it: only a later tap closes it.
+					const tapped = (e as MouseEvent & { pointerType?: string }).pointerType !== 'mouse';
+					if (tip?.key === piece.key && tapped && performance.now() - tipShownAt > 400) tip = null;
+					else showTip(e.currentTarget, piece.key);
+				}}>{piece.text}<span class="vh"> ({GLOSSARY[piece.key]})</span></button
+			>{:else}{piece.text}{/if}
+	{/each}
+{/snippet}
+
+<svelte:window
+	onscroll={() => (tip = null)}
+	onclick={() => (tip = null)}
+	onkeydown={(e) => {
+		if (e.key === 'Escape') tip = null;
+	}}
+/>
+
 <canvas class="stage" {@attach stage} aria-hidden="true"></canvas>
 <div class="dive" data-dive aria-hidden="true"></div>
 
@@ -378,7 +439,7 @@
 	<section data-beat class="beat hero" style:--h="170vh">
 		<div class="pin left top" data-out="0.55">
 			<h1>How a coding agent works</h1>
-			<p class="lede">Follow one request from your keyboard to the model. Pick the agent you use, then scroll.</p>
+			<p class="lede">You type one sentence. Follow it all the way to the model and back, until the bug is fixed. Pick your agent, then scroll.</p>
 			{@render picker(false)}
 			<p class="scroll-hint"><span class="arrow" aria-hidden="true"></span>Scroll to begin</p>
 		</div>
@@ -387,11 +448,9 @@
 	<section data-beat class="beat" style:--h="360vh">
 		<article class="pin left" data-out="0.62">
 			<h2>It starts as a sentence</h2>
-			<p>
-				You type one request. Right now it is {surfaceWords}. The model has seen nothing, and nothing here is a
-				token yet.
-			</p>
-			<p class="note"><b>{spec.name}.</b> {callouts.prompt}</p>
+			<p>{@render rich(`You type one request. For now it’s just ${surfaceWords}. The model hasn’t seen a thing, and nothing here is a [[token]] yet.`)}</p>
+			<p>Your request will change form twelve times on this trip. The corner up there keeps count.</p>
+			<p class="note"><b>{spec.name}.</b> {@render rich(callouts.prompt)}</p>
 		</article>
 	</section>
 
@@ -399,14 +458,14 @@
 		<article class="pin right" data-out="0.76">
 			<h2>The harness wakes up</h2>
 			<p>
-				A harness is the program around the model. Before anything leaves your laptop, it spends a few hundred
-				milliseconds gathering what the model will need.
+				The harness is the program around the model, the part you installed. Before anything leaves your laptop, it spends a few hundred
+				milliseconds packing what the model will need.
 			</p>
 			<ol class="steps">
 				{#each DRAWERS as d, i (d.name)}
 					<li class={{ on: drawer === i, done: drawer > i }}>
 						<strong>{d.name}</strong>
-						<span>{d.text}</span>
+						<span>{@render rich(d.text)}</span>
 					</li>
 				{/each}
 			</ol>
@@ -417,38 +476,36 @@
 		<article class="pin right" data-out="0.6">
 			<h2>One JSON request</h2>
 			<p>
-				The parts that stay the same go first, the conversation goes last and only ever grows. That order will pay
-				off later, when the provider can reuse work on an identical start.
+				Everything lands on one page. The parts that stay the same go first, and the conversation goes last, because it’s the only part
+				that grows. That order pays off later.
 			</p>
-			<p>Look at what is missing: there is none of your code in it. The model will have to ask for that, one tool call at a time.</p>
-			<p>And it is still plain text. The harness does not tokenize.</p>
+			<p>Notice what’s missing: none of your code. The model will have to ask for it, one tool call at a time.</p>
+			<p>And it’s still plain text. No tokens yet.</p>
 		</article>
 	</section>
 
 	<section data-beat class="beat" style:--h="380vh">
 		<article class="pin left" data-out="0.66">
 			<h2>Across the wire</h2>
-			<p>
-				The harness opens an HTTPS connection and TLS encrypts the bytes, so nobody on the path can read your code.
-			</p>
-			<p>It also asks for a streaming response. That is why you later see the agent typing.</p>
-			<p class="note"><b>{spec.name}.</b> {callouts.wire}</p>
+			<p>{@render rich('The harness opens a secure connection, and [[TLS]] scrambles every byte, so nobody along the way can read your code.')}</p>
+			<p>It also asks for the answer as a stream. That’s why you see the agent typing instead of waiting for one big reply.</p>
+			<p class="note"><b>{spec.name}.</b> {@render rich(callouts.wire)}</p>
 		</article>
 	</section>
 
 	<section data-beat class="beat" style:--h="380vh">
 		<article class="pin right" data-out="0.66">
 			<h2>The front door</h2>
-			<p>Cheap, ordinary checks, in order. No neural network is involved.</p>
+			<p>Five plain checks, in order. No AI yet, just ordinary code.</p>
 			<ol class="steps compact">
 				{#each CHECKS as c, i (c.name)}
 					<li class={{ on: check === i, done: check > i }}>
 						<strong>{c.name}</strong>
-						<span>{c.text}</span>
+						<span>{@render rich(c.text)}</span>
 					</li>
 				{/each}
 			</ol>
-			<p class="note"><b>{spec.name}.</b> {callouts.door}</p>
+			<p class="note"><b>{spec.name}.</b> {@render rich(callouts.door)}</p>
 		</article>
 	</section>
 
@@ -457,12 +514,11 @@
 			<h2>Now it is a token</h2>
 			<div class="cols">
 				<p>
-					A chat template flattens the request into one long string with markers for each role. The tokenizer cuts
-					that string into pieces from a vocabulary of 100,000 to 200,000 entries.
+					{@render rich('First, a [[chat template]] flattens the whole request into one long string, with markers showing who said what. Then the tokenizer cuts it into pieces from a vocabulary of 100,000 to 200,000 entries.')}
 				</p>
 				<p>
-					Every piece has a number, and the number is all the model will ever read. The two “the” tiles get the same
-					one. The blue tiles are markers the template added. <small>IDs are illustrative.</small>
+					Each piece has a number, and those numbers are all the model will ever read. No letters. The two “the” tiles get the same number,
+					and the blue tiles are markers the template added. <small>IDs are illustrative.</small>
 				</p>
 			</div>
 		</article>
@@ -472,28 +528,22 @@
 		<article class="pin left" data-out="0.58">
 			<h2>Thousands more behind it</h2>
 			<p>
-				Your sentence is only the tail of the request. Instructions and tool schemas count too, and turn one comes to
-				about 21,000 IDs. <small>Illustrative.</small>
+				Your sentence is only the tail. The instructions and tool descriptions count too, so turn one comes to about 21,000 tokens.
+				<small>Illustrative.</small>
 			</p>
-			<p>They are on their way to a machine already serving hundreds of other people.</p>
-			<p class="next">Next stop: inside the inference cluster.</p>
+			<p>All of them are headed for a machine already serving hundreds of other people.</p>
+			<p class="next">{@render rich('Next stop: inside the [[inference cluster]].')}</p>
 		</article>
 	</section>
 
 	<section data-beat class="beat" style:--h="480vh">
 		<article class="pin left" data-out="0.68">
 			<h2>One model, many chips</h2>
-			<p>
-				A frontier model has hundreds of billions to a few trillion learned numbers. Even compressed, they do not fit in
-				one chip’s memory, so the weights are split across many.
-			</p>
-			<p>
-				Chips in a node talk over NVLink at terabytes per second. Nodes talk over InfiniBand or RoCE, at hundreds of
-				gigabits per port.
-			</p>
+			<p>{@render rich('A frontier model is hundreds of billions to a few trillion learned numbers, its [[weights]]. Even compressed they won’t fit in one chip’s memory, so they’re split across many.')}</p>
+			<p>{@render rich('Chips in one server talk over [[NVLink]], at terabytes per second. Servers talk to each other over [[InfiniBand or RoCE]], at hundreds of gigabits.')}</p>
 			<p class="note">
-				<b>From here, all three agents look the same.</b> Providers do not publish these systems, so this is the public
-				blueprint, from open engines such as vLLM and SGLang.
+				<b>From here on, all three agents look the same.</b>
+				{@render rich('Providers don’t publish these systems, so this is the public blueprint, drawn from open engines like [[vLLM and SGLang]].')}
 			</p>
 		</article>
 	</section>
@@ -502,13 +552,12 @@
 		<article class="pin left" data-out="0.86">
 			<h2>Its working memory</h2>
 			<p>
-				To predict the next token, every layer looks back at every earlier token. For each one it needs two vectors, a
-				key and a value. Recomputing them at every step would be absurd, so they are computed once and kept. That store
-				is the KV cache.
+				To predict the next token, every layer looks back at every earlier token. For each one it needs two lists of numbers, a key and a
+				value. Working them out again at every step would be absurd, so they’re computed once and kept. That store is the KV cache.
 			</p>
 			<p>
-				It costs about 330 KB per token, so your 21,000 tokens take about 7 GB of chip memory, the scarce resource in all of
-				inference. <small>Illustrative: 80 layers, 8 KV heads, 128 dimensions, 2 bytes per number.</small>
+				At about 330 KB per token, your 21,000 tokens take about 7 GB of chip memory, the scarcest thing in all of inference.
+				<small>Illustrative: 80 layers, 8 KV heads, 128 dimensions, 2 bytes per number.</small>
 			</p>
 		</article>
 	</section>
@@ -516,11 +565,8 @@
 	<section data-beat class="beat" style:--h="380vh">
 		<article class="pin left" data-out="0.78">
 			<h2>Blocks that can sit anywhere</h2>
-			<p>
-				The cache is cut into fixed-size blocks, say 16 tokens each. A block can sit in any free slot, and a block table
-				records where.
-			</p>
-			<p>Almost nothing is wasted, and two requests can share a block when they start the same way.</p>
+			<p>The cache is cut into fixed-size blocks, say 16 tokens each. A block can sit in any free slot, and a little table remembers where.</p>
+			<p>So almost nothing goes to waste, and two requests that start the same way can share a block.</p>
 			<p><small>A real request has far more than four blocks. The grey ones belong to other people.</small></p>
 		</article>
 	</section>
@@ -529,25 +575,19 @@
 		<article class="pin right" data-out="0.8">
 			<h2>Turn two starts ahead</h2>
 			<p>
-				Turn two begins with exactly the same bytes as turn one, plus a little more. Matching blocks already have their
-				KV computed, so only the new part runs. Remember that order the harness kept? This is why.
+				Turn two starts with exactly the same bytes as turn one, plus a little more. Those matching blocks are already computed, so only the
+				new part runs. Remember the careful order on that JSON page? This is why.
 			</p>
-			<p>
-				It saves computing, not memory of you. Unused blocks are evicted, usually within minutes, so a session that
-				pauses for an hour pays full price once.
-			</p>
-			<p class="note"><b>{spec.name}.</b> {callouts.cache}</p>
+			<p>It saves computing. It isn’t the model remembering you. Unused blocks get thrown out, usually within minutes, so coming back after an hour costs full price once.</p>
+			<p class="note"><b>{spec.name}.</b> {@render rich(callouts.cache)}</p>
 		</article>
 	</section>
 
 	<section data-beat class="beat" style:--h="560vh">
 		<article class="pin left" data-out="0.86">
 			<h2>Sharing the chips</h2>
-			<p>
-				A chip is only efficient when it works on many requests at once. Every step, the scheduler builds a batch of
-				sequences that each need one more token.
-			</p>
-			<p>When one finishes, a waiting request takes its lane right away. You never wait for a batch to fill.</p>
+			<p>{@render rich('A chip only earns its keep when it works on many requests at once. So at every step, the [[scheduler]] gathers a batch of requests that each need one more token.')}</p>
+			<p>When one finishes, a waiting one takes its lane right away. Nobody waits for a batch to fill.</p>
 			<p>Yours is the amber one.</p>
 		</article>
 	</section>
@@ -555,14 +595,8 @@
 	<section data-beat class="beat" style:--h="520vh">
 		<article class="pin right" data-out="0.74">
 			<h2>Reading and writing</h2>
-			<p>
-				Prefill reads your prompt, thousands of tokens at once, and is limited by compute. Decode writes the answer, one
-				token per step, and is limited by memory.
-			</p>
-			<p>
-				Many clusters split them into two pools and ship the KV cache across over RDMA. It is a choice, not a law: for
-				some workloads, one shared pool still wins.
-			</p>
+			<p>{@render rich('Reading your prompt is called [[prefill]]: thousands of tokens at once, limited by compute. Writing the answer is called [[decode]]: one token per step, limited by memory.')}</p>
+			<p>{@render rich('So many clusters split them into two pools, and ship the KV cache across over [[RDMA]]. It’s a choice, not a law. For some work, one shared pool still wins.')}</p>
 			<p class="next">Next stop: inside those chips. What are they actually running?</p>
 		</article>
 	</section>
@@ -571,29 +605,23 @@
 		<article class="pin left tight" data-in="0.035" data-out="0.125" data-fade="0.014">
 			<h2>The transformer</h2>
 			<p>
-				Every chip in those pools runs one program, a transformer. It is the T in GPT, and the design behind today’s big language models.
-				Tokens go in at the bottom. A score for every possible next word comes out at the top.
+				Every chip in those pools runs the same kind of program, a transformer. It’s the T in GPT, and the design behind today’s big language
+				models. Tokens go in at the bottom. A score for every possible next word comes out at the top.
 			</p>
 			<Blueprint />
 		</article>
 		<article class="pin left tight" data-in="0.17" data-out="0.272" data-fade="0.014">
 			<h2>A place for every word</h2>
-			<p>
-				Your prompt starts at the bottom. On turn one, nearly every token misses the cache, so they go through together. An embedding turns
-				each ID into a list of a few thousand numbers, and you can read that list as a place on a map of meaning.
-			</p>
-			<p>
-				Watch where they land. “job” is among careers, “race” is in sports. An embedding knows the word, not the sentence. Both “the” tiles
-				land on one spot, until a position signal says where each sits in the line.
-			</p>
+			<p>{@render rich('Your prompt starts at the bottom. On turn one almost nothing is cached, so everything goes through together. An [[embedding]] turns each token’s number into a long list of numbers, and you can read that list as a place on a map of meaning.')}</p>
+			<p>Watch where they land. “job” is among careers, “race” is in sports. An embedding knows the word, not the sentence. Both “the” tiles land on one spot, until a position signal says which comes first.</p>
 			<p><small>The real map has thousands of dimensions. This one has two, and its neighborhoods are illustrative.</small></p>
 			<Blueprint compact stage={part} />
 		</article>
 		<article class="pin left tight" data-in="0.325" data-out="0.548" data-fade="0.014">
 			<h2>Attention</h2>
 			<p>
-				In this sentence “job” is not about careers, and only the words around it can say so. So it asks a question, its query. Every token
-				before it offers a key and holds a value. Later tokens stay dark, because a token can only look back.
+				In this sentence “job” isn’t about careers, and only the words around it can say so. So it asks a question, its query. Each token before
+				it offers a key, like a label, and holds a value, like what’s behind that label. Later tokens stay dark: a token can only look back.
 			</p>
 			<div class="eq" role="img" aria-label="Attention of Q, K and V equals softmax of Q times K transpose over the square root of d k, times V.">
 				<span class="eq-name">Attention(<b class="q">Q</b>, <b class="k">K</b>, <b class="v">V</b>) =</span>
@@ -607,15 +635,15 @@
 			<ol class="steps compact">
 				<li class={{ on: attention === 0, done: attention > 0 }}>
 					<strong>Compare</strong>
-					<span>The query against every key. A better match scores higher, and the √d keeps numbers in range.</span>
+					<span>The query against every key. The better the match, the higher the score. The √d just keeps the numbers in range.</span>
 				</li>
 				<li class={{ on: attention === 1, done: attention > 1 }}>
 					<strong>Weigh</strong>
-					<span>Softmax turns the scores into shares that add up to 100%.</span>
+					<span>{@render rich('[[Softmax]] turns the scores into shares that add up to 100%.')}</span>
 				</li>
 				<li class={{ on: attention === 2, done: attention > 2 }}>
 					<strong>Mix</strong>
-					<span>Those shares of the values become “job”’s new vector, and it moves toward code.</span>
+					<span>{@render rich('Those shares of the values blend into “job”’s new [[vector]], and it moves toward code.')}</span>
 				</li>
 			</ol>
 			<p><small>The shares are illustrative. A real layer runs many of these side by side, called heads.</small></p>
@@ -623,33 +651,23 @@
 		</article>
 		<article class="pin left tight" data-in="0.555" data-out="0.622" data-fade="0.014">
 			<h2>All of them, at once</h2>
-			<p>
-				Every token does this in the same instant, which is why this work suits a chip built for parallel math. Each one also stores its key
-				and value in the row of lights along the front of the layer.
-			</p>
-			<p>That row is the KV cache from earlier, and now you can see what it is for.</p>
+			<p>Every token does this in the same instant, which is why this work suits a chip built for parallel math. Each one also stores its key and value in the row of lights along the layer’s front edge.</p>
+			<p>That row is the KV cache from earlier. Now you can see what it’s for.</p>
 			<Blueprint compact stage={part} />
 		</article>
 		<article class="pin left tight" data-in="0.63" data-out="0.694" data-fade="0.014">
 			<h2>Then each token, by itself</h2>
+			<p>Attention moves information between tokens. Next comes a small fully connected network, with every input wired to every unit. It works on one token at a time, and every token gets the same network.</p>
 			<p>
-				Attention moves information between tokens. Next comes a small fully connected network, with every input wired to every unit. It works
-				on one token’s vector at a time, and every token gets the same network.
-			</p>
-			<p>
-				<small>Around both steps, the layer normalizes its numbers to keep them in range and adds the old vector back, so nothing is lost. In many
-				large models, this network is where a tiny router picks a few experts out of hundreds.</small>
+				<small>Around both steps, the layer normalizes its numbers to keep them in range and adds the old vector back, so nothing is lost. In many large models, a tiny router here picks a few experts out of hundreds.</small>
 			</p>
 			<Blueprint compact stage={part} />
 		</article>
 		<article class="pin left tight" data-in="0.705" data-out="0.862" data-fade="0.014">
 			<h2>Then again, eighty times</h2>
+			<p>That was one layer. The next has the same design but its own weights, and starts where the last one finished. Each thread is one token’s path up the stack. Watch them gather as they climb.</p>
 			<p>
-				That was one layer. The next has the same design and its own weights, and it starts where the last one finished. Each thread is one
-				token’s path up the stack, and they gather as they climb.
-			</p>
-			<p>
-				“race” never quite arrives. It cannot see “condition”, which comes after it. That is what looking only backward costs.
+				“race” never quite arrives. It can’t see “condition”, which comes after it. That’s the price of only looking back.
 				<small>Eighty is illustrative.</small>
 			</p>
 			<Blueprint compact stage={part} />
@@ -657,10 +675,10 @@
 		<article class="pin left tight" data-in="0.885" data-out="0.985" data-fade="0.014">
 			<h2>One score for every word</h2>
 			<p>
-				After the last layer, only the final position matters. One more normalize, then the LM head gives a raw score, called a logit, to every entry in the
-				vocabulary. Those logits are all the model ever outputs. <small>Scores on the map are illustrative.</small>
+				{@render rich('After the last layer, only the final position matters. The [[LM head]] gives every entry in the vocabulary a raw score, called a [[logit]]. Those scores are all the model ever outputs.')}
+				<small>Scores on the map are illustrative.</small>
 			</p>
-			<p>The time until they exist is the time to first token, usually 0.3 to 2 seconds for a prompt this size.</p>
+			<p>All this was the pause before the agent starts typing. It’s called time to first token, usually 0.3 to 2 seconds for a prompt this size.</p>
 			<Blueprint compact stage={part} />
 		</article>
 	</section>
@@ -668,11 +686,8 @@
 	<section data-beat class="beat" style:--h="520vh">
 		<article class="pin right" data-in="0.1" data-out="0.86">
 			<h2>One token is chosen</h2>
-			<p>
-				This is the only probabilistic step in the whole journey. The highest logits land here and become probabilities. Temperature reshapes them,
-				and top-p or top-k cut off the unlikely tail.
-			</p>
-			<p>Then a random draw picks one. Coding agents run near temperature 0 or a provider default, so the wheel is heavily weighted, but it is still a wheel.</p>
+			<p>{@render rich('This is the only roll of the dice in the whole journey. The highest logits land here and become probabilities. [[Temperature]] reshapes them, and [[top-p or top-k]] cut off the long shots.')}</p>
+			<p>Then a random draw picks one. Coding agents run near temperature 0 or a provider default, so the wheel is heavily weighted. But it’s still a wheel.</p>
 			<p><small>Candidates and odds are illustrative.</small></p>
 		</article>
 	</section>
@@ -680,13 +695,10 @@
 	<section data-beat class="beat" style:--h="600vh">
 		<article class="pin left tight" data-in="0.075" data-out="0.86">
 			<h2>One at a time</h2>
-			<p>
-				Now the loop. The new token climbs the same stack, alone. On every layer it looks back at everything through the KV cache, and adds its
-				own key and value to the row of lights. One step takes 10 to 40 milliseconds. That is the typing speed you see.
-			</p>
-			<p>In 2026 the model usually thinks first. Thinking tokens are ordinary decoded tokens, billed as output.</p>
-			<p class="note"><b>{spec.name}.</b> {callouts.thinking}</p>
-			<p><small>Speculative decoding can verify several guessed tokens in one pass, often 2 to 3 times faster on code, with the same answers.</small></p>
+			<p>Now the loop. The new token climbs the same stack, alone. On each layer it looks back at everything through the KV cache, and adds its own key and value to the row of lights. One step takes 10 to 40 milliseconds. That’s the typing speed you see.</p>
+			<p>In 2026 the model usually thinks first. Thinking tokens are ordinary tokens, billed as output.</p>
+			<p class="note"><b>{spec.name}.</b> {@render rich(callouts.thinking)}</p>
+			<p><small>{@render rich('[[Speculative decoding]] can check several guessed tokens in one pass, often 2 to 3 times faster on code, with the same answers.')}</small></p>
 		</article>
 	</section>
 
@@ -694,11 +706,8 @@
 		<article class="pin top-band" data-in="0.08" data-out="0.84">
 			<h2>A tool call is born</h2>
 			<div class="cols">
-				<p>
-					The model opens a tool call with a special token, then writes the name and arguments as more tokens. It does nothing
-					else. The file may not exist, and the command may not be allowed. Those checks come later.
-				</p>
-				<p class="note"><b>{spec.name}.</b> {callouts.toolcall}</p>
+				<p>The model opens a tool call with a special token, then writes the name and arguments as more tokens. That’s all it does. The file may not exist and the command may not be allowed. Those checks come later.</p>
+				<p class="note"><b>{spec.name}.</b> {@render rich(callouts.toolcall)}</p>
 			</div>
 		</article>
 	</section>
@@ -706,26 +715,17 @@
 	<section data-beat class="beat" style:--h="560vh">
 		<article class="pin right" data-out="0.74">
 			<h2>Only text comes back</h2>
-			<p>
-				Each ID is looked up in the vocabulary. The detokenizer waits until it has a complete character, then sends a small chunk of
-				text. Token IDs never leave the data center.
-			</p>
-			<p>A second set of classifiers reads along. If the text crosses a line, generation is cut off mid-stream.</p>
-			<p class="note"><b>{spec.name}.</b> {callouts.stream}</p>
+			<p>Each number is looked up in the vocabulary. The detokenizer waits until it has a whole character, then sends a small chunk of text. Token numbers never leave the data center.</p>
+			<p>{@render rich('A second set of [[classifiers]] reads along. If the text crosses a line, generation stops mid-sentence.')}</p>
+			<p class="note"><b>{spec.name}.</b> {@render rich(callouts.stream)}</p>
 		</article>
 	</section>
 
 	<section data-beat class="beat" style:--h="460vh">
 		<article class="pin right" data-in="0.05" data-out="0.56">
 			<h2>The model has no hands</h2>
-			<p>
-				The tube ends at your laptop, in the harness. It buffers the stream until the tool-call block closes, then parses it. Only now does anyone know
-				the full call.
-			</p>
-			<p>
-				And it is only a request, the way a web form is a request to a server. The model cannot read a file. It can only write the
-				text “please read this file.” Everything after this decides whether to honor it.
-			</p>
+			<p>The tube ends at your laptop, in the harness. It holds on to the stream until the tool call is complete, then reads it. Only now does anyone know the full request.</p>
+			<p>And it’s only a request, like a web form sent to a server. The model can’t read a file. It can only write the words “please read this file.” Everything after this decides whether to say yes.</p>
 		</article>
 	</section>
 
@@ -741,31 +741,25 @@
 					</li>
 				{/each}
 			</ol>
-			<p class="note"><b>{spec.name}.</b> {callouts.policy}</p>
+			<p class="note"><b>{spec.name}.</b> {@render rich(callouts.policy)}</p>
 		</article>
 	</section>
 
 	<section data-beat class="beat" style:--h="520vh">
 		<article class="pin right" data-out="0.88">
 			<h2>When the page lies</h2>
-			<p>
-				Our agent fetched the library’s docs. After that, the page sits in the same context as your instructions, and it can say
-				anything. This is prompt injection, the main unsolved security problem of agents.
-			</p>
-			<p>So defenses come in layers. The strongest is the one that does not need to be convinced: an operating-system boundary every child process inherits.</p>
-			<p class="note"><b>{spec.name}.</b> {callouts.sandbox}</p>
+			<p>{@render rich('Our agent fetched the library’s docs. Now that page sits in the same context as your instructions, and it can say anything. This is [[prompt injection]], the main unsolved security problem of agents.')}</p>
+			<p>So the defenses come in layers. The strongest doesn’t have to be convinced of anything: an operating-system fence that every child process inherits.</p>
+			<p class="note"><b>{spec.name}.</b> {@render rich(callouts.sandbox)}</p>
 		</article>
 	</section>
 
 	<section data-beat class="beat" style:--h="500vh">
 		<article class="pin left" data-out="0.88">
 			<h2>Finding the code</h2>
-			<p>
-				An approved call becomes a system call. The model works the way an engineer does: search for the words, list the candidates,
-				read the promising file by line range.
-			</p>
-			<p>Each of these is a separate turn: call, result, think, next call. It will read about 250 lines of your repository, not all of it.</p>
-			<p class="note"><b>{spec.name}.</b> {callouts.search}</p>
+			<p>{@render rich('An approved call becomes a [[system call]], real work on your machine. The model searches the way an engineer does: look for the words, list the candidates, read the promising file by line range.')}</p>
+			<p>Each step is its own turn: call, result, think, next call. It will read about 250 lines of your repository, not all of it.</p>
+			<p class="note"><b>{spec.name}.</b> {@render rich(callouts.search)}</p>
 		</article>
 	</section>
 
@@ -773,69 +767,51 @@
 		<article class="pin right" data-in="0.09" data-out="0.88">
 			<h2>Three ways to edit</h2>
 			<p>A few turns later the model knows what to change, and asks. The edit goes through the same gates.</p>
-			<p class="note"><b>{spec.name}.</b> {callouts.edit}</p>
-			<p>
-				All three write atomically: a temporary file, then a rename, so a crash never leaves half a file. An emitted patch and an
-				applied patch are different events, and the result says which happened.
-			</p>
+			<p class="note"><b>{spec.name}.</b> {@render rich(callouts.edit)}</p>
+			<p>{@render rich('All three agents write [[atomically]]: a temporary file, then a rename, so a crash never leaves half a file. Proposing a patch and applying it are different events, and the result says which happened.')}</p>
 		</article>
 	</section>
 
 	<section data-beat class="beat" style:--h="480vh">
 		<article class="pin left" data-out="0.84">
 			<h2>Evidence, not opinion</h2>
-			<p>
-				The harness runs the tests inside the sandbox with a timeout, and captures stdout, stderr and the exit code. Here it failed: the
-				new lock deadlocks.
-			</p>
-			<p>That is not an error of the tool. It is a successful tool call whose text says failed, and it is the most useful thing the model has read all session.</p>
-			<p class="note"><b>{spec.name}.</b> {callouts.test}</p>
+			<p>{@render rich('The harness runs the tests inside the [[sandbox]] with a time limit, and captures everything: [[stdout, stderr and the exit code]]. Here they failed: the new lock [[deadlocks]].')}</p>
+			<p>That isn’t the tool going wrong. It’s a successful tool call whose text says failed, and it’s the most useful thing the model has read all session.</p>
+			<p class="note"><b>{spec.name}.</b> {@render rich(callouts.test)}</p>
 		</article>
 	</section>
 
 	<section data-beat class="beat" style:--h="560vh">
 		<article class="pin right" data-in="0.4" data-out="0.86">
 			<h2>Around the loop</h2>
-			<p>
-				Remember the green pipe in the very first frame? This is what it carries. The result is appended to the transcript, and the
-				whole conversation goes back to the provider.
-			</p>
-			<p>One pass around is a turn. A real fix takes five to thirty.</p>
-			<p class="note"><b>{spec.name}.</b> {callouts.loop}</p>
+			<p>{@render rich('Remember the green pipe in the very first frame? This is what it carries. The result joins the [[transcript]], and the whole conversation goes back to the provider.')}</p>
+			<p>One trip around is a turn. A real fix takes five to thirty.</p>
+			<p class="note"><b>{spec.name}.</b> {@render rich(callouts.loop)}</p>
 		</article>
 	</section>
 
 	<section data-beat class="beat" style:--h="480vh">
 		<article class="pin left" data-out="0.86">
 			<h2>When the context fills up</h2>
-			<p>
-				A long session reads many files, and the transcript approaches the context window. So a separate model call writes a summary,
-				which replaces the old messages. The cache is lost once and rebuilt.
-			</p>
-			<p class="note"><b>{spec.name}.</b> {callouts.compact}</p>
+			<p>{@render rich('A long session reads many files, and the transcript creeps up on the [[context window]]. So a separate model call writes a summary, which replaces the old messages. The cache is lost once, then rebuilt.')}</p>
+			<p class="note"><b>{spec.name}.</b> {@render rich(callouts.compact)}</p>
 		</article>
 	</section>
 
 	<section data-beat class="beat" style:--h="480vh">
 		<article class="pin right" data-out="0.86">
 			<h2>Seven things called memory</h2>
-			<p>Much confusion comes from using one word for seven different things. Each has a different owner and a different lifetime.</p>
-			<p>
-				The last one answers a common question: using an agent does not train the model. When a session ends, the model has not
-				learned anything from you.
-			</p>
+			<p>A lot of confusion comes from using one word for seven different things. Each has its own owner and its own lifetime.</p>
+			<p>The last one answers a common question: using an agent doesn’t train the model. When your session ends, the model hasn’t learned a thing from you.</p>
 		</article>
 	</section>
 
 	<section data-beat class="beat" style:--h="500vh">
 		<article class="pin left" data-out="0.88">
 			<h2>When the answer gets lost</h2>
-			<p>A tool can succeed while its result is lost. The honest state is “I do not know whether that happened,” and the next step is to look, not to retry.</p>
-			<p>Exact-string edits help here: the second attempt fails on its own, because the old string is gone.</p>
-			<p>
-				And four controls do four different things. Steering changes the plan. Cancelling stops the stream. Terminating kills the
-				process. Only rolling back undoes a file change.
-			</p>
+			<p>A tool can succeed while its result gets lost. The honest state is “I don’t know whether that happened,” and the next step is to look, not to retry.</p>
+			<p>Exact-string edits help here: a second attempt fails harmlessly, because the old string is already gone.</p>
+			<p>And four controls do four different things. Steering changes the plan. Cancelling stops the stream. Terminating kills the process. Only rolling back undoes a file change.</p>
 		</article>
 	</section>
 
@@ -844,10 +820,10 @@
 			<h2>The whole fix, in ten turns</h2>
 			<div class="cols">
 				<p>
-					Each bar is one request. Green was already cached, amber is new. Only turn one pays for all of it, then every later turn is
-					95 to 99 percent cache hit. <small>Claude Code’s numbers. Illustrative.</small>
+					Each bar is one request. Green was already cached, amber is new. Only turn one pays for all of it. After that, every turn is 95 to 99
+					percent cache hit. <small>Claude Code’s numbers. Illustrative.</small>
 				</p>
-				<p class="note"><b>{spec.name}.</b> {callouts.turns}</p>
+				<p class="note"><b>{spec.name}.</b> {@render rich(callouts.turns)}</p>
 			</div>
 		</article>
 	</section>
@@ -856,11 +832,8 @@
 		<article class="pin top-band" data-out="0.76">
 			<h2>What finished means</h2>
 			<div class="cols">
-				<p>
-					There is no finished signal. After green tests, the model writes a summary and an end-of-turn token instead of another tool call.
-					Green tests are evidence, not proof.
-				</p>
-				<p>The ending is five separate operations, each with its own authority. A typical fix costs tens of cents to a few dollars, mostly in cache reads.</p>
+				<p>There’s no “finished” signal. After green tests, the model writes a summary and an end-of-turn token instead of another tool call. Green tests are evidence, not proof.</p>
+				<p>The ending is five separate steps, each with its own permission. A typical fix costs tens of cents to a few dollars, mostly in cache reads.</p>
 			</div>
 		</article>
 	</section>
@@ -868,19 +841,109 @@
 	<section data-beat class="beat" style:--h="440vh">
 		<article class="pin left end" data-in="0.44" data-out="9">
 			<h2>Different bodies, one kind of mind</h2>
-			<p>
-				The model is a function from tokens to a probability distribution over the next token. Everything else, retrieval, editing, running
-				code, remembering, asking permission, is the harness.
-			</p>
-			<p>It does not know your codebase. It searches, one tool call at a time, and forgets everything when the session ends unless the harness writes it down.</p>
-			<p><small>Harness details are from public docs and source as of November 2026. Inside the data center, this follows public engines and papers, because providers do not publish their own.</small></p>
+			<p>The model is a function from tokens to a probability for the next token. Everything else, searching, editing, running code, remembering, asking permission, is the harness.</p>
+			<p>It doesn’t know your codebase. It searches, one tool call at a time, and forgets everything when the session ends unless the harness writes it down.</p>
+			<p class="next">Next time you press Enter, you’ll know where it goes.</p>
+			<p><small>Harness details are from public docs and source as of November 2026. Inside the data center, this follows public engines and papers, because providers don’t publish their own.</small></p>
 			<p><a class="again" href="#top" onclick={restart}>Follow it again</a></p>
 		</article>
 	</section>
 </main>
+{#if tip}
+	<div class={['tip', { below: tip.below }]} aria-hidden="true" style:left="{tip.x}px" style:top="{tip.y}px">{tip.text}</div>
+{/if}
 </div>
 
 <style>
+	.term {
+		appearance: none;
+		display: inline;
+		margin: 0;
+		padding: 0;
+		border: 0;
+		background: none;
+		color: inherit;
+		font: inherit;
+		text-align: inherit;
+		cursor: help;
+		pointer-events: auto;
+		text-decoration: underline dotted;
+		text-decoration-thickness: 1.5px;
+		text-underline-offset: 0.2em;
+		text-decoration-color: color-mix(in srgb, currentColor 50%, transparent);
+		transition: text-decoration-color 0.15s;
+	}
+	.term:hover,
+	.term[aria-expanded='true'] {
+		text-decoration-color: currentColor;
+	}
+	.term:focus-visible {
+		outline: 2px solid var(--cobalt);
+		outline-offset: 2px;
+		border-radius: 3px;
+	}
+	/* Short screens keep what teaches, and let the small print go first. */
+	@media (max-height: 800px) and (min-aspect-ratio: 9/10) {
+		.pin.tight :global(.crumbs) {
+			display: none;
+		}
+	}
+	@media (max-aspect-ratio: 9/10) {
+		.pin.end small {
+			display: none;
+		}
+	}
+	.vh {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip-path: inset(50%);
+		white-space: nowrap;
+	}
+	.tip {
+		position: fixed;
+		z-index: 30;
+		width: min(290px, calc(100vw - 24px));
+		padding: 11px 14px 12px;
+		border-radius: 12px;
+		background: #fffdf7;
+		color: #16243d;
+		font-family: var(--sans);
+		font-size: 14.5px;
+		font-weight: 450;
+		line-height: 1.42;
+		box-shadow:
+			0 1px 0 rgb(255 255 255 / 0.9) inset,
+			0 10px 30px rgb(6 15 38 / 0.28);
+		transform: translateY(-100%);
+		transform-origin: 50% 100%;
+		pointer-events: none;
+		animation: tip-in 0.16s cubic-bezier(0.2, 1.3, 0.5, 1);
+	}
+	.tip.below {
+		transform: none;
+		transform-origin: 50% 0;
+		animation-name: tip-in-below;
+	}
+	@keyframes tip-in {
+		from {
+			opacity: 0;
+			transform: translateY(-100%) scale(0.94);
+		}
+	}
+	@keyframes tip-in-below {
+		from {
+			opacity: 0;
+			transform: scale(0.94);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.tip {
+			animation: none;
+		}
+	}
+
 	.stage {
 		position: fixed;
 		inset: 0;

@@ -1,54 +1,38 @@
-# sv
+# The journey of a token
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+**[See it live →](https://neovand.github.io/Journey/)**
 
-## Creating a project
+[![A laptop, a harness machine and an MCP box on a floating porcelain island](static/og.png)](https://neovand.github.io/Journey/)
 
-If you're seeing this, you've probably already done this step. Congrats!
+You type one sentence into a coding agent: *Fix the race condition in the job scheduler.* This site follows that sentence, as one scroll-driven 3D journey, through Claude Code, Codex or GitHub Copilot: into a JSON request, across the wire, through the transformer one token at a time, back through the permission gates, and around the loop until the tests pass.
 
-```sh
-# create a new project
-npx sv create my-app
-```
+Pick your agent at the top, and anywhere it behaves differently, the page changes with it.
 
-To recreate this project with the same configuration:
+## Running it
 
 ```sh
-# recreate this project
-pnpm dlx sv@1.2.0 create --template minimal --types ts --add eslint vitest="usages:unit,component" playwright="demo:no" tailwindcss="plugins:typography" enhanced-img ai-tools="ide:claude-code,cursor,other,vscode+delivery:plugin+tools:mcp,svelte-code-writer,svelte-core-bestpractices,svelte-file-editor+mcpSetup:local" sveltekit-adapter="adapter:static" --install pnpm .
+pnpm install
+pnpm dev
 ```
 
-## Adding features
+Every push to `main` builds and publishes the site with GitHub Actions.
 
-Add features to your project with `sv add`:
+## How it's built
 
-```sh
-npx sv add
-```
+SvelteKit with the static adapter, and Three.js for one continuous scene. Every frame is a pure function of the scroll position, which a playhead turns into a bounded-speed clock, so a fast trackpad flick can't skip a beat.
 
-For example, to add Tailwind CSS:
+`scripts/` holds the review tools used to build it:
 
-```sh
-npx sv add tailwindcss
-```
+| Script | What it does |
+| --- | --- |
+| `shots.mjs` | Exact frames at chosen moments, on any viewport and for any agent |
+| `strip.mjs` | A dense contact sheet of one stretch of animation |
+| `seams.mjs` | Every boundary between sections |
+| `look.mjs` | A free camera, for close inspection with the cards hidden |
+| `collide.mjs` | Scans the whole timeline for moving things passing through solid ones |
+| `cards.mjs` | Checks that every card fits on screen, on every viewport and for every agent |
+| `perf.mjs`, `flick.mjs`, `gpu.mjs` | Frame times, real wheel events, and GPU cost |
 
-## Developing
+## Accuracy
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```sh
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
-
-## Building
-
-To create a production version of your app:
-
-```sh
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
+The content follows the book in `reference/`. Harness details come from public docs and source as of November 2026. Inside the data center it follows public engines and papers, because providers don't publish their own. Numbers marked illustrative are just that.
