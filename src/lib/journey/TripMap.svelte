@@ -2,6 +2,8 @@
 	import type { Snippet } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
 	import { STOPS } from './content';
+	import Icon from './Icon.svelte';
+	import { CLOSE, STOP_ICON } from './icons';
 
 	let {
 		open = $bindable(false),
@@ -41,7 +43,7 @@
 		<div class="head">
 			<h2>The whole trip</h2>
 			<button type="button" class="close" aria-label="Close the map" onclick={() => (open = false)}>
-				<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13" /></svg>
+				<Icon icon={CLOSE} size={18} stroke={2} />
 			</button>
 		</div>
 		<p class="intro">One sentence goes out, and comes back as a fix. Jump to any stop along the way, or follow a different agent.</p>
@@ -51,7 +53,7 @@
 				<li class={{ past: n < hereStop, at: n === hereStop }}>
 					<span class="node" aria-hidden="true">{n === hereStop ? 'T' : n + 1}</span>
 					<button type="button" class="stop" onclick={() => onjump(stop.parts[0])}>
-						<b>{stop.name}</b>
+						<b><Icon icon={STOP_ICON[n]} size={19} stroke={1.8} />{stop.name}</b>
 						<span>{stop.what}</span>
 					</button>
 					<ul>
@@ -139,10 +141,13 @@
 	}
 	.close {
 		flex: none;
+		display: grid;
+		place-items: center;
 		width: 40px;
 		height: 40px;
-		padding: 12px;
+		padding: 0;
 		border: 0;
+		color: var(--text);
 		border-radius: 50%;
 		background: rgb(16 26 48 / 0.07);
 		cursor: pointer;
@@ -153,12 +158,6 @@
 	.close:hover {
 		background: rgb(16 26 48 / 0.13);
 		transform: rotate(90deg);
-	}
-	.close path {
-		fill: none;
-		stroke: var(--text);
-		stroke-width: 2.2;
-		stroke-linecap: round;
 	}
 	.intro {
 		margin: 8px 0 14px;
@@ -261,6 +260,9 @@
 		background: rgb(16 26 48 / 0.06);
 	}
 	.stop b {
+		display: flex;
+		align-items: center;
+		gap: 8px;
 		font-family: var(--display);
 		font-weight: 800;
 		font-size: 19px;

@@ -15,6 +15,7 @@
 	import Blueprint, { type Stage } from './Blueprint.svelte';
 	import Icon from './Icon.svelte';
 	import { ArrowLeft01Icon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
+	import { AGAIN, AGENT_MARK, CHECK_ICON, DRAWER_ICON, GATE_ICON, MAP, SPIN, SWAP } from './icons';
 
 	const ids: HarnessId[] = ['claude', 'codex', 'copilot'];
 	const labels: Record<HarnessId, string> = { claude: 'Claude Code', codex: 'Codex', copilot: 'Copilot' };
@@ -699,18 +700,22 @@
 				aria-checked={harness === id}
 				class={{ on: harness === id, hint: hinting(id) }}
 				title={hinting(id) ? `This page is different for ${labels[id]}` : undefined}
-				onclick={() => choose(id)}>{labels[id]}</button
+				onclick={() => choose(id)}
 			>
+				<Icon icon={AGENT_MARK[id]} size={compact ? 15 : 17} stroke={1.7} />
+				{labels[id]}
+			</button>
 		{/each}
 	</div>
 {/snippet}
 
 <!-- A phone has no room for the picker in its header, so the agent's name in each note is the way to change it. -->
 {#snippet agent()}
-	<b class="agent-name">{spec.name}.</b>
+	<b class="agent-name"><Icon icon={AGENT_MARK[harness]} size={15} stroke={1.8} />{spec.name}.</b>
 	<button type="button" class={['agent', { hint: hinting(nextAgent) }]} aria-label="{spec.name}. Show this for {labels[nextAgent]}" onclick={() => choose(nextAgent)}>
+		<Icon icon={AGENT_MARK[harness]} size={15} stroke={1.8} />
 		{spec.name}
-		<svg viewBox="0 0 14 14" aria-hidden="true"><path d="M1.5 5H11L8 2M12.5 9H3l3 3" /></svg>
+		<Icon icon={SWAP} size={14} stroke={1.8} />
 	</button>
 {/snippet}
 
@@ -842,7 +847,7 @@
 			<ol class="steps">
 				{#each DRAWERS as d, i (d.name)}
 					<li class={{ on: shownDrawer === i, done: drawer > i && shownDrawer !== i }}>
-						<strong>{d.name}</strong>
+						<strong><Icon icon={DRAWER_ICON[i]} size={16} />{d.name}</strong>
 						<span>{@render rich(d.text)}</span>
 					</li>
 				{/each}
@@ -878,7 +883,7 @@
 			<ol class="steps compact">
 				{#each CHECKS as c, i (c.name)}
 					<li class={{ on: check === i, done: check > i }}>
-						<strong>{c.name}</strong>
+						<strong><Icon icon={CHECK_ICON[i]} size={16} />{c.name}</strong>
 						<span>{@render rich(c.text)}</span>
 					</li>
 				{/each}
@@ -1092,7 +1097,10 @@
 						</li>
 					{/each}
 				</ol>
-				<button type="button" class="spin" disabled={spinning} onclick={spinIt}>{spinning ? 'Round it goes' : 'Spin it yourself'}</button>
+				<button type="button" class="spin" disabled={spinning} onclick={spinIt}>
+					<Icon icon={SPIN} size={18} stroke={1.8} />
+					{spinning ? 'Round it goes' : 'Spin it yourself'}
+				</button>
 			</div>
 			<p><small>Illustrative odds. In this story, it lands on “The”.</small></p>
 		</article>
@@ -1142,7 +1150,7 @@
 			<ol class="steps compact">
 				{#each GATES as g, i (g.name)}
 					<li class={{ on: gate === i, done: gate > i }}>
-						<strong>{g.name}</strong>
+						<strong><Icon icon={GATE_ICON[i]} size={16} />{g.name}</strong>
 						<span>{@render rich(g.text)}</span>
 					</li>
 				{/each}
@@ -1302,8 +1310,8 @@
 				</div>
 				<p class="sources"><small>Harness details are from public docs and source as of November 2026. Inside the data center, this follows public engines and papers, because providers don’t publish their own.</small></p>
 				<p class="ends">
-					<a class="again" href="#top" onclick={restart}>Follow it again</a>
-					<button type="button" class="again quiet" onclick={openMap}>Open the map</button>
+					<a class="again" href="#top" onclick={restart}><Icon icon={AGAIN} size={17} stroke={1.8} />Follow it again</a>
+					<button type="button" class="again quiet" onclick={openMap}><Icon icon={MAP} size={17} stroke={1.8} />Open the map</button>
 				</p>
 			</div>
 		</article>
@@ -1516,17 +1524,12 @@
 	.agent:active {
 		transform: scale(0.95);
 	}
-	.agent svg {
-		width: 13px;
-		height: 13px;
-		flex: none;
-	}
-	.agent path {
-		fill: none;
-		stroke: currentColor;
-		stroke-width: 1.7;
-		stroke-linecap: round;
-		stroke-linejoin: round;
+	/* The agent's mark leads its name, wherever the name stands for the product. */
+	.agent-name {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		vertical-align: -2px;
 	}
 	.agent.hint {
 		animation: agent-hint 3.2s ease-in-out infinite;
@@ -1778,6 +1781,10 @@
 	}
 	.spin {
 		justify-self: stretch;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
 		padding: 10px 14px;
 		border: 0;
 		border-radius: 11px;
@@ -2337,6 +2344,9 @@
 			0 6px 20px rgb(30 80 150 / 0.14);
 	}
 	.picker button {
+		display: inline-flex;
+		align-items: center;
+		gap: 7px;
 		border: 0;
 		background: transparent;
 		color: #33415c;
@@ -2386,6 +2396,21 @@
 	.picker.compact button {
 		font-size: 13px;
 		padding: 8px 12px;
+	}
+	/* Narrow phones: the three names still fit on one line, and on the narrowest the marks give way to them. */
+	@media (max-width: 400px) {
+		.picker button {
+			gap: 5px;
+			padding: 11px 12px;
+		}
+	}
+	@media (max-width: 360px) {
+		.picker button {
+			padding: 10px 11px;
+		}
+		.picker button > :global(svg) {
+			display: none;
+		}
 	}
 
 	main {
@@ -2613,8 +2638,18 @@
 			border-color 0.25s;
 	}
 	.steps strong {
+		display: flex;
+		align-items: center;
+		gap: 7px;
 		color: var(--ink);
 		font-weight: 650;
+	}
+	.steps strong > :global(svg) {
+		color: var(--ink-soft);
+		transition: color 0.25s;
+	}
+	.steps li.on strong > :global(svg) {
+		color: var(--ink);
 	}
 	.steps li.on {
 		opacity: 1;
@@ -2696,7 +2731,9 @@
 	}
 
 	.again {
-		display: inline-block;
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
 		font-weight: 650;
 		color: #fff;
 		background: #101a30;
