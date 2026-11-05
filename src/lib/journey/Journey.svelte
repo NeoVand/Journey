@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import TripMap from './TripMap.svelte';
+	import Tokenizer from './Tokenizer.svelte';
 	import { Tween } from 'svelte/motion';
 	import { cubicOut } from 'svelte/easing';
 	import type { Attachment } from 'svelte/attachments';
@@ -196,6 +197,8 @@
 		const target = event.target as HTMLElement | null;
 		if (event.key === 'Enter' && tripDone && !mapOpen && !target?.closest('button, a, input, dialog')) pressEnter();
 	}
+
+	let tryOpen = $state(false);
 
 	/** The ten turns follow the bars as they rise. Once a turn has been told, the reader can go back to it. */
 	let turnReached = $state(-1);
@@ -694,6 +697,10 @@
 					and the blue tiles are markers the template added. <small>IDs are illustrative.</small>
 				</p>
 			</div>
+			<button type="button" class="try-it" onclick={() => (tryOpen = true)}>
+				<i aria-hidden="true"></i>
+				Cut your own sentence
+			</button>
 		</article>
 	</section>
 
@@ -1103,6 +1110,8 @@
 	<div class={['tip', { below: tip.below }]} aria-hidden="true" style:left="{tip.x}px" style:top="{tip.y}px">{tip.text}</div>
 {/if}
 </div>
+
+<Tokenizer bind:open={tryOpen} />
 
 <TripMap bind:open={mapOpen} here={mapHere} onjump={jump}>
 	{#snippet agents()}
@@ -1899,6 +1908,55 @@
 		font: 600 12.5px/1.2 var(--sans);
 		letter-spacing: 0;
 	}
+	/* A sheet is open, so the page behind it holds still. */
+	:global(html:has(dialog[open])) {
+		overflow: hidden;
+	}
+	.try-it {
+		display: inline-flex;
+		align-items: center;
+		align-self: flex-start;
+		gap: 9px;
+		margin-top: 8px;
+		padding: 10px 16px 10px 12px;
+		border: 0;
+		border-radius: 12px;
+		background: var(--amber);
+		color: #111a2e;
+		font: inherit;
+		font-size: 0.94em;
+		font-weight: 700;
+		pointer-events: auto;
+		cursor: pointer;
+		box-shadow:
+			inset 0 2px 0 rgb(255 255 255 / 0.5),
+			inset 0 -4px 0 rgb(176 104 0 / 0.45),
+			0 4px 12px rgb(30 70 140 / 0.22);
+		transition: transform 0.1s;
+	}
+	.try-it:hover {
+		transform: translateY(-1px);
+	}
+	.try-it:active {
+		transform: translateY(2px);
+	}
+	/* A knife, about to come down on a strip: the tokenizer's whole job. */
+	.try-it i {
+		position: relative;
+		width: 22px;
+		height: 13px;
+		border-radius: 3px;
+		background: rgb(17 26 46 / 0.86);
+	}
+	.try-it i::after {
+		content: '';
+		position: absolute;
+		inset: -3px auto -3px 12px;
+		width: 2px;
+		border-radius: 2px;
+		background: #fff3da;
+	}
+
 	/* The moment of a jump: gone before anyone sees the world swap. */
 	.cut {
 		position: fixed;
