@@ -1,0 +1,31 @@
+@import 'tailwindcss';
+@plugin '@tailwindcss/typography';
+@import '@fontsource-variable/bricolage-grotesque/index.css';
+@import '@fontsource-variable/instrument-sans/index.css';
+@import '@fontsource-variable/jetbrains-mono/index.css';
+
+:root {
+	--ink: #101a30;
+	--ink-soft: #33415c;
+	--sky: #c6e5fd;
+	--cobalt: #1f5fe0;
+	--amber: #ffb921;
+	--green: #12a956;
+	--display: 'Bricolage Grotesque Variable', system-ui, sans-serif;
+	--sans: 'Instrument Sans Variable', system-ui, sans-serif;
+	--mono: 'JetBrains Mono Variable', ui-monospace, monospace;
+}
+
+html {
+	background: var(--sky);
+	color: var(--ink);
+	font-family: var(--sans);
+	-webkit-font-smoothing: antialiased;
+	scrollbar-gutter: stable;
+}
+
+:focus-visible {
+	outline: 3px solid var(--cobalt);
+	outline-offset: 3px;
+	border-radius: 6px;
+}
