@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { GLOSSARY, RUN_WITH_CACHE, RUN_WITHOUT_CACHE, TEN_TURNS, wheelOdds } from './content';
+import { GLOSSARY, RUN_WITH_CACHE, RUN_WITHOUT_CACHE, slug, STOPS, TEN_TURNS, wheelOdds } from './content';
 
 const copy = ['./Journey.svelte', './content.ts'].map((file) => readFileSync(new URL(file, import.meta.url), 'utf8')).join('\n');
 const marked = [...copy.matchAll(/\[\[([^|\]^]+)(?:\|([^\]]+))?\]\]/g)]
@@ -15,6 +15,20 @@ describe('the glossary', () => {
 
 	it('has no definition nothing uses', () => {
 		expect(Object.keys(GLOSSARY).filter((key) => !marked.includes(key))).toEqual([]);
+	});
+});
+
+describe('the map', () => {
+	const titles = [...copy.matchAll(/<h[12]>([^<]+)<\/h[12]>/g)].map((m) => m[1]);
+	const parts = STOPS.flatMap((s) => s.parts);
+
+	it('lists every chapter, in the order they come', () => {
+		expect(titles.length).toBeGreaterThan(30);
+		expect(parts).toEqual(titles);
+	});
+
+	it('gives every chapter its own address', () => {
+		expect(new Set(parts.map(slug)).size).toBe(parts.length);
 	});
 });
 

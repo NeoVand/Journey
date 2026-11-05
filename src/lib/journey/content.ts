@@ -288,3 +288,31 @@ export const TEN_TURNS: { label: string; cached: number; fresh: number; sees: st
 /** The tokens the chips really run across the ten turns, with the cache and without it. */
 export const RUN_WITH_CACHE = TEN_TURNS.reduce((sum, t) => sum + t.fresh, 0);
 export const RUN_WITHOUT_CACHE = TEN_TURNS.reduce((sum, t) => sum + t.cached + t.fresh, 0);
+
+/** The stops on the book's map, and the chapters of this telling that fall under each. Parts are card titles, exactly. */
+export const STOPS: { name: string; what: string; parts: string[] }[] = [
+	{ name: 'Your head', what: 'You decide what to ask, and which agent to ask.', parts: ['How a coding agent works', 'It starts as a sentence'] },
+	{ name: 'Your laptop', what: 'The harness wakes up, gathers your rules and builds one request.', parts: ['The harness wakes up', 'One JSON request'] },
+	{ name: 'The wire and the front door', what: 'Encrypted, checked, and cut into tokens.', parts: ['Across the wire', 'The front door', 'Now it is a token'] },
+	{
+		name: 'The cluster',
+		what: 'Thousands of chips, and a memory that saves them work.',
+		parts: ['Thousands more behind it', 'One model, many chips', 'Its working memory', 'Blocks that can sit anywhere', 'Turn two starts ahead', 'Sharing the chips', 'Reading and writing']
+	},
+	{
+		name: 'Inside the model',
+		what: 'The math runs, one token is chosen, and text streams back.',
+		parts: ['The transformer', 'A place for every word', 'Attention', 'All of them, at once', 'Then each token, by itself', 'Then again, eighty times', 'One score for every word', 'One token is chosen', 'One at a time', 'A tool call is born', 'Only text comes back']
+	},
+	{ name: 'Your laptop again', what: 'The reply is only text. The harness decides what it may do.', parts: ['The model has no hands', 'Intent is not authority', 'When the page lies'] },
+	{ name: 'Your files and shell', what: 'Searching, editing, and running the tests.', parts: ['Finding the code', 'Three ways to edit', 'Evidence, not opinion'] },
+	{ name: 'Around the loop', what: 'Everything goes back, and the model goes again.', parts: ['Around the loop', 'When the context fills up', 'Seven things called memory', 'When the answer gets lost'] },
+	{ name: 'Done', what: 'The whole fix, what finished really means, and what it all adds up to.', parts: ['The whole fix, in ten turns', 'What finished means', 'Different bodies, one kind of mind'] }
+];
+
+/** A chapter's name in the address bar, so a stop can be shared. */
+export const slug = (title: string) =>
+	title
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-|-$/g, '');

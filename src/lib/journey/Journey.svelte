@@ -1,5 +1,8 @@
 <script lang="ts">
-	import { GLOSSARY, HARNESSES, FORMS, LOGITS, RUN_WITH_CACHE, RUN_WITHOUT_CACHE, TEN_TURNS, TOP_K, wheelOdds, type HarnessId } from './content';
+	import { GLOSSARY, HARNESSES, FORMS, LOGITS, RUN_WITH_CACHE, RUN_WITHOUT_CACHE, slug, TEN_TURNS, TOP_K, wheelOdds, type HarnessId } from './content';
+	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
+	import TripMap from './TripMap.svelte';
 	import { Tween } from 'svelte/motion';
 	import { cubicOut } from 'svelte/easing';
 	import type { Attachment } from 'svelte/attachments';
@@ -143,6 +146,31 @@
 		wins[pick]++;
 		landed = pick;
 		spinning = false;
+	}
+
+	/** The map lets a reader go straight to any chapter, and a chapter's address can be shared. */
+	let mapOpen = $state(false);
+	let mapHere = $state('How a coding agent works');
+	const headings = () => [...document.querySelectorAll<HTMLElement>('main h1, main h2')];
+	// Before the 3D is running, and when it can't run, the page is plain text that simply scrolls.
+	let cutTo = (title: string) => headings().find((h) => h.textContent === title)?.scrollIntoView();
+	let locate = () => mapHere;
+
+	function openMap() {
+		mapHere = locate();
+		mapOpen = true;
+	}
+
+	function jump(title: string) {
+		mapOpen = false;
+		goto(resolve(`/#${slug(title)}`), { shallow: true, replace: true });
+		cutTo(title);
+	}
+
+	function followAddress() {
+		const wanted = location.hash.slice(1);
+		const heading = wanted && headings().find((h) => slug(h.textContent ?? '') === wanted);
+		if (heading) cutTo(heading.textContent ?? '');
 	}
 
 	/** The ten turns follow the bars as they rise. Once a turn has been told, the reader can go back to it. */
@@ -365,6 +393,37 @@
 				}
 			};
 
+			// A cut, not a flight: the long way round would be minutes of scenery the reader didn't ask for.
+			const pinOf = (title: string) => pins.find((p) => p.el.querySelector('h1, h2')?.textContent === title);
+			const startOf = (p: (typeof pins)[number]) => (p.i === 0 ? 0 : p.i + p.from + p.fade * 0.8);
+			const cutEl = document.querySelector<HTMLElement>('[data-cut]')!;
+			let cutTimer = 0;
+			cutTo = (title) => {
+				const pin = pinOf(title);
+				if (!pin) return;
+				const nextT = startOf(pin);
+				const land = () => {
+					window.scrollTo({ top: toY(nextT), behavior: 'instant' });
+					T = nextT;
+					head.T = nextT;
+					head.v = 0;
+				};
+				if (reduced || still) return land();
+				cutEl.style.background = nextT >= 7.96 && nextT < 19.02 ? '#060f26' : '#d6eafb';
+				cutEl.classList.add('on');
+				clearTimeout(cutTimer);
+				cutTimer = window.setTimeout(() => {
+					land();
+					requestAnimationFrame(() => requestAnimationFrame(() => cutEl.classList.remove('on')));
+				}, 150);
+			};
+			locate = () => {
+				let at = pins[0];
+				for (const p of pins) if (startOf(p) - p.fade <= T) at = p;
+				return at.el.querySelector('h1, h2')?.textContent ?? '';
+			};
+			window.addEventListener('hashchange', followAddress);
+
 			if (params.has('debug')) {
 				(window as unknown as { __world: unknown; __head: unknown }).__world = w;
 				(window as unknown as { __world: unknown; __head: unknown }).__head = head;
@@ -392,9 +451,12 @@
 				cancelAnimationFrame(raf);
 				window.removeEventListener('resize', resize);
 				window.removeEventListener('pointermove', move);
+				window.removeEventListener('hashchange', followAddress);
+				clearTimeout(cutTimer);
 				w.dispose();
 			};
 			driven = true;
+			followAddress();
 			canvas.dataset.ready = 'true';
 		})();
 
@@ -472,10 +534,20 @@
 	</div>
 {/if}
 <div class="dive" data-dive aria-hidden="true"></div>
+<div class="cut" data-cut aria-hidden="true"></div>
 
 <div class={['journey', { dark, words: failed }]}>
 <header class="bar">
-	<a class="brand" href="#top">The journey of a token</a>
+	<button type="button" class="brand" aria-haspopup="dialog" aria-label="The journey of a token. Open the map of the trip" onclick={openMap}>
+		<svg viewBox="0 0 24 24" aria-hidden="true">
+			<path d="M6 19c7 0 3-7 8-7s5-7-1-7" />
+			<circle cx="6" cy="19" r="2.6" />
+			<circle cx="14" cy="12" r="2.6" />
+			<circle cx="13" cy="5" r="2.6" />
+		</svg>
+		<span class="name">The journey of a token</span>
+		<span class="map-chip">Map</span>
+	</button>
 	<div class={['bar-picker', { show: scrolled }]} inert={!scrolled}>
 		{@render picker(true)}
 	</div>
@@ -964,6 +1036,8 @@
 	<div class={['tip', { below: tip.below }]} aria-hidden="true" style:left="{tip.x}px" style:top="{tip.y}px">{tip.text}</div>
 {/if}
 </div>
+
+<TripMap bind:open={mapOpen} here={mapHere} onjump={jump} />
 
 <style>
 	.ten-grid {
@@ -1479,14 +1553,69 @@
 	}
 
 	.brand {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		margin: -7px 0 -7px -9px;
+		padding: 7px 12px 7px 9px;
+		border: 0;
+		border-radius: 999px;
+		background: none;
 		font-family: var(--display);
 		font-weight: 700;
 		font-size: 17px;
 		letter-spacing: -0.01em;
 		color: var(--ink);
-		text-decoration: none;
 		justify-self: start;
-		transition: color 0.3s;
+		cursor: pointer;
+		transition:
+			color 0.3s,
+			background 0.15s;
+	}
+	.brand:hover {
+		background: rgb(127 150 190 / 0.2);
+	}
+	.brand svg {
+		width: 22px;
+		height: 22px;
+		flex: none;
+		overflow: visible;
+		transition: transform 0.25s cubic-bezier(0.2, 1.6, 0.4, 1);
+	}
+	.brand:hover svg {
+		transform: scale(1.14) rotate(-6deg);
+	}
+	.brand path {
+		fill: none;
+		stroke: currentColor;
+		stroke-width: 2;
+		stroke-linecap: round;
+	}
+	.brand circle {
+		fill: currentColor;
+	}
+	.brand circle:first-of-type {
+		fill: #ffb921;
+	}
+	.map-chip {
+		padding: 3px 8px;
+		border-radius: 999px;
+		background: rgb(127 150 190 / 0.22);
+		font: 600 12.5px/1.2 var(--sans);
+		letter-spacing: 0;
+	}
+	/* The moment of a jump: gone before anyone sees the world swap. */
+	.cut {
+		position: fixed;
+		z-index: 5;
+		inset: 0;
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity 0.3s ease-out;
+	}
+	.cut:global(.on) {
+		opacity: 1;
+		transition: opacity 0.13s ease-in;
 	}
 
 	.bar-picker {
@@ -1906,9 +2035,25 @@
 			justify-self: start;
 			justify-items: start;
 		}
-		.bar-picker,
-		.brand {
+		.bar-picker {
 			display: none;
+		}
+		/* No room for the name on a phone, so the button just says what it opens. */
+		.brand {
+			position: absolute;
+			top: 10px;
+			right: 8px;
+			gap: 5px;
+			margin: 0;
+			padding: 8px 8px 8px 6px;
+		}
+		.brand .name {
+			display: none;
+		}
+		.map-chip {
+			padding: 0;
+			background: none;
+			font-size: 14px;
 		}
 		/* On a phone the scene runs up under the header, so the header brings its own ground. */
 		.bar::before {
