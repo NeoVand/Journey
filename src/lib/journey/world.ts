@@ -812,6 +812,14 @@ export class World {
 		});
 	}
 
+	setTemperature(temperature: number) {
+		this.cluster.setTemperature(temperature);
+	}
+
+	spinWheel(reduced: boolean) {
+		return this.cluster.spinWheel(reduced);
+	}
+
 	setHarness(id: HarnessId) {
 		this.harnessId = id;
 		this.cluster.setHarness(id);

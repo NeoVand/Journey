@@ -144,6 +144,14 @@ export class Cluster {
 		this.forward.setHarness(id);
 	}
 
+	setTemperature(temperature: number) {
+		this.forward.setTemperature(temperature);
+	}
+
+	spinWheel(reduced: boolean) {
+		return this.forward.spinWheel(reduced);
+	}
+
 	update(T: number, time: number) {
 		this.forward.update(T, time);
 		// Things leave the frame when the camera leaves them. The one exception is the dive, under the veil at its darkest.

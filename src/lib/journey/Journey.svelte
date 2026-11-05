@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { GLOSSARY, HARNESSES, FORMS, type HarnessId } from './content';
+	import { GLOSSARY, HARNESSES, FORMS, LOGITS, TOP_K, wheelOdds, type HarnessId } from './content';
 	import type { Attachment } from 'svelte/attachments';
 	import type { World } from './world';
 	import { PACE, Playhead } from './playhead';
@@ -130,6 +130,23 @@
 		{ name: 'Budget', text: 'Any quota or money left?' },
 		{ name: 'Capacity', text: 'If every chip is busy, you wait or get a [[529]], and the harness quietly tries again.' }
 	];
+
+	/** The wheel is real: move the temperature and the odds change, spin and it draws from them. */
+	let temperature = $state(1);
+	let wins = $state(LOGITS.slice(0, TOP_K).map(() => 0));
+	let spinning = $state(false);
+	let landed = $state(-1);
+	const odds = $derived(wheelOdds(temperature));
+
+	async function spinIt() {
+		if (!world || spinning) return;
+		spinning = true;
+		landed = -1;
+		const pick = await world.spinWheel(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+		wins[pick]++;
+		landed = pick;
+		spinning = false;
+	}
 
 	/** Words the reader may not know get a dotted underline. Hover, focus or tap shows what they mean. */
 	let tip = $state<{ key: string; text: string; x: number; y: number; below: boolean } | null>(null);
@@ -703,11 +720,36 @@
 	</section>
 
 	<section data-beat class="beat" style:--h="520vh">
-		<article class="pin right" data-in="0.1" data-out="0.86">
+		<article class="pin right wheel-card" data-in="0.1" data-out="0.86">
 			<h2>One token is chosen</h2>
-			<p>{@render rich('This is the only roll of the dice in the whole journey. The highest logits land here and become probabilities. [[Temperature]] reshapes them, and [[top-p or top-k]] cut off the long shots.')}</p>
-			<p>Then a random draw picks one. Coding agents run near temperature 0 or a provider default, so the wheel is heavily weighted. But it’s still a wheel.</p>
-			<p><small>Candidates and odds are illustrative.</small></p>
+			<p>{@render rich('The only roll of the dice in the whole journey. The highest logits land here and become odds. [[Top-p or top-k]] cut off the long shots, and [[temperature]] reshapes the rest.')}</p>
+			<p>Coding agents usually run cool, so the wheel is lopsided. But it’s still a wheel, and a random draw picks one.</p>
+			<div class="dial">
+				<label class="dial-head" for="temperature">
+					<span>Temperature</span>
+					<output for="temperature">{temperature.toFixed(1)}</output>
+				</label>
+				<input
+					id="temperature"
+					type="range"
+					min="0.2"
+					max="2"
+					step="0.1"
+					bind:value={temperature}
+					oninput={() => world?.setTemperature(temperature)}
+				/>
+				<ol class="odds">
+					{#each LOGITS.slice(0, TOP_K) as l, i (l.text)}
+						<li class={{ won: landed === i }}>
+							<b>{l.text}</b>
+							<span>{odds[i] < 0.005 ? '<1' : Math.round(odds[i] * 100)}%</span>
+							{#if wins[i]}<em>×{wins[i]}</em>{/if}
+						</li>
+					{/each}
+				</ol>
+				<button type="button" class="spin" disabled={spinning} onclick={spinIt}>{spinning ? 'Round it goes' : 'Spin it yourself'}</button>
+			</div>
+			<p><small>Illustrative odds. In this story, it lands on “The”.</small></p>
 		</article>
 	</section>
 
@@ -874,6 +916,166 @@
 </div>
 
 <style>
+	.dial {
+		display: grid;
+		gap: 9px;
+		margin: 4px 0 12px;
+		padding: 13px 15px 15px;
+		border-radius: 14px;
+		background: rgb(255 255 255 / 0.07);
+		box-shadow: inset 0 0 0 1px rgb(243 247 255 / 0.12);
+		pointer-events: auto;
+	}
+	.dial-head {
+		display: flex;
+		justify-content: space-between;
+		align-items: baseline;
+		font-size: 0.92em;
+		font-weight: 600;
+		color: var(--ink);
+	}
+	.dial output {
+		font-family: var(--mono);
+		font-weight: 600;
+		color: var(--amber);
+	}
+	.dial input[type='range'] {
+		appearance: none;
+		width: 100%;
+		height: 26px;
+		margin: 0;
+		background: none;
+		cursor: grab;
+	}
+	.dial input[type='range']:active {
+		cursor: grabbing;
+	}
+	.dial input[type='range']::-webkit-slider-runnable-track {
+		height: 6px;
+		border-radius: 3px;
+		background: linear-gradient(to right, #3b76ec, #ffbc12 55%, #f0663c);
+	}
+	.dial input[type='range']::-moz-range-track {
+		height: 6px;
+		border-radius: 3px;
+		background: linear-gradient(to right, #3b76ec, #ffbc12 55%, #f0663c);
+	}
+	.dial input[type='range']::-webkit-slider-thumb {
+		appearance: none;
+		width: 26px;
+		height: 26px;
+		margin-top: -10px;
+		border-radius: 8px;
+		background: var(--amber);
+		box-shadow:
+			inset 0 2px 0 rgb(255 255 255 / 0.55),
+			inset 0 -4px 0 rgb(176 104 0 / 0.5),
+			0 2px 6px rgb(6 15 38 / 0.4);
+		transition: transform 0.12s;
+	}
+	.dial input[type='range']::-moz-range-thumb {
+		width: 26px;
+		height: 26px;
+		border: 0;
+		border-radius: 8px;
+		background: var(--amber);
+		box-shadow:
+			inset 0 2px 0 rgb(255 255 255 / 0.55),
+			inset 0 -4px 0 rgb(176 104 0 / 0.5),
+			0 2px 6px rgb(6 15 38 / 0.4);
+	}
+	.dial input[type='range']:hover::-webkit-slider-thumb {
+		transform: scale(1.08);
+	}
+	.odds {
+		display: grid;
+		grid-template-columns: repeat(5, 1fr);
+		gap: 5px;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		text-align: center;
+		font-size: 0.84em;
+		line-height: 1.2;
+	}
+	.odds li {
+		position: relative;
+		display: grid;
+		gap: 1px;
+		padding: 6px 2px;
+		border-radius: 9px;
+		background: rgb(255 255 255 / 0.06);
+		transition: background 0.2s;
+	}
+	.odds li.won {
+		background: var(--amber);
+		color: #111a2e;
+		animation: won 0.5s cubic-bezier(0.2, 1.6, 0.4, 1);
+	}
+	.odds li.won span {
+		color: #3d2c00;
+	}
+	.odds b {
+		font-weight: 700;
+	}
+	.odds span {
+		font-family: var(--mono);
+		font-size: 0.92em;
+		color: var(--ink-soft);
+	}
+	/* The tally sits on the chip's corner like a sticker, so counting doesn't move anything. */
+	.odds em {
+		position: absolute;
+		top: -7px;
+		right: -3px;
+		padding: 1px 5px;
+		border-radius: 8px;
+		background: var(--ink);
+		color: #111a2e;
+		font-style: normal;
+		font-weight: 700;
+		font-size: 0.86em;
+		line-height: 1.3;
+		box-shadow: 0 1px 3px rgb(6 15 38 / 0.5);
+	}
+	@keyframes won {
+		from {
+			transform: scale(0.8);
+		}
+	}
+	.spin {
+		justify-self: stretch;
+		padding: 10px 14px;
+		border: 0;
+		border-radius: 11px;
+		background: var(--amber);
+		color: #111a2e;
+		font: inherit;
+		font-weight: 700;
+		cursor: pointer;
+		box-shadow:
+			inset 0 2px 0 rgb(255 255 255 / 0.5),
+			inset 0 -4px 0 rgb(176 104 0 / 0.45);
+		transition:
+			transform 0.1s,
+			filter 0.15s;
+	}
+	.spin:hover:not(:disabled) {
+		filter: brightness(1.06);
+	}
+	.spin:active:not(:disabled) {
+		transform: translateY(2px) scale(0.99);
+	}
+	.spin:disabled {
+		cursor: default;
+		filter: saturate(0.6) brightness(0.85);
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.odds li.won {
+			animation: none;
+		}
+	}
+
 	.loader {
 		position: fixed;
 		z-index: 2;
@@ -1609,6 +1811,24 @@
 			margin-bottom: 10px;
 			padding: 9px 10px;
 			font-size: 13px;
+		}
+		.dial {
+			gap: 6px;
+			margin: 2px 0 8px;
+			padding: 9px 12px 12px;
+		}
+		/* On the shortest phones the wheel still has to show, so the toy keeps its room and the words give way. */
+		@media (max-height: 700px) {
+			.wheel-card h2 {
+				margin-bottom: 8px;
+			}
+			.wheel-card p:nth-of-type(2),
+			.wheel-card p:last-child {
+				display: none;
+			}
+		}
+		.spin {
+			padding: 8px 14px;
 		}
 		.hero .pin {
 			width: auto;

@@ -9,7 +9,7 @@ import { createSign } from '../kit/parts';
 import { bell, hash, inOut, lerp, outBack, outCubic, seg, smooth } from '../kit/math';
 import { createPad } from '../props/board';
 import { Tile, TILE_D, TILE_H } from '../props/tokenizer';
-import { CALLS, type HarnessId } from '../content';
+import { CALLS, LOGITS, TOP_K, wheelOdds, type HarnessId } from '../content';
 import { ORIGIN, PAD_Y, RAIL_Y, RAIL_Z } from '../layout';
 import type { Shot } from '../rig';
 import { KvRow, MAP_D, MAP_W, MapPlate, LOGITS_FLY, LOGITS_LINE, LOGITS_ROW, PICK_STARTS, PICK_W, TOKEN_PATHS, Transformer, TRANSFORMER_SHOTS } from './transformer';
@@ -90,21 +90,25 @@ export const FORWARD_SHOTS: Shot[] = [
 
 /* ------------------------------------------------------------------ sampler ---- */
 
-const LOGITS = [
-	{ text: 'The', score: 3.6, p: 0.62 },
-	{ text: 'I', score: 2.3, p: 0.17 },
-	{ text: 'Let', score: 1.9, p: 0.11 },
-	{ text: 'First', score: 1.4, p: 0.06 },
-	{ text: 'To', score: 1.05, p: 0.04 },
-	{ text: 'Sorry', score: 0.4, p: 0 },
-	{ text: 'Cat', score: 0.2, p: 0 }
-];
 const SPINS = 4;
+const PEGS = 30;
 
 class Sampler {
 	group = new THREE.Group();
 	private bars: { mesh: THREE.Mesh; sign: THREE.Group; home: THREE.Vector3; h: number; cut: boolean }[] = [];
 	private wheel = new THREE.Group();
+	private wheelFace = new Surface(1200, 1200);
+	private flapper: THREE.Group;
+	private temperature = 1;
+	private dirty = false;
+	private lastPaint = 0;
+	/** The reader's own spin, on top of the story's. */
+	private extra = 0;
+	private play: { from: number; to: number; start: number; duration: number; land: () => void } | null = null;
+	private restAt = -1;
+	private storyAngle = 0;
+	private lastAngle = 0;
+	private flap = 0;
 	private chosen: Tile;
 	private sign: THREE.Group;
 	private lamp: Lamp;
@@ -152,53 +156,21 @@ class Sampler {
 			this.group.add(mesh);
 			const sign = createSign(l.text, 0.36);
 			this.group.add(sign);
-			this.bars.push({ mesh, sign, home, h: l.score * 0.82, cut: l.p === 0 });
+			this.bars.push({ mesh, sign, home, h: l.score * 0.82, cut: i >= TOP_K });
 		});
 
 		// The wheel of the next token.
 		const wx = 3.6;
 		const R = 2.9;
 		const cy = PAD_Y + 3.5;
-		const s = new Surface(1200, 1200);
-		s.draw((c, w, h) => {
-			const cx = w / 2;
-			const ry = h / 2;
-			let a = -Math.PI / 2 - LOGITS[0].p * Math.PI;
-			const fills = ['#ffbc12', '#3b76ec', '#fbf1dd', '#22b866', '#f08a3c'];
-			LOGITS.filter((l) => l.p > 0).forEach((l, i) => {
-				const span = l.p * Math.PI * 2;
-				c.fillStyle = fills[i];
-				c.beginPath();
-				c.moveTo(cx, ry);
-				c.arc(cx, ry, cx, a, a + span);
-				c.closePath();
-				c.fill();
-				c.strokeStyle = '#111a2e';
-				c.lineWidth = 7;
-				c.stroke();
-				c.save();
-				c.translate(cx, ry);
-				c.rotate(a + span / 2);
-				c.textAlign = 'right';
-				c.textBaseline = 'middle';
-				c.fillStyle = i === 1 ? '#ffffff' : color.ink;
-				c.font = `800 ${i === 0 ? 118 : 74}px ${font.display}`;
-				c.fillText(l.text, cx - 62, 0);
-				c.restore();
-				a += span;
-			});
-			c.fillStyle = '#111a2e';
-			c.beginPath();
-			c.arc(cx, ry, 92, 0, Math.PI * 2);
-			c.fill();
-		});
-		const face = new THREE.Mesh(new THREE.CircleGeometry(R, 96), new THREE.MeshStandardMaterial({ map: s.texture, roughness: 0.45 }));
+		this.paintWheel();
+		const face = new THREE.Mesh(new THREE.CircleGeometry(R, 96), new THREE.MeshStandardMaterial({ map: this.wheelFace.texture, roughness: 0.45 }));
 		face.position.z = 0.1;
 		this.wheel.add(face);
 		const wb = new Batch();
 		wb.add(new THREE.TorusGeometry(R, 0.14, 14, 96), m.steel);
-		for (let i = 0; i < 30; i++) {
-			const ang = (i / 30) * Math.PI * 2;
+		for (let i = 0; i < PEGS; i++) {
+			const ang = (i / PEGS) * Math.PI * 2;
 			wb.add(new THREE.CylinderGeometry(0.045, 0.045, 0.24, 8), m.steel, {
 				p: [Math.cos(ang) * (R - 0.14), Math.sin(ang) * (R - 0.14), 0.16],
 				r: [Math.PI / 2, 0, 0]
@@ -215,10 +187,14 @@ class Sampler {
 			stand.add(rbox(0.3, cy - PAD_Y, 0.5, 0.08, 3), m.cream, { p: [wx + sx * 1.15, PAD_Y + (cy - PAD_Y) / 2, -0.2], r: [0, 0, sx * 0.3] });
 		}
 		stand.add(new THREE.CylinderGeometry(0.2, 0.2, 0.9, 20), m.steel, { p: [wx, cy, 0.1], r: [Math.PI / 2, 0, 0] });
-		const pointer = new THREE.ConeGeometry(0.22, 0.56, 4);
-		stand.add(pointer, m.red, { p: [wx, cy + R + 0.2, 0.62], r: [Math.PI, Math.PI / 4, 0] });
 		stand.add(rbox(0.3, 0.3, 0.3, 0.06, 2), m.steel, { p: [wx, cy + R + 0.5, 0.62] });
 		this.group.add(stand.build('wheel-stand'));
+		// The flapper: hinged at the block, so the pegs really flick it as they go by.
+		const flap = new Batch();
+		flap.add(new THREE.ConeGeometry(0.22, 0.56, 4), m.red, { p: [0, -0.3, 0], r: [Math.PI, Math.PI / 4, 0] });
+		this.flapper = flap.build('wheel-flapper');
+		this.flapper.position.set(wx, cy + R + 0.5, 0.62);
+		this.group.add(this.flapper);
 		shadowOn(this.group, wx, PAD_Y, 0, 4.4, 2.2);
 		this.sign = createSign('Sampler', 0.3);
 		this.sign.position.set(wx - 3.4, PAD_Y + 0.75, 1.2);
@@ -233,7 +209,109 @@ class Sampler {
 		this.group.add(this.chosen.group);
 	}
 
+	/** The wheel's slices are the real probabilities, so its face is repainted whenever the temperature moves. */
+	private paintWheel() {
+		const odds = wheelOdds(this.temperature);
+		this.wheelFace.draw((c, w, h) => {
+			const cx = w / 2;
+			const cy = h / 2;
+			let a = -Math.PI / 2 - odds[0] * Math.PI;
+			const fills = ['#ffbc12', '#3b76ec', '#fbf1dd', '#22b866', '#f08a3c'];
+			odds.forEach((p, i) => {
+				const span = p * Math.PI * 2;
+				c.fillStyle = fills[i];
+				c.beginPath();
+				c.moveTo(cx, cy);
+				c.arc(cx, cy, cx, a, a + span);
+				c.closePath();
+				c.fill();
+				c.strokeStyle = '#111a2e';
+				c.lineWidth = Math.min(7, 1 + span * 90);
+				c.stroke();
+				// A label goes where it fits: the bigger the slice, the bigger the word.
+				if (span > 0.09) {
+					c.save();
+					c.translate(cx, cy);
+					c.rotate(a + span / 2);
+					c.textAlign = 'right';
+					c.textBaseline = 'middle';
+					c.fillStyle = i === 1 ? '#ffffff' : color.ink;
+					c.font = `800 ${Math.round(Math.min(118, 60 + span * 40))}px ${font.display}`;
+					// A lone "I" along the radius is only a dash, so it stands across the slice, in a face with serifs.
+					if (LOGITS[i].text.length === 1) {
+						c.font = `800 150px ${font.mono}`;
+						c.translate(cx - 130, 0);
+						c.rotate(Math.PI / 2);
+						c.textAlign = 'center';
+						c.fillText(LOGITS[i].text, 0, 0);
+					} else c.fillText(LOGITS[i].text, cx - 62, 0);
+					c.restore();
+				}
+				a += span;
+			});
+			c.fillStyle = '#111a2e';
+			c.beginPath();
+			c.arc(cx, cy, 92, 0, Math.PI * 2);
+			c.fill();
+		});
+	}
+
+	setTemperature(temperature: number) {
+		this.temperature = temperature;
+		this.dirty = true;
+	}
+
+	/** A real draw at the current temperature. The wheel comes to rest on it, and says which it was. */
+	spin(reduced: boolean) {
+		return new Promise<number>((resolve) => {
+			const odds = wheelOdds(this.temperature);
+			let r = Math.random();
+			let pick = 0;
+			while (pick < odds.length - 1 && r > odds[pick]) r -= odds[pick++];
+			// How far clockwise from the top this point on the wheel lies, with the favorite centred at zero.
+			// It stops well inside its slice, because a pointer resting on a line would settle nothing.
+			const before = odds.slice(0, pick).reduce((a, b) => a + b, 0);
+			const inside = 0.15 + 0.7 * (r / odds[pick]);
+			const at = (before + odds[pick] * inside - odds[0] / 2) * Math.PI * 2;
+			const turn = Math.PI * 2;
+			const from = this.extra;
+			const far = from - turn * (reduced ? 1 : 5);
+			// The story may have the wheel part way round already, so aim for the wheel's real angle.
+			const aim = at - this.storyAngle;
+			const to = far - ((((far - aim) % turn) + turn) % turn);
+			const land = () => {
+				this.play = null;
+				this.restAt = -1;
+				resolve(pick);
+			};
+			if (reduced) {
+				this.extra = to;
+				land();
+			} else this.play = { from, to, start: performance.now(), duration: 3400, land };
+		});
+	}
+
 	update(T: number, cut: number, spin: number, pick: number, ride: number, time: number) {
+		const now = performance.now();
+		if (this.dirty && now - this.lastPaint > 70) {
+			this.dirty = false;
+			this.lastPaint = now;
+			this.paintWheel();
+		}
+		if (this.play) {
+			const k = Math.min(1, (now - this.play.start) / this.play.duration);
+			this.extra = lerp(this.play.from, this.play.to, 1 - Math.pow(1 - k, 4));
+			if (k >= 1) this.play.land();
+		} else if (this.extra !== 0) {
+			// Once the reader scrolls on, the story takes the wheel back: in this telling, it landed on "The".
+			if (this.restAt < 0) this.restAt = T;
+			if (Math.abs(T - this.restAt) > 0.006) {
+				const turn = Math.PI * 2;
+				const home = Math.round(this.extra / turn) * turn;
+				this.extra = home + (this.extra - home) * 0.9;
+				if (Math.abs(this.extra - home) < 0.002) this.extra = 0;
+			}
+		}
 		this.bars.forEach((b, i) => {
 			// The very columns that rose on the map. First they line up in order, which makes them a chart.
 			const line = seg(T, LOGITS_LINE[0], LOGITS_LINE[1]);
@@ -271,9 +349,18 @@ class Sampler {
 			mat.emissive.set(color.amber);
 			mat.emissiveIntensity = lit * 0.9;
 		});
-		const e = outCubic(spin);
-		this.wheel.rotation.z = -e * SPINS * Math.PI * 2;
+		this.storyAngle = -outCubic(spin) * SPINS * Math.PI * 2;
+		const angle = this.storyAngle + this.extra;
+		this.wheel.rotation.z = angle;
 		this.wheel.position.z = 0.4;
+		// Each peg lifts the flapper as it passes, and lets it snap back. It only reacts as hard as the wheel is moving.
+		const moved = angle - this.lastAngle;
+		this.lastAngle = angle;
+		const phase = (((Math.abs(angle) * PEGS) / (Math.PI * 2)) % 1 + 1) % 1;
+		const lift = phase < 0.3 ? phase / 0.3 : (1 - phase) / 0.7;
+		const target = Math.min(0.6, Math.abs(moved) * 12) * lift * Math.sign(moved || 1);
+		this.flap += (target - this.flap) * 0.5;
+		this.flapper.rotation.z = this.flap;
 		this.lamp.mix(color.amber, color.green, smooth(pick), spin > 0 && spin < 1 ? 1.2 + Math.sin(time * 12) * 0.6 : 0.4 + pick);
 
 		const c = this.chosen.group;
@@ -746,6 +833,14 @@ export class Forward {
 
 	setHarness(id: HarnessId) {
 		this.decoder.setHarness(id);
+	}
+
+	setTemperature(temperature: number) {
+		this.sampler.setTemperature(temperature);
+	}
+
+	spinWheel(reduced: boolean) {
+		return this.sampler.spin(reduced);
 	}
 
 	update(T: number, time: number) {

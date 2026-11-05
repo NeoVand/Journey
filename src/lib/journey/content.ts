@@ -153,3 +153,23 @@ export const GLOSSARY: Record<string, string> = {
 	transcript: 'The full record of this session: every message, tool call and result.',
 	'context window': 'The most a model can take in at once, measured in tokens. Think of it as the size of its desk.'
 };
+
+/** The highest scores out of the LM head. Illustrative. */
+export const LOGITS = [
+	{ text: 'The', score: 3.6 },
+	{ text: 'I', score: 2.3 },
+	{ text: 'Let', score: 1.9 },
+	{ text: 'First', score: 1.4 },
+	{ text: 'To', score: 1.05 },
+	{ text: 'Sorry', score: 0.4 },
+	{ text: 'Cat', score: 0.2 }
+];
+/** Top-k: everything below the best five is cut before the draw. */
+export const TOP_K = 5;
+
+/** What sampling really does: divide the logits by the temperature, then softmax what top-k left. */
+export function wheelOdds(temperature: number) {
+	const weights = LOGITS.slice(0, TOP_K).map((l) => Math.exp(l.score / temperature));
+	const sum = weights.reduce((a, b) => a + b, 0);
+	return weights.map((w) => w / sum);
+}
