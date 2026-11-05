@@ -284,8 +284,8 @@ export class Back {
 	private packet!: THREE.Group;
 	private gland!: THREE.Group;
 	private evil!: THREE.Group;
-	private saidBlocked!: THREE.Group;
-	private saidThrough!: THREE.Group;
+	private saidBlocked = new THREE.Group();
+	private saidThrough = new THREE.Group();
 	private ripple!: THREE.Mesh;
 	private proc!: Lamp;
 	private sandboxBeat = new THREE.Group();
@@ -540,6 +540,19 @@ export class Back {
 			codex: signFor('Sandbox: Seatbelt, bwrap or MXC'),
 			copilot: signFor('No OS sandbox by default')
 		};
+		// With no sandbox there's no frame to sit on: one lone post stands where its corner would be, carrying the sign.
+		{
+			const lone = this.sandboxSigns.copilot;
+			const plate = lone.children[0].children[0] as THREE.Mesh;
+			plate.geometry.computeBoundingBox();
+			const w = plate.geometry.boundingBox!.max.x - plate.geometry.boundingBox!.min.x;
+			const top = H - 0.42;
+			lone.position.set(x1 - w / 2 + 0.04, WY + top, D / 2);
+			const post = new Batch();
+			post.add(rbox(0.16, H, 0.16, 0.05, 2), m.steel, { p: [w / 2 - 0.04, H / 2 - top, 0] });
+			post.add(rbox(0.6, 0.1, 0.6, 0.03, 2), m.steelSoft, { p: [w / 2 - 0.04, 0.05 - top, 0] });
+			lone.add(post.build('sign-post'));
+		}
 
 		// The fetched page, with a sentence in it nobody on your team wrote.
 		this.docsCard.draw((c, w, h) => {
@@ -588,12 +601,19 @@ export class Back {
 		bt.add(pole.build('evil-pole'));
 
 		this.packet = createSign('curl evil.sh', 0.32, '#ffffff', m.red);
-		this.saidBlocked = createSign('Stopped at the fence', 0.32);
-		this.saidBlocked.position.set(x1 - 3, WY + 3.6, 3.4);
+		// The verdicts grow from their feet. Stopped: a signpost planted where the packet fell back.
+		const blocked = standSign(createSign('Stopped at the fence', 0.32), 0.32, 3.08);
+		blocked.position.y = 3.4;
+		this.saidBlocked.add(blocked);
+		// In front of the hopper and out of the packet's lane.
+		this.saidBlocked.position.set(x1 - 3, WY, 4.6);
 		bt.add(this.saidBlocked);
-		this.saidThrough = createSign('It got out', 0.32, '#ffffff', m.red);
-		this.saidThrough.position.set(x1 + 2.7, WY + 3.6, 3.4);
-		bt.add(this.saidThrough);
+		// Got out: raised on a short post out of the top of the evil.sh sign, so it sways with it.
+		const through = standSign(createSign('It got out', 0.32, '#ffffff', m.red), 0.32, 0.52);
+		through.position.y = 0.84;
+		this.saidThrough.add(through);
+		this.saidThrough.position.y = 0.24;
+		evil.add(this.saidThrough);
 		bt.add(this.packet);
 		this.ripple = new THREE.Mesh(new THREE.RingGeometry(0.2, 0.32, 40), new THREE.MeshBasicMaterial({ color: '#7fd0ff', transparent: true, depthWrite: false, side: THREE.DoubleSide }));
 		this.ripple.position.set(x1, WY + 1.9, 3.4);

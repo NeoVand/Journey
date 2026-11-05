@@ -134,6 +134,8 @@ export class Label {
 		this.mesh.geometry.dispose();
 		this.mesh.geometry = new THREE.PlaneGeometry(worldW, this.height * 1.3);
 		this.mesh.geometry.translate(shift, 0, 0);
+		// So tools can tell which words a mesh carries.
+		this.mesh.userData.text = text;
 	}
 }
 
