@@ -410,7 +410,7 @@
 				);
 				const lastPin = pins.length - 1;
 				const diveEl = document.querySelector<HTMLElement>('[data-dive]')!;
-				const edgeEls = document.querySelectorAll<HTMLElement>('[data-edge]');
+				const edgeEl = document.querySelector<HTMLElement>('[data-edge]')!;
 				const themeEl = document.querySelector('meta[name="theme-color"]');
 				let edgeShade = -1;
 				let edgeNudge = 0;
@@ -441,14 +441,12 @@
 					const shade = Math.round((w.state.inside ? 1 : w.state.dive) * 32);
 					if (shade !== edgeShade) {
 						edgeShade = shade;
-						edgeNudge = 1 - edgeNudge;
 						const tone = mixSky(shade / 32);
 						document.documentElement.style.backgroundColor = tone;
-						edgeEls.forEach((el) => {
-							el.style.setProperty('--tone', tone);
-							// Safari only looks again after a layout, so give it one.
-							el.style.paddingBottom = `${edgeNudge}px`;
-						});
+						edgeEl.style.setProperty('--tone', tone);
+						// Safari only reads that colour again after a layout, so give it one.
+						edgeNudge = 1 - edgeNudge;
+						edgeEl.style.paddingBottom = `${edgeNudge}px`;
 						themeEl?.setAttribute('content', tone);
 					}
 				};
@@ -664,7 +662,6 @@
 	</div>
 {/if}
 <div class="edge" data-edge aria-hidden="true"></div>
-<div class="edge top" data-edge aria-hidden="true"></div>
 <div class="dive" data-dive aria-hidden="true"></div>
 <div class="cut" data-cut aria-hidden="true"></div>
 
@@ -1916,15 +1913,6 @@
 		-webkit-mask-image: linear-gradient(to bottom, transparent, black);
 		mask-image: linear-gradient(to bottom, transparent, black);
 		pointer-events: none;
-	}
-	/* Above the header, or Safari reads the header's gradient and never updates the status bar. Thin enough not to show. */
-	.edge.top {
-		z-index: 11;
-		top: 0;
-		bottom: auto;
-		height: 10px;
-		-webkit-mask-image: linear-gradient(to top, transparent, black);
-		mask-image: linear-gradient(to top, transparent, black);
 	}
 	@supports (-webkit-touch-callout: none) {
 		.edge {

@@ -145,7 +145,10 @@ export class Stage {
 		this.ao.enabled = !isPhone;
 
 		// Phones drop the context when backgrounded. Three restores its own state, but the environment was rendered once, into memory that is now gone.
-		canvas.addEventListener('webglcontextrestored', () => this.buildEnvironment());
+		canvas.addEventListener('webglcontextrestored', () => {
+			this.buildEnvironment();
+			renderer.shadowMap.needsUpdate = true;
+		});
 	}
 
 	/** The sky is a small gradient texture: it never enters depth, normals or occlusion. */
@@ -274,6 +277,14 @@ export class Stage {
 
 	setOcclusion(on: boolean) {
 		this.ao.enabled = on;
+	}
+
+	/** For when nothing big is moving: keep the shadows already drawn, rather than draw and blur them again every frame. */
+	holdShadows(hold: boolean) {
+		const map = this.renderer.shadowMap;
+		if (map.autoUpdate === !hold) return;
+		map.autoUpdate = !hold;
+		if (hold) map.needsUpdate = true;
 	}
 
 	dispose() {

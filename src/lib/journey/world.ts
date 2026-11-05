@@ -38,6 +38,7 @@ const BELT_Y = ISLAND_C_Y + 0.5;
 const TEMPLATE_X = -3.4;
 const SLOT_X = TEMPLATE_X + 1.06;
 const BELT_END = 10.7;
+const HOLD_SHADOWS_T = 32.36;
 const DARK = '#060f26'; // the inside of the machine, and the colour of the fade
 const REST = 66; // tiles behind the named ones, and their spacing
 const REST_GAP = 0.54;
@@ -940,6 +941,8 @@ export class World {
 	/** Pure function of T (scroll) plus time (idle life). Any scroll position can be rendered directly. */
 	update(T: number, time: number, dt: number, px = 0, py = 0, introDone = false) {
 		this.lastT = T;
+		// The whole world is in frame and only tokens move, too small to change a shadow anyone can see.
+		this.stage.holdShadows(T >= HOLD_SHADOWS_T);
 		// Whatever the reader pulled out goes back as soon as they scroll on.
 		if (this.harness.pulled >= 0 && Math.abs(T - this.pulledAtT) > 0.06) this.harness.pulled = -1;
 		this.intro = introDone ? 1 : Math.min(1, this.intro + dt / 1.5);
