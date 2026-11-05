@@ -887,7 +887,7 @@
 		<article class="pin top-band" data-in="0.08" data-out="0.84">
 			<h2>A tool call is born</h2>
 			<div class="cols">
-				<p>The model opens a tool call with a special token, then writes the name and arguments as more tokens. That’s all it does. The file may not exist and the command may not be allowed. Those checks come later.</p>
+				<p>The model opens a tool call with a special token, then writes the name and arguments as more tokens. That’s all it does. When it’s done it stops, and says why. The file may not exist and the command may not be allowed. Those checks come later.</p>
 				<p class="note"><b>{spec.name}.</b> {@render rich(callouts.toolcall)}</p>
 			</div>
 		</article>

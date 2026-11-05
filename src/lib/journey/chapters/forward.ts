@@ -3,7 +3,7 @@ import { Batch } from '../kit/batch';
 import { rbox, ring } from '../kit/geometry';
 import { color, Lamp, mats } from '../kit/materials';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { arcPoint, archBlock, machine, panel, shadowOn } from '../kit/machines';
+import { archBlock, arcPoint, Card, machine, panel, shadowOn } from '../kit/machines';
 import { contactShadow, font, Label, Surface } from '../kit/print';
 import { createSign } from '../kit/parts';
 import { bell, hash, inOut, lerp, outBack, outCubic, seg, smooth } from '../kit/math';
@@ -37,7 +37,7 @@ const TALL = box(0, 0.06, 1, 0.47);
 
 const S_WHEEL: Omit<Shot, 'T'> = { az: 8, el: 9, target: at(WHEEL - 0.4, 3.4, 0), radius: 9.2, ry: 4.3, wide: box(0, 0.07, 0.56, 0.88), tall: TALL };
 const S_DEC: Omit<Shot, 'T'> = { az: 10, el: 17, target: at(DEC - 9, 4, 0.8), radius: 7.4, ry: 5.2, wide: box(0.41, 0.05, 0.58, 0.9), tall: TALL };
-const S_CALL: Omit<Shot, 'T'> = { az: -6, el: 56, target: at(DEC + 3.6, 0.8, 4.6), radius: 6.4, ry: 3.1, wide: box(0.02, 0.4, 0.96, 0.56), tall: box(0, 0.08, 1, 0.42), tallRadius: 4.6 };
+const S_CALL: Omit<Shot, 'T'> = { az: -6, el: 56, target: at(DEC + 6.7, 0.8, 4.4), radius: 7.7, ry: 3.2, wide: box(0.02, 0.4, 0.96, 0.56), tall: box(0, 0.08, 1, 0.42), tallTarget: at(DEC + 3.8, 0.8, 4.2), tallRadius: 4.9 };
 const S_DET: Omit<Shot, 'T'> = { az: -14, el: 13, target: at(DET, 3.2, 3.5), radius: 7, ry: 4.3, wide: box(0.01, 0.07, 0.6, 0.88), tall: TALL };
 
 /* The logits chart, on its way from the top of the stack to the board. Its path is shared with the camera that follows it. */
@@ -445,8 +445,13 @@ class Decoder {
 	private path: THREE.CatmullRomCurve3;
 	private thread: THREE.Mesh;
 	private thinkSign: THREE.Group;
-	private toolSign: THREE.Group;
 	private stops: Lamp[] = [];
+	private ticket = new THREE.Group();
+	private paper = new Card(4.6, 2.5, 330, 0.02);
+	private stamp: THREE.Mesh;
+	private spark: THREE.Mesh;
+	private call: HarnessId = 'claude';
+	private written = -1;
 	private a = new THREE.Vector3();
 	private b = new THREE.Vector3();
 	private port: THREE.Vector3;
@@ -565,34 +570,75 @@ class Decoder {
 		this.thinkSign = createSign('Thinking: billed as output, kept private', 0.22);
 		this.thinkSign.rotation.x = -0.6;
 		this.group.add(this.thinkSign);
-		this.toolSign = createSign('A tool call', 0.28);
-		this.toolSign.rotation.x = -0.6;
-		this.group.add(this.toolSign);
+		const subPad = createPad(13.4, 3);
+		subPad.position.set(DEC + 6.7, PAD_Y, 3.4);
+		this.group.add(subPad);
 
-		// Why generation stopped.
+		// The ticket: what those tokens amount to, coming up out of a slot one token at a time.
+		const slot = new Batch();
+		slot.add(rbox(5.1, 0.14, 0.74, 0.05, 3), m.steelSoft, { p: [0, 0.07, 0] });
+		slot.add(rbox(4.86, 0.02, 0.1, 0.01, 1), m.recess, { p: [0, 0.145, 0] });
+		const printer = slot.build('ticket-slot');
+		printer.position.set(DEC + 3.4, PAD_Y, 3.7);
+		this.group.add(printer);
+		this.ticket.position.set(DEC + 3.4, PAD_Y + 0.14, 3.7);
+		this.ticket.rotation.x = -0.3;
+		this.ticket.add(this.paper.mesh);
+		this.group.add(this.ticket);
+		const ink = new Surface(640, 150);
+		ink.draw((c, w, h) => {
+			c.strokeStyle = '#c8321f';
+			c.lineWidth = 9;
+			c.beginPath();
+			c.roundRect(8, 8, w - 16, h - 16, 22);
+			c.stroke();
+			c.fillStyle = '#c8321f';
+			c.font = `800 54px ${font.display}`;
+			c.textAlign = 'center';
+			c.textBaseline = 'middle';
+			c.fillText('Valid, not yet allowed', w / 2, h / 2 + 3);
+		});
+		this.stamp = panel(2.28, 0.54, ink);
+		this.stamp.position.set(0.98, -0.8, 0.04);
+		this.stamp.rotation.z = 0.09;
+		this.paper.mesh.add(this.stamp);
+		// What carries each token from the rail to the paper.
+		this.spark = new THREE.Mesh(rbox(0.26, 0.1, 0.18, 0.03, 2), m.amber);
+		this.spark.castShadow = true;
+		this.group.add(this.spark);
+
+		// Why generation stopped, and what the harness does about it.
 		const panelBox = new Batch();
-		panelBox.add(rbox(4.2, 2.3, 0.3, 0.1, 3), m.creamLight, { p: [0, 1.25, 0] });
+		panelBox.add(rbox(5.7, 2.3, 0.3, 0.1, 3), m.creamLight, { p: [0, 1.25, 0] });
 		panelBox.add(rbox(0.4, 0.3, 0.5, 0.05, 2), m.steelSoft, { p: [0, 0.15, 0] });
 		const pg = new THREE.Group();
 		pg.add(panelBox.build('stops'));
-		['end_turn', 'tool_use', 'max_tokens', 'refusal'].forEach((name, i) => {
+		(
+			[
+				['end_turn', 'Show the text, wait for you'],
+				['tool_use', 'Run the tool, send back the result'],
+				['max_tokens', 'Out of room: ask to continue'],
+				['refusal', 'A safety check stopped it']
+			] as const
+		).forEach(([name, meaning], i) => {
 			const y = 2 - i * 0.48;
-			const l = new Label(name, 0.21, { font: font.mono, weight: 600, align: 'left' });
-			l.mesh.position.set(-1.45, y, 0.156);
+			const l = new Label(name, 0.19, { font: font.mono, weight: 600, align: 'left' });
+			l.mesh.position.set(-2.34, y, 0.156);
 			pg.add(l.mesh);
+			const said = new Label(meaning, 0.16, { color: '#33415c', weight: 600, align: 'left' });
+			said.mesh.position.set(-0.56, y, 0.156);
+			pg.add(said.mesh);
 			const lamp = new Lamp(rbox(0.16, 0.16, 0.04, 0.05, 3), color.green, 0.1);
-			lamp.mesh.position.set(1.65, y, 0.16);
+			lamp.mesh.position.set(-2.56, y, 0.16);
 			pg.add(lamp.mesh);
 			this.stops.push(lamp);
 		});
 		const title = createSign('Stop reason', 0.2);
 		title.position.set(0, 2.72, 0.05);
 		pg.add(title);
-		pg.position.set(DEC + 7.4, PAD_Y, 2.9);
+		pg.position.set(DEC + 10, PAD_Y, 3.5);
 		pg.rotation.x = -0.3;
-		const subPad = createPad(6.2, 2.8);
-		subPad.position.set(DEC + 7.4, PAD_Y, 3.5);
-		this.group.add(subPad, pg);
+		this.group.add(pg);
 		this.setHarness('claude');
 	}
 
@@ -605,7 +651,52 @@ class Decoder {
 		return list;
 	}
 
+	/** The ticket as far as it has been written: the name, then the arguments, exactly as the tokens spell them. */
+	private printTicket(written: number) {
+		const key = written;
+		if (key === this.written) return;
+		this.written = key;
+		const pieces = CALLS[this.call].pieces;
+		const brace = pieces.indexOf('{"');
+		const done = pieces.slice(0, Math.max(0, written));
+		const name = done.slice(0, brace).join('');
+		const args = done.slice(brace).join('');
+		const idName = { claude: 'tool_use_id', codex: 'call_id', copilot: 'call id' }[this.call];
+		this.paper.draw((c, w, h) => {
+			c.fillStyle = color.amber;
+			c.fillRect(0, 0, 22, h);
+			c.textBaseline = 'alphabetic';
+			const label = (text: string, y: number) => {
+				c.fillStyle = '#5a6b85';
+				c.font = `600 ${h * 0.07}px ${font.sans}`;
+				c.fillText(text, 58, y);
+			};
+			label('Tool call', h * 0.11);
+			label('name', h * 0.25);
+			c.fillStyle = color.ink;
+			c.font = `700 ${h * 0.11}px ${font.mono}`;
+			c.fillText(name, 58, h * 0.38);
+			label('arguments', h * 0.51);
+			c.font = `600 ${h * 0.085}px ${font.mono}`;
+			// Broken after a comma or a space where it can be, the way you'd break it by hand.
+			const room = Math.floor((w - 96) / c.measureText('m').width);
+			let rest = args;
+			for (let line = 0; rest; line++) {
+				const cut = rest.length <= room ? rest.length : Math.max(rest.lastIndexOf(',', room - 1), rest.lastIndexOf(' ', room - 1)) + 1 || room;
+				c.fillText(rest.slice(0, cut), 58, h * 0.63 + line * h * 0.105);
+				rest = rest.slice(cut);
+			}
+			if (written > pieces.length) {
+				c.fillStyle = '#5a6b85';
+				c.font = `500 ${h * 0.07}px ${font.mono}`;
+				c.fillText(`${idName}: c7`, 58, h * 0.95);
+			}
+		});
+	}
+
 	setHarness(id: HarnessId) {
+		this.call = id;
+		this.written = -1;
 		Object.values(this.rows).forEach((r) => r.forEach((t) => (t.group.visible = false)));
 		this.row = [...this.think, ...this.rows[id]];
 		let x = ROW0;
@@ -714,11 +805,34 @@ class Decoder {
 		this.thinkSign.visible = s1 > 0.001;
 		this.thinkSign.scale.setScalar(Math.max(0.001, s1));
 		this.thinkSign.position.set(midThink, RAIL_Y + 0.72, RAIL_Z - 0.9);
-		const midTool = (this.xs[nT] + this.xs[this.xs.length - 1]) / 2 + shift;
-		const s2 = outBack(seg(T, 17.5, 17.62), 2) * (1 - seg(T, 18.1, 18.2));
-		this.toolSign.visible = s2 > 0.001;
-		this.toolSign.scale.setScalar(Math.max(0.001, s2));
-		this.toolSign.position.set(midTool, RAIL_Y + 0.72, RAIL_Z - 0.9);
+
+		// Each token that lands sends a little of itself up to the paper, and the paper comes up a step to take it.
+		const nCall = this.row.length - nT;
+		const calling = T > CALL_A && T < CALL_B;
+		const landed = T >= CALL_B ? nCall : T > CALL_A ? whole - nT : 0;
+		const hop = calling && landed > 0 ? seg(f, 0, 0.36) : 0;
+		const fed = T >= CALL_B ? nCall : hop >= 1 || !calling ? landed : landed - 1;
+		this.spark.visible = hop > 0 && hop < 1;
+		if (this.spark.visible) {
+			const last = this.row[whole - 1].group.position;
+			this.b.set(DEC + 3.4 + (fed / nCall - 0.5) * 3.2, PAD_Y + 0.2, 3.7);
+			arcPoint(last, this.b, 0.55, smooth(hop), this.a);
+			this.spark.position.copy(this.a);
+			this.spark.rotation.y = hop * 5;
+		}
+		this.ticket.visible = landed > 0 && T < 18.3;
+		if (this.ticket.visible) {
+			const step = (Math.max(0, fed) + (hop >= 1 ? smooth(seg(f, 0.36, 0.56)) : 0)) / nCall;
+			this.paper.mesh.position.y = lerp(-1.02, 1.34, Math.min(1, step));
+			this.printTicket(Math.max(0, fed));
+		}
+		const hit = seg(T, 17.76, 17.81);
+		this.stamp.visible = hit > 0;
+		if (this.stamp.visible) {
+			// Down it comes, flat and hard.
+			this.stamp.scale.setScalar(lerp(1.8, 1, outCubic(hit)));
+			(this.stamp.material as THREE.MeshStandardMaterial).opacity = Math.min(1, hit * 2.4);
+		}
 
 		const stopK = smooth(seg(T, 17.72, 17.8));
 		this.stops.forEach((lamp, i) => lamp.set(i === 1 ? color.green : '#54606f', i === 1 ? 0.1 + stopK * 1.1 : 0.03));

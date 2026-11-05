@@ -6,6 +6,8 @@ test('has expected h1', async ({ page }) => {
 });
 
 test('the map goes to a chapter and gives it an address', async ({ page }) => {
+	// Without a GPU, building the world takes most of a minute, and the page is busy until it's done.
+	test.setTimeout(120_000);
 	await page.goto('/');
 	await page.getByRole('button', { name: /open the map of the trip/i }).click();
 	const map = page.getByRole('dialog', { name: 'Map of the trip' });

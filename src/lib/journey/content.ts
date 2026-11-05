@@ -95,19 +95,19 @@ export const CALLS: Record<HarnessId, { search: string; edit: string; test: stri
 		search: 'Grep("lock|schedule", src/)',
 		edit: 'Edit(src/scheduler.py, old, new)',
 		test: 'Bash(pytest tests/test_scheduler.py -x)',
-		pieces: ['Grep', '("', 'lock', '|', 'schedule', '",', ' src', '/', '")']
+		pieces: ['Grep', '{"', 'pattern', '":"', 'lock', '|', 'schedule', '","', 'path', '":"', 'src', '/', '"}']
 	},
 	codex: {
 		search: 'shell(rg -n "lock|schedule" src/)',
 		edit: 'apply_patch(*** Update File: src/scheduler.py)',
 		test: 'shell(pytest tests/test_scheduler.py -x)',
-		pieces: ['shell', '("', 'rg', ' -n', ' lock', ' src', '/', '")']
+		pieces: ['shell', '{"', 'command', '":"', 'rg', ' -n', ' lock', '|', 'schedule', ' src', '/', '"}']
 	},
 	copilot: {
 		search: 'textSearch("lock|schedule")',
 		edit: 'editFiles(src/scheduler.py)',
 		test: 'runTerminal(pytest tests/test_scheduler.py -x)',
-		pieces: ['text', 'Search', '("', 'lock', '|', 'schedule', '")']
+		pieces: ['text', 'Search', '{"', 'query', '":"', 'lock', '|', 'schedule', '"}']
 	}
 };
 
