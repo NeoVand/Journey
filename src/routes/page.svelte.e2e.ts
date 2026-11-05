@@ -49,6 +49,20 @@ test('a drawer in the scene can be pulled out', async ({ page }) => {
 	await expect(page.locator('.steps li.on strong').first()).toHaveText('Tools');
 });
 
+test('a turn the story has not reached yet scrolls the page on to it', async ({ page }) => {
+	test.setTimeout(150_000);
+	await page.goto('/#the-whole-fix-in-ten-turns');
+	const sixth = page.getByRole('button', { name: /^Turn 6:/ });
+	// The page cuts to the chapter once the world is built, and the later turns wait ahead.
+	await expect(sixth).toHaveAttribute('aria-label', /ahead/, { timeout: 90_000 });
+	await page.waitForFunction(() => scrollY > innerHeight * 10, null, { timeout: 30_000 });
+	const before = await page.evaluate(() => scrollY);
+	await sixth.click();
+	// Five turns on, at about two thirds of a screen each. The story then plays them on its way there, which
+	// takes seconds with a GPU and minutes without, so this checks the scroll it asked for.
+	await page.waitForFunction((before) => scrollY > before + innerHeight * 3, before, { timeout: 30_000 });
+});
+
 test('the last chapter leaves nothing behind when the reader jumps back', async ({ page }) => {
 	test.setTimeout(120_000);
 	type Debug = { __journey: { seek(T: number): void }; __world: { finale: { group: { visible: boolean } } } };

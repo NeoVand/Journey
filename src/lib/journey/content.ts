@@ -147,7 +147,7 @@ export const GLOSSARY: Record<string, string> = {
 	classifiers: 'Small models that sort text into categories. Here: within the rules, or not.',
 	'prompt injection': 'Text in a file or web page written to trick a model into obeying it as if you had said it.',
 	seatbelt: 'macOS’s built-in way to fence a program in. Bubblewrap does the same job on Linux. Anything the program starts stays inside the fence.',
-	sandbox: 'A fence around a process: it can only touch the files and network it has been allowed.',
+	sandbox: 'A fence around a process the agent starts, such as a shell command: it can only touch the files and network it has been allowed. Edits and other tools go through permissions instead.',
 	'system call': 'How a program asks the operating system to do real work, like opening a file or starting a process.',
 	atomically: 'All or nothing. Anyone looking sees the old file or the new one, never something in between.',
 	hunk: 'One changed block in a diff.',
@@ -155,7 +155,7 @@ export const GLOSSARY: Record<string, string> = {
 	router: 'Not a network box. The part of the provider that decides which copy of the model serves your request.',
 	skills: 'Folders of instructions for one kind of task, like how your team writes migrations. Loaded only when needed.',
 	hooks: 'Scripts you set up to run at fixed moments, such as just before a tool runs or when the agent stops.',
-	subagent: 'A second conversation the model starts for a side quest, with its own context and its own loop. Only its summary comes back.',
+	subagent: 'A second conversation the model starts for a side quest, with its own context and its own loop. Its summary comes back to the parent; any files it changed are changed for everyone.',
 	classifier: 'A small model that reads each call and judges whether it’s safe to run without asking you.',
 	rlock: 'A lock the thread holding it can take again without waiting for itself. A plain lock would wait forever here.',
 	deadlocks: 'When a program waits forever for something that can never happen. Here, a thread waits for a lock it is already holding.',
@@ -193,6 +193,10 @@ const runs = (args: string): PerAgent => ({ claude: `Bash(pytest${args})`, codex
  * The fix, turn by turn. Token counts are the book's, for Claude Code, and illustrative. Marked terms are in the glossary.
  * sees: what is new in the request. thinks: the model's short reasoning. calls: what it asks for. after: what the harness does.
  */
+/** Where in the story the ten turns start being told, and how far apart they are. The scene and the page share these. */
+export const TEN_AT = 29.1;
+export const TEN_STEP = 0.066;
+
 export const TEN_TURNS: { label: string; cached: number; fresh: number; sees: string; thinks: string; calls: PerAgent; after: PerAgent }[] = [
 	{
 		label: 'Search',
@@ -311,7 +315,7 @@ export const STOPS: { name: string; what: string; parts: string[] }[] = [
 	{
 		name: 'Inside the model',
 		what: 'The math runs, one token is chosen, and text streams back.',
-		parts: ['The transformer', 'A place for every word', 'Attention', 'All of them, at once', 'Then each token, by itself', 'Then again, eighty times', 'One score for every word', 'One token is chosen', 'One at a time', 'A tool call is born', 'Only text comes back']
+		parts: ['The transformer', 'A place for every word', 'Attention', 'All of them, at once', 'Then each token, by itself', 'Then again, eighty times', 'One score for every word', 'One token is chosen', 'One at a time', 'A tool call is born', 'Text comes back, not numbers']
 	},
 	{ name: 'Your laptop again', what: 'The reply is only text. The harness decides what it may do.', parts: ['The model has no hands', 'Intent is not authority', 'When the page lies'] },
 	{ name: 'Your files and shell', what: 'Searching, editing, and running the tests.', parts: ['Finding the code', 'Three ways to edit', 'Evidence, not opinion'] },
@@ -333,7 +337,7 @@ export const TRIP: { name: string; what: string }[] = [
 	{ name: 'Cross', what: 'One JSON request crosses the internet, encrypted.' },
 	{ name: 'Encode', what: 'The front door checks it, and the tokenizer cuts it into numbers.' },
 	{ name: 'Compute', what: 'The model reads it all, and writes a reply one token at a time.' },
-	{ name: 'Stream', what: 'Only text comes back. The model has touched nothing.' },
+	{ name: 'Stream', what: 'Text comes back, not numbers. The model has touched nothing.' },
 	{ name: 'Authorize', what: 'The harness checks what the reply asks for, gate by gate.' },
 	{ name: 'Act', what: 'The tools run on your machine, and what they find is real.' },
 	{ name: 'Loop', what: 'The results go back as context, and round it goes until the tests pass.' }

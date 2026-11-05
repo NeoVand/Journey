@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { GLOSSARY, HARNESSES, FORMS, LOGITS, RUN_WITH_CACHE, RUN_WITHOUT_CACHE, slug, TEN_TURNS, TOP_K, TRIP, wheelOdds, type HarnessId } from './content';
+	import { GLOSSARY, HARNESSES, FORMS, LOGITS, RUN_WITH_CACHE, RUN_WITHOUT_CACHE, slug, TEN_AT, TEN_STEP, TEN_TURNS, TOP_K, TRIP, wheelOdds, type HarnessId } from './content';
 	import { tick } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
@@ -118,7 +118,7 @@
 		{ name: 'Instructions', text: `Who the agent is, plus your project’s rules from ${spec.ruleFile}.` },
 		{ name: 'Environment', text: 'Where you are: folder, git branch, operating system, date, shell.' },
 		{ name: 'Tools', text: 'What it may ask to do, built in or from [[MCP]] servers. Each has a [[JSON Schema]] and costs tokens every [[turn]]. [[Skills]] wait on their shelf until needed.' },
-		{ name: 'Conversation', text: 'Your prompt. On turn one, nothing else.' }
+		{ name: 'Conversation', text: 'Your prompt, plus anything you attached. Here, just the prompt.' }
 	]);
 
 	const GATES = $derived([
@@ -166,6 +166,8 @@
 	// Before the 3D is running, and when it can't run, the page is plain text that simply scrolls.
 	let cutTo = (title: string, at?: 'at-once') => headings().find((h) => h.textContent === title)?.scrollIntoView({ behavior: at ? 'instant' : 'auto' });
 	let locate = () => mapHere;
+	/** Scrolls the story on to where a turn is told. Set once the page has measured itself. */
+	let reachTurn: (i: number) => void = () => {};
 
 	function openMap() {
 		mapHere = locate();
@@ -506,7 +508,7 @@
 				tripStep = w.trip.step;
 				tripLaps = w.trip.laps;
 				tripDone = T >= 32.88;
-				const reached = T < 29.1 ? -1 : Math.min(TEN_TURNS.length - 1, Math.floor((T - 29.1) / 0.066));
+				const reached = T < TEN_AT ? -1 : Math.min(TEN_TURNS.length - 1, Math.floor((T - TEN_AT) / TEN_STEP));
 				if (reached !== turnReached) {
 					turnReached = reached;
 					turnPinned = -1;
@@ -563,6 +565,10 @@
 					land();
 					requestAnimationFrame(() => requestAnimationFrame(() => cutEl.classList.remove('on')));
 				}, 150);
+			};
+			// A turn the story hasn't reached yet is one press away: the page scrolls on to it, unlocking the ones between.
+			reachTurn = (i) => {
+				window.scrollTo({ top: toY(TEN_AT + i * TEN_STEP + TEN_STEP * 0.5), behavior: reduced || still ? 'instant' : 'smooth' });
 			};
 			locate = () => {
 				let at = pins[0];
@@ -1042,8 +1048,8 @@
 
 	<section data-beat class="beat" style:--h="560vh">
 		<article class="pin right" data-out="0.74">
-			<h2>Only text comes back</h2>
-			<p>Each number is looked up in the vocabulary. The detokenizer waits until it has a whole character, then sends a small chunk of text. Token numbers never leave the data center.</p>
+			<h2>Text comes back, not numbers</h2>
+			<p>Each number is looked up in the vocabulary. The detokenizer waits until it has a whole character, then sends a small chunk of text, or of a tool call’s JSON. Token numbers never leave the data center.</p>
 			<p>{@render rich('A second set of [[classifiers]] reads along. If the text crosses a line, generation stops mid-sentence.')}</p>
 			<p class="note">{@render agent()} {@render rich(callouts.stream)}</p>
 		</article>
@@ -1077,7 +1083,7 @@
 		<article class="pin right" data-out="0.88">
 			<h2>When the page lies</h2>
 			<p>{@render rich('Our agent also fetched a library’s docs. Now that page sits in the same context as your instructions, and it can say anything. This is [[prompt injection]], the main unsolved security problem of agents.')}</p>
-			<p>So the defenses come in layers. The strongest doesn’t have to be convinced of anything: an operating-system fence that every child process inherits.</p>
+			<p>So the defenses come in layers. The strongest doesn’t have to be convinced of anything: an operating-system fence around the commands it runs, which every child process inherits.</p>
 			<p class="note">{@render agent()} {@render rich(callouts.sandbox)}</p>
 		</article>
 	</section>
@@ -1121,8 +1127,8 @@
 	<section data-beat class="beat" style:--h="480vh">
 		<article class="pin left" data-out="0.86">
 			<h2>When the context fills up</h2>
-			<p>{@render rich('A long session reads many files, and the transcript creeps up on the [[context window]]. So a separate model call writes a summary, which replaces the old messages. The cache is lost once, then rebuilt.')}</p>
-			<p>{@render rich('Big side quests can go to a [[subagent]] instead: a second conversation with its own fresh context, which hands back only a summary.')}</p>
+			<p>{@render rich('A long session reads many files, and the transcript creeps up on the [[context window]]. So a separate model call writes a summary, and the next request sends that instead of the old messages. The saved session keeps them all. The cache is lost once, then rebuilt.')}</p>
+			<p>{@render rich('Big side quests can go to a [[subagent]] instead: a second conversation with its own fresh context. It reports back in a summary, but it works on the same files unless it’s given its own copy.')}</p>
 			<p class="note">{@render agent()} {@render rich(callouts.compact)}</p>
 		</article>
 	</section>
@@ -1169,7 +1175,8 @@
 				<div class="ticket">
 					<div class="turns" role="group" aria-label="Choose a turn">
 						{#each TEN_TURNS as t, i (i)}
-							<button type="button" class={{ on: turn === i }} disabled={driven && i > turnReached} aria-label="Turn {i + 1}: {t.label}" aria-current={turn === i} onclick={() => pinTurn(i)}>{i + 1}</button>
+							{@const ahead = driven && i > turnReached}
+							<button type="button" class={{ on: turn === i, ahead }} aria-label="Turn {i + 1}: {t.label}{ahead ? ', ahead. Scrolls on to it' : ''}" title={ahead ? 'Scroll on to this turn' : undefined} aria-current={turn === i} onclick={() => (ahead ? reachTurn(i) : pinTurn(i))}>{i + 1}</button>
 						{/each}
 					</div>
 					<dl>
@@ -1529,13 +1536,16 @@
 			color 0.18s,
 			transform 0.12s;
 	}
-	.turns button:hover:not(:disabled):not(.on) {
+	.turns button:hover:not(.on) {
 		background: #fff;
 		transform: translateY(-1px);
 	}
-	.turns button:disabled {
-		cursor: default;
-		opacity: 0.38;
+	/* Not reached yet: faint, but still a way to get there. */
+	.turns button.ahead {
+		opacity: 0.42;
+	}
+	.turns button.ahead:hover {
+		opacity: 0.75;
 	}
 	.turns button.on {
 		background: #101a30;

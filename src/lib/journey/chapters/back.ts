@@ -9,7 +9,7 @@ import { gearShape } from '../props/brain';
 import { createSign, fitting, grown, standSign } from '../kit/parts';
 import { bell, bounceDown, clamp, hash, inOut, lerp, outBack, outCubic, seg, smooth, spring } from '../kit/math';
 import { createCastShadow } from '../props/island';
-import { TEN_TURNS, CALLS, HARNESSES, type HarnessId } from '../content';
+import { TEN_AT, TEN_STEP, TEN_TURNS, CALLS, HARNESSES, type HarnessId } from '../content';
 import { EASEL_POS, EASEL_TILT, RETURN_POINTS } from '../layout';
 import type { Shot } from '../rig';
 
@@ -1916,7 +1916,7 @@ export class Back {
 			const toward = this.cacheOn ? 0 : 1;
 			this.cacheOff += clamp(toward - this.cacheOff, -dt / 1.15, dt / 1.15);
 			this.barsCached.forEach((bar, i) => {
-				const a = 29.1 + i * 0.066;
+				const a = TEN_AT + i * TEN_STEP;
 				const k = outBack(seg(T, a, a + 0.07), 1.2);
 				const uc = bar.userData as { h: number };
 				// Without the cache the bars are the same height, because the requests are the same. They just all have to run.
@@ -1959,7 +1959,7 @@ export class Back {
 			// No overshoot: it sits just off the base, and any bigger would put its edge into it.
 			c.scale.setScalar(Math.max(0.001, outCubic(reveal)));
 			[5, 7, 8].forEach((i, j) => {
-				const on = seg(T, 29.14 + i * 0.066, 29.2 + i * 0.066);
+				const on = seg(T, TEN_AT + 0.04 + i * TEN_STEP, TEN_AT + 0.1 + i * TEN_STEP);
 				this.barLamps[j].set(i === 5 ? color.red : color.green, 0.08 + on * 0.9);
 			});
 		}
