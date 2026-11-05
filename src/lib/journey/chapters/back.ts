@@ -1901,7 +1901,8 @@ export class Back {
 			this.verdict.visible = v > 0.001;
 			this.verdict.scale.setScalar(Math.max(0.001, v));
 			this.levers.forEach((lever, i) => {
-				const a = 28.62 + i * 0.07;
+				// All four are over before the words go, so a step that stops there sees every one thrown.
+				const a = 28.62 + i * 0.05;
 				lever.rotation.z = -0.5 + outBack(seg(T, a, a + 0.06), 2) * 1;
 			});
 		}

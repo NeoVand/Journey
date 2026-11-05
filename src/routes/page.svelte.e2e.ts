@@ -63,6 +63,23 @@ test('a turn the story has not reached yet scrolls the page on to it', async ({ 
 	await page.waitForFunction((before) => scrollY > before + innerHeight * 3, before, { timeout: 30_000 });
 });
 
+test('the arrow keys step through the story a card at a time', async ({ page }) => {
+	test.setTimeout(150_000);
+	await page.goto('/');
+	await page.waitForFunction(() => document.querySelector('main.driven'), null, { timeout: 90_000 });
+	const back = page.getByRole('button', { name: 'Previous step' });
+	await expect(back).toBeDisabled();
+	await page.keyboard.press('ArrowRight');
+	// One step on: the page moves to where the first card's scene has finished.
+	await page.waitForFunction(() => scrollY > innerHeight * 0.5, null, { timeout: 10_000 });
+	const one = await page.evaluate(() => scrollY);
+	// Pressed again on the way, it hurries this step along rather than skipping the next.
+	await page.keyboard.press('ArrowRight');
+	await page.waitForTimeout(300);
+	expect(await page.evaluate(() => scrollY)).toBe(one);
+	await expect(back).toBeEnabled({ timeout: 60_000 });
+});
+
 test('the last chapter leaves nothing behind when the reader jumps back', async ({ page }) => {
 	test.setTimeout(120_000);
 	type Debug = { __journey: { seek(T: number): void }; __world: { finale: { group: { visible: boolean } } } };

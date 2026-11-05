@@ -35,6 +35,10 @@ const FREE_RATE = 0.5;
 
 export class Playhead {
 	v = 0;
+	/** Stepping forward: play every stretch at its authored pace, however far the target is. */
+	patient = false;
+	/** How much faster than that to go, when the reader asks it to get on with it. */
+	hurry = 1;
 
 	constructor(
 		private pace: Span[],
@@ -52,9 +56,8 @@ export class Playhead {
 	step(target: number, dt: number) {
 		const lag = target - this.T;
 		const far = Math.max(0, Math.abs(lag) - CATCH_UP_AFTER);
-		const limit = this.unlimited
-			? Infinity
-			: this.rateAt(this.T) * (lag < 0 ? REWIND : 1) * Math.min(CATCH_UP_MAX, 1 + far * far * CATCH_UP);
+		const catchUp = this.patient ? 1 : Math.min(CATCH_UP_MAX, 1 + far * far * CATCH_UP);
+		const limit = this.unlimited ? Infinity : this.rateAt(this.T) * (lag < 0 ? REWIND : 1) * catchUp * this.hurry;
 		const want = Math.max(-limit, Math.min(limit, lag * RESPONSE));
 		this.v += (want - this.v) * (1 - Math.exp(-dt * EASE));
 		const next = this.T + this.v * dt;

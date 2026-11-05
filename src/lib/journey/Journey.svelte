@@ -13,6 +13,8 @@
 	import { Sharpness } from './sharpness';
 	import { SvelteSet } from 'svelte/reactivity';
 	import Blueprint, { type Stage } from './Blueprint.svelte';
+	import Icon from './Icon.svelte';
+	import { ArrowLeft01Icon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
 
 	const ids: HarnessId[] = ['claude', 'codex', 'copilot'];
 	const labels: Record<HarnessId, string> = { claude: 'Claude Code', codex: 'Codex', copilot: 'Copilot' };
@@ -204,6 +206,21 @@
 		if (event.key === 'Enter' && tripDone && !mapOpen && !target?.closest('button, a, input, dialog')) pressEnter();
 	}
 
+	/** Moves the story one step on or back. Set once the page has measured itself. */
+	let step: (dir: 1 | -1) => void = () => {};
+	let canBack = $state(false);
+	let canOn = $state(true);
+
+	/** The arrow keys step through the story, unless something on the page wants them for itself. */
+	function arrowKey(event: KeyboardEvent) {
+		if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+		if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.defaultPrevented || !driven) return;
+		const target = event.target as HTMLElement | null;
+		if (target?.closest('input, textarea, select, [contenteditable], [role="slider"], dialog') || document.querySelector('dialog[open]')) return;
+		event.preventDefault();
+		step(event.key === 'ArrowRight' ? 1 : -1);
+	}
+
 	let tryOpen = $state(false);
 
 	/** The ten turns follow the bars as they rise. Once a turn has been told, the reader can go back to it. */
@@ -306,6 +323,8 @@
 	const stage: Attachment<HTMLCanvasElement> = (canvas) => {
 		let disposed = false;
 		let raf = 0;
+		/** Where a step is taking the story, while it's on its way there. */
+		let stepTo = -1;
 		let cleanup = () => {};
 		const params = new URLSearchParams(location.search);
 		const still = params.has('still');
@@ -523,7 +542,12 @@
 				const dt = Math.max(0, Math.min(0.05, (now - last) / 1000));
 				last = now;
 				time += dt;
-				T = head.step(toT(window.scrollY), dt);
+				const target = toT(window.scrollY);
+				// The reader took over with the scroll wheel or a finger: back to following it the usual way.
+				if (stepTo >= 0 && Math.abs(target - stepTo) > 0.001) settle();
+				T = head.step(target, dt);
+				if (stepTo >= 0 && T === target) settle();
+				steppable();
 				px += (mx - px) * (1 - Math.exp(-dt * 3));
 				py += (my - py) * (1 - Math.exp(-dt * 3));
 				w.update(T, reduced ? 0 : time, dt, reduced ? 0 : px, reduced ? 0 : py, reduced);
@@ -566,6 +590,36 @@
 					requestAnimationFrame(() => requestAnimationFrame(() => cutEl.classList.remove('on')));
 				}, 150);
 			};
+			// Step by step, one card at a time. A step ends where its card's scene has finished, just before the words go.
+			// Forward plays everything between at its authored pace, so nothing slips past; pressing again on the way
+			// hurries it along instead of skipping ahead. Back rewinds to the last finished card.
+			const stops = [0, ...pins.slice(1, -1).map((p) => p.i + p.end - 0.012), sections.length];
+			const settle = () => {
+				stepTo = -1;
+				head.patient = false;
+				head.hurry = 1;
+			};
+			step = (dir) => {
+				const target = toT(window.scrollY);
+				const lag = target - head.T;
+				if (Math.sign(lag) === dir && Math.abs(lag) > 0.002) {
+					stepTo = target;
+					head.hurry = 6;
+					return;
+				}
+				const ahead = stops.filter((s) => (dir === 1 ? s > head.T + 0.004 : s < head.T - 0.004));
+				const next = dir === 1 ? ahead[0] : ahead[ahead.length - 1];
+				if (next === undefined) return;
+				stepTo = next;
+				head.patient = dir === 1 && !reduced;
+				head.hurry = 1;
+				window.scrollTo({ top: toY(next), behavior: 'instant' });
+			};
+			const steppable = () => {
+				canBack = T > stops[0] + 0.004;
+				canOn = T < stops[stops.length - 1] - 0.004;
+			};
+
 			// A turn the story hasn't reached yet is one press away: the page scrolls on to it, unlocking the ones between.
 			reachTurn = (i) => {
 				window.scrollTo({ top: toY(TEN_AT + i * TEN_STEP + TEN_STEP * 0.5), behavior: reduced || still ? 'instant' : 'smooth' });
@@ -691,6 +745,7 @@
 	onkeydown={(e) => {
 		if (e.key === 'Escape') tip = null;
 		enterKey(e);
+		arrowKey(e);
 	}}
 />
 
@@ -724,15 +779,25 @@
 	<div class={['bar-picker', { show: scrolled }]} inert={!scrolled}>
 		{@render picker(true)}
 	</div>
-	<div class="spine" role="status" aria-live="polite">
-		<ol aria-hidden="true">
-			{#each Array.from({ length: 12 }, (_, i) => i + 1) as n (n)}
-				<li class={{ on: reachedForm(n), now: n === form }}></li>
-			{/each}
-		</ol>
-		<p>
-			<span>Form {form} of 12</span> <strong>{current.name}</strong>
-		</p>
+	<div class="bar-end">
+		<div class="spine" role="status" aria-live="polite">
+			<ol aria-hidden="true">
+				{#each Array.from({ length: 12 }, (_, i) => i + 1) as n (n)}
+					<li class={{ on: reachedForm(n), now: n === form }}></li>
+				{/each}
+			</ol>
+			<p>
+				<span>Form {form} of 12</span> <strong>{current.name}</strong>
+			</p>
+		</div>
+		<div class={['stepper', { show: driven }]} role="group" aria-label="Step through the story" inert={!driven}>
+			<button type="button" aria-label="Previous step" aria-keyshortcuts="ArrowLeft" title="Previous step (←)" disabled={!canBack} onclick={() => step(-1)}>
+				<Icon icon={ArrowLeft01Icon} size={20} stroke={2} />
+			</button>
+			<button type="button" aria-label="Next step" aria-keyshortcuts="ArrowRight" title="Next step (→)" disabled={!canOn} onclick={() => step(1)}>
+				<Icon icon={ArrowRight01Icon} size={20} stroke={2} />
+			</button>
+		</div>
 	</div>
 </header>
 
@@ -745,7 +810,14 @@
 			{#if failed}
 				<p class="fallback">This browser can’t draw the 3D scenes right now, so here’s the whole story in words.</p>
 			{:else}
-				<p class="scroll-hint"><span class="arrow" aria-hidden="true"></span>Scroll to begin</p>
+				<p class="scroll-hint">
+					<span class="arrow" aria-hidden="true"></span>
+					<span>
+						Scroll to begin
+						<small class="by-key">or step through with <kbd>←</kbd> <kbd>→</kbd></small>
+						<small class="by-tap">or step through with the arrows up top</small>
+					</span>
+				</p>
 				<p class="upright">Scroll to watch. Turn your phone upright to read along.</p>
 			{/if}
 		</div>
@@ -1810,6 +1882,7 @@
 	}
 	/* No 3D: just the story, read straight down. */
 	.journey.words .spine,
+	.journey.words .stepper,
 	.journey.words .bar-picker {
 		display: none;
 	}
@@ -2158,11 +2231,67 @@
 		transform: none;
 	}
 
-	.spine {
+	.bar-end {
 		justify-self: end;
+		display: flex;
+		align-items: center;
+		gap: 14px;
+	}
+	.spine {
 		display: grid;
 		justify-items: end;
 		gap: 7px;
+	}
+	/* Next and back, one card at a time, for anyone who'd rather not scroll. */
+	.stepper {
+		display: inline-flex;
+		gap: 2px;
+		padding: 3px;
+		border-radius: 999px;
+		background: rgb(255 255 255 / 0.62);
+		box-shadow:
+			inset 0 0 0 1px rgb(255 255 255 / 0.8),
+			0 6px 20px rgb(30 80 150 / 0.14);
+		opacity: 0;
+		transition: opacity 0.4s;
+	}
+	.stepper.show {
+		opacity: 1;
+	}
+	.dark .stepper {
+		background: rgb(255 255 255 / 0.88);
+	}
+	.stepper button {
+		display: grid;
+		place-items: center;
+		width: 36px;
+		height: 32px;
+		padding: 0;
+		border: 0;
+		border-radius: 999px;
+		background: transparent;
+		color: #33415c;
+		cursor: pointer;
+		transition:
+			background 0.15s,
+			color 0.15s,
+			transform 0.12s,
+			opacity 0.2s;
+	}
+	.stepper button:hover:not(:disabled) {
+		background: #101a30;
+		color: #fff;
+	}
+	.stepper button:active:not(:disabled) {
+		transform: scale(0.92);
+	}
+	.stepper button:disabled {
+		opacity: 0.32;
+		cursor: default;
+	}
+	.stepper button:focus-visible {
+		outline: 2px solid #1f5fe0;
+		outline-offset: 1px;
 	}
 	.spine ol {
 		display: flex;
@@ -2388,6 +2517,38 @@
 		font-weight: 600;
 		color: var(--ink);
 	}
+	/* The other way through, said once, in whichever form this device has. */
+	.scroll-hint small {
+		display: block;
+		margin-top: 4px;
+		font-size: 13px;
+		font-weight: 500;
+		color: var(--ink-soft);
+	}
+	.scroll-hint kbd {
+		display: inline-block;
+		min-width: 20px;
+		padding: 1px 5px;
+		border-radius: 5px;
+		background: rgb(255 255 255 / 0.7);
+		box-shadow:
+			inset 0 -1.5px 0 rgb(16 26 48 / 0.18),
+			0 0 0 1px rgb(16 26 48 / 0.1);
+		font: 600 12px/1.5 var(--sans);
+		text-align: center;
+		color: var(--ink);
+	}
+	.scroll-hint .by-tap {
+		display: none;
+	}
+	@media (pointer: coarse) {
+		.scroll-hint .by-key {
+			display: none;
+		}
+		.scroll-hint .by-tap {
+			display: block;
+		}
+	}
 	.arrow {
 		display: block;
 		position: relative;
@@ -2557,22 +2718,48 @@
 	}
 
 	@media (max-aspect-ratio: 9/10) {
+		/* One row: where you are on the left, then the steps and the map within reach of a thumb on the right. */
 		.bar {
-			grid-template-columns: 1fr;
-			padding: 14px 20px;
+			grid-template-columns: minmax(0, 1fr) auto auto;
+			column-gap: 4px;
+			padding: 14px 10px 14px 20px;
+		}
+		.bar-end {
+			display: contents;
+		}
+		/* The narrowest phones keep the dots and the form's name, and let the count go. */
+		@media (max-width: 380px) {
+			.spine p span {
+				display: none;
+			}
+			.spine strong {
+				margin-left: 0;
+			}
+			.bar .spine ol {
+				gap: 4px;
+			}
+			.bar .spine li {
+				width: 7px;
+			}
+			.stepper button {
+				width: 32px;
+			}
 		}
 		.spine {
+			order: 1;
 			justify-self: start;
 			justify-items: start;
+			min-width: 0;
+		}
+		.stepper {
+			order: 2;
 		}
 		.bar-picker {
 			display: none;
 		}
 		/* No room for the name on a phone, so the button just says what it opens. */
 		.brand {
-			position: absolute;
-			top: 10px;
-			right: 8px;
+			order: 3;
 			gap: 5px;
 			margin: 0;
 			padding: 8px 8px 8px 6px;
