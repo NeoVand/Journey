@@ -75,7 +75,7 @@
 		policy: {
 			claude: 'Permission modes, allow, ask and deny rules, hooks, and in auto mode a classifier that reviews each call.',
 			codex: 'Two dials: an approval policy for when to ask, and a sandbox mode for what’s allowed, plus execpolicy rules.',
-			copilot: 'A confirmation card in the editor, with auto-approve lists and a cap on requests per session.'
+			copilot: 'A confirmation card in the editor, with auto-approve lists and a cap on model calls before it stops to ask you.'
 		}[harness],
 		sandbox: {
 			claude: '[[Seatbelt]] on macOS, bubblewrap on Linux. A proxy only lets approved domains through, so this request goes nowhere.',
@@ -105,7 +105,7 @@
 		compact: {
 			claude: 'Compacts automatically near the limit, or on /compact. Durable notes can live in CLAUDE.md and auto memory.',
 			codex: 'A client-side /compact, or server-side compaction that returns an encrypted item to append.',
-			copilot: 'A background summarizer watches the budget, with a simpler fallback if the full mode fails.'
+			copilot: 'A background summarizer watches the budget and can get ahead of the limit, with a simpler way to fall back on.'
 		}[harness],
 		door: {
 			claude: 'Just one door to pass: Anthropic’s own, or Bedrock, Vertex or Foundry serving the same models.',
