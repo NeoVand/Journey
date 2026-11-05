@@ -15,7 +15,9 @@ export default defineConfig({
 				runes: ({ filename }) =>
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
-			adapter: adapter()
+			adapter: adapter(),
+			// GitHub Pages serves the site from /<repo>/, and the deploy workflow says so. Everywhere else it is the root.
+			paths: { base: (process.env.BASE_PATH ?? '') as '' | `/${string}` }
 		})
 	],
 	test: {
