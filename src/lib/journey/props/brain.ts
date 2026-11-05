@@ -23,6 +23,10 @@ const SPACING = 0.66;
 const PIPE = 0.43;
 const RADIAL = 12;
 
+/** Where the brainstem comes down, and where the cerebellum sits behind it: centre, top, bottom, and how far back its top leans. */
+const STEM_X = -1.4;
+const CB = { x: -4.35, top: -1.5, bottom: -3.95, lean: 0.7 };
+
 /** Height of the flat seat the intake stands on, above the brain's centre. */
 export const BRAIN_SEAT = 0.9 * B;
 /** The stem and pedestal go down this far below the brain's centre, to the island's top. */
@@ -31,23 +35,58 @@ export const BRAIN_FOOT = 7.5;
 const gauss = (v: number, m: number, s: number) => Math.exp(-(((v - m) / s) ** 2));
 const smoothstep = (a: number, b: number, v: number) => smooth(seg(v, a, b));
 
-/** A point on the surface of one hemisphere. `d` is a unit direction, side is +1 for the near half. */
+/**
+ * A point on the surface of one hemisphere. `d` is a unit direction, side is +1 for the near half.
+ * Seen from the side it is a real brain's outline: tallest over the middle, a full frontal lobe whose underside lifts
+ * toward the front, the temporal lobe hanging below the middle with its pole pointing forward, and an occipital lobe
+ * that tapers to the back and sits up on the cerebellum. Seen from above it is egg-shaped, narrow end forward.
+ */
 function surface(d: THREE.Vector3, side: number, out: THREE.Vector3) {
-	const front = smoothstep(0.1, 1, d.x);
-	let x = d.x * A;
-	let y = d.y * B * (d.y < 0 ? 0.76 : 1) * (1 - 0.1 * front);
-	let z = d.z * (d.z > 0 ? OUTER : INNER) * (1 - 0.18 * front);
-	// The temporal lobe: low, forward, and pushing outward.
-	const temporal = gauss(d.x, 0.36, 0.42) * gauss(d.y, -0.62, 0.4) * smoothstep(-0.1, 0.4, d.z);
-	y -= temporal * 1;
-	z += temporal * 0.3;
-	x += temporal * 0.2;
-	// Room behind and below for the cerebellum.
-	const back = gauss(d.x, -0.8, 0.36) * gauss(d.y, -0.6, 0.42);
-	y += back * 1.2;
-	x += back * 1;
+	const u = d.x;
+	const v = d.y;
+	const taper = 1 - 0.2 * smoothstep(0.15, 1, u) - 0.1 * smoothstep(-0.55, -1, u);
+	// The underside: squashed at the back, where the cerebellum is, and lifted at the front, over the temporal pole.
+	const low = 0.62 * (1 - 0.5 * smoothstep(-0.15, -0.75, u)) * (1 - 0.45 * smoothstep(0.36, 0.95, u));
+	let x = u * A;
+	let y = v * B * (v < 0 ? low : 1 - 0.1 * smoothstep(-0.5, -1, u));
+	let z = d.z * (d.z > 0 ? OUTER : INNER) * taper;
+	// The temporal lobe: below the middle, its pole forward, pushing outward.
+	const temporal = gauss(u, 0.1, 0.34) * gauss(v, -0.78, 0.36) * smoothstep(-0.25, 0.4, d.z);
+	y -= temporal * 1.5;
+	z += temporal * 0.6;
+	x += temporal * 0.3;
 	return out.set(x, y, (z + OFFSET) * side);
 }
+
+/** Where the lateral (Sylvian) fissure runs, as a height for each place along the brain, in direction space. */
+const fissureV = (u: number) => -0.46 + (0.38 - u) * 0.62;
+/** Where the central sulcus runs, as a place along the brain for each height. */
+const centralU = (v: number) => 0.06 + (1 - v) * 0.09;
+
+/** Which lobe a direction on the surface belongs to. */
+function lobeOf(d: THREE.Vector3) {
+	const u = d.x;
+	const v = d.y;
+	if (u > -0.5 && u < 0.62 && v < fissureV(u) && d.z > -0.35) return 'temporal';
+	if (u > centralU(v)) return 'frontal';
+	if (u < -0.55) return 'occipital';
+	return 'parietal';
+}
+
+/**
+ * Which way the folds run: front to back on the frontal and temporal lobes, up and down either side of the central
+ * sulcus, and every which way at the back, as on a real brain. Strength 0 leaves a fold to wander.
+ */
+function flowAt(d: THREE.Vector3, out: THREE.Vector3) {
+	const lobe = lobeOf(d);
+	if (lobe === 'temporal') return { dir: out.set(1, 0.35, 0).normalize(), strength: 0.9 };
+	const c = Math.abs(d.x - centralU(d.y));
+	if (c < 0.16 && d.y > fissureV(d.x)) return { dir: out.set(-0.3, 1, 0).normalize(), strength: 1 };
+	if (lobe === 'frontal') return { dir: out.set(1, -0.1, 0).normalize(), strength: 0.75 };
+	return { dir: out.set(0, 0, 0), strength: 0 };
+}
+
+const LOBE_TONE: Record<string, number> = { frontal: 1, parietal: 1.1, temporal: 0.86, occipital: 0.95 };
 
 const tangentA = new THREE.Vector3();
 const tangentB = new THREE.Vector3();
@@ -220,7 +259,7 @@ export class Brain {
 			emissiveIntensity: 0.25
 		});
 
-		const porthole = new THREE.Vector3(0.1, 0.22, 0.97).normalize();
+		const porthole = new THREE.Vector3(0.4, 0.3, 0.87).normalize();
 		const portAt = surface(porthole, 1, new THREE.Vector3()).clone();
 
 		[1, -1].forEach((side) => this.buildHalf(side, side > 0 ? portAt : null));
@@ -276,6 +315,8 @@ export class Brain {
 			if (Math.abs(p.z) < 0.96) continue;
 			if (p.y > BRAIN_SEAT - 1 && Math.abs(p.x) < 2.25 && Math.abs(p.z) < 2.4) continue;
 			if (keepClear && p.distanceTo(keepClear) < 2.32) continue;
+			// The lateral fissure is left open, so the temporal lobe reads as its own lobe.
+			if (dir.x > -0.5 && dir.x < 0.62 && dir.z > -0.35 && Math.abs(dir.y - fissureV(dir.x)) < 0.1) continue;
 			if (nodes.some((n) => n.p.distanceTo(p) < SPACING)) continue;
 			nodes.push({ d: dir, p });
 		}
@@ -284,23 +325,29 @@ export class Brain {
 		const paths: number[][] = [];
 		const heading = new THREE.Vector3();
 		const step = new THREE.Vector3();
+		const flow = new THREE.Vector3();
 		nodes.forEach((_, startRaw) => {
 			const start = (startRaw * 37 + seed) % nodes.length;
 			if (used[start]) return;
 			used[start] = true;
 			const path = [start];
-			const longest = 4 + Math.floor(hash(start * 5.3 + seed) * 9);
+			const first = flowAt(nodes[start].d, flow);
+			const longest = 4 + Math.floor(hash(start * 5.3 + seed) * 9 + first.strength * 5);
 			let at = start;
 			heading.set(hash(start) - 0.5, hash(start + 9) - 0.5, hash(start + 21) - 0.5).normalize();
+			if (first.strength > 0) heading.lerp(flow.multiplyScalar(hash(start * 1.9) < 0.5 ? -1 : 1), first.strength).normalize();
 			while (path.length < longest) {
 				let best = -1;
 				let score = -Infinity;
+				const { strength } = flowAt(nodes[at].d, flow);
 				near[at].forEach((k) => {
 					if (used[k]) return;
 					step.copy(nodes[k].p).sub(nodes[at].p).normalize();
 					const along = step.dot(heading);
 					if (along < -0.05) return; // no hairpins: a pipe this fat cannot bend that tight
-					const s = along + (hash(k * 3.3 + at) - 0.5) * 0.8;
+					// Folds don't cross the fissure: a temporal fold stays temporal.
+					if ((lobeOf(nodes[k].d) === 'temporal') !== (lobeOf(nodes[at].d) === 'temporal')) return;
+					const s = along * 0.7 + Math.abs(step.dot(flow)) * strength * 0.9 + (hash(k * 3.3 + at) - 0.5) * 0.8;
 					if (s > score) {
 						score = s;
 						best = k;
@@ -328,7 +375,8 @@ export class Brain {
 		paths.forEach((path, i) => {
 			if (path.length === 0) return;
 			const dirs = path.length === 1 ? [nodes[path[0]].d.clone(), nodes[path[0]].d.clone().add(new THREE.Vector3(0.02, 0.01, 0)).normalize()] : path.map((k) => nodes[k].d);
-			builder.add(dirs, side, 0.92 + hash(i * 7.7) * 0.16, hash(i * 2.2) * 11);
+			// Each lobe in its own blue, a shade apart, so they read as lobes.
+			builder.add(dirs, side, (0.92 + hash(i * 7.7) * 0.12) * LOBE_TONE[lobeOf(nodes[path[0]].d)], hash(i * 2.2) * 11);
 		});
 		const folds = new THREE.Mesh(builder.build(), this.foldMat);
 		folds.castShadow = true;
@@ -408,7 +456,7 @@ export class Brain {
 		const X = A * 0.95;
 		const points: THREE.Vector3[] = [];
 		for (let i = 0; i <= 60; i++) {
-			const a = THREE.MathUtils.lerp(0.34, Math.PI - 0.46, i / 60);
+			const a = THREE.MathUtils.lerp(0.5, Math.PI - 0.46, i / 60);
 			points.push(new THREE.Vector3(Math.cos(a) * X, Math.sin(a) * Y, 0));
 		}
 		const path = new THREE.CatmullRomCurve3(points, false, 'centripetal');
@@ -456,41 +504,79 @@ export class Brain {
 		this.group.add(seat.build('seat'));
 	}
 
-	/* ---- the cerebellum, which here is a heat sink ---- */
+	/*
+	 * ---- the cerebellum, which here is a heat sink ----
+	 * Tucked under the occipital lobe, behind the brainstem. Its fins are its folia: thin plates stacked like the leaves
+	 * of a real cerebellum, each shaped like it from above, two hemispheres with a notch front and back at the midline.
+	 */
 	private buildCerebellum() {
 		const m = mats();
-		const cx = -4.75;
-		const cy = -2.32;
+		const outline = new THREE.Shape();
+		const zc = 1.3;
+		const r = 1.72;
+		const steps = 96;
+		for (let i = 0; i <= steps; i++) {
+			const t = (i / steps) * Math.PI * 2;
+			const c = Math.cos(t);
+			const sn = Math.sin(t);
+			// The far edge of whichever hemisphere reaches further along this ray from the middle.
+			let reach = 0;
+			for (const sz of [-zc, zc]) {
+				const a = c * c + sn * sn;
+				const b = -2 * sn * sz;
+				const k = sz * sz - r * r;
+				reach = Math.max(reach, (-b + Math.sqrt(b * b - 4 * a * k)) / (2 * a));
+			}
+			if (i === 0) outline.moveTo(c * reach, sn * reach);
+			else outline.lineTo(c * reach, sn * reach);
+		}
 		const b = new Batch();
-		const fin = new THREE.CylinderGeometry(1, 1, 0.1, 64);
-		const count = 16;
+		const count = 15;
 		for (let i = 0; i < count; i++) {
 			const k = (i + 0.5) / count;
-			const y = (k - 0.5) * 3.4;
-			const w = Math.sqrt(1 - (2 * k - 1) ** 2);
-			const g = fin.clone();
-			g.scale(2.35 * w + 0.14, 1, 3.9 * w + 0.14);
-			b.add(g, i % 2 ? m.steel : m.steelSoft, { p: [cx, cy + y, 0] });
+			const y = THREE.MathUtils.lerp(CB.top, CB.bottom, k);
+			// Widest a little below the top, rounded underneath; the upper leaves sit further back, under the occipital lobe.
+			const w = Math.sqrt(Math.max(0.02, 1 - ((k - 0.28) / 0.8) ** 2));
+			const fin = extrude(outline, 0.08, 0.02, 1, 2);
+			fin.scale(w, w * 0.96 + 0.04, 1);
+			b.add(fin, i % 2 ? m.steel : m.steelSoft, { p: [CB.x - (0.5 - k) * CB.lean, y, 0], r: [Math.PI / 2, 0, 0] });
 		}
-		const core = new THREE.CylinderGeometry(1, 1, 3.3, 40);
-		core.scale(1.5, 1, 2.8);
-		b.add(core, m.recess, { p: [cx, cy, 0] });
-		this.group.add(b.build('cerebellum'));
+		const core = new THREE.SphereGeometry(1, 40, 20);
+		core.scale(1.35, (CB.top - CB.bottom) * 0.46, 2.6);
+		b.add(core, m.recess, { p: [CB.x, (CB.top + CB.bottom) / 2, 0] });
+		const cb = b.build('cerebellum');
+		cb.traverse((o) => (o.castShadow = true));
+		this.group.add(cb);
 	}
 
-	/* ---- the stem, the pedestal, and the island it all stands on ---- */
+	/* ---- the brainstem: a pons, a medulla, and a stem down to the pedestal; then the island it all stands on ---- */
 	private buildStem() {
 		const m = mats();
-		const sx = -1.4;
-		const top = -2.5;
+		const sx = STEM_X;
 		const bottom = -BRAIN_FOOT + 1.72;
-		const h = top - bottom;
+		const profile = [
+			[0.001, -1.7],
+			[0.95, -1.75],
+			[1.32, -2.3],
+			[1.45, -2.85],
+			[1.3, -3.4],
+			[1.02, -3.9],
+			[0.96, -4.5],
+			[1.12, -5.1],
+			[1.55, bottom + 0.08],
+			[1.55, bottom],
+			[0.001, bottom]
+		]
+			// A lathe faces outward when its outline runs upward.
+			.reverse()
+			.map(([r, y]) => new THREE.Vector2(r, y));
 		const b = new Batch();
-		b.add(new THREE.CylinderGeometry(1.15, 1.55, h, 40), m.cream, { p: [sx, bottom + h / 2, 0] });
-		[0.2, 0.55, 0.88].forEach((k) => {
-			const r = THREE.MathUtils.lerp(1.55, 1.15, k) + 0.08;
-			b.add(new THREE.TorusGeometry(r, 0.09, 12, 56), m.steel, { p: [sx, bottom + h * k, 0], r: [Math.PI / 2, 0, 0] });
-		});
+		b.add(new THREE.LatheGeometry(profile, 48), m.cream, { p: [sx, 0, 0] });
+		for (const [y, r] of [
+			[-4.2, 1.0],
+			[-5.45, 1.32]
+		])
+			b.add(new THREE.TorusGeometry(r + 0.06, 0.09, 12, 56), m.steel, { p: [sx, y, 0], r: [Math.PI / 2, 0, 0] });
 		this.group.add(b.build('stem'));
 
 		const base = machine({ w: 8.2, h: 1.5, d: 6.2, finish: 'cream', name: 'The model', signH: 0.56, vent: false });
