@@ -300,6 +300,12 @@
 		color: #fff;
 		font-weight: 600;
 	}
+	/* A dialog focuses its first button when it opens, which on a touch screen is only a ring nobody asked for. */
+	@media (hover: none) {
+		.map .close:focus-visible {
+			outline: none;
+		}
+	}
 	.map :focus-visible {
 		outline: 3px solid #1f5fe0;
 		outline-offset: 2px;

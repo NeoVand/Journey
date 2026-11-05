@@ -245,14 +245,22 @@
 	}
 
 	/** Copy is written with [[shown|key]] marking a term, or just [[term]] when they are the same. */
-	const pieces = (text: string) =>
-		text
-			.split(/(\[\[[^\]]+\]\])/)
-			.filter(Boolean)
-			.map((piece) => {
-				const m = piece.match(/^\[\[([^|\]]+)(?:\|([^\]]+))?\]\]$/);
-				return m ? { text: m[1], key: (m[2] ?? m[1]).toLowerCase() } : { text: piece, key: '' };
-			});
+	/** A term is a button, and Safari will start a new line right after one, so the punctuation that follows stays with it. */
+	const pieces = (text: string) => {
+		const parts: { text: string; key: string; tail: string }[] = [];
+		for (const piece of text.split(/(\[\[[^\]]+\]\])/).filter(Boolean)) {
+			const m = piece.match(/^\[\[([^|\]]+)(?:\|([^\]]+))?\]\]$/);
+			if (m) {
+				parts.push({ text: m[1], key: (m[2] ?? m[1]).toLowerCase(), tail: '' });
+				continue;
+			}
+			const last = parts.at(-1);
+			const tail = last?.key ? (piece.match(/^[.,;:!?)’”]+/)?.[0] ?? '') : '';
+			if (last && tail) last.tail = tail;
+			if (piece.length > tail.length) parts.push({ text: piece.slice(tail.length), key: '', tail: '' });
+		}
+		return parts;
+	};
 
 	/** The pages that really do read or look different for each agent. */
 	const DIFFERS = new Set([0, 1, 2, 3, 4, 5, 11, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 29]);
@@ -317,9 +325,27 @@
 
 			const dprFor = () => Math.min(window.devicePixelRatio || 1, 2);
 			let dpr = dprFor();
+			// The canvas is as tall as the screen ever gets, so a phone's toolbar sliding away neither stretches
+			// the picture nor costs a rebuild of every render target in the middle of the reader's first scroll.
+			let drawnW = 0;
+			let drawnH = 0;
 			const resize = () => {
+				// Turning a phone changes every section's height, and the reader should stay where they are in the story.
+				const turned = drawnW > 0 && canvas.clientWidth !== drawnW;
+				const was = turned ? T : 0;
 				measure();
-				w.resize(window.innerWidth, window.innerHeight, dpr);
+				if (turned) {
+					window.scrollTo(0, toY(was));
+					// Safari settles its own scroll position a moment later.
+					requestAnimationFrame(() => {
+						measure();
+						window.scrollTo(0, toY(was));
+					});
+				}
+				if (canvas.clientWidth === drawnW && canvas.clientHeight === drawnH) return;
+				drawnW = canvas.clientWidth;
+				drawnH = canvas.clientHeight;
+				w.resize(drawnW, drawnH, dpr);
 			};
 			performance.mark('journey:built');
 			w.stage.warmUp();
@@ -342,7 +368,7 @@
 
 			// A press on the scene itself. A drag or a scroll isn't one, and neither is anything aimed at the page's own controls.
 			let downAt: { x: number; y: number; time: number } | null = null;
-			const clip = (e: PointerEvent) => [(e.clientX / window.innerWidth) * 2 - 1, 1 - (e.clientY / window.innerHeight) * 2] as const;
+			const clip = (e: PointerEvent) => [(e.clientX / drawnW) * 2 - 1, 1 - (e.clientY / drawnH) * 2] as const;
 			const onScene = (e: PointerEvent) => !(e.target as Element | null)?.closest?.('button, a, input, textarea, select, label, dialog');
 			const down = (e: PointerEvent) => {
 				downAt = onScene(e) ? { x: e.clientX, y: e.clientY, time: performance.now() } : null;
@@ -384,6 +410,11 @@
 				);
 				const lastPin = pins.length - 1;
 				const diveEl = document.querySelector<HTMLElement>('[data-dive]')!;
+				const edgeEls = document.querySelectorAll<HTMLElement>('[data-edge]');
+				const themeEl = document.querySelector('meta[name="theme-color"]');
+				let edgeShade = -1;
+				let edgeNudge = 0;
+				const mixSky = (k: number) => `rgb(${[198, 229, 253].map((sky, i) => Math.round(sky + ([6, 15, 38][i] - sky) * k)).join(' ')})`;
 				const seg = (v: number, a: number, b: number) => Math.min(1, Math.max(0, (v - a) / (b - a)));
 				const shownKey: number[] = [];
 				const fade = () => {
@@ -397,12 +428,29 @@
 						if (shownKey[n] === key) return;
 						shownKey[n] = key;
 						el.style.opacity = String(k);
+						// Not just see-through: Safari picks its toolbar colours from what's stacked at the screen's edge, even at zero opacity.
+						el.style.visibility = k <= 0 ? 'hidden' : '';
 						const moving = k > 0 && k < 1;
 						el.style.transform = moving ? `translateY(${(1 - inK) * 14 - outK * 10}px)` : 'none';
 						if (n === 0) el.style.pointerEvents = k > 0.6 ? 'auto' : 'none';
 						el.inert = k < 0.1;
 					});
 					diveEl.style.opacity = String(w.state.dive);
+					diveEl.style.visibility = w.state.dive > 0 ? '' : 'hidden';
+					// A phone browser paints the page's own colour around the page, so it has to go dark with the world.
+					const shade = Math.round((w.state.inside ? 1 : w.state.dive) * 32);
+					if (shade !== edgeShade) {
+						edgeShade = shade;
+						edgeNudge = 1 - edgeNudge;
+						const tone = mixSky(shade / 32);
+						document.documentElement.style.backgroundColor = tone;
+						edgeEls.forEach((el) => {
+							el.style.setProperty('--tone', tone);
+							// Safari only looks again after a layout, so give it one.
+							el.style.paddingBottom = `${edgeNudge}px`;
+						});
+						themeEl?.setAttribute('content', tone);
+					}
 				};
 
 				const publish = () => {
@@ -454,7 +502,7 @@
 				const change = params.has('debug') ? null : sharpness.frame(dt);
 				if (change) {
 					dpr = change.dpr;
-					w.resize(window.innerWidth, window.innerHeight, dpr);
+					w.resize(drawnW, drawnH, dpr);
 					w.stage.setOcclusion(change.occlusion);
 				}
 			};
@@ -572,7 +620,7 @@
 
 {#snippet rich(text: string)}
 	{#each pieces(text) as piece, i (i)}
-		{#if piece.key}<button
+		{#if piece.key}<span class="held"><button
 				type="button"
 				class="term"
 				aria-expanded={tip?.key === piece.key}
@@ -591,7 +639,7 @@
 					if (tip?.key === piece.key && tapped && performance.now() - tipShownAt > 400) tip = null;
 					else showTip(e.currentTarget, piece.key);
 				}}>{piece.text}<span class="vh"> ({GLOSSARY[piece.key]})</span></button
-			>{:else}{piece.text}{/if}
+			>{piece.tail}</span>{:else}{piece.text}{/if}
 	{/each}
 {/snippet}
 
@@ -615,6 +663,8 @@
 		<p>Warming up the machines</p>
 	</div>
 {/if}
+<div class="edge" data-edge aria-hidden="true"></div>
+<div class="edge top" data-edge aria-hidden="true"></div>
 <div class="dive" data-dive aria-hidden="true"></div>
 <div class="cut" data-cut aria-hidden="true"></div>
 
@@ -655,6 +705,7 @@
 				<p class="fallback">This browser can’t draw the 3D scenes right now, so here’s the whole story in words.</p>
 			{:else}
 				<p class="scroll-hint"><span class="arrow" aria-hidden="true"></span>Scroll to begin</p>
+				<p class="upright">Scroll to watch. Turn your phone upright to read along.</p>
 			{/if}
 		</div>
 	</section>
@@ -1694,9 +1745,17 @@
 		}
 	}
 	@media (max-aspect-ratio: 9/10) {
+		/* Someone arriving at a chapter's address sees its words while the world builds, so it brings its own ground. */
 		.loader {
 			left: 50%;
-			top: 72%;
+			top: auto;
+			bottom: 24px;
+			width: max-content;
+			padding: 26px 22px 12px;
+			border-radius: 18px;
+			background: rgb(214 234 251 / 0.94);
+			box-shadow: 0 10px 30px rgb(16 26 48 / 0.12);
+			transform: translateX(-50%);
 		}
 	}
 	@media (prefers-reduced-motion: reduce) {
@@ -1737,9 +1796,13 @@
 		color: var(--ink-soft);
 	}
 
+	.held {
+		white-space: nowrap;
+	}
 	.term {
 		appearance: none;
 		display: inline;
+		white-space: normal;
 		margin: 0;
 		padding: 0;
 		border: 0;
@@ -1833,6 +1896,40 @@
 		height: 100vh;
 		height: 100lvh;
 		display: block;
+	}
+
+	.upright {
+		display: none;
+	}
+
+	/* Safari stops drawing the page above its toolbar. Melt the world into the colour it fills that strip with, not a hard line. */
+	.edge {
+		display: none;
+		position: fixed;
+		z-index: 4;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		height: 56px;
+		/* A flat colour under a mask, because a flat colour is what Safari can sample for that strip and a gradient isn't. */
+		background: var(--tone, var(--sky));
+		-webkit-mask-image: linear-gradient(to bottom, transparent, black);
+		mask-image: linear-gradient(to bottom, transparent, black);
+		pointer-events: none;
+	}
+	/* Above the header, or Safari reads the header's gradient and never updates the status bar. Thin enough not to show. */
+	.edge.top {
+		z-index: 11;
+		top: 0;
+		bottom: auto;
+		height: 10px;
+		-webkit-mask-image: linear-gradient(to top, transparent, black);
+		mask-image: linear-gradient(to top, transparent, black);
+	}
+	@supports (-webkit-touch-callout: none) {
+		.edge {
+			display: block;
+		}
 	}
 
 	.dive {
@@ -2001,11 +2098,15 @@
 		z-index: 5;
 		inset: 0;
 		opacity: 0;
+		visibility: hidden;
 		pointer-events: none;
-		transition: opacity 0.3s ease-out;
+		transition:
+			opacity 0.3s ease-out,
+			visibility 0.3s;
 	}
 	.cut:global(.on) {
 		opacity: 1;
+		visibility: visible;
 		transition: opacity 0.13s ease-in;
 	}
 
@@ -2153,7 +2254,8 @@
 		top: 0;
 		left: 0;
 		height: 100vh;
-		height: 100dvh;
+		/* The smallest the screen gets, so the words stay put when a phone's toolbar slides away. */
+		height: 100svh;
 		min-height: 0;
 		opacity: 0;
 		pointer-events: none;
@@ -2639,6 +2741,66 @@
 		}
 		.cols {
 			grid-template-columns: 1fr;
+		}
+	}
+
+	/* A phone on its side has room for the film or for the words, not both. It gets the film, with each chapter's title as a caption. */
+	@media (max-height: 500px) and (min-aspect-ratio: 9/10) {
+		.bar {
+			padding: 10px 16px;
+		}
+		.brand .name,
+		.bar-picker {
+			display: none;
+		}
+		.driven .pin,
+		.driven .pin.left,
+		.driven .pin.right,
+		.driven .pin.top-band {
+			top: auto;
+			bottom: 14px;
+			left: 16px;
+			right: auto;
+			width: auto;
+			max-width: 62vw;
+			height: auto;
+			min-height: 0;
+			margin: 0;
+			padding: 0;
+			transform: none;
+		}
+		.driven .pin::before,
+		.driven .pin > :global(*)::before {
+			display: none;
+		}
+		.driven .pin > :global(*) {
+			display: none;
+		}
+		.driven .pin > :global(h1),
+		.driven .pin > :global(h2) {
+			display: block;
+			width: fit-content;
+			margin: 0;
+			padding: 6px 14px 7px;
+			border-radius: 12px;
+			background: rgb(var(--veil) / 0.86);
+			color: var(--ink);
+			font-size: 17px;
+			line-height: 1.2;
+		}
+		.driven .pin > :global(h2 br),
+		.driven .pin > :global(h1 br) {
+			display: none;
+		}
+		.driven .pin > .upright {
+			display: block;
+			width: fit-content;
+			margin: 6px 0 0;
+			padding: 5px 12px;
+			border-radius: 10px;
+			background: rgb(var(--veil) / 0.86);
+			color: var(--ink-soft);
+			font-size: 13px;
 		}
 	}
 </style>

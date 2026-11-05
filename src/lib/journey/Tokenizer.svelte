@@ -478,6 +478,11 @@
 		color: var(--soft);
 		text-wrap: pretty;
 	}
+	@media (hover: none) {
+		.try .close:focus-visible {
+			outline: none;
+		}
+	}
 	.try :focus-visible {
 		outline: 3px solid #1f5fe0;
 		outline-offset: 2px;
