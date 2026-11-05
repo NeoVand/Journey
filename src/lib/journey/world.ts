@@ -21,6 +21,7 @@ import { Gateway, GW } from './props/gateway';
 import { createBelt, createChatTemplate, Gantry, GANTRY_REAR, SafetyArch, Tile, TILE_D, TILE_H } from './props/tokenizer';
 import { HARNESSES, PROMPT, TOKENS, type HarnessId, type TrackId } from './content';
 import { McpTrack, MCP_SHOTS, type HarnessPose } from './tracks/mcp';
+import { HarnessRoom, ROOF, ROOM_AT, ROOM_SHOTS, ROOM_SKY } from './tracks/harness';
 import { hitBox } from './poke';
 import { Cluster, CLUSTER_SHOTS, DIVE_T } from './cluster';
 import { RETURN_POINTS } from './layout';
@@ -154,6 +155,16 @@ export class World {
 	private mcpTrack!: McpTrack;
 	private mcpLead!: THREE.Curve<THREE.Vector3>;
 	private mcpHit = hitBox(1.5, 1.5, 1.3);
+	private harnessHit = hitBox(2.9, 3.9, 2.4);
+	/**
+	 * Inside the harness: once the reader has dived in through its roof, the world shows the room instead of
+	 * everything else. arrive is the drop from above into the room, 0 to 1, which the page plays.
+	 */
+	trackIn = false;
+	trackArrive = 1;
+	room!: HarnessRoom;
+	private roofRig!: Rig;
+	private above = new THREE.Vector3();
 	private harnessPose: HarnessPose = { opens: [0, 0, 0, 0], filled: [0, 0, 0, 0], wake: 0.1 };
 	private camFrom = new THREE.Vector3();
 	private focusFrom = new THREE.Vector3();
@@ -244,9 +255,16 @@ export class World {
 		this.root.add(this.finale.group);
 		this.mcpTrack = new McpTrack(this.harness, this.mcp, this.mcpLead);
 		this.root.add(this.mcpTrack.group);
-		this.trackRigs = { mcp: new Rig(this.stage.camera, MCP_SHOTS) };
+		this.room = new HarnessRoom();
+		this.stage.scene.add(this.room.group);
+		this.trackRigs = { mcp: new Rig(this.stage.camera, MCP_SHOTS), harness: new Rig(this.stage.camera, ROOM_SHOTS) };
+		this.roofRig = new Rig(this.stage.camera, [
+			{ T: 0, ...ROOF },
+			{ T: 1, ...ROOF }
+		]);
 		this.mcpHit.position.set(7.2, 0.7, -0.72);
-		this.root.add(this.mcpHit);
+		this.harnessHit.position.set(HARNESS_POS.x, 2.0, HARNESS_POS.z);
+		this.root.add(this.mcpHit, this.harnessHit);
 		this.setHarness('claude');
 		this.wirePokes();
 	}
@@ -971,6 +989,8 @@ export class World {
 		this.poker.add({ targets: [this.cluster.wheelDisc], when: (T) => T > 15.1 && T < 15.86, press: () => this.onPress('wheel') });
 		// The server opens its own side trip, while the island it stands on is the story.
 		this.poker.add({ targets: [this.mcpHit], when: (T) => T < 2.76, press: () => this.onTrack('mcp') });
+		// So does the harness, until its drawers are the thing to press.
+		this.poker.add({ targets: [this.harnessHit], when: (T) => T < 2.02, press: () => this.onTrack('harness') });
 	}
 
 	/** Starts or ends a side trip. The page moves trackT and trackBlend; this only says which trip. */
@@ -1060,6 +1080,20 @@ export class World {
 		// The picture makes room before the words arrive, and only takes it back once they've gone.
 		this.rig.update(T, this.stage.width, this.stage.height, px, py, time, Math.max(this.wordsAt(T - 0.06), this.wordsAt(T), this.wordsAt(T + 0.06)));
 		this.frameTrack(px, py, time);
+
+		// Inside the harness, nothing else exists.
+		this.room.group.visible = this.trackIn;
+		if (this.trackIn) {
+			this.root.visible = false;
+			this.cluster.group.visible = false;
+			this.state.inside = false;
+			this.state.dive = 0;
+			this.stage.holdShadows(false);
+			this.stage.setSky(ROOM_SKY.top, ROOM_SKY.mid, ROOM_SKY.low);
+			this.room.update(this.trackT, time);
+			this.stage.render();
+			return;
+		}
 
 		const inside = T >= DIVE_T && T < EXIT_T;
 		this.root.visible = !inside;
@@ -1158,7 +1192,9 @@ export class World {
 		const oy = cam.view?.offsetY ?? 0;
 		const near = cam.near;
 		const radius = this.rig.radius;
-		const rig = this.trackRigs[this.trackId];
+		if (this.trackIn) return this.frameRoom(px, py, time);
+		// A trip inside the harness first goes to its roof, where the way in is.
+		const rig = this.trackId === 'harness' ? this.roofRig : this.trackRigs[this.trackId];
 		rig.update(this.trackT, width, height, px, py, time, this.trackWords);
 		if (k >= 1) {
 			this.stage.focusLight(rig.focus, rig.radius);
@@ -1171,6 +1207,31 @@ export class World {
 		cam.setViewOffset(width, height, lerp(ox, cam.view?.offsetX ?? 0, k), lerp(oy, cam.view?.offsetY ?? 0, k), width, height);
 		cam.updateProjectionMatrix();
 		this.stage.focusLight(this.focusTo, lerp(radius, rig.radius, k));
+	}
+
+	/** In the room: the trip's own camera, which drops in from high above as the reader arrives, and rises back out. */
+	private frameRoom(px: number, py: number, time: number) {
+		const cam = this.stage.camera;
+		const { width, height } = this.stage;
+		const rig = this.trackRigs.harness;
+		rig.update(this.trackT, width, height, px, py, time, this.trackWords);
+		const k = this.trackArrive;
+		if (k >= 1) {
+			this.stage.focusLight(rig.focus, rig.radius);
+			return;
+		}
+		const e = 1 - (1 - k) ** 3;
+		// Straight down from over the middle of the room, turning to the trip's own view as it comes down.
+		this.above.set(ROOM_AT.x + 0.4, ROOM_AT.y + 22, ROOM_AT.z + 1.6);
+		cam.position.lerpVectors(this.above, cam.position, e);
+		this.focusTo.set(ROOM_AT.x, ROOM_AT.y, ROOM_AT.z).lerp(rig.focus, e);
+		cam.lookAt(this.focusTo);
+		cam.near = 0.5;
+		const ox = cam.view?.offsetX ?? 0;
+		const oy = cam.view?.offsetY ?? 0;
+		cam.setViewOffset(width, height, ox * e, oy * e, width, height);
+		cam.updateProjectionMatrix();
+		this.stage.focusLight(this.focusTo, lerp(12, rig.radius, e));
 	}
 
 	private c1 = new THREE.Color();

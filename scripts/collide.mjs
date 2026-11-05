@@ -2,7 +2,7 @@
 // node scripts/collide.mjs [from] [to] [step] [harness]
 // SIGNS=1 instead tests every visible sign plate where it stands against everything except its own posts.
 // PHONE=1 runs the page as a touch phone, where signs are printed larger.
-// TRACK=mcp scans that side trip, with from and to in the trip's own time.
+// TRACK=mcp scans that side trip, with from and to in the trip's own time. TRACK=harness scans inside its room.
 //
 // At each moment it finds every mesh that moved relative to another, samples points on the mover's surface just
 // under its skin, and asks whether those points are inside the other mesh. Anything rigidly attached is ignored,
@@ -18,7 +18,7 @@ page.on('pageerror', (e) => console.log('pageerror', e.message));
 await page.goto(`${process.env.URL ?? 'http://localhost:5199'}/?still&debug`, { waitUntil: 'load' });
 await page.waitForFunction(() => window.__journey && window.__world, null, { timeout: 90000 });
 
-await page.evaluate(async ([harness, signsOnly, track, trackAt]) => {
+await page.evaluate(async ([harness, signsOnly, track, trackAt, room]) => {
 	const THREE = await import('/node_modules/three/build/three.module.js');
 	const world = window.__world;
 	const scene = world.stage.scene;
@@ -163,6 +163,9 @@ await page.evaluate(async ([harness, signsOnly, track, trackAt]) => {
 		// TRACK=<id> scans a side trip instead: T is the trip's own time, over the story posed where the trip borrows it.
 		if (track) {
 			world.setTrack(track);
+			// A trip with a room of its own is scanned inside it.
+			world.trackIn = room;
+			world.trackArrive = 1;
 			world.trackT = T;
 			world.trackBlend = 1;
 			world.update(trackAt, 0, 1 / 60, 0, 0, true);
@@ -248,7 +251,7 @@ await page.evaluate(async ([harness, signsOnly, track, trackAt]) => {
 		return movers.length;
 	};
 	window.__report = () => [...hits.values()];
-}, [harness, !!process.env.SIGNS, process.env.TRACK ?? null, +(process.env.TRACK_AT ?? 1.5)]);
+}, [harness, !!process.env.SIGNS, process.env.TRACK ?? null, +(process.env.TRACK_AT ?? 1.5), process.env.TRACK === 'harness']);
 
 const A = +from, B = +to, S = +step;
 let maxMovers = 0;

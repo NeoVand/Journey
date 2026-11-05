@@ -6,6 +6,7 @@ import {
 	AiBrain01Icon,
 	ArrowDataTransferHorizontalIcon,
 	BubbleChatIcon,
+	Cabinet01Icon,
 	Cancel01Icon,
 	ChatGptIcon,
 	CheckmarkBadge01Icon,
@@ -57,4 +58,4 @@ export const STOP_ICON = [Idea01Icon, LaptopIcon, Globe02Icon, ServerStack02Icon
 export { ArrowDataTransferHorizontalIcon as SWAP, Cancel01Icon as CLOSE, DiceFaces03Icon as SPIN, MapsIcon as MAP, RepeatIcon as AGAIN };
 
 /** Each side trip's own mark, on every button that leads to it. */
-export const TRACK_ICON: Record<TrackId, typeof ClaudeIcon> = { mcp: McpServerIcon };
+export const TRACK_ICON: Record<TrackId, typeof ClaudeIcon> = { mcp: McpServerIcon, harness: Cabinet01Icon };

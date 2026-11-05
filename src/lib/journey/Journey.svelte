@@ -477,6 +477,7 @@
 				const themeEl = document.querySelector('meta[name="theme-color"]');
 				let edgeShade = -1;
 				let edgeNudge = 0;
+				const ROOM_EDGE = '#fdf6e8';
 				const mixSky = (k: number) => `rgb(${[198, 229, 253].map((sky, i) => Math.round(sky + ([6, 15, 38][i] - sky) * k)).join(' ')})`;
 				const seg = (v: number, a: number, b: number) => Math.min(1, Math.max(0, (v - a) / (b - a)));
 				const shownKey: number[] = [];
@@ -510,10 +511,11 @@
 					diveEl.style.opacity = String(w.state.dive);
 					diveEl.style.visibility = w.state.dive > 0 ? '' : 'hidden';
 					// A phone browser paints the page's own colour around the page, so it has to go dark with the world.
-					const shade = Math.round((w.state.inside ? 1 : w.state.dive) * 32);
+					// Inside the harness it's the cream of the room instead.
+					const shade = w.trackIn ? -2 : Math.round((w.state.inside ? 1 : w.state.dive) * 32);
 					if (shade !== edgeShade) {
 						edgeShade = shade;
-						const tone = mixSky(shade / 32);
+						const tone = shade === -2 ? ROOM_EDGE : mixSky(shade / 32);
 						document.documentElement.style.backgroundColor = tone;
 						edgeEl.style.setProperty('--tone', tone);
 						// Safari only reads that colour again after a layout, so give it one.
@@ -656,6 +658,12 @@
 			let tripT: number | null = null;
 			let flying = false;
 			let afterFlight: (() => void) | null = null;
+			/** Inside a room: how far the drop from above has come, 0 to 1, where it's heading, and what follows. */
+			let arrive = 1;
+			let arriveGoal = 1;
+			let afterArrive: (() => void) | null = null;
+			/** The cream of the inside of the harness, to pass through its roof under. */
+			const WARM = '#f4e2bd';
 			let comeBackTo: HTMLElement | null = null;
 			const cards = () => tripPins.length;
 			const measureTrip = () => {
@@ -680,9 +688,9 @@
 			const cardOut = (n: number, t: number) => (n === cards() - 1 ? 0 : seg(t - n, 0.86, 0.93));
 			const tripStops = () => [0, ...tripPins.slice(0, -1).map((_, n) => n + 0.86 - 0.012), cards()];
 			// Under a quick cover, for a reader coming from too far away to fly, or who asked for less motion.
-			const swap = (fn: () => void) => {
+			const swap = (fn: () => void, cover = '#d6eafb') => {
 				if (reduced || still) return fn();
-				cutEl.style.background = '#d6eafb';
+				cutEl.style.background = cover;
 				cutEl.classList.add('on');
 				clearTimeout(cutTimer);
 				cutTimer = window.setTimeout(() => {
@@ -724,6 +732,15 @@
 					}
 				}
 				w.trackBlend = blend * blend * (3 - 2 * blend);
+				if (arrive !== arriveGoal) {
+					arrive = Math.min(1, Math.max(0, arrive + Math.sign(arriveGoal - arrive) * (dt / 1.5)));
+					if (arrive === arriveGoal && afterArrive) {
+						const then = afterArrive;
+						afterArrive = null;
+						then();
+					}
+				}
+				w.trackArrive = arrive;
 				if (!track || !tripEl || !tripHead) return;
 				const target = toTripT(tripEl.scrollTop);
 				if (tripTo >= 0 && Math.abs(target - tripTo) > 0.001) settleTrip();
@@ -768,24 +785,48 @@
 				tripTo = -1;
 				w.trackT = 0;
 				w.setTrack(id);
+				const inside = TRACK_AT[id].inside;
+				// Into the room, under a warm cover, then down from above it.
+				const goIn = () => {
+					w.trackIn = true;
+					tripPins.forEach((el) => (el.dataset.tone = 'warm'));
+					if (reduced || still) {
+						arrive = arriveGoal = 1;
+						flying = false;
+						return;
+					}
+					arrive = 0;
+					arriveGoal = 1;
+					afterArrive = () => (flying = false);
+				};
 				if (near) {
 					// Close enough to fly: the world stays as the reader left it, and the camera goes to the trip.
 					tripT = null;
 					flying = true;
 					blendGoal = 1;
-					afterFlight = () => (flying = false);
+					afterFlight = inside ? () => swap(goIn, WARM) : () => (flying = false);
 				} else {
-					swap(() => {
-						tripT = TRACK_AT[id].T;
-						blend = blendGoal = 1;
-					});
+					if (inside && !reduced && !still) flying = true;
+					swap(
+						() => {
+							tripT = TRACK_AT[id].T;
+							blend = blendGoal = 1;
+							if (inside) goIn();
+						},
+						inside ? WARM : undefined
+					);
 				}
 				tripEl.focus({ preventScroll: true });
 			};
 			leaveTrack = (atOnce = false) => {
-				if (!track || (flying && !atOnce)) return;
+				// A reader still dropping into a room can turn straight round; any other flight finishes first.
+				const dropping = w.trackIn && arriveGoal === 1;
+				if (!track || (flying && !atOnce && !dropping)) return;
 				const done = () => {
 					w.setTrack(null);
+					w.trackIn = false;
+					arrive = arriveGoal = 1;
+					afterArrive = null;
 					blend = blendGoal = 0;
 					tripT = null;
 					track = null;
@@ -797,6 +838,23 @@
 					comeBackTo?.focus({ preventScroll: true });
 				};
 				if (atOnce) return done();
+				if (w.trackIn) {
+					// Up out of the room, back through the roof, and then home the way the reader came in.
+					const out = () => {
+						w.trackIn = false;
+						tripPins.forEach((el) => (el.dataset.tone = 'sky'));
+						if (tripT === null && !reduced && !still) {
+							blendGoal = 0;
+							afterFlight = done;
+						} else done();
+					};
+					if (reduced || still) return swap(out, WARM);
+					flying = true;
+					tripEl?.classList.add('leaving');
+					arriveGoal = 0;
+					afterArrive = () => swap(out, WARM);
+					return;
+				}
 				if (tripT === null && !reduced && !still) {
 					// The world never left: the camera flies back to the story while the trip's words go.
 					flying = true;
@@ -1064,6 +1122,7 @@
 				<p class="upright">Scroll to watch. Turn your phone upright to read along.</p>
 				<p class="trips">
 					<span>Or take a side trip:</span>
+					{@render tripButton('harness')}
 					{@render tripButton('mcp')}
 				</p>
 			{/if}
@@ -1095,7 +1154,9 @@
 				{/each}
 			</ol>
 			<p class="trips">
-				<span>Side trip:</span>
+				<!-- Two of them fit one line only without a label; the opening page has already said what they are. -->
+				<span class="unseen">Side trips:</span>
+				{@render tripButton('harness')}
 				{@render tripButton('mcp')}
 			</p>
 		</article>
@@ -2320,13 +2381,18 @@
 		--veil: 214 234 251;
 		--veil-a: 0.93;
 	}
-	.pin:global([data-tone='sky']) {
+	.pin:global([data-tone='sky']),
+	.pin:global([data-tone='warm']) {
 		--ink: #101a30;
 		--ink-soft: #33415c;
 		--cobalt: #1f5fe0;
 		--amber: #ffb921;
 		--green: #12a956;
 		--rule: rgb(16 26 48 / 0.14);
+	}
+	/* Inside the harness: cream walls all round. */
+	.pin:global([data-tone='warm']) {
+		--veil: 251 241 221;
 	}
 	.pin:global([data-tone='inside']) {
 		--ink: #f3f7ff;
@@ -2793,16 +2859,24 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 6px 10px;
+		gap: 6px 8px;
 		margin: 16px 0 0;
 		font-size: 14px;
 		color: var(--ink-soft);
+	}
+	.trips .unseen {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip-path: inset(50%);
+		white-space: nowrap;
 	}
 	.trip-go {
 		display: inline-flex;
 		align-items: center;
 		gap: 7px;
-		padding: 7px 13px 7px 10px;
+		padding: 7px 12px 7px 9px;
 		border: 0;
 		border-radius: 999px;
 		background: rgb(31 95 224 / 0.12);
