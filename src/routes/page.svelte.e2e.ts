@@ -49,3 +49,17 @@ test('a drawer in the scene can be pulled out', async ({ page }) => {
 	await expect(page.locator('.steps li.on strong').first()).toHaveText('Tools');
 });
 
+test('the last chapter leaves nothing behind when the reader jumps back', async ({ page }) => {
+	test.setTimeout(120_000);
+	type Debug = { __journey: { seek(T: number): void }; __world: { finale: { group: { visible: boolean } } } };
+	await page.goto('/?still&debug');
+	await page.waitForFunction(() => '__world' in window, null, { timeout: 90_000 });
+	const shownAt = (T: number) =>
+		page.evaluate((T) => {
+			const { __journey, __world } = window as unknown as Debug;
+			__journey.seek(T);
+			return __world.finale.group.visible;
+		}, T);
+	expect(await shownAt(32.9)).toBe(true);
+	expect(await shownAt(3.5)).toBe(false);
+});

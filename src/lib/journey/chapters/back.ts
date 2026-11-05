@@ -6,7 +6,7 @@ import { archBlock, arcPoint, Card, curve, hazard, islandAt, machine, panel, sha
 import { font, Surface } from '../kit/print';
 import { FINALE_T } from './finale';
 import { gearShape } from '../props/brain';
-import { createSign } from '../kit/parts';
+import { createSign, fitting } from '../kit/parts';
 import { bell, bounceDown, clamp, hash, inOut, lerp, outBack, seg, smooth, spring } from '../kit/math';
 import { createCastShadow } from '../props/island';
 import { TEN_TURNS, CALLS, HARNESSES, type HarnessId } from '../content';
@@ -235,15 +235,19 @@ export class Back {
 	private rain: THREE.Mesh[] = [];
 	private topCard = new Card(2.7, 1.68, 300);
 	private gatePath = curve([
-		[0.4, 3.2, -1.76],
+		[0.4, 3.2, -1.75],
+		[0.4, 3.2, -2.07],
+		[0.38, 3.22, -2.4],
 		[-0.6, 3.3, -3.4],
 		[-8, 0, -7.6],
 		[-30, -7, -8.8],
 		[-50, -7.5, -9.4],
 		[-58, -8, -6.8],
 		[DOCK_X - 0.2, GY + 3.9, TRACK_Z - 2.6],
-		[DOCK_X, GY + 3, TRACK_Z - 0.5],
-		[DOCK_X, GY + DOCK_H + 0.02, TRACK_Z]
+		[DOCK_X, GY + DOCK_H + 0.85, TRACK_Z - 0.42],
+		[DOCK_X, GY + DOCK_H + 0.55, TRACK_Z],
+		[DOCK_X, GY + DOCK_H + 0.32, TRACK_Z],
+		[DOCK_X, GY + DOCK_H, TRACK_Z]
 	]);
 	private carrier = new THREE.Group();
 	private gates: Gate[] = [];
@@ -420,7 +424,7 @@ export class Back {
 		dockSign.position.set(DOCK_X, GY + DOCK_H - 0.26, TRACK_Z + 1.63);
 		g.add(dockSign);
 		const socket = new Batch();
-		socket.add(new THREE.CylinderGeometry(0.2, 0.26, 0.2, 24), m.steel, { p: [DOCK_X, GY + DOCK_H + 0.1, TRACK_Z] });
+		fitting(socket, [DOCK_X, GY + DOCK_H, TRACK_Z], [0, 1, 0], 0.09);
 		g.add(socket.build('dock-socket'));
 
 		const b = new Batch();
@@ -499,7 +503,7 @@ export class Back {
 		pane(D, H, [x1, WY + H / 2, 0], Math.PI / 2);
 		// Where the green pipe leaves: results go out of the sandbox through a fitting, not through the glass.
 		const gland = new Batch();
-		gland.add(ring(0.24, 0.1, 0.16, 28), m.steel, { p: [x1, -14.3, 3.45], r: [0, 0, Math.PI / 2] });
+		gland.add(ring(0.27, 0.11, 0.2, 28), m.steel, { p: [x1, -14.3, 3.45], r: [0, 0, Math.PI / 2] });
 		this.gland = gland.build('pipe-gland');
 		g.add(this.gland);
 		pane(D, H, [x0, WY + H / 2, 0], Math.PI / 2);
@@ -669,7 +673,10 @@ export class Back {
 
 		g.add(this.result.mesh);
 		const tray = new Batch();
-		tray.add(new THREE.CylinderGeometry(0.28, 0.32, 0.5, 24), m.steel, { p: [-13.9, WY + 0.34, 3.6], r: [0, 0, Math.PI / 2] });
+		// The hopper the result drops into, with a slot facing the card and the green pipe leaving from its far side.
+		tray.add(rbox(0.7, 0.62, 0.86, 0.09, 3), m.creamLight, { p: [-13.85, WY + 0.31, 3.6] });
+		tray.add(rbox(0.03, 0.26, 0.6, 0.01, 1), m.recess, { p: [-14.2, WY + 0.4, 3.6] });
+		fitting(tray, [-13.5, WY + 0.31, 3.6], [1, 0, 0], 0.115);
 		g.add(tray.build('return-tray'));
 		const trayFoot = new Batch();
 		trayFoot.add(rbox(2.7, 0.12, 0.7, 0.04, 2), m.steelSoft, { p: [0, 0.06, 0] });
@@ -1688,7 +1695,7 @@ export class Back {
 		this.result.mesh.visible = pr > 0 && T < 25.08;
 		if (this.result.mesh.visible) {
 			this.a.set(WX + 9.9, WY + 1.0, 1.4);
-			this.b.set(-15.55, WY + 0.95, 3.5);
+			this.b.set(-15.62, WY + 0.95, 3.5);
 			this.result.mesh.position.lerpVectors(this.a, this.b, inOut(toTray));
 			this.result.mesh.rotation.set(-0.28, 0, 0);
 			this.result.mesh.scale.setScalar(Math.max(0.001, outBack(pr, 1.6) * (1 - seg(T, 25, 25.06))));

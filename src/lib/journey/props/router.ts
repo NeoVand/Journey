@@ -4,14 +4,15 @@ import { rbox } from '../kit/geometry';
 import { machine, curve, tube, shadowOn } from '../kit/machines';
 import { color, Lamp, mats } from '../kit/materials';
 import { bell, outBack, seg, smooth } from '../kit/math';
-import { createSign } from '../kit/parts';
+import { createSign, fitting, leaving } from '../kit/parts';
 
 /** Between the pads on either side of it, with the belt running along the front. */
 export const ROUTER_X = 43.75;
 export const ROUTER_PAD = 7.7;
 
 /** Where the wire to the third machine ends: at the block table's foot, on the next pad along. */
-const THIRD: [number, number, number] = [6, 0.07, 1.2];
+const THIRD: [number, number, number] = [6, 0.1, 1.2];
+const WIRE = 0.035;
 
 /**
  * A model name doesn't point to one computer. There are many copies of it, and we've been inside one all along.
@@ -48,6 +49,7 @@ export class Router {
 		this.scanBar.visible = false;
 		this.group.add(this.scanBar);
 
+		const plugs: [number, number, number][] = [];
 		// Two other copies of the same model, behind the belt. Their chips are busy with other people.
 		[-1.9, 1.9].forEach((x, i) => {
 			const copy = machine({ w: 3, h: 1.9, d: 2.2, finish: 'cobalt', name: `Copy ${i + 1}`, signH: 0.26, vent: false });
@@ -69,11 +71,44 @@ export class Router {
 			no.visible = false;
 			this.group.add(no);
 			this.answers.push(no);
-			this.wires.push(curve([[0, 0.07, 4.75], [x * 0.7, 0.07, 3.4], [x, 0.07, 1.6], [x, 0.07, -0.3]]));
+			plugs.push([x, 0.25, -0.5]);
+			this.wires.push(
+				curve([
+					...leaving([x < 0 ? -0.2 : 0.2, 0.17, 3.69], [0, 0, -1], WIRE),
+					[x * 0.35, 0.04, 3.0],
+					[x * 0.85, 0.04, 2.2],
+					[x, 0.04, 1.2],
+					[x, 0.04, 0.35],
+					[x, 0.12, -0.02],
+					...leaving([x, 0.25, -0.5], [0, 0, 1], WIRE).reverse()
+				])
+			);
 		});
 
 		// The third wire crosses to the next pad, because the third copy is the one we've been standing in all along.
-		this.wires.push(curve([[0.05, 0.07, 4.75], [1.8, 0.07, 3.9], [3.86, 0.07, 3.2], [THIRD[0], THIRD[1], 2.4], THIRD]));
+		this.wires.push(
+			curve([
+				...leaving([0, 0.17, 3.69], [0, 0, -1], WIRE),
+				[1, 0.04, 3.1],
+				[3, 0.04, 2.6],
+				[3.9, 0.08, 2.32],
+				[4.5, 0.08, 2.05],
+				[5.2, 0.04, 1.4],
+				...leaving([THIRD[0] - 0.17, THIRD[1], THIRD[2]], [-1, 0, 0], WIRE).reverse()
+			])
+		);
+		// Where all three start: a box on the pad, fed from the arch that reads the row.
+		const box = new Batch();
+		box.add(rbox(0.82, 0.34, 0.42, 0.06, 3), m.cream, { p: [0, 0.17, 3.9] });
+		box.add(rbox(0.96, 0.05, 0.56, 0.02, 2), m.steelSoft, { p: [0, 0.025, 3.9] });
+		for (const x of [-0.2, 0, 0.2]) fitting(box, [x, 0.17, 3.69], [0, 0, -1], WIRE);
+		plugs.forEach((p) => fitting(box, p, [0, 0, 1], WIRE));
+		fitting(box, [0, 0.2, 4.11], [0, 0, 1], 0.06);
+		fitting(box, [0, 0.2, railZ - 1.16], [0, 0, -1], 0.06);
+		box.add(rbox(0.34, 0.2, 0.34, 0.05, 2), m.steelSoft, { p: THIRD });
+		fitting(box, [THIRD[0] - 0.17, THIRD[1], THIRD[2]], [-1, 0, 0], WIRE, { flange: 1.7 });
+		this.group.add(box.build('router-box'));
+		shadowOn(this.group, 0, 0, 3.9, 1.1, 0.7, 0.34);
 		const found = createSign('Copy 3 still has them', 0.3, color.ink, m.hbm);
 		found.position.set(THIRD[0] + 0.1, 0.42, 2.1);
 		found.rotation.x = -0.5;
@@ -81,13 +116,14 @@ export class Router {
 		this.group.add(found);
 		this.answers.push(found);
 		const wire = (m.rubber as THREE.Material).clone() as THREE.MeshStandardMaterial;
-		this.wires.forEach((w) => this.group.add(tube(w, 0.035, wire, 60)));
+		this.wires.forEach((w) => this.group.add(tube(w, WIRE, wire, 140)));
+		this.group.add(tube(curve([[0, 0.2, 4.11], [0, 0.2, 4.4], [0, 0.2, railZ - 1.4], [0, 0.2, railZ - 1.16]]), 0.06, wire, 12));
 
 		this.bead = new THREE.Mesh(new THREE.SphereGeometry(0.11, 16, 12), new THREE.MeshBasicMaterial({ color: '#9fe2ff' }));
 		this.bead.visible = false;
 		this.group.add(this.bead);
 		this.lampThird = new Lamp(rbox(0.16, 0.16, 0.04, 0.05, 3), color.green, 0.1);
-		this.lampThird.mesh.position.set(THIRD[0], 0.12, THIRD[2] - 0.02);
+		this.lampThird.mesh.position.set(THIRD[0], 0.1, THIRD[2] + 0.18);
 		this.group.add(this.lampThird.mesh);
 	}
 

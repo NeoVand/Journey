@@ -3,6 +3,7 @@ import { hitBox } from '../poke';
 import { Batch } from '../kit/batch';
 import { extrude, rbox, roundedRect } from '../kit/geometry';
 import { mats } from '../kit/materials';
+import { fitting } from '../kit/parts';
 import { font, Surface } from '../kit/print';
 import { smooth } from '../kit/math';
 import { PROMPT, type HarnessSpec } from '../content';
@@ -12,6 +13,8 @@ const D = 2.2;
 const BASE_H = 0.12;
 const LID_H = 2.12;
 const LID_T = 0.07;
+/** Where its cable plugs in, on the side of the base, in the laptop's own space. */
+export const LAPTOP_PORT: [number, number, number] = [W / 2, 0.06, -0.17];
 
 type Key = { label: string; w: number; code: string };
 
@@ -56,6 +59,7 @@ export class Laptop {
 		for (const x of [-1, 1]) {
 			b.add(rbox(0.42, 0.1, 0.1, 0.04, 3), m.rubber, { p: [x * 0.96, BASE_H + 0.012, -D / 2 + 0.03] });
 		}
+		fitting(b, LAPTOP_PORT, [1, 0, 0], 0.04, { flange: 1.4 });
 		this.group.add(b.build('laptop-base'));
 		this.group.add(this.buildKeys(wellW - 0.06, wellD - 0.06, wellZ));
 

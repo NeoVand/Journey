@@ -42,6 +42,36 @@ export function plinth(b: Batch, w: number, d: number, h = 0.14) {
 	b.add(rbox(w - 0.16, 0.02, d - 0.16, 0.01, 2), m.recess, { p: [0, h + 0.005, 0] });
 }
 
+type V3 = [number, number, number];
+
+/** How far a fitting stands proud of its surface. A low one has no nose, for where a cable has to turn straight after it. */
+const fittingLength = (r: number, low = false) => r * (low ? 2 : 3.6);
+
+/**
+ * Where a cable meets something solid: a flange on the surface, a barrel, and a nose that tapers onto the cable.
+ * `at` is on the surface, `out` points away from it, and r is the cable's radius. Every end of every cable gets one of these.
+ */
+export function fitting(b: Batch, at: V3, out: V3, r: number, { low = false, flange = 2 }: { low?: boolean; flange?: number } = {}) {
+	const m = mats();
+	const n = new THREE.Vector3(...out).normalize();
+	const e = new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), n));
+	const turn: V3 = [e.x, e.y, e.z];
+	const along = (d: number): V3 => [at[0] + n.x * d, at[1] + n.y * d, at[2] + n.z * d];
+	const plate = r * 0.5;
+	const barrel = r * 1.5;
+	const nose = fittingLength(r, low) - plate - barrel;
+	b.add(new THREE.CylinderGeometry(r * flange, r * (flange + 0.15), plate, 28), m.steelSoft, { p: along(plate / 2), r: turn });
+	b.add(new THREE.CylinderGeometry(r * 1.62, r * 1.72, barrel, 24), m.steel, { p: along(plate + barrel / 2), r: turn });
+	if (!low) b.add(new THREE.CylinderGeometry(r * 1.12, r * 1.62, nose, 24), m.steel, { p: along(plate + barrel + nose / 2), r: turn });
+}
+
+/** The points a cable needs to leave a fitting square to it, before it's free to bend. Reverse them to arrive at one. */
+export function leaving(at: V3, out: V3, r: number, low = false): V3[] {
+	const n = new THREE.Vector3(...out).normalize();
+	const L = fittingLength(r, low);
+	return [at, [at[0] + n.x * L, at[1] + n.y * L, at[2] + n.z * L], [at[0] + n.x * L * 1.7, at[1] + n.y * L * 1.7, at[2] + n.z * L * 1.7]];
+}
+
 /** A printed plate: the plate is sized from its text, so every sign has the same margins. */
 export function createSign(text: string, height = 0.2, ink = '#111a2e', material?: THREE.Material) {
 	const group = new THREE.Group();

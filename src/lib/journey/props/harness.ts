@@ -4,7 +4,7 @@ import { chamferRect, extrude, rbox, roundedRect } from '../kit/geometry';
 import { Lamp, color, mats } from '../kit/materials';
 import { drawIcon, Label, Surface, font, roundRectPath } from '../kit/print';
 import { Card } from '../kit/machines';
-import { plinth, screw, ventX } from '../kit/parts';
+import { fitting, plinth, screw, ventX } from '../kit/parts';
 import { hitBox } from '../poke';
 
 export const HW = 2.7;
@@ -258,14 +258,12 @@ export class Harness {
 			for (const y of [0.42, 3.1]) screw(b, sx * (HW / 2 - 0.26), y, -HD / 2 - 0.022, 'z');
 		}
 
-		// A collar wherever a line enters, so every line ends at something.
-		const collar = (r: number, x: number, y: number, z: number, axis: 'x' | 'z') =>
-			b.add(new THREE.CylinderGeometry(r, r, 0.09, 24), m.steel, { p: [x, y, z], r: axis === 'x' ? [0, 0, Math.PI / 2] : [Math.PI / 2, 0, 0] });
-		collar(0.14, HW / 2 + 0.01, PORT_Y, PORT_OUT_Z, 'x');
-		collar(0.095, HW / 2 + 0.01, PORT_Y, PORT_MCP_Z, 'x');
-		collar(0.09, -HW / 2 - 0.01, PORT_Y, PORT_KEYS_Z, 'x');
-		collar(0.2, PORT_BACK_X, PORT_BACK_Y, -HD / 2 - 0.03, 'z');
-		collar(0.14, PORT_BACK_X, 3.2, -HD / 2 - 0.03, 'z');
+		// A fitting wherever a line enters, so every line ends at something.
+		fitting(b, [HW / 2, PORT_Y, PORT_OUT_Z], [1, 0, 0], 0.078);
+		fitting(b, [HW / 2, PORT_Y, PORT_MCP_Z], [1, 0, 0], 0.042);
+		fitting(b, [-HW / 2, PORT_Y, PORT_KEYS_Z], [-1, 0, 0], 0.04);
+		fitting(b, [PORT_BACK_X, PORT_BACK_Y, -HD / 2], [0, 0, -1], 0.115);
+		fitting(b, [PORT_BACK_X, 3.2, -HD / 2], [0, 0, -1], 0.09);
 
 		// Roof: hatch plate and handle.
 		const roofY = Y0 + HH;

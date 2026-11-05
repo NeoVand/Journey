@@ -136,19 +136,19 @@ export class Finale {
 
 		const hidden = true;
 		const { lineZ: z, beltY } = r;
+		const end = (path: THREE.Curve<THREE.Vector3>, u: number) => path.getPointAt(u).toArray() as V3;
 		this.legs = [
 			{ path: curve([[-3.3, 0.85, 1], [-2.4, 1.3, 0.5], [-1.45, 0.75, -0.2], [-1.3, 0.05, -0.26]]), time: 1, ride: 0.2, step: 0 },
 			{ path: new Part(r.cable, 0.18, 1), time: 0.7, ride: 0.2, step: 0 },
 			{ path: line([0, 2, -0.65], [1.8, 2, -0.65]), time: 1.1, ride: 0, step: 1, hidden },
-			{ path: r.out, time: 1, ride: 0.2, step: 2 },
-			{ path: line([4.5, 0.12, 0.72], [7.2, 0.12, z - 0.14]), time: 0.5, ride: 0.2, step: 2 },
-			{ path: line([7.35, 0.05, z - 0.12], [7.35, -0.7, z - 0.12]), time: 0.06, ride: 0, step: 2, hidden },
+			{ path: r.out, time: 1.5, ride: 0.2, step: 2 },
+			{ path: line(end(r.out, 1), end(r.under, 0)), time: 0.06, ride: 0, step: 2, hidden },
 			{ path: r.under, time: 1, ride: 0.2, step: 2 },
-			{ path: line([9.25, -7.46, 0.66], [9.7, -6, z]), time: 0.1, ride: 0, step: 2, hidden },
+			{ path: line(end(r.under, 1), [9.7, -6, z]), time: 0.1, ride: 0, step: 2, hidden },
 			{ path: line([9.7, -6, z], [14.3, -6, z]), time: 0.9, ride: 0, step: 2 },
-			{ path: line([14.3, -6, z], [r.gatewayX, -7.7, z - 1.1]), time: 1, ride: 0, step: 3, hidden },
+			{ path: line([14.3, -6, z], end(r.down, 0)), time: 1, ride: 0, step: 3, hidden },
 			{ path: r.down, time: 1.6, ride: 0.2, step: 3 },
-			{ path: line([r.templateX, -16.75, -0.1], [r.slotX, beltY, z]), time: 0.4, ride: 0, step: 3, hidden },
+			{ path: line(end(r.down, 1), [r.slotX, beltY, z]), time: 0.4, ride: 0, step: 3, hidden },
 			{ path: new Part(r.flow, 0, r.flowLip), time: 2.2, ride: 0.24, step: 3 },
 			{ path: line([fx - 4, fy + 8, fz], [fx - 1, fy, fz]), time: 1.9, ride: 0, step: 4, hidden },
 			{ path: home, time: 2.5, ride: 0, step: 5 },

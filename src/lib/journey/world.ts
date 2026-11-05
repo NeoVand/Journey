@@ -6,8 +6,10 @@ import { contactShadow, Label, loadFonts } from './kit/print';
 import { extrude, frameAt, rbox, roundedRect, sweep } from './kit/geometry';
 import { mats, color } from './kit/materials';
 import { Batch } from './kit/batch';
+import { fitting, leaving } from './kit/parts';
+import { curve } from './kit/machines';
 import { createCastShadow, createIsland } from './props/island';
-import { Laptop } from './props/laptop';
+import { LAPTOP_PORT, Laptop } from './props/laptop';
 import { McpServer } from './props/mcp';
 import { Brain, BRAIN_FOOT, BRAIN_SEAT } from './props/brain';
 import { SkillShelf } from './props/skills';
@@ -24,6 +26,8 @@ import { Back, BACK_SHOTS } from './chapters/back';
 import { Finale, FINALE_T } from './chapters/finale';
 
 export const EXIT_T = 19;
+
+type V3 = [number, number, number];
 
 /* ---------- layout: one world descending through the sky, every position derived from these ---------- */
 const LINE_Z = 0.9;
@@ -563,69 +567,82 @@ export class World {
 	private buildPipes() {
 		const m = mats();
 
-		// Harness to the easel: warm, because this is the outbound direction.
-		const out = new THREE.CatmullRomCurve3(
-			[
-				new THREE.Vector3(HARNESS_POS.x + HW / 2, PORT_Y, HARNESS_POS.z + PORT_OUT_Z),
-				new THREE.Vector3(HARNESS_POS.x + HW / 2 + 0.34, PORT_Y - 0.02, HARNESS_POS.z + PORT_OUT_Z + 0.02),
-				new THREE.Vector3(3.3, 0.14, 0.04),
-				new THREE.Vector3(3.8, 0.1, 0.5),
-				new THREE.Vector3(4.5, 0.12, 0.72)
-			],
-			false,
-			'centripetal'
-		);
+		// The outbound line, warm. One unbroken run past the easel from the harness to where it drains through the island.
+		const LINE_R = 0.078;
+		const drain: V3 = [7.46, 0, 1.08];
+		const out = curve([
+			...leaving([HARNESS_POS.x + HW / 2, PORT_Y, HARNESS_POS.z + PORT_OUT_Z], [1, 0, 0], LINE_R),
+			[3.2, 0.22, 0.06],
+			[3.62, 0.085, 0.56],
+			[4.2, 0.085, 1.2],
+			[4.9, 0.085, 1.46],
+			[6.7, 0.085, 1.46],
+			[7.12, 0.13, 1.36],
+			[7.36, 0.3, 1.18],
+			...leaving(drain, [0, 1, 0], LINE_R, true).reverse()
+		]);
 		this.routeOut = out;
-		const outTube = new THREE.Mesh(new THREE.TubeGeometry(out, 48, 0.078, 16), m.orangeGlow);
+		const outTube = new THREE.Mesh(new THREE.TubeGeometry(out, 120, LINE_R, 16), m.orangeGlow);
 		outTube.castShadow = true;
 		this.root.add(outTube);
-		// Easel: the line drains through a port in the island, and carries on underneath.
-		const port = new Batch();
-		port.add(new THREE.CylinderGeometry(0.2, 0.24, 0.05, 28), m.steel, { p: [7.35, 0.02, LINE_Z - 0.12] });
-		port.add(new THREE.CylinderGeometry(0.11, 0.11, 0.02, 20), m.recess, { p: [7.35, 0.05, LINE_Z - 0.12] });
-		this.root.add(port.build('port'));
-		const tail = new THREE.CatmullRomCurve3(
-			[new THREE.Vector3(7.0, 0.12, LINE_Z - 0.2), new THREE.Vector3(7.22, 0.11, LINE_Z - 0.16), new THREE.Vector3(7.35, 0.05, LINE_Z - 0.12)],
-			false,
-			'centripetal'
-		);
-		this.root.add(new THREE.Mesh(new THREE.TubeGeometry(tail, 16, 0.078, 16), m.orangeGlow));
-		const under = new THREE.CatmullRomCurve3(
-			[
-				new THREE.Vector3(7.35, -0.7, LINE_Z - 0.12),
-				new THREE.Vector3(7.6, -1.8, 0.35),
-				new THREE.Vector3(7.9, -3.4, -0.3),
-				new THREE.Vector3(8.15, -5.4, -0.45),
-				new THREE.Vector3(8.2, -6.9, -0.25),
-				new THREE.Vector3(8.5, -7.4, 0.25),
-				new THREE.Vector3(9.25, -7.46, 0.66)
-			],
-			false,
-			'centripetal'
-		);
+		const fittings = (parts: (b: Batch) => void) => {
+			const b = new Batch();
+			parts(b);
+			this.root.add(b.build('fittings'));
+		};
+		// Out through the bottom of the first island, and into the foot of the tunnel.
+		const underA: V3 = [drain[0], -0.62, drain[2]];
+		const standFace: V3 = [TUNNEL_X + 0.1 - 0.25, ISLET_Y + 0.26, LINE_Z];
+		fittings((b) => {
+			fitting(b, drain, [0, 1, 0], LINE_R, { low: true });
+			fitting(b, underA, [0, -1, 0], LINE_R);
+		});
+		fittings((b) => fitting(b, standFace, [-1, 0, 0], LINE_R, { flange: 1.9 }));
+		const under = curve([
+			...leaving(underA, [0, -1, 0], LINE_R),
+			[7.7, -1.8, 0.6],
+			[7.9, -3.4, -0.3],
+			[8.15, -5.4, -0.45],
+			[8.2, -6.8, -0.2],
+			[8.36, -7.24, 0.34],
+			[8.8, -7.34, 0.82],
+			...leaving(standFace, [-1, 0, 0], LINE_R).reverse()
+		]);
 		this.routeUnder = under;
-		const underTube = new THREE.Mesh(new THREE.TubeGeometry(under, 90, 0.078, 16), m.orangeGlow);
+		const underTube = new THREE.Mesh(new THREE.TubeGeometry(under, 90, LINE_R, 16), m.orangeGlow);
 		underTube.castShadow = true;
 		this.root.add(underTube);
 
-		// Gateway to the chat template, leaving from the rear and running along the back of the island.
-		const down = new THREE.CatmullRomCurve3(
-			[
-				new THREE.Vector3(GATEWAY_X, ISLAND_B_Y + 0.7, LINE_Z - 1.1),
-				new THREE.Vector3(GATEWAY_X - 0.1, ISLAND_B_Y + 0.42, LINE_Z - 2.1),
-				new THREE.Vector3(15.2, -8.9, -3.5),
-				new THREE.Vector3(14.0, -12, -3.7),
-				new THREE.Vector3(12.4, -15.4, -3.2),
-				new THREE.Vector3(10.2, -16.86, -2.3),
-				new THREE.Vector3(5, -16.92, -2.2),
-				new THREE.Vector3(-1.2, -16.92, -2.1),
-				new THREE.Vector3(-3.0, -16.92, -1.5),
-				new THREE.Vector3(TEMPLATE_X, -16.75, -0.1)
-			],
-			false,
-			'centripetal'
-		);
-		const downTube = new THREE.Mesh(new THREE.TubeGeometry(down, 220, 0.078, 16), m.orangeGlow);
+		// Gateway to the chat template: out of the rear wall, through the island, and along the back of the next one.
+		const gateRear: V3 = [GATEWAY_X, ISLAND_B_Y + 0.7, LINE_Z - 1.1];
+		const drainB: V3 = [GATEWAY_X, ISLAND_B_Y, LINE_Z - 2.35];
+		const underB: V3 = [GATEWAY_X, ISLAND_B_Y - 1.01, LINE_Z - 2.35];
+		const templateRear: V3 = [TEMPLATE_X, ISLAND_C_Y + 0.45, LINE_Z - 0.95];
+		fittings((b) => {
+			fitting(b, gateRear, [0, 0, -1], LINE_R);
+			fitting(b, drainB, [0, 1, 0], LINE_R, { low: true });
+			fitting(b, underB, [0, -1, 0], LINE_R);
+		});
+		fittings((b) => fitting(b, templateRear, [0, 0, -1], LINE_R));
+		const down = curve([
+			...leaving(gateRear, [0, 0, -1], LINE_R),
+			[GATEWAY_X, ISLAND_B_Y + 0.56, LINE_Z - 1.94],
+			[GATEWAY_X, ISLAND_B_Y + 0.42, LINE_Z - 2.28],
+			...leaving(drainB, [0, 1, 0], LINE_R, true).reverse(),
+			...leaving(underB, [0, -1, 0], LINE_R),
+			[15.7, -10.5, -2.3],
+			[14.0, -12.4, -3.6],
+			[12.4, -15.4, -3.2],
+			[11.2, -16.42, -2.72],
+			[10, -16.88, -2.38],
+			[8.4, -16.92, -2.28],
+			[5, -16.92, -2.2],
+			[-1.2, -16.92, -2.1],
+			[-2.7, -16.92, -1.75],
+			[-3.3, -16.8, -1.12],
+			...leaving(templateRear, [0, 0, -1], LINE_R).reverse()
+		]);
+		const downTube = new THREE.Mesh(new THREE.TubeGeometry(down, 260, LINE_R, 16), m.orangeGlow);
 		downTube.castShadow = true;
 		this.root.add(downTube);
 		this.downCurve = down;
@@ -641,21 +658,18 @@ export class World {
 		});
 
 		// The MCP server's lead, along the back of the island to the harness flank.
-		const lead = new THREE.CatmullRomCurve3(
-			[
-				new THREE.Vector3(6.59, 0.9, -0.94),
-				new THREE.Vector3(6.3, 0.84, -1.04),
-				new THREE.Vector3(5.8, 0.1, -1.7),
-				new THREE.Vector3(4.6, 0.045, -2.2),
-				new THREE.Vector3(3.3, 0.045, -2.25),
-				new THREE.Vector3(3.05, 0.08, -1.82),
-				new THREE.Vector3(2.72, 0.3, -1.3),
-				new THREE.Vector3(HARNESS_POS.x + HW / 2, PORT_Y, HARNESS_POS.z + PORT_MCP_Z)
-			],
-			false,
-			'centripetal'
-		);
-		const leadTube = new THREE.Mesh(new THREE.TubeGeometry(lead, 80, 0.042, 10), m.cobalt);
+		const lead = curve([
+			...leaving([6.6, 0.9, -0.94], [-1, 0, 0], 0.042),
+			[6.05, 0.62, -1.12],
+			[5.7, 0.08, -1.7],
+			[4.6, 0.045, -2.2],
+			[3.3, 0.045, -2.25],
+			[3.12, 0.05, -1.9],
+			[2.98, 0.16, -1.45],
+			[2.84, 0.36, -1.24],
+			...leaving([HARNESS_POS.x + HW / 2, PORT_Y, HARNESS_POS.z + PORT_MCP_Z], [1, 0, 0], 0.042).reverse()
+		]);
+		const leadTube = new THREE.Mesh(new THREE.TubeGeometry(lead, 100, 0.042, 10), m.cobalt);
 		leadTube.castShadow = true;
 		this.root.add(leadTube);
 
@@ -682,19 +696,19 @@ export class World {
 		this.root.add(tread);
 
 		// Laptop to harness: a plain cable, the keystrokes are not special yet.
-		const cable = new THREE.CatmullRomCurve3(
-			[
-				new THREE.Vector3(-1.7, 0.055, -0.1),
-				new THREE.Vector3(-1.2, 0.04, -0.34),
-				new THREE.Vector3(-0.9, 0.04, -0.62),
-				new THREE.Vector3(-0.52, 0.2, -0.7),
-				new THREE.Vector3(HARNESS_POS.x - HW / 2, PORT_Y, HARNESS_POS.z + PORT_KEYS_Z)
-			],
-			false,
-			'centripetal'
-		);
+		const laptopTurn = this.laptop.group.rotation;
+		const plug = new THREE.Vector3(...LAPTOP_PORT).applyEuler(laptopTurn).add(this.laptop.group.position);
+		const away = new THREE.Vector3(1, 0, 0).applyEuler(laptopTurn);
+		const cable = curve([
+			...leaving([plug.x, plug.y, plug.z], [away.x, away.y, away.z], 0.04),
+			[-1.2, 0.04, -0.34],
+			[-0.9, 0.04, -0.62],
+			[-0.72, 0.14, -0.69],
+			[-0.57, 0.37, -0.7],
+			...leaving([HARNESS_POS.x - HW / 2, PORT_Y, HARNESS_POS.z + PORT_KEYS_Z], [-1, 0, 0], 0.04).reverse()
+		]);
 		this.routeCable = cable;
-		const cm = new THREE.Mesh(new THREE.TubeGeometry(cable, 32, 0.04, 10), m.rubber);
+		const cm = new THREE.Mesh(new THREE.TubeGeometry(cable, 60, 0.04, 10), m.rubber);
 		cm.castShadow = true;
 		this.root.add(cm);
 
@@ -1036,6 +1050,9 @@ export class World {
 			this.lower.position.y = whole ? -90 * (1 - outBack(seg(T, 32.03, 32.2), 1.08)) : 0;
 			this.back.group.visible = T >= EXIT_T;
 			if (T < DIVE_T) {
+				// However the reader got back here, the last chapter's things have gone: a cut from the end skips everything between.
+				this.finale.update(T);
+				this.laptop.finish(0);
 				this.updateLaptop(T, time, intro);
 				this.updateHarnessAndRequest(T, time);
 				this.updateTunnel(T, time, dt);
