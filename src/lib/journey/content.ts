@@ -116,6 +116,8 @@ export const CALLS: Record<HarnessId, { search: string; alongside?: string; edit
 
 /** Plain definitions for the words a reader may not know. Keys are lowercase; copy marks them with [[term]]. */
 export const GLOSSARY: Record<string, string> = {
+	turn: 'One round trip: the harness sends everything, the model replies, and the harness acts on the reply. A real fix takes many.',
+	'prefix cache': 'The part of the KV cache a request can reuse, because it starts with exactly the same bytes as an earlier one.',
 	token: 'A small piece of text, usually a word or part of a word. “scheduler” might be one token, “race condition” two.',
 	tui: 'Terminal user interface: a full app drawn inside your terminal window.',
 	mcp: 'Model Context Protocol: a standard way for outside programs to offer extra tools to an agent.',

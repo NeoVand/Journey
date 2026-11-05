@@ -58,7 +58,7 @@
 			copilot: 'GitHub’s service sits in between, so the extension can’t see hits or misses. Any caching at GitHub is undisclosed.'
 		}[harness],
 		thinking: {
-			claude: 'Thinking blocks carry a signature, so they can come back unmodified on the next turn.',
+			claude: 'Thinking blocks carry a signature and go back on the next turn, so the model keeps its train of thought.',
 			codex: 'Reasoning can travel as encrypted items, which the client can’t read but must send back.',
 			copilot: 'It depends on the model you picked. The extension shows either kind as a section you can fold away.'
 		}[harness],
@@ -98,7 +98,7 @@
 			copilot: 'Commands run in the integrated terminal where you can see them, which doubles as a place to step in.'
 		}[harness],
 		loop: {
-			claude: 'Resends everything. The API is [[stateless]], and the prefix cache makes that cheap.',
+			claude: 'Resends everything. The API is [[stateless]], and the [[prefix cache]] makes that cheap.',
 			codex: 'Also resends, with reasoning sealed as encrypted items. The API can keep state on its side instead.',
 			copilot: 'Rebuilds the prompt from its parts every turn, trimming low-priority ones when the budget is tight.'
 		}[harness],
@@ -108,7 +108,7 @@
 			copilot: 'A background summarizer watches the budget, with a simpler fallback if the full mode fails.'
 		}[harness],
 		door: {
-			claude: 'One front door: Anthropic’s own, or Bedrock, Vertex or Foundry for the same models.',
+			claude: 'Just one door to pass: Anthropic’s own, or Bedrock, Vertex or Foundry serving the same models.',
 			codex: 'One front door. With a ChatGPT login the request goes to ChatGPT’s backend rather than the public API host.',
 			copilot: 'Two front doors. GitHub checks your plan, policies and content exclusions, then forwards to the vendor, whose own door runs this list again.'
 		}[harness]
@@ -117,7 +117,7 @@
 	const DRAWERS = $derived([
 		{ name: 'Instructions', text: `Who the agent is, plus your project’s rules from ${spec.ruleFile}.` },
 		{ name: 'Environment', text: 'Where you are: folder, git branch, operating system, date, shell.' },
-		{ name: 'Tools', text: 'What it may ask to do, built in or from [[MCP]] servers. Each has a [[JSON Schema]] and costs tokens every turn. [[Skills]] wait on their shelf until needed.' },
+		{ name: 'Tools', text: 'What it may ask to do, built in or from [[MCP]] servers. Each has a [[JSON Schema]] and costs tokens every [[turn]]. [[Skills]] wait on their shelf until needed.' },
 		{ name: 'Conversation', text: 'Your prompt. On turn one, nothing else.' }
 	]);
 
@@ -747,7 +747,7 @@
 		<article class="pin left" data-out="0.62">
 			<h2>It starts as a sentence</h2>
 			<p>{@render rich(`You type one request. For now it’s just ${surfaceWords}. The model hasn’t seen a thing, and nothing here is a [[token]] yet.`)}</p>
-			<p>Your request will change form twelve times on this trip. The corner up there keeps count.</p>
+			<p>Your request will take twelve forms on this trip. The corner up there keeps count.</p>
 			<p class="note">{@render agent()} {@render rich(callouts.prompt)}</p>
 		</article>
 	</section>
@@ -785,7 +785,7 @@
 	<section data-beat class="beat" style:--h="380vh">
 		<article class="pin left" data-out="0.66">
 			<h2>Across the wire</h2>
-			<p>{@render rich('The harness opens a secure connection, and [[TLS]] scrambles every byte, so nobody along the way can read your code.')}</p>
+			<p>{@render rich('The harness opens a secure connection, and [[TLS]] scrambles every byte, so nobody along the way can read it.')}</p>
 			<p>It also asks for the answer as a stream. That’s why you see the agent typing instead of waiting for one big reply.</p>
 			<p class="note">{@render agent()} {@render rich(callouts.wire)}</p>
 		</article>
@@ -833,7 +833,7 @@
 				Your sentence is only the tail. The instructions and tool descriptions count too, so turn one comes to about 21,000 tokens.
 				<small>Illustrative.</small>
 			</p>
-			<p>{@render rich('On the way out, small [[classifiers]] check them against the rules, and a clear violation stops here. The rest head for a machine already serving hundreds of other people.')}</p>
+			<p>{@render rich('On the way out, small [[classifiers]] check them against the rules, and a clear violation stops here. Everything else heads for a machine already serving hundreds of other people.')}</p>
 			<p class="next">{@render rich('Next stop: inside the [[inference cluster]].')}</p>
 		</article>
 	</section>
@@ -842,7 +842,7 @@
 		<article class="pin left" data-out="0.68">
 			<h2>One model, many chips</h2>
 			<p>{@render rich('A frontier model is hundreds of billions to a few trillion learned numbers, its [[weights]]. Even compressed they won’t fit in one chip’s memory, so they’re split across many.')}</p>
-			<p>{@render rich('Chips in one server talk over [[NVLink]], at terabytes per second. Servers talk to each other over [[InfiniBand or RoCE]], at hundreds of gigabits.')}</p>
+			<p>{@render rich('Chips in one server talk over [[NVLink]], at terabytes per second. Servers talk to each other more slowly, over [[InfiniBand or RoCE]], at hundreds of gigabits.')}</p>
 			<p class="note">
 				<b>From here on, all three agents look the same.</b>
 				{@render rich('Providers don’t publish these systems, so this is the public blueprint, drawn from open engines like [[vLLM and SGLang]].')}
@@ -854,11 +854,11 @@
 		<article class="pin left" data-out="0.86">
 			<h2>Its working memory</h2>
 			<p>
-				To predict the next token, every layer looks back at every earlier token. For each one it needs two lists of numbers, a key and a
+				To predict the next token, the model looks back at every earlier token. For each one it needs two lists of numbers, a key and a
 				value. Working them out again at every step would be absurd, so they’re computed once and kept. That store is the KV cache.
 			</p>
 			<p>
-				At about 330 KB per token, your 21,000 tokens take about 7 GB of chip memory, the scarcest thing in all of inference.
+				At about 330 KB per token, your 21,000 tokens take about 7 GB of chip memory, the scarcest thing in the building.
 				<small>Illustrative: 80 layers, 8 KV heads, 128 dimensions, 2 bytes per number.</small>
 			</p>
 		</article>
@@ -877,7 +877,7 @@
 		<article class="pin right" data-out="0.8">
 			<h2>Turn two starts ahead</h2>
 			<p>
-				{@render rich('Turn two starts with exactly the same bytes as turn one, plus a little more. A [[router]] reads the start and sends it to the copy of the model most likely to still have those blocks, so only the new part runs. Remember the careful order on that JSON page? This is why.')}
+				{@render rich('Jump ahead a moment. When the agent comes back for its second [[turn]], the request starts with exactly the same bytes, plus a little more. A [[router]] reads the start and sends it to the copy of the model most likely to still have those blocks, so only the new part runs. Remember the careful order on that JSON page? This is why.')}
 			</p>
 			<p>It saves computing. It isn’t the model remembering you. Unused blocks slide down to slower memory and get thrown out, usually within minutes, so coming back after an hour costs full price once.</p>
 			<p class="note short-note">{@render agent()} {@render rich(callouts.cache)}</p>
@@ -897,7 +897,7 @@
 		<article class="pin right" data-out="0.72">
 			<h2>Reading and writing</h2>
 			<p>{@render rich('Reading your prompt is called [[prefill]]: thousands of tokens at once, limited by compute. Writing the answer is called [[decode]]: one token per step, limited by memory, because every step reads all the weights.')}</p>
-			<p>{@render rich('On one chip, a big new prompt would make everyone’s typing stutter. So many clusters split the two jobs into pools, and ship the KV cache across over [[RDMA]]. It’s a choice, not a law. For some work, one shared pool still wins.')}</p>
+			<p>{@render rich('On one chip, even in slices, a big new prompt makes everyone’s typing stutter. So many clusters split the two jobs into pools, and ship the KV cache across over [[RDMA]]. It’s a choice, not a law. For some work, one shared pool still wins.')}</p>
 			<p class="next">Your prompt is in the first one. What’s actually running in there?</p>
 		</article>
 	</section>
@@ -960,7 +960,7 @@
 			<h2>Then each token, by itself</h2>
 			<p>Attention moves information between tokens. Next comes a small fully connected network, with every input wired to every unit. It works on one token at a time, and every token gets the same network.</p>
 			<p>
-				<small>Around both steps, the layer normalizes its numbers to keep them in range and adds the old vector back, so nothing is lost. In many large models, a tiny router here picks a few experts out of hundreds.</small>
+				<small>Around both steps, the layer normalizes its numbers to keep them in range and adds the old vector back, so nothing is lost. In many large models this network comes in hundreds of versions, called experts, and each token gets just a few.</small>
 			</p>
 			<Blueprint compact stage={part} />
 		</article>
@@ -1021,7 +1021,7 @@
 	<section data-beat class="beat" style:--h="600vh">
 		<article class="pin left tight" data-in="0.075" data-out="0.86">
 			<h2>One at a time</h2>
-			<p>Now the loop. The new token climbs the same stack, alone. On each layer it looks back at everything through the KV cache, and adds its own key and value to the row of lights. One step takes 10 to 40 milliseconds. That’s the typing speed you see.</p>
+			<p>Now it repeats. The new token climbs the same stack, alone. On each layer it looks back at everything through the KV cache, and adds its own key and value to the row of lights. One step takes 10 to 40 milliseconds. That’s the typing speed you see.</p>
 			<p>In 2026 the model usually thinks first. Thinking tokens are ordinary tokens, billed as output.</p>
 			<p class="note">{@render agent()} {@render rich(callouts.thinking)}</p>
 			<p><small>{@render rich('[[Speculative decoding]] can check several guessed tokens in one pass, often 2 to 3 times faster on code, with the same answers.')}</small></p>
@@ -1074,7 +1074,7 @@
 	<section data-beat class="beat" style:--h="520vh">
 		<article class="pin right" data-out="0.88">
 			<h2>When the page lies</h2>
-			<p>{@render rich('Our agent fetched the library’s docs. Now that page sits in the same context as your instructions, and it can say anything. This is [[prompt injection]], the main unsolved security problem of agents.')}</p>
+			<p>{@render rich('Our agent also fetched a library’s docs. Now that page sits in the same context as your instructions, and it can say anything. This is [[prompt injection]], the main unsolved security problem of agents.')}</p>
 			<p>So the defenses come in layers. The strongest doesn’t have to be convinced of anything: an operating-system fence that every child process inherits.</p>
 			<p class="note">{@render agent()} {@render rich(callouts.sandbox)}</p>
 		</article>
@@ -1129,7 +1129,7 @@
 		<article class="pin right" data-out="0.86">
 			<h2>Seven things called memory</h2>
 			<p>A lot of confusion comes from using one word for seven different things. Each has its own owner and its own lifetime.</p>
-			<p>The last one answers a common question: using an agent doesn’t train the model. When your session ends, the model hasn’t learned a thing from you.</p>
+			<p>The last one answers a common question: using an agent doesn’t change the model. Learning happens only in a separate training process, so when your session ends, the model hasn’t learned a thing from you.</p>
 		</article>
 	</section>
 
@@ -1195,7 +1195,7 @@
 		<article class="pin left" data-in="0.44" data-out="0.93">
 			<h2>Different bodies, one kind of mind</h2>
 			<p>The model is a function from tokens to a probability for the next token. Everything else, searching, editing, running code, remembering, asking permission, is the harness.</p>
-			<p>It doesn’t know your codebase. It searches, one tool call at a time, and forgets everything when the session ends unless the harness writes it down.</p>
+			<p>The model doesn’t know your codebase. It searches, one tool call at a time, and forgets everything when the session ends unless the harness writes it down.</p>
 		</article>
 	</section>
 
