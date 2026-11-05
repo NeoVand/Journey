@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { GLOSSARY, HARNESSES, FORMS, LOGITS, RUN_WITH_CACHE, RUN_WITHOUT_CACHE, slug, TEN_TURNS, TOP_K, TRIP, wheelOdds, type HarnessId } from './content';
+	import { tick } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import TripMap from './TripMap.svelte';
@@ -271,11 +272,33 @@
 
 	const nextAgent = $derived(ids[(ids.indexOf(harness) + 1) % ids.length]);
 
+	/**
+	 * On a phone only the lit row of a list shows its words. Each list keeps the height of its tallest state,
+	 * or everything above it would jump every time a row of a different length lit up.
+	 */
+	function holdSteps() {
+		document.querySelectorAll<HTMLElement>('.steps').forEach((list) => {
+			list.style.minHeight = '';
+			const rows = [...list.children];
+			const lit = rows.filter((row) => row.classList.contains('on'));
+			lit.forEach((row) => row.classList.remove('on'));
+			let most = list.offsetHeight;
+			rows.forEach((row) => {
+				row.classList.add('on');
+				most = Math.max(most, list.offsetHeight);
+				row.classList.remove('on');
+			});
+			lit.forEach((row) => row.classList.add('on'));
+			list.style.minHeight = `${most}px`;
+		});
+	}
+
 	function choose(id: HarnessId) {
 		tried.add(`${section}/${harness}`);
 		tried.add(`${section}/${id}`);
 		harness = id;
 		world?.setHarness(id);
+		tick().then(holdSteps);
 	}
 
 	const stage: Attachment<HTMLCanvasElement> = (canvas) => {
@@ -332,6 +355,7 @@
 			const resize = () => {
 				// Turning a phone changes every section's height, and the reader should stay where they are in the story.
 				const turned = drawnW > 0 && canvas.clientWidth !== drawnW;
+				if (turned) holdSteps();
 				const was = turned ? T : 0;
 				measure();
 				if (turned) {
@@ -582,6 +606,9 @@
 				w.dispose();
 			};
 			driven = true;
+			// Measured once the cards have their real widths, and again if the type arrives late and wraps differently.
+			tick().then(holdSteps);
+			document.fonts.ready.then(holdSteps);
 			// Behind the loader nobody sees it happen, so there's no need for the cut to hide it.
 			followAddress('at-once');
 			canvas.dataset.ready = 'true';
@@ -2397,6 +2424,7 @@
 		margin: 10px 0 0;
 		padding: 0;
 		display: grid;
+		align-content: start;
 		gap: 10px;
 		font-size: 0.92em;
 		line-height: 1.38;
