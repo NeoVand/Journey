@@ -36,7 +36,7 @@ const rel = (o: V3, x: number, y: number, z: number): V3 => [o[0] + x, o[1] + y,
 
 const S_HATCH = { az: 17, el: 12, target: [1.4, 3.2, 0] as V3, radius: 8.6, ry: 4.4, wide: box(0.01, 0.04, 0.58, 0.92), tall: TALL };
 const S_GATES = { az: -20, el: 17, target: [-52.8, GY + 2.2, 0.9] as V3, radius: 8.4, ry: 5.7, wide: box(0.47, 0.06, 0.52, 0.9), tall: TALL };
-const S_BOX = { az: 9, el: 12, target: [-16.2, WY + 3.7, 2.2] as V3, radius: 8.8, ry: 5.4, wide: box(0, 0.05, 0.6, 0.92), tall: TALL };
+const S_BOX = { az: 9, el: 12, target: [-15.4, WY + 3.2, 2.2] as V3, radius: 8.3, ry: 5, wide: box(0, 0.05, 0.6, 0.92), tall: TALL };
 const S_FIND = { az: -8, el: 13, target: [WX - 4, WY + 2.8, 0.8] as V3, radius: 7.2, ry: 4.3, wide: RIGHT, tall: TALL };
 const S_EDIT = { az: 4, el: 8, target: [WX - 1.3, WY + 2.4, 1.5] as V3, radius: 5.1, ry: 3.7, wide: LEFT, tall: TALL };
 const S_TEST = { az: 10, el: 11, target: [WX + 7.6, WY + 2.5, 1.5] as V3, radius: 3.9, ry: 3.5, wide: RIGHT, tall: TALL };
@@ -224,7 +224,11 @@ export class Back {
 	private signs = new THREE.Group();
 	private sandboxSigns: Record<HarnessId, THREE.Group> = {} as Record<HarnessId, THREE.Group>;
 	private docsCard = new Card(3.2, 3.9, 280);
-	private packet!: THREE.Mesh;
+	private packet!: THREE.Group;
+	private gland!: THREE.Group;
+	private evil!: THREE.Group;
+	private saidBlocked!: THREE.Group;
+	private saidThrough!: THREE.Group;
 	private ripple!: THREE.Mesh;
 	private proc!: Lamp;
 	private sandboxBeat = new THREE.Group();
@@ -459,7 +463,8 @@ export class Back {
 		// Where the green pipe leaves: results go out of the sandbox through a fitting, not through the glass.
 		const gland = new Batch();
 		gland.add(ring(0.24, 0.1, 0.16, 28), m.steel, { p: [x1, -14.3, 3.45], r: [0, 0, Math.PI / 2] });
-		g.add(gland.build('pipe-gland'));
+		this.gland = gland.build('pipe-gland');
+		g.add(this.gland);
 		pane(D, H, [x0, WY + H / 2, 0], Math.PI / 2);
 
 		const signFor = (text: string) => {
@@ -510,7 +515,7 @@ export class Back {
 		procSign.position.set(WX + 7.6, WY + 1.7, 3.5);
 		bt.add(procSign);
 
-		const evil = createSign('evil.sh', 0.26, '#ffffff', m.red);
+		const evil = (this.evil = createSign('evil.sh', 0.26, '#ffffff', m.red));
 		evil.position.set(x1 + 2.6, WY + 2.5, 3.4);
 		evil.rotation.y = -0.3;
 		bt.add(evil);
@@ -518,7 +523,13 @@ export class Back {
 		pole.add(rbox(0.1, 2.4, 0.1, 0.03, 2), m.steelSoft, { p: [x1 + 2.6, WY + 1.2, 3.34] });
 		bt.add(pole.build('evil-pole'));
 
-		this.packet = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 12), new THREE.MeshStandardMaterial({ color: '#ffb0a8', emissive: color.red, emissiveIntensity: 2.4 }));
+		this.packet = createSign('curl evil.sh', 0.32, '#ffffff', m.red);
+		this.saidBlocked = createSign('Stopped at the fence', 0.32);
+		this.saidBlocked.position.set(x1 - 3, WY + 3.6, 3.4);
+		bt.add(this.saidBlocked);
+		this.saidThrough = createSign('It got out', 0.32, '#ffffff', m.red);
+		this.saidThrough.position.set(x1 + 2.7, WY + 3.6, 3.4);
+		bt.add(this.saidThrough);
 		bt.add(this.packet);
 		this.ripple = new THREE.Mesh(new THREE.RingGeometry(0.2, 0.32, 40), new THREE.MeshBasicMaterial({ color: '#7fd0ff', transparent: true, depthWrite: false, side: THREE.DoubleSide }));
 		this.ripple.position.set(x1, WY + 1.9, 3.4);
@@ -1146,6 +1157,7 @@ export class Back {
 		const sb = id !== 'copilot';
 		this.glass.forEach((p) => (p.visible = sb));
 		this.frame.visible = sb;
+		this.gland.visible = sb;
 		(Object.keys(this.sandboxSigns) as HarnessId[]).forEach((k) => (this.sandboxSigns[k].visible = k === id));
 	}
 
@@ -1504,23 +1516,59 @@ export class Back {
 			m.emissive.set(color.red);
 			m.emissiveIntensity = bell(T, 21.3, 21.56) * 0.16;
 
+			// The lie lifts off the page and lands on the process, which swallows it, shudders, and fires.
 			const sb = this.spec !== 'copilot';
-			const leave = seg(T, 21.58, 21.72);
-			const back = seg(T, 21.72, 21.84);
-			this.packet.visible = leave > 0 && (sb ? back < 1 : true);
-			const px = WX + 8.5;
+			const read = seg(T, 21.34, 21.5);
+			const fire = seg(T, 21.6, 21.72);
+			const fallen = seg(T, 21.75, 21.9);
 			const wall = WX + 13;
-			if (this.packet.visible) {
-				this.packet.scale.setScalar(Math.max(0.001, Math.min(1, leave * 7)));
-				if (!sb) this.packet.position.set(lerp(px, wall + 2.1, inOut(seg(T, 21.58, 21.84))), WY + 1.9, 3.4);
-				else if (back > 0) this.packet.position.set(lerp(wall - 0.1, px + 1, back), WY + 1.9 - Math.sin(back * Math.PI) * 0.4, 3.4);
-				else this.packet.position.set(lerp(px, wall - 0.1, inOut(leave)), WY + 1.9, 3.4);
+			const py = WY + 1.9;
+			const pk = this.packet;
+			pk.rotation.set(0, -0.1, 0);
+			if (read > 0 && read < 1) {
+				this.a.set(WX + 4.4, WY + 1.95, 3.62);
+				// In through the side of the process, under its name.
+				this.b.set(WX + 6.9, WY + 0.8, 3.4);
+				arcPoint(this.a, this.b, 1.3, inOut(read), pk.position);
+				pk.scale.setScalar(lerp(0.5, 0.22, read));
+			} else if (fire > 0 && fire < 1) {
+				// Out of the process's side, small and low, clear of its name, and growing as it goes.
+				const e = fire * fire;
+				const up = smooth(Math.min(1, e * 2.4));
+				pk.position.set(lerp(WX + 8.3, sb ? wall - 0.5 : WX + 14.9, e), lerp(WY + 0.85, sb ? py : lerp(py, WY + 2.5, e), up), 3.4);
+				pk.scale.setScalar(lerp(0.28, 1, up));
+			} else if (sb && fire >= 1 && fallen <= 0) {
+				// Flat against the glass, for the moment it takes to understand.
+				pk.position.set(wall - 0.24, py, 3.4);
+				pk.scale.set(0.3, 1.32, 1);
+			} else if (sb && fallen > 0) {
+				const bounce = bell(fallen, 0.8, 1) * 0.16;
+				// Back across the floor, clear of the green pipe's tray.
+				pk.position.set(lerp(wall - 0.3, wall - 2.7, fallen), lerp(py, WY + 0.17, Math.min(1, fallen / 0.8) ** 2) + Math.sin(Math.min(1, fallen / 0.8) * Math.PI) * 0.5 + bounce, lerp(3.4, 1.7, fallen));
+				pk.scale.setScalar(0.92);
+				pk.rotation.x = -1.46 * smooth(seg(fallen, 0, 0.8));
+				pk.rotation.z = Math.sin(fallen * Math.PI) * 0.5;
 			}
-			const ring = seg(T, 21.72, 21.86);
+			pk.visible = (read > 0 && read < 1) || (fire > 0 && fire < 1) || (sb && fire >= 1);
+			const gulp = bell(T, 21.48, 21.56);
+			const shudder = seg(T, 21.53, 21.6);
+			const recoil = bell(T, 21.6, 21.66) * 0.16;
+			this.proc.mesh.position.set(WX + 7.6 - recoil, WY + 0.8 - gulp * 0.08, 3.4);
+			this.proc.mesh.scale.set(1 + gulp * 0.12, 1 - gulp * 0.16, 1 + gulp * 0.12);
+			this.proc.mesh.rotation.z = shudder > 0 && shudder < 1 ? Math.sin(shudder * Math.PI * 7) * 0.045 : 0;
+			const ring = seg(T, 21.72, 21.88);
 			this.ripple.visible = sb && ring > 0 && ring < 1;
 			this.ripple.scale.setScalar(1 + ring * 7);
 			(this.ripple.material as THREE.MeshBasicMaterial).opacity = (1 - ring) * 0.9;
-			this.proc.set(color.orange, 0.4 + bell(T, 21.5, 21.72) * 1.1);
+			(this.glass[0].material as THREE.MeshPhysicalMaterial).opacity = 0.11 + (sb ? bell(T, 21.72, 21.82) * 0.22 : 0);
+			// What it came to. With a fence it's stopped dead, and without one there's nothing to say so.
+			const said = Math.max(0.001, outBack(seg(T, 21.76, 21.82), 2));
+			this.saidBlocked.visible = sb && T > 21.76;
+			this.saidBlocked.scale.setScalar(said);
+			this.saidThrough.visible = !sb && T > 21.76;
+			this.saidThrough.scale.setScalar(said);
+			this.evil.rotation.z = !sb ? bell(T, 21.72, 21.8) * 0.2 : 0;
+			this.proc.set(color.orange, 0.4 + bell(T, 21.5, 21.72) * 0.28);
 		} else this.docsCard.mesh.visible = false;
 
 		/* ---- search ---- */
