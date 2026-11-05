@@ -149,7 +149,7 @@ class FoldBuilder {
 	}
 }
 
-function gearShape(teeth: number, pitch: number, holes = 0) {
+export function gearShape(teeth: number, pitch: number, holes = 0) {
 	const shape = new THREE.Shape();
 	const step = (Math.PI * 2) / teeth;
 	const root = pitch - 0.075;

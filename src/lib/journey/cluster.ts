@@ -9,6 +9,7 @@ import { createBoard, createPad, createRacks } from './props/board';
 import { BlockTray } from './props/tray';
 import { KvCache } from './props/kv';
 import { BatchLanes, STEPS } from './props/lanes';
+import { Router, ROUTER_PAD, ROUTER_X } from './props/router';
 import { Node3D } from './props/node';
 import { Pools } from './props/pools';
 import { createBelt, Tile, TILE_H } from './props/tokenizer';
@@ -29,6 +30,7 @@ const TALL = box(0, 0.06, 1, 0.47);
 const NODE: Omit<Shot, 'T'> = { az: 13, el: 36, target: at(0, 1.3, 1), radius: 8.2, ry: 5.0, wide: box(0.36, 0.06, 0.62, 0.9), tall: TALL };
 const KV: Omit<Shot, 'T'> = { az: -9, el: 13, target: at(ZONE.kv + 2.5, 2.6, 2), radius: 6.2, ry: 3.3, wide: box(0.38, 0.08, 0.6, 0.86), tall: TALL };
 const TRAY: Omit<Shot, 'T'> = { az: -5, el: 40, target: at(ZONE.tray - 2.3, 0.8, 1.6), radius: 10, ry: 5.0, wide: box(0.4, 0.08, 0.59, 0.86), tall: TALL };
+const ROUTER: Omit<Shot, 'T'> = { az: -26, el: 25, target: at(ROUTER_X + 1, 0.9, 3), radius: 7.6, ry: 4.7, wide: box(0, 0.1, 0.57, 0.82), tall: TALL, tallTarget: at(ROUTER_X + 1, 1.7, 2.6) };
 const TURN2: Omit<Shot, 'T'> = { az: 6, el: 36, target: at(ZONE.tray - 2, 0.9, 2.4), radius: 9.8, ry: 5.0, wide: box(0, 0.12, 0.57, 0.84), tall: TALL };
 const LANES: Omit<Shot, 'T'> = { az: 9, el: 44, target: at(ZONE.lanes, 0.9, -0.5), radius: 9.1, ry: 5.2, wide: box(0.44, 0.06, 0.55, 0.9), tall: TALL, tallRadius: 9.5 };
 const POOLS: Omit<Shot, 'T'> = { az: -7, el: 13, target: at(ZONE.pools, 2.1, 1.2), radius: 8.9, ry: 3.6, wide: box(0, 0.1, 0.6, 0.82), tall: TALL };
@@ -43,7 +45,9 @@ export const CLUSTER_SHOTS: Shot[] = [
 	{ T: 9.9, ...KV, az: -5 },
 	{ T: 10.04, ...TRAY },
 	{ T: 10.84, ...TRAY, az: -3 },
-	{ T: 11.04, ...TURN2 },
+	{ T: 11.02, ...ROUTER },
+	{ T: 11.28, ...ROUTER, az: -22 },
+	{ T: 11.4, ...TURN2 },
 	{ T: 11.86, ...TURN2, az: 4 },
 	{ T: 12.04, ...LANES },
 	{ T: 12.9, ...LANES, az: 5 },
@@ -61,6 +65,7 @@ export class Cluster {
 	private kv = new KvCache();
 	private tray: BlockTray;
 	private lanes = new BatchLanes();
+	private router = new Router(RAIL_Z, RAIL_Y - PAD_Y);
 	private pools = new Pools();
 	private tiles: Tile[] = TOKENS.map((t) => new Tile(t));
 	private offsets: number[] = [];
@@ -135,6 +140,7 @@ export class Cluster {
 		stand(ZONE.tray - 2.3, 0, 19, 8.8, this.tray.group, 2.3, 0);
 		shadow(ZONE.tray, 0, 12, 3.9);
 
+		stand(ROUTER_X, 0, ROUTER_PAD, 8.8, this.router.group);
 		stand(ZONE.lanes, -0.4, 17.4, 11, this.lanes.group, 0, 0.4);
 		stand(ZONE.pools, 0.8, 19.6, 8.2, this.pools.group, 0, -0.8);
 		g.add(this.forward.group);
@@ -173,9 +179,10 @@ export class Cluster {
 		});
 
 		if (T > 8.9 && T < 10.3) this.kv.update(seg(T, 9.1, 9.56), seg(T, 9.58, 9.9), time);
-		if (T > 9.9 && T < 12.3) {
-			this.tray.update(seg(T, 10.12, 10.62), seg(T, 11.08, 11.24), seg(T, 11.24, 11.64), seg(T, 11.64, 11.86), time);
+		if (T > 8.9 && T < 12.3) {
+			this.tray.update(seg(T, 10.12, 10.62), seg(T, 11.03, 11.14), seg(T, 11.3, 11.41), seg(T, 11.41, 11.7), seg(T, 11.7, 11.86), time);
 		}
+		if (T < 12.3) this.router.update(seg(T, 11.12, 11.18), seg(T, 11.17, 11.3));
 		if (T > 11.8 && T < 13.2) this.lanes.update(seg(T, 12.08, 12.92) * STEPS);
 		if (T > 12.8 && T < 14.1) this.pools.update(seg(T, 13.08, 13.3), seg(T, 13.28, 13.44), seg(T, 13.4, 13.74), seg(T, 13.46, 13.68), seg(T, 13.7, 13.76), time);
 	}

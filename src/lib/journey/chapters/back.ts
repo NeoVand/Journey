@@ -5,6 +5,7 @@ import { color, Lamp, mats } from '../kit/materials';
 import { archBlock, arcPoint, Card, curve, hazard, islandAt, machine, panel, shadowOn, stripes, tube } from '../kit/machines';
 import { font, Surface } from '../kit/print';
 import { FINALE_T } from './finale';
+import { gearShape } from '../props/brain';
 import { createSign } from '../kit/parts';
 import { bell, bounceDown, clamp, hash, inOut, lerp, outBack, seg, smooth, spring } from '../kit/math';
 import { createCastShadow } from '../props/island';
@@ -120,6 +121,8 @@ class Gate {
 	group = new THREE.Group();
 	arm = new THREE.Group();
 	lamp: Lamp;
+	private hook?: THREE.Object3D;
+	private hookSigns: THREE.Group[] = [];
 
 	constructor(name: string, private armMat: THREE.Material, base: THREE.Material) {
 		const m = mats();
@@ -157,6 +160,35 @@ class Gate {
 
 	set(open: number) {
 		this.arm.rotation.x = -open * 1.42;
+	}
+
+	/** Your hooks live on the policy gate: a small wheel of your own on the near post, with a light of its own. */
+	addHook() {
+		const m = mats();
+		const Z = 1.75;
+		const wheel = new Batch();
+		const cog = extrude(gearShape(12, 0.62, 0), 0.05, 0.01, 2, 12);
+		cog.scale(0.42, 0.42, 1);
+		wheel.add(cog, m.cobalt);
+		wheel.add(new THREE.CylinderGeometry(0.06, 0.06, 0.09, 14), m.steel, { r: [Math.PI / 2, 0, 0] });
+		this.hook = wheel.build('hook-wheel');
+		this.hook.position.set(0, 1.7, Z + 0.34);
+		this.group.add(this.hook);
+		this.hookSigns = ['Your hooks', 'Your rules'].map((text) => {
+			const sign = createSign(text, 0.15);
+			sign.position.set(0, 1.26, Z + 0.33);
+			this.group.add(sign);
+			return sign;
+		});
+	}
+
+	/** Codex has execpolicy rules where the others have hooks. */
+	nameHook(rules: boolean) {
+		this.hookSigns.forEach((sign, i) => (sign.visible = (i === 1) === rules));
+	}
+
+	turnHook(k: number) {
+		if (this.hook) this.hook.rotation.z = -smooth(k) * Math.PI * 2;
 	}
 }
 
@@ -421,6 +453,7 @@ export class Back {
 		this.binSign.visible = false;
 		g.add(this.binSign);
 
+		this.gates[2].addHook();
 		g.add(this.bad.group, this.good.group);
 	}
 
@@ -1155,6 +1188,7 @@ export class Back {
 		this.codeKey = '';
 		this.tmpKey = '';
 		const sb = id !== 'copilot';
+		this.gates[2].nameHook(id === 'codex');
 		this.glass.forEach((p) => (p.visible = sb));
 		this.frame.visible = sb;
 		this.gland.visible = sb;
@@ -1463,6 +1497,8 @@ export class Back {
 				const refusing = seg(T, 20.2, 20.3);
 				const rattle = i === 1 && refusing > 0 && refusing < 1 ? Math.abs(Math.sin(refusing * Math.PI * 3)) * 0.05 * (1 - refusing) : 0;
 				gate.set(Math.max(open, firstPass, rattle));
+				// Just before policy decides, your own script gets its say.
+				if (i === 2) gate.turnHook(seg(T, hold - 0.06, hold + 0.01));
 				const refused = i === 1 && T > 20.2 && T < 20.42;
 				if (refused) gate.lamp.set(color.red, 1 + Math.sin(time * 14) * 0.5);
 				else gate.lamp.mix(color.amber, color.green, smooth(opened), 0.25 + smooth(opened) * 0.9);

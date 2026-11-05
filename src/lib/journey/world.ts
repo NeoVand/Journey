@@ -10,6 +10,7 @@ import { createCastShadow, createIsland } from './props/island';
 import { Laptop } from './props/laptop';
 import { McpServer } from './props/mcp';
 import { Brain, BRAIN_FOOT, BRAIN_SEAT } from './props/brain';
+import { SkillShelf } from './props/skills';
 import { Harness, HW, PORT_KEYS_Z, PORT_MCP_Z, PORT_OUT_Z, PORT_Y } from './props/harness';
 import { createEasel, DOC_H, RequestDoc, SLOT_Y, Strip } from './props/request';
 import { createTunnelStand, Tunnel } from './props/tunnel';
@@ -127,6 +128,7 @@ export class World {
 	private laptop = new Laptop();
 	private harness = new Harness();
 	private brain = new Brain();
+	private skills = new SkillShelf();
 	private doc = new RequestDoc();
 	private strips = [0, 1, 2, 3].map((i) => new Strip(i));
 	private tunnel = new Tunnel(TUNNEL_L);
@@ -314,8 +316,12 @@ export class World {
 		r.add(hc);
 
 		// An MCP server the harness connects to as it wakes.
-		this.mcp.group.position.set(6.7, 0, -1.0);
+		this.mcp.group.position.set(7.2, 0, -0.72);
 		r.add(this.mcp.group);
+		this.skills.group.position.set(3.05, 0, 2.5);
+		this.skills.group.rotation.y = 0.26;
+		this.skills.group.scale.setScalar(0.76);
+		r.add(this.skills.group);
 		const mc = contactShadow(1.4, 1.2, 0.14, 0.42);
 		mc.position.set(6.7, 0.006, -1.0);
 		r.add(mc);
@@ -592,9 +598,9 @@ export class World {
 		// The MCP server's lead, along the back of the island to the harness flank.
 		const lead = new THREE.CatmullRomCurve3(
 			[
-				new THREE.Vector3(6.09, 0.9, -1.22),
-				new THREE.Vector3(5.85, 0.84, -1.3),
-				new THREE.Vector3(5.6, 0.1, -1.75),
+				new THREE.Vector3(6.59, 0.9, -0.94),
+				new THREE.Vector3(6.3, 0.84, -1.04),
+				new THREE.Vector3(5.8, 0.1, -1.7),
 				new THREE.Vector3(4.6, 0.045, -2.2),
 				new THREE.Vector3(3.3, 0.045, -2.25),
 				new THREE.Vector3(3.05, 0.08, -1.82),
@@ -927,6 +933,7 @@ export class World {
 				this.updateGateway(T, time);
 				this.updateTokenizer(T, time);
 				this.mcp.update(seg(T, 1.86, 2.0), time);
+				this.skills.update(T);
 				this.updateBulges(T);
 				this.brain.update(T, time);
 			} else {

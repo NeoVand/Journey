@@ -91,8 +91,8 @@ export const PACE: Span[] = [
 	{ from: 9.56, to: 9.9, seconds: 2.4 }, // attention looks back
 	{ from: 9.9, to: 10.1, seconds: 1.4 },
 	{ from: 10.1, to: 10.62, seconds: 3.4 }, // blocks scatter into memory
-	{ from: 10.62, to: 11.08, seconds: 1.8 },
-	{ from: 11.08, to: 11.86, seconds: 7.5 }, // turn two: five blocks through the gate
+	{ from: 10.62, to: 11, seconds: 1.5 },
+	{ from: 11, to: 11.86, seconds: 11.5 }, // turn two: the router asks around, then five blocks through the gate
 	{ from: 11.86, to: 12.06, seconds: 1.4 },
 	{ from: 12.06, to: 12.92, seconds: 11.5 }, // fourteen scheduler steps, and five comings and goings to follow
 	{ from: 12.92, to: 13.08, seconds: 1.4 },

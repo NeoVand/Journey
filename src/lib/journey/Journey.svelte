@@ -112,16 +112,22 @@
 	const DRAWERS = $derived([
 		{ name: 'Instructions', text: `Who the agent is, plus your project’s rules from ${spec.ruleFile}.` },
 		{ name: 'Environment', text: 'Where you are: folder, git branch, operating system, date, shell.' },
-		{ name: 'Tools', text: 'Everything it may ask to do, built in or from [[MCP]] servers. Each has a name, a description and a [[JSON Schema]], and each costs tokens on every turn.' },
+		{ name: 'Tools', text: 'Everything it may ask to do, built in or from [[MCP]] servers. Each has a name, a description and a [[JSON Schema]], and each costs tokens on every turn. [[Skills]] stay shut on their shelf until a task needs them.' },
 		{ name: 'Conversation', text: 'Your prompt. On turn one, nothing else.' }
 	]);
 
-	const GATES = [
+	const GATES = $derived([
 		{ name: 'Valid shape?', text: 'Is this a real tool, with arguments that fit?' },
 		{ name: 'Allowed path?', text: 'Inside the project, and not on a deny list?' },
-		{ name: 'Policy', text: 'May this run without asking?' },
+		{
+			name: 'Policy',
+			text:
+				harness === 'codex'
+					? 'May this run without asking? Your execpolicy rules can block a command here, as [[hooks]] do in other agents.'
+					: 'May this run without asking? Your own [[hooks]] can block or rewrite it here.'
+		},
 		{ name: 'You, if asked', text: 'Reads often pass on their own. Writes and commands may come to you.' }
-	];
+	]);
 
 	const CHECKS = [
 		{ name: 'Decrypt', text: 'The encryption ends here.' },
@@ -738,14 +744,13 @@
 		</article>
 	</section>
 
-	<section data-beat class="beat" style:--h="480vh">
+	<section data-beat class="beat" style:--h="640vh">
 		<article class="pin right" data-out="0.8">
 			<h2>Turn two starts ahead</h2>
 			<p>
-				Turn two starts with exactly the same bytes as turn one, plus a little more. Those matching blocks are already computed, so only the
-				new part runs. Remember the careful order on that JSON page? This is why.
+				{@render rich('Turn two starts with exactly the same bytes as turn one, plus a little more. A [[router]] reads the start and sends it to the copy of the model most likely to still have those blocks, so only the new part runs. Remember the careful order on that JSON page? This is why.')}
 			</p>
-			<p>It saves computing. It isn’t the model remembering you. Unused blocks get thrown out, usually within minutes, so coming back after an hour costs full price once.</p>
+			<p>It saves computing. It isn’t the model remembering you. Unused blocks slide down to slower memory and get thrown out, usually within minutes, so coming back after an hour costs full price once.</p>
 			<p class="note short-note">{@render agent()} {@render rich(callouts.cache)}</p>
 		</article>
 	</section>
@@ -929,7 +934,7 @@
 				{#each GATES as g, i (g.name)}
 					<li class={{ on: gate === i, done: gate > i }}>
 						<strong>{g.name}</strong>
-						<span>{g.text}</span>
+						<span>{@render rich(g.text)}</span>
 					</li>
 				{/each}
 			</ol>
@@ -986,6 +991,7 @@
 		<article class="pin left" data-out="0.86">
 			<h2>When the context fills up</h2>
 			<p>{@render rich('A long session reads many files, and the transcript creeps up on the [[context window]]. So a separate model call writes a summary, which replaces the old messages. The cache is lost once, then rebuilt.')}</p>
+			<p>{@render rich('Big side quests can go to a [[subagent]] instead: a second conversation with its own fresh context, which hands back only a summary.')}</p>
 			<p class="note">{@render agent()} {@render rich(callouts.compact)}</p>
 		</article>
 	</section>

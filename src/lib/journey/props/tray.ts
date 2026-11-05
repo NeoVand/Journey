@@ -6,10 +6,13 @@ import { createSign } from '../kit/parts';
 import { machine, shadowOn } from '../kit/machines';
 import { font, Label, Surface } from '../kit/print';
 import { bell, inOut, lerp, outBack, seg, smooth } from '../kit/math';
+import { ROUTER_X } from './router';
 
 const GATE_X = -4.9; // left of everything it would otherwise stand in front of
 const PRESS_X = -0.95; // straight in front of slot 9, where the one new block ends up
 const PITCH = 1.5;
+/** Where the row's head sits under the router, in the row's own units. */
+const UNDER_ROUTER = (ROUTER_X - 60 - GATE_X) / PITCH + 0.62;
 const RB_H = 0.36;
 const FRESH_Z = 3.2;
 const BAR_X0 = 1.1;
@@ -230,7 +233,9 @@ export class BlockTray {
 		// The gate over the belt.
 		const Z = this.railZ;
 		const gate = new Batch();
-		for (const s of [-1, 1]) gate.add(rbox(0.28, 1.72, 0.28, 0.07, 3), m.cream, { p: [GATE_X, this.railY + 0.72, Z + s * 1.02] });
+		// Right down to the floor, because nothing else is holding it up.
+		const top = this.railY + 1.58;
+		for (const s of [-1, 1]) gate.add(rbox(0.28, top + 0.3, 0.28, 0.07, 3), m.cream, { p: [GATE_X, (top - 0.3) / 2, Z + s * 1.02] });
 		gate.add(rbox(0.46, 0.46, 2.6, 0.1, 3), m.cream, { p: [GATE_X, this.railY + 1.72, Z] });
 		t.add(gate.build('prefix-gate'));
 		const sign = createSign('Computed before?', 0.3);
@@ -276,14 +281,14 @@ export class BlockTray {
 		t.visible = false;
 	}
 
-	/** place: 0..1 our blocks hop into scattered slots. arrive, hit, compute: turn two. */
-	update(place: number, arrive: number, hit: number, compute: number, time: number) {
+	/** place: 0..1 our blocks hop into scattered slots. approach: the row rides up to the router. arrive, hit, compute: turn two. */
+	update(place: number, approach: number, arrive: number, hit: number, compute: number, time: number) {
 		const onRail = (i: number) => i < 4;
 		const steps = hit * 5;
 		const step = Math.min(4, Math.floor(steps));
 		const f = hit >= 1 ? 1 : steps - step;
 		// Where the row is: each step brings the next block under the gate, and it waits there to be judged.
-		const rowP = arrive < 1 ? lerp(-9, -1, inOut(arrive)) : -1 + step + inOut(seg(f, 0, 0.5));
+		const rowP = arrive <= 0 ? lerp(UNDER_ROUTER - 6.5, UNDER_ROUTER, inOut(approach)) : arrive < 1 ? lerp(UNDER_ROUTER, -1, inOut(arrive)) : -1 + step + inOut(seg(f, 0, 0.5));
 		const judged = (i: number) => (hit >= 1 ? 1 : step > i ? 1 : step === i ? smooth(seg(f, 0.55, 0.85)) : 0);
 
 		this.blocks.forEach((b, i) => {
@@ -325,7 +330,7 @@ export class BlockTray {
 		const rise = outBack(seg(arrive, 0, 0.5), 1.2);
 		t.scale.y = Math.max(0.001, rise);
 		this.row.forEach((r, i) => {
-			r.mesh.visible = arrive > 0;
+			r.mesh.visible = approach > 0;
 			if (!r.mesh.visible) return;
 			const x = GATE_X + (rowP - i) * PITCH;
 			this.a.set(x, this.railY + RB_H / 2 + 0.002, this.railZ);
