@@ -20,7 +20,7 @@ const cost = (T, dpr) => page.evaluate(async ([T, dpr]) => {
 	t.sort((a, b) => a - b);
 	return t[12];
 }, [T, dpr]);
-for (const [label, T] of [['hero', 0.2], ['tokens', 6.3], ['node', 8.4], ['kv', 9.7], ['lanes', 12.5], ['prefill', 14.5], ['wheel', 15.5], ['call', 17.6], ['ghost', 19.7], ['gates', 22.6], ['tools', 24.5], ['tests', 26.5], ['press', 28.5], ['ten', 31.8], ['end', 33.7]]) {
+for (const [label, T] of [['hero', 0.2], ['tokens', 6.3], ['node', 8.4], ['kv', 9.7], ['lanes', 12.5], ['prefill', 14.5], ['wheel', 15.5], ['call', 17.6], ['gates', 20.6], ['tools', 22.5], ['tests', 24.5], ['press', 26.5], ['ten', 29.8], ['end', 31.7]]) {
 	console.log(`${label.padEnd(9)} 2x ${(await cost(T, 2)).toFixed(1).padStart(5)} ms   1.5x ${(await cost(T, 1.5)).toFixed(1).padStart(5)} ms   1x ${(await cost(T, 1)).toFixed(1).padStart(5)} ms`);
 }
 await browser.close();

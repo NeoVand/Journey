@@ -4,6 +4,8 @@
 	import type { World } from './world';
 	import { PACE, Playhead } from './playhead';
 	import { Sharpness } from './sharpness';
+	import { SvelteSet } from 'svelte/reactivity';
+	import Blueprint, { type Stage } from './Blueprint.svelte';
 
 	const ids: HarnessId[] = ['claude', 'codex', 'copilot'];
 	const labels: Record<HarnessId, string> = { claude: 'Claude Code', codex: 'Codex', copilot: 'Copilot' };
@@ -13,10 +15,12 @@
 	let drawer = $state(-1);
 	let check = $state(-1);
 	let gate = $state(-1);
-	let detour = $state(false);
 	let scrolled = $state(false);
 	let dark = $state(false);
 	let driven = $state(false);
+	let section = $state(0);
+	let part = $state<Stage>(null);
+	let attention = $state(-1);
 	let world: World | undefined;
 
 	const spec = $derived(HARNESSES[harness]);
@@ -126,7 +130,16 @@
 		{ name: 'Capacity', text: 'If the cluster is full, you get a queue or a 529, and the harness backs off and retries.' }
 	];
 
+	/** The pages that really do read or look different for each agent. */
+	const DIFFERS = new Set([0, 1, 2, 3, 4, 5, 11, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 29]);
+	const tried = new SvelteSet<string>();
+	const differs = $derived(DIFFERS.has(section));
+	/** An agent breathes while this page has something to show for it that the reader has not looked at yet. */
+	const hinting = (id: HarnessId) => differs && id !== harness && !tried.has(`${section}/${id}`);
+
 	function choose(id: HarnessId) {
+		tried.add(`${section}/${harness}`);
+		tried.add(`${section}/${id}`);
 		harness = id;
 		world?.setHarness(id);
 	}
@@ -204,7 +217,7 @@
 			const pins = sections.flatMap((s, i) =>
 					[...s.querySelectorAll<HTMLElement>('.pin')].map((el) => {
 						// A card belongs to one world for its whole life, so its colours can never flip while it is showing.
-						el.dataset.tone = i >= 8 && i < 19 ? 'inside' : i === 19 || i === 20 ? 'ghost' : 'sky';
+						el.dataset.tone = i >= 8 && i < 19 ? 'inside' : 'sky';
 						return {
 							el,
 							i,
@@ -253,8 +266,10 @@
 				drawer = T > 2.74 ? 4 : dr;
 				check = T < 5 ? -1 : Math.min(5, Math.floor(((T - 5.04) / 0.58) * 5));
 				// The first call stops at the second gate, and the list has to say so.
-				gate = T < 22.04 ? -1 : T < 22.4 ? 1 : Math.min(4, Math.floor(((T - 22.4) / 0.58) * 5));
-				detour = T >= 19 && T < 21;
+				gate = T < 20.04 ? -1 : T < 20.4 ? 1 : Math.min(4, Math.floor(((T - 20.4) / 0.58) * 5));
+				section = Math.min(sections.length - 1, Math.floor(T));
+				part = T < 14.15 ? null : T < 14.3 ? 'embed' : T < 14.625 ? 'attn' : T < 14.7 ? 'ffn' : T < 14.865 ? 'stack' : 'head';
+				attention = T < 14.358 ? -1 : T < 14.4 ? 0 : T < 14.43 ? 1 : T < 14.5 ? 2 : 3;
 			};
 
 			const frame = (now: number) => {
@@ -330,7 +345,8 @@
 				type="button"
 				role="radio"
 				aria-checked={harness === id}
-				class={{ on: harness === id }}
+				class={{ on: harness === id, hint: hinting(id) }}
+				title={hinting(id) ? `This page is different for ${labels[id]}` : undefined}
 				onclick={() => choose(id)}>{labels[id]}</button
 			>
 		{/each}
@@ -353,7 +369,7 @@
 			{/each}
 		</ol>
 		<p>
-			{#if detour}<strong>A detour</strong>{:else}<span>Form {form} of 12</span> <strong>{current.name}</strong>{/if}
+			<span>Form {form} of 12</span> <strong>{current.name}</strong>
 		</p>
 	</div>
 </header>
@@ -547,64 +563,105 @@
 				Many clusters split them into two pools and ship the KV cache across over RDMA. It is a choice, not a law: for
 				some workloads, one shared pool still wins.
 			</p>
-			<p class="next">Next stop: inside the prefill pool, where tokens are read.</p>
+			<p class="next">Next stop: inside those chips. What are they actually running?</p>
 		</article>
 	</section>
 
-	<section data-beat class="beat" style:--h="2600vh">
-		<article class="pin left" data-in="0.045" data-out="0.215" data-fade="0.014">
+	<section data-beat class="beat" style:--h="2800vh">
+		<article class="pin left tight" data-in="0.035" data-out="0.125" data-fade="0.014">
+			<h2>The transformer</h2>
+			<p>
+				Every chip in those pools runs one program, a transformer. It is the T in GPT, and the design behind today’s big language models.
+				Tokens go in at the bottom. A score for every possible next word comes out at the top.
+			</p>
+			<Blueprint />
+		</article>
+		<article class="pin left tight" data-in="0.17" data-out="0.272" data-fade="0.014">
 			<h2>A place for every word</h2>
 			<p>
-				We are inside the prefill pool now. On turn one, nearly every token misses the cache, so they all go through together. An embedding
-				turns each ID into a list of a few thousand numbers, and you can read that list as a place on a map of meaning.
+				Your prompt starts at the bottom. On turn one, nearly every token misses the cache, so they go through together. An embedding turns
+				each ID into a list of a few thousand numbers, and you can read that list as a place on a map of meaning.
 			</p>
 			<p>
 				Watch where they land. “job” is among careers, “race” is in sports. An embedding knows the word, not the sentence. Both “the” tiles
 				land on one spot, until a position signal says where each sits in the line.
 			</p>
 			<p><small>The real map has thousands of dimensions. This one has two, and its neighborhoods are illustrative.</small></p>
+			<Blueprint compact stage={part} />
 		</article>
-		<article class="pin left" data-in="0.3" data-out="0.545" data-fade="0.014">
-			<h2>Looking back</h2>
+		<article class="pin left tight" data-in="0.325" data-out="0.548" data-fade="0.014">
+			<h2>Attention</h2>
 			<p>
-				This floor is layer 1, where each word meets the sentence. “job” asks a question, its query. Every token before it answers with a
-				key. The later ones stay dark, because a token can only look back.
+				In this sentence “job” is not about careers, and only the words around it can say so. So it asks a question, its query. Every token
+				before it offers a key and holds a value. Later tokens stay dark, because a token can only look back.
 			</p>
-			<p>
-				The better a key matches, the thicker the line. “race” and “condition” match best, so their values flow back the most, and “job” moves
-				by their weighted sum. It walks out of careers and toward code. <small>The matches are illustrative.</small>
-			</p>
+			<div class="eq" role="img" aria-label="Attention of Q, K and V equals softmax of Q times K transpose over the square root of d k, times V.">
+				<span class="eq-name">Attention(<b class="q">Q</b>, <b class="k">K</b>, <b class="v">V</b>) =</span>
+				<span class={['eq-part', { lit: attention === 1 }]}>softmax</span><span class="eq-paren">(</span>
+				<span class={['eq-frac', { lit: attention === 0 }]}>
+					<span class="eq-top"><b class="q">Q</b><b class="k">K</b><sup>T</sup></span>
+					<span class="eq-bot">√d<sub>k</sub></span>
+				</span><span class="eq-paren">)</span>
+				<span class={['eq-part', { lit: attention === 2 }]}><b class="v">V</b></span>
+			</div>
+			<ol class="steps compact">
+				<li class={{ on: attention === 0, done: attention > 0 }}>
+					<strong>Compare</strong>
+					<span>The query against every key. A better match scores higher, and the √d keeps numbers in range.</span>
+				</li>
+				<li class={{ on: attention === 1, done: attention > 1 }}>
+					<strong>Weigh</strong>
+					<span>Softmax turns the scores into shares that add up to 100%.</span>
+				</li>
+				<li class={{ on: attention === 2, done: attention > 2 }}>
+					<strong>Mix</strong>
+					<span>Those shares of the values become “job”’s new vector, and it moves toward code.</span>
+				</li>
+			</ol>
+			<p><small>The shares are illustrative. A real layer runs many of these side by side, called heads.</small></p>
+			<Blueprint compact stage={part} />
 		</article>
-		<article class="pin left" data-in="0.555" data-out="0.63" data-fade="0.014">
+		<article class="pin left tight" data-in="0.555" data-out="0.622" data-fade="0.014">
 			<h2>All of them, at once</h2>
 			<p>
-				Every token does this at the same time, and each stores its key and value on the shelf along the front. That shelf is the KV cache from
-				earlier.
+				Every token does this in the same instant, which is why this work suits a chip built for parallel math. Each one also stores its key
+				and value in the row of lights along the front of the layer.
+			</p>
+			<p>That row is the KV cache from earlier, and now you can see what it is for.</p>
+			<Blueprint compact stage={part} />
+		</article>
+		<article class="pin left tight" data-in="0.63" data-out="0.694" data-fade="0.014">
+			<h2>Then each token, by itself</h2>
+			<p>
+				Attention moves information between tokens. Next comes a small fully connected network, with every input wired to every unit. It works
+				on one token’s vector at a time, and every token gets the same network.
 			</p>
 			<p>
-				<small>Around each look back, a layer also normalizes its numbers to keep them in range, adds the old vector back so nothing is lost, and
-				runs a small network on each token by itself. In many large models, that network is where a tiny router picks a few experts out of
-				hundreds.</small>
+				<small>Around both steps, the layer normalizes its numbers to keep them in range and adds the old vector back, so nothing is lost. In many
+				large models, this network is where a tiny router picks a few experts out of hundreds.</small>
 			</p>
+			<Blueprint compact stage={part} />
 		</article>
-		<article class="pin left" data-in="0.645" data-out="0.84" data-fade="0.014">
+		<article class="pin left tight" data-in="0.705" data-out="0.862" data-fade="0.014">
 			<h2>Then again, eighty times</h2>
 			<p>
-				The next layer is the same map again, and it starts from where the last one finished. Each thread is one token’s path through the stack,
-				and they gather floor by floor.
+				That was one layer. The next has the same design and its own weights, and it starts where the last one finished. Each thread is one
+				token’s path up the stack, and they gather as they climb.
 			</p>
 			<p>
 				“race” never quite arrives. It cannot see “condition”, which comes after it. That is what looking only backward costs.
-				<small>Eighty layers is illustrative.</small>
+				<small>Eighty is illustrative.</small>
 			</p>
+			<Blueprint compact stage={part} />
 		</article>
-		<article class="pin left" data-in="0.875" data-out="0.985" data-fade="0.014">
+		<article class="pin left tight" data-in="0.885" data-out="0.985" data-fade="0.014">
 			<h2>One score for every word</h2>
 			<p>
-				After the last layer, only the final position matters. One more normalize, then the LM head turns its vector into a raw score for every
-				entry in the vocabulary. <small>Scores on the map are illustrative.</small>
+				After the last layer, only the final position matters. One more normalize, then the LM head gives a raw score to every entry in the
+				vocabulary. Those scores are all the model ever outputs. <small>Scores on the map are illustrative.</small>
 			</p>
-			<p>The time until those scores exist is the time to first token, usually 0.3 to 2 seconds for a prompt this size.</p>
+			<p>The time until they exist is the time to first token, usually 0.3 to 2 seconds for a prompt this size.</p>
+			<Blueprint compact stage={part} />
 		</article>
 	</section>
 
@@ -621,11 +678,11 @@
 	</section>
 
 	<section data-beat class="beat" style:--h="600vh">
-		<article class="pin left" data-out="0.86">
+		<article class="pin left tight" data-in="0.075" data-out="0.86">
 			<h2>One at a time</h2>
 			<p>
-				Now the loop: the new token goes through every layer, attends to the whole cache, and adds its own keys and values.
-				One step takes 10 to 40 milliseconds. That is the typing speed you see.
+				Now the loop. The new token climbs the same stack, alone. On every layer it looks back at everything through the KV cache, and adds its
+				own key and value to the row of lights. One step takes 10 to 40 milliseconds. That is the typing speed you see.
 			</p>
 			<p>In 2026 the model usually thinks first. Thinking tokens are ordinary decoded tokens, billed as output.</p>
 			<p class="note"><b>{spec.name}.</b> {callouts.thinking}</p>
@@ -658,39 +715,12 @@
 		</article>
 	</section>
 
-	<section data-beat class="beat" style:--h="500vh">
-		<article class="pin left" data-out="0.84">
-			<h2>A detour: ghost text</h2>
-			<p>
-				While that chunk of text is in the air, look at the other token journey. When you type in VS Code with Copilot on, a
-				second pipeline runs. No chat, no tools, no thinking.
-			</p>
-			<p>
-				It checks a cache first. On a miss, it builds a prompt from two strings: what comes before your cursor and what comes
-				after. It tokenizes on your laptop too, but only to count. The IDs are thrown away, and only the strings travel.
-			</p>
-			<p><small>Of the three agents in this story, this path is Copilot’s alone.</small></p>
-		</article>
-	</section>
-
-	<section data-beat class="beat" style:--h="440vh">
-		<article class="pin right" data-out="0.84">
-			<h2>Before you move on</h2>
-			<p>
-				Past about 200 to 300 milliseconds, a suggestion arrives after you have already moved on. So a dedicated fill-in-the-middle
-				model answers, not a chat model.
-			</p>
-			<p>Text comes back as JSON Lines, gets filtered and aligned, and appears in grey. Tab accepts it.</p>
-			<p><small>The hand on the watch is illustrative. GitHub’s serving stack is undisclosed.</small></p>
-		</article>
-	</section>
-
 	<section data-beat class="beat" style:--h="460vh">
 		<article class="pin top-band" data-in="0.05" data-out="0.56">
 			<h2>The model has no hands</h2>
 			<div class="cols">
 				<p>
-					Back to the agent. The harness buffers the stream until the tool-call block closes, then parses it. Only now does anyone know
+					The harness buffers the stream until the tool-call block closes, then parses it. Only now does anyone know
 					the full call.
 				</p>
 				<p>
@@ -896,15 +926,6 @@
 		--green: #12a956;
 		--rule: rgb(16 26 48 / 0.14);
 	}
-	.pin:global([data-tone='ghost']) {
-		--ink: #101a30;
-		--ink-soft: #33415c;
-		--cobalt: #4b45c9;
-		--amber: #ffb921;
-		--green: #12a956;
-		--rule: rgb(16 26 48 / 0.14);
-		--veil: 224 218 251;
-	}
 	.pin:global([data-tone='inside']) {
 		--ink: #f3f7ff;
 		--ink-soft: #c2cfe6;
@@ -1025,6 +1046,30 @@
 	.dark .picker {
 		background: rgb(255 255 255 / 0.88);
 	}
+	/* Quiet on purpose: you notice it the second time you look, not the first. */
+	.picker button.hint {
+		animation: hint 3.2s ease-in-out infinite;
+	}
+	.picker button.hint:hover {
+		animation: none;
+	}
+	@keyframes hint {
+		0%,
+		100% {
+			color: #33415c;
+			box-shadow: inset 0 0 0 1px rgb(31 95 224 / 0);
+		}
+		50% {
+			color: #1f5fe0;
+			box-shadow: inset 0 0 0 1px rgb(31 95 224 / 0.32);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.picker button.hint {
+			animation: none;
+			box-shadow: inset 0 0 0 1px rgb(31 95 224 / 0.28);
+		}
+	}
 	.picker.compact button {
 		font-size: 13px;
 		padding: 8px 12px;
@@ -1086,6 +1131,11 @@
 		.beat:not(.hero) .pin.right::before {
 			inset: 0 -8vw 0 -12vw;
 			background: linear-gradient(to left, rgb(var(--veil) / var(--veil-a)) 76%, rgb(var(--veil) / calc(var(--veil-a) * 0.68)) 84%, rgb(var(--veil) / calc(var(--veil-a) * 0.26)) 92%, rgb(var(--veil) / 0));
+		}
+		/* Where the scene beside the text is bright and close, the shade has to stop before it. */
+		.beat:not(.hero) .pin.tight::before {
+			inset: 0 -6vw 0 -8vw;
+			background: linear-gradient(to right, rgb(var(--veil) / var(--veil-a)) 74%, rgb(var(--veil) / calc(var(--veil-a) * 0.62)) 84%, rgb(var(--veil) / calc(var(--veil-a) * 0.2)) 93%, rgb(var(--veil) / 0));
 		}
 		.beat:not(.hero) .pin.top-band::before {
 			inset: 0 -8vw auto -8vw;
@@ -1233,6 +1283,65 @@
 		font-size: 0.88em;
 	}
 
+	.eq {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 2px 5px;
+		margin: 4px 0 14px;
+		padding: 12px 14px;
+		border-radius: 12px;
+		background: rgb(255 255 255 / 0.06);
+		font-family: var(--mono);
+		font-size: clamp(14px, 1.1vw, 16px);
+		font-weight: 500;
+		line-height: 1.2;
+		color: var(--ink);
+	}
+	.eq b {
+		font-weight: 800;
+	}
+	.eq .q {
+		color: #ffc247;
+	}
+	.eq .k {
+		color: #41e58a;
+	}
+	.eq .v {
+		color: #59e0e6;
+	}
+	.eq-paren {
+		font-size: 1.7em;
+		font-weight: 300;
+		opacity: 0.7;
+	}
+	.eq-part,
+	.eq-frac {
+		padding: 2px 5px;
+		border-radius: 7px;
+		transition: background 0.25s;
+	}
+	.eq-frac {
+		display: inline-flex;
+		flex-direction: column;
+		align-items: center;
+	}
+	.eq-top {
+		padding: 0 3px 2px;
+		border-bottom: 1px solid currentColor;
+	}
+	.eq-bot {
+		padding-top: 2px;
+	}
+	.eq sup,
+	.eq sub {
+		font-size: 0.68em;
+		line-height: 0;
+	}
+	.eq .lit {
+		background: rgb(255 194 71 / 0.24);
+	}
+
 	.cols {
 		display: grid;
 		grid-template-columns: repeat(2, minmax(0, 30em));
@@ -1310,6 +1419,20 @@
 			height: 58%;
 			background: linear-gradient(to top, rgb(var(--veil) / 0.96) 72%, rgb(var(--veil) / 0));
 			pointer-events: none;
+		}
+		/* These cards carry the most, and a phone has the least room: keep what teaches, and give it solid ground. */
+		.pin.tight::before {
+			height: 70%;
+			background: linear-gradient(to top, rgb(var(--veil) / 0.97) 82%, rgb(var(--veil) / 0));
+		}
+		.pin.tight small,
+		.pin.tight :global(.crumbs) {
+			display: none;
+		}
+		.eq {
+			margin-bottom: 10px;
+			padding: 9px 10px;
+			font-size: 13px;
 		}
 		.hero .pin {
 			width: auto;

@@ -3,13 +3,13 @@ import { Stage } from './stage';
 import { Rig, type Shot } from './rig';
 import { bell, inOut, lerp, outBack, outCubic, seg, smooth, smoother, spring } from './kit/math';
 import { contactShadow, Label, loadFonts } from './kit/print';
-import { chamferRect, extrude, frameAt, rbox, roundedRect, sweep } from './kit/geometry';
+import { extrude, frameAt, rbox, roundedRect, sweep } from './kit/geometry';
 import { mats, color } from './kit/materials';
 import { Batch } from './kit/batch';
-import { ventZ } from './kit/parts';
 import { createCastShadow, createIsland } from './props/island';
 import { Laptop } from './props/laptop';
 import { McpServer } from './props/mcp';
+import { Brain, BRAIN_SEAT } from './props/brain';
 import { Harness, HW, PORT_KEYS_Z, PORT_MCP_Z, PORT_OUT_Z, PORT_Y } from './props/harness';
 import { createEasel, DOC_H, RequestDoc, SLOT_Y, Strip } from './props/request';
 import { createTunnelStand, Tunnel } from './props/tunnel';
@@ -18,7 +18,6 @@ import { createBelt, createChatTemplate, Gantry, Tile, TILE_D, TILE_H } from './
 import { HARNESSES, PROMPT, TOKENS, type HarnessId } from './content';
 import { Cluster, CLUSTER_SHOTS, DIVE_T } from './cluster';
 import { RETURN_POINTS } from './layout';
-import { Ghost, GHOST_SHOTS } from './chapters/ghost';
 import { Back, BACK_SHOTS } from './chapters/back';
 
 export const EXIT_T = 19;
@@ -44,6 +43,8 @@ const ROW_START = SLOT_X + 0.9;
 const HARNESS_POS = new THREE.Vector3(1.1, 0, -0.65);
 const DOC_POS = new THREE.Vector3(5.75, 0.2 + DOC_H / 2, LINE_Z);
 const DOC_TILT = -0.13;
+const ROLL_AXIS = 1.45; // how far below the page's centre the finished roll lies
+const STRIPS_PRINTED = 3.62;
 
 /* ---------- beat timeline. T counts sections; see Journey.svelte for the mapping ---------- */
 export const HOLD = { type: [1.02, 1.56], send: [1.56, 1.66] };
@@ -74,7 +75,7 @@ const CUT = {
 };
 const NEXT = { az: 18, el: 22, target: [7.6, -18.0, 5.5] as [number, number, number], radius: 6.2, wide: box(0.38, 0.06, 0.6, 0.88), tall: box(0, 0.06, 1, 0.5) };
 const INTAKE = { az: 26, el: 38, target: [1.4, -25.9, 1.0] as [number, number, number], radius: 3.3, ry: 2.3, wide: box(0.38, 0.08, 0.62, 0.84), tall: box(0, 0.08, 1, 0.48) };
-const ARRIVE = { az: 18, el: 16, target: [1.7, -26.1, 3.2] as [number, number, number], radius: 5.6, wide: box(0.38, 0.06, 0.6, 0.88), tall: box(0, 0.06, 1, 0.5) };
+const ARRIVE = { az: 26, el: 13, target: [0.6, -31.4, 1.2] as [number, number, number], radius: 10, ry: 8.6, wide: box(0.38, 0.03, 0.62, 0.92), tall: box(0, 0.05, 1, 0.5) };
 
 const SHOTS: Shot[] = [
 	...hold(0, 0.5, HERO),
@@ -88,21 +89,20 @@ const SHOTS: Shot[] = [
 	{ T: 6.56, ...CUT, target: [7.1, -16.1, 0.9], az: 7, tallTarget: [8.2, -16.42, 0.9] },
 	...hold(6.68, 6.8, TOKENS_SHOT, { az: 1 }),
 	{ T: 7, ...NEXT },
-	{ T: 7.56, ...ARRIVE },
-	{ T: 7.74, ...INTAKE },
+	{ T: 7.44, ...ARRIVE },
+	{ T: 7.6, ...ARRIVE, az: 22 },
+	{ T: 7.76, ...INTAKE },
 	{ T: 7.87, ...INTAKE, az: 18, el: 50, radius: 2.5, ry: 1.9 },
 	{ T: 7.985, az: 10, el: 80, target: [1.4, -27.0, 1.2], radius: 0.3, ry: 0.22, wide: box(0, 0, 1, 1), tall: box(0, 0, 1, 1) },
 	...CLUSTER_SHOTS,
-	...GHOST_SHOTS,
 	...BACK_SHOTS
 ];
 
 const SKY_A = { top: new THREE.Color('#9fd0f8'), mid: new THREE.Color('#c6e5fd'), low: new THREE.Color('#ecf7ff') };
 const SKY_B = { top: new THREE.Color('#5da2ee'), mid: new THREE.Color('#93c7f7'), low: new THREE.Color('#cfe8fc') };
-const SKY_GHOST = { top: new THREE.Color('#a9a6ef'), mid: new THREE.Color('#d0ccfa'), low: new THREE.Color('#f2ecff') };
 const SKY_IN = { top: new THREE.Color('#060f26'), mid: new THREE.Color('#0a1a3c'), low: new THREE.Color('#0d2150') };
 
-const FORM_FROM = [0, 2.68, 4.1, 6.16, 14.1, 14.55, 14.89, 15.78, 18.14, 21.34, 24.06, 27.04];
+const FORM_FROM = [0, 2.68, 4.1, 6.16, 14.17, 14.56, 14.89, 15.78, 18.14, 19.34, 22.06, 25.04];
 const formAt = (T: number) => {
 	let f = 1;
 	FORM_FROM.forEach((from, i) => {
@@ -125,6 +125,7 @@ export class World {
 
 	private laptop = new Laptop();
 	private harness = new Harness();
+	private brain = new Brain();
 	private doc = new RequestDoc();
 	private strips = [0, 1, 2, 3].map((i) => new Strip(i));
 	private tunnel = new Tunnel(TUNNEL_L);
@@ -134,7 +135,6 @@ export class World {
 	private mcp = new McpServer();
 	private lower = new THREE.Group();
 	private cluster = new Cluster();
-	private ghost = new Ghost();
 	private back = new Back();
 	private bulges: THREE.Mesh[] = [];
 	private easelLegs!: THREE.Object3D;
@@ -158,6 +158,7 @@ export class World {
 	private v1 = new THREE.Vector3();
 	private v2 = new THREE.Vector3();
 	private v3 = new THREE.Vector3();
+	private v4 = new THREE.Vector3();
 	private qLie = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0));
 	private qA = new THREE.Quaternion();
 	private qB = new THREE.Quaternion();
@@ -177,7 +178,7 @@ export class World {
 		this.stage.scene.add(this.root, this.cluster.group);
 		this.assemble();
 		this.splitLower();
-		this.root.add(this.ghost.group, this.back.group);
+		this.root.add(this.back.group);
 		this.setHarness('claude');
 	}
 
@@ -659,17 +660,10 @@ export class World {
 	/** A glimpse of what comes next, so the last frame points somewhere. */
 	private buildModelTeaser() {
 		const m = mats();
-		const b = new Batch();
 		const y = BELT_Y - 13.2;
 		const x = 1.4;
-		b.add(extrude(chamferRect(8.6, 5.2, 0.7, 0.2), 7.2, 0.12, 4, 10), m.cobalt, { p: [x, y, 1.7] });
-		b.add(rbox(2.5, 0.09, 1.8, 0.04, 3), m.steel, { p: [x, y + 2.64, 1.2] });
-		b.add(extrude(roundedRect(2.6, 0.84, 0.24), 0.1, 0.03, 3, 10), m.recess, { p: [x, y + 1.4, 5.34] });
-		for (const s of [-1, 1]) ventZ(b, x + s * 2.9, y - 0.5, 5.31, 1.7, 1.8, 9);
-		this.root.add(b.build('model-teaser'));
-		const name = new Label('Model', 0.48, { color: '#ffffff', weight: 800, density: 260 });
-		name.mesh.position.set(x, y + 1.39, 5.396);
-		this.root.add(name.mesh);
+		this.brain.group.position.set(x, y + 2.6 - BRAIN_SEAT, 1.2);
+		this.root.add(this.brain.group);
 		this.buildIntake(x, y + 2.6, 1.2);
 		// A steel post carrying the chute over the roof, so it is held up by something.
 		const post = new Batch();
@@ -824,6 +818,7 @@ export class World {
 		this.laptop.setHarness(spec);
 		this.doc.setHarness(spec);
 		this.strips.forEach((s) => s.setHarness(spec));
+		this.doc.bake(this.strips.map((s) => s.canvas));
 	}
 
 	resize(width: number, height: number, dpr: number) {
@@ -834,7 +829,7 @@ export class World {
 	update(T: number, time: number, dt: number, px = 0, py = 0, introDone = false) {
 		this.intro = introDone ? 1 : Math.min(1, this.intro + dt / 1.5);
 		// The easel only stands while it has a page to hold: the request, then turn two.
-		const legs = inOut(seg(T, 2.02, 2.09)) * (1 - inOut(seg(T, 3.64, 3.74))) + outBack(seg(T, 27.38, 27.47), 1.2) * (1 - inOut(seg(T, 27.92, 28)));
+		const legs = inOut(seg(T, 2.02, 2.09)) * (1 - inOut(seg(T, 3.64, 3.74))) + outBack(seg(T, 25.38, 25.47), 1.2) * (1 - inOut(seg(T, 25.92, 26)));
 		this.easelLegs.visible = legs > 0.002;
 		this.easelLegs.scale.y = Math.max(0.002, legs);
 		const intro = this.intro;
@@ -858,12 +853,10 @@ export class World {
 			sky.setSky(SKY_IN.top, SKY_IN.mid, SKY_IN.low);
 			this.cluster.update(T, time);
 		} else {
-			const later = T >= EXIT_T;
-			const b = later ? SKY_GHOST : SKY_B;
-			const k = later ? 1 - smooth(seg(T, 20.9, 21.08)) : skyK;
-			const top = this.c1.copy(SKY_A.top).lerp(b.top, k);
-			const mid = this.c2.copy(SKY_A.mid).lerp(b.mid, k);
-			const low = this.c3.copy(SKY_A.low).lerp(b.low, k);
+			const k = T >= EXIT_T ? 0 : skyK;
+			const top = this.c1.copy(SKY_A.top).lerp(SKY_B.top, k);
+			const mid = this.c2.copy(SKY_A.mid).lerp(SKY_B.mid, k);
+			const low = this.c3.copy(SKY_A.low).lerp(SKY_B.low, k);
 			sky.setSky(top, mid, low);
 			this.clouds.forEach((cl) => {
 				cl.sprite.position.x = cl.base.x + Math.sin(time * cl.drift) * 1.4;
@@ -872,8 +865,7 @@ export class World {
 			this.root.position.y = (1 - outCubic(seg(intro, 0, 0.8))) * -0.9;
 
 			this.lower.visible = T < DIVE_T;
-			this.ghost.group.visible = T >= EXIT_T && T < 21.2;
-			this.back.group.visible = T >= 20.8;
+			this.back.group.visible = T >= EXIT_T;
 			if (T < DIVE_T) {
 				this.updateLaptop(T, time, intro);
 				this.updateHarnessAndRequest(T, time);
@@ -882,6 +874,7 @@ export class World {
 				this.updateTokenizer(T, time);
 				this.mcp.update(seg(T, 1.86, 2.0), time);
 				this.updateBulges(T);
+				this.brain.update(T, time);
 			} else {
 				// The first half of the journey is over: its travellers have gone, its machines stay.
 				this.doc.group.visible = false;
@@ -889,17 +882,16 @@ export class World {
 				this.tiles.forEach((t) => (t.group.visible = false));
 				this.rest.visible = false;
 				this.bulges.forEach((b) => (b.visible = false));
-				this.laptop.finish(smooth(seg(T, 33.3, 33.46)));
+				this.laptop.finish(smooth(seg(T, 31.3, 31.46)));
 				this.laptop.update(PROMPT.length, 1, time, 1, false);
 				this.mcp.update(1, time);
 				this.harness.update(this.back.opens(T), [1, 1, 1, 1], 1, time, this.back.jolt(T));
-				if (this.ghost.group.visible) this.ghost.update(T, time);
 				if (this.back.group.visible) this.back.update(T, time);
 			}
 
 			this.chevron.offset.x = time * 0.42;
 			this.ribbonArrows.offset.x = -time * 0.5;
-			this.loopMeshes.forEach((l) => (l.visible = T < 3.9 || T >= 21));
+			this.loopMeshes.forEach((l) => (l.visible = T < 3.9 || T >= EXIT_T));
 		}
 
 		this.state.form = formAt(T);
@@ -929,6 +921,25 @@ export class World {
 		strip.quaternion.slerpQuaternions(qFrom, qTo, e);
 		// A little flutter in the air, none at either end.
 		strip.rotateZ(Math.sin(k * Math.PI * 2) * 0.1 * Math.sin(k * Math.PI));
+	}
+
+	/**
+	 * From the screen to an open drawer. It swings out past the machine's front before it gets there, lies flat,
+	 * and comes straight down into the tray, so it never crosses the drawers above.
+	 */
+	private dropIntoDrawer(strip: THREE.Mesh, from: THREE.Vector3, qFrom: THREE.Quaternion, to: THREE.Vector3, k: number) {
+		const e = inOut(k);
+		const u = 1 - e;
+		const w0 = u * u * u;
+		const w1 = 3 * u * u * e;
+		const w2 = 3 * u * e * e;
+		const w3 = e * e * e;
+		const x1 = lerp(from.x, to.x, 0.3);
+		const y1 = from.y + 0.7;
+		const z1 = to.z + 0.5;
+		const y2 = to.y + 1.8;
+		strip.position.set(w0 * from.x + w1 * x1 + w2 * to.x + w3 * to.x, w0 * from.y + w1 * y1 + w2 * y2 + w3 * to.y, w0 * from.z + w1 * z1 + w2 * to.z + w3 * to.z);
+		strip.quaternion.slerpQuaternions(qFrom, this.qLie, smooth(seg(e, 0.12, 0.62)));
 	}
 
 	private updateHarnessAndRequest(T: number, time: number) {
@@ -967,14 +978,17 @@ export class World {
 		const docY = u * u * u * P0.y + 3 * u * u * moveK * 3.6 + 3 * u * moveK * moveK * -3 + moveK * moveK * moveK * TUNNEL_Y;
 		const docX = lerp(dropX, TUNNEL_X + 1.1, inOut(enterK));
 		const dg = this.doc.group;
-		dg.position.set(docX, docY, LINE_Z);
+		// It rolls up on the way down. The roll forms at the page's foot, so lifting the page by that much puts the roll on the tube's axis.
+		const rollUp = inOut(seg(T, 3.66, 3.95));
+		dg.position.set(docX, docY + rollUp * ROLL_AXIS * scale, LINE_Z);
 		const thud = starts.reduce((sum, a) => sum + bell(seg(T, a + 0.14, a + 0.18), 0, 1), 0);
 		dg.rotation.set(lerp(DOC_TILT, 0, smooth(seg(T, 3.58, 3.76))) + thud * 0.03, Math.sin(moveK * Math.PI) * 0.3, Math.sin(moveK * Math.PI) * -0.14);
 		const appear = 1;
 		// Rolled up until the harness has something to put in it, so the MCP server is in plain sight until then.
-		this.doc.setRoll(inOut(seg(T, 1.97, 2.09)));
-		// The clip is the tunnel's mouth. Out in the open air it must not touch the page.
-		this.docClip.constant = enterK > 0 ? TUNNEL_X + 0.08 : 1000;
+		this.doc.setRoll(inOut(seg(T, 1.97, 2.09)) * (1 - rollUp));
+		this.doc.setFilled(T >= STRIPS_PRINTED);
+		// Past the first ring the bytes are encrypted: the roll stops being paper there, and the ciphertext starts.
+		this.docClip.constant = enterK > 0 ? TUNNEL_X + 0.22 : 1000;
 		dg.scale.setScalar(scale);
 		dg.visible = appear > 0.001 && enterK < 1;
 		this.doc.setTabs(seg(T, 3.04, 3.3) * (1 - seg(T, 3.6, 3.68)));
@@ -989,7 +1003,7 @@ export class World {
 			const inDrawer = this.harness.drawerTop(i, this.v1);
 			const slot = dg.localToWorld(this.v2.set(0, SLOT_Y[i], 0.045));
 
-			m.visible = T >= (i === 3 ? 1.6 : a) && enterK < 1 && appear > 0.001;
+			m.visible = T >= (i === 3 ? 1.6 : a) && T < STRIPS_PRINTED && appear > 0.001;
 			m.scale.setScalar(dg.scale.x);
 			this.qA.copy(this.qLie);
 
@@ -1000,10 +1014,9 @@ export class World {
 				this.laptop.screenPoint(launch);
 				const qScreen = this.laptop.group.quaternion;
 				const f = seg(T, 1.62, 1.88);
-				const inTo = inDrawer.clone();
-				this.fly(m, launch, qScreen, inTo, this.qLie, f, 1.2);
+				this.dropIntoDrawer(m, launch, qScreen, this.harness.catchPoint(i, this.v4), f);
 				const pop = outBack(seg(T, 1.62, 1.66), 2);
-				m.scale.setScalar(pop * lerp(0.9, 1, f));
+				m.scale.setScalar(pop * lerp(0.84, 0.94, f));
 				m.visible = f < 0.999 ? pop > 0.01 : false;
 				return;
 			}

@@ -32,7 +32,7 @@ const flush = async (cells, n) => {
 let cells = [];
 let n = 0;
 let inSheet = 0;
-for (let b = 1; b <= 33; b++) {
+for (let b = 1; b <= 31; b++) {
 	for (const o of OFFSETS) {
 		const T = b + o;
 		await page.evaluate((t) => window.__journey.seek(t, 3.1), T);

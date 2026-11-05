@@ -19,6 +19,7 @@ import { Forward, FORWARD_SHOTS } from './chapters/forward';
 import type { HarnessId } from './content';
 
 export const DIVE_T = 8;
+const DARKEST = 13.98; // the dive into the prefill chip, fully under its veil
 const ZONE = { node: 0, kv: 30, tray: 60, lanes: 90, pools: 120 };
 
 const box = (x: number, y: number, w: number, h: number) => ({ x, y, w, h });
@@ -66,6 +67,8 @@ export class Cluster {
 	private rowLen = 0;
 	private fabric: THREE.MeshStandardMaterial;
 	private forward = new Forward();
+	/** Everything before the dive into the prefill chip. Once we are in there, none of it can still be in view. */
+	private before = new THREE.Group();
 
 	constructor() {
 		this.group.position.copy(ORIGIN);
@@ -73,17 +76,19 @@ export class Cluster {
 		g.add(createBoard(-40, 330, -18, 9.5));
 		g.add(createRacks(-70, 380, -30));
 
+		const before = this.before;
+		g.add(before);
 		const stand = (x: number, z: number, w: number, d: number, what: THREE.Object3D, wx = 0, wz = 0) => {
 			const pad = createPad(w, d);
 			pad.position.set(x, PAD_Y, z);
-			g.add(pad);
+			before.add(pad);
 			what.position.set(x + wx, PAD_Y, z + wz);
-			g.add(what);
+			before.add(what);
 		};
 		const shadow = (x: number, z: number, w: number, d: number, o = 0.42) => {
 			const c = contactShadow(w, d, 0.16, o);
 			c.position.set(x, PAD_Y + 0.006, z);
-			g.add(c);
+			before.add(c);
 		};
 
 		// The same belt that carried the tiles in the sky, running the length of the machine.
@@ -96,7 +101,7 @@ export class Cluster {
 		shadow(0, 0, 14.2, 7.4);
 		const far = this.node.farCopy();
 		far.position.set(0, PAD_Y, -10);
-		g.add(far);
+		before.add(far);
 		shadow(0, -10, 14.2, 7.4);
 
 		this.fabric = new THREE.MeshStandardMaterial({ color: '#2a78ff', emissive: '#2a78ff', emissiveIntensity: 0.8, roughness: 0.4 });
@@ -106,11 +111,11 @@ export class Cluster {
 			link.add(rbox(0.14, 0.1, 3.2, 0.04, 2), this.fabric, { p: [x, PAD_Y + 0.15, -5] });
 			for (const z of [-3.56, -6.44]) link.add(rbox(0.4, 0.26, 0.34, 0.06, 3), m.steel, { p: [x, PAD_Y + 0.15, z] });
 		}
-		g.add(link.build('fabric'));
+		before.add(link.build('fabric'));
 		const fabricSign = createSign('InfiniBand', 0.2);
 		fabricSign.position.set(0, PAD_Y + 0.62, -5);
 		fabricSign.rotation.x = -0.5;
-		g.add(fabricSign);
+		before.add(fabricSign);
 
 		// KV cache.
 		stand(ZONE.kv + 2.6, 0, 13.4, 6.6, this.kv.group, -2.6, 0);
@@ -121,7 +126,7 @@ export class Cluster {
 		this.tiles.forEach((t) => {
 			this.offsets.push(cursor);
 			cursor += t.width + 0.07;
-			g.add(t.group);
+			before.add(t.group);
 		});
 		this.rowLen = cursor;
 
@@ -141,7 +146,8 @@ export class Cluster {
 
 	update(T: number, time: number) {
 		this.forward.update(T, time);
-		// Nothing here is ever hidden by hand: things leave the frame when the camera leaves them.
+		// Things leave the frame when the camera leaves them. The one exception is the dive, under the veil at its darkest.
+		this.before.visible = T < DARKEST;
 		if (T < 9.1) this.node.update(smooth(seg(T, 8.06, 8.22)), seg(T, 8.26, 8.7), seg(T, 8.62, 8.74), time);
 		this.fabric.emissiveIntensity = 0.7 + Math.sin(time * 3) * 0.3;
 

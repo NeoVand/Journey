@@ -1,11 +1,14 @@
 /** Kept here rather than imported from the chapter: this file must stay free of 3D code. */
 const TRANSFORMER_PACE = [
-	{ from: 14.0, to: 14.21, seconds: 9 }, // every word finds its place on the map
-	{ from: 14.21, to: 14.3, seconds: 2.6 },
-	{ from: 14.3, to: 14.54, seconds: 12 }, // one word looks back, and moves
-	{ from: 14.54, to: 14.63, seconds: 4.4 }, // then all of them
-	{ from: 14.63, to: 14.83, seconds: 8 }, // eighty floors
-	{ from: 14.83, to: 15.06, seconds: 9 } // one score for every word
+	{ from: 14.0, to: 14.125, seconds: 6.5 }, // what this thing is
+	{ from: 14.125, to: 14.165, seconds: 2.4 },
+	{ from: 14.165, to: 14.27, seconds: 7.5 }, // every word finds its place on the map
+	{ from: 14.27, to: 14.32, seconds: 2.8 },
+	{ from: 14.32, to: 14.54, seconds: 16 }, // compare, weigh, mix, and "job" moves
+	{ from: 14.54, to: 14.62, seconds: 5 }, // then all of them
+	{ from: 14.62, to: 14.695, seconds: 7 }, // the small network
+	{ from: 14.695, to: 14.86, seconds: 10 }, // eighty floors
+	{ from: 14.86, to: 15.06, seconds: 10 } // one score for every word
 ];
 
 /**
@@ -100,11 +103,10 @@ export const PACE: Span[] = [
 	{ from: 16.9, to: 17.06, seconds: 1.2 },
 	{ from: 17.06, to: 17.8, seconds: 5.6 }, // the call
 	{ from: 17.8, to: 18.1, seconds: 1.6 },
-	{ from: 18.1, to: 19.1, seconds: 5.4 }, // only text leaves
-	{ from: 19.1, to: 21.04, seconds: 10 }, // ghost text
-	{ from: 21.04, to: 22.04, seconds: 5.4 },
-	{ from: 22.04, to: 23.04, seconds: 8 }, // the gates
-	{ from: 23.04, to: 27.04, seconds: 22 }, // sandbox and tools
-	{ from: 27.04, to: 31.04, seconds: 21 }, // round the loop
-	{ from: 31.04, to: 34, seconds: 16 } // the end
+	{ from: 18.1, to: 19.04, seconds: 5.2 }, // only text leaves
+	{ from: 19.04, to: 20.04, seconds: 5.4 },
+	{ from: 20.04, to: 21.04, seconds: 8 }, // the gates
+	{ from: 21.04, to: 25.04, seconds: 22 }, // sandbox and tools
+	{ from: 25.04, to: 29.04, seconds: 21 }, // round the loop
+	{ from: 29.04, to: 32, seconds: 16 } // the end
 ];

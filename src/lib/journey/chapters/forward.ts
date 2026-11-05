@@ -2,31 +2,42 @@ import * as THREE from 'three';
 import { Batch } from '../kit/batch';
 import { rbox } from '../kit/geometry';
 import { color, Lamp, mats } from '../kit/materials';
-import { arcPoint, curve, machine, panel, shadowOn, tube } from '../kit/machines';
-import { font, Label, Surface } from '../kit/print';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { arcPoint, machine, panel, shadowOn } from '../kit/machines';
+import { contactShadow, font, Label, Surface } from '../kit/print';
 import { createSign } from '../kit/parts';
-import { bell, hash, inOut, outBack, outCubic, seg, smooth } from '../kit/math';
+import { bell, hash, inOut, lerp, outBack, outCubic, seg, smooth } from '../kit/math';
 import { createPad } from '../props/board';
 import { Tile, TILE_D, TILE_H } from '../props/tokenizer';
 import { CALLS, type HarnessId } from '../content';
 import { ORIGIN, PAD_Y, RAIL_Y, RAIL_Z } from '../layout';
 import type { Shot } from '../rig';
-import { createMapPlate, Transformer, TRANSFORMER_SHOTS } from './transformer';
+import { KvRow, MAP_D, MAP_W, MapPlate, TOKEN_PATHS, Transformer, TRANSFORMER_SHOTS } from './transformer';
 
-const WHEEL = 200;
+const WHEEL = 193;
 const DEC = 233;
 const DET = DEC + 27;
 const ROW0 = DEC - 13;
 const BACK_Z = -2.4;
-const PLATE_Y = (i: number) => PAD_Y + 0.56 + i * 1.04;
+/* The decode step is the same stack as the forward pass, at half the size, with one token climbing it. */
+const STACK_X = DEC - 10; // far enough along that the tool call's text never lands on it
+const SCALE = 8.6 / MAP_W;
+const FLOOR_Y = [PAD_Y + 1.5, PAD_Y + 3.3, PAD_Y + 5.1, PAD_Y + 7.6];
+const SPOTS: [number, number][] = [
+	[2.9, 2.2],
+	[2.4, 1.2],
+	[1.6, 0.7],
+	[1.1, 0.4]
+];
+const MAX_PAIRS = 36;
 
 const box = (x: number, y: number, w: number, h: number) => ({ x, y, w, h });
 const at = (x: number, y: number, z: number): [number, number, number] => [ORIGIN.x + x, ORIGIN.y + y, ORIGIN.z + z];
 const TALL = box(0, 0.06, 1, 0.47);
 
 const S_WHEEL: Omit<Shot, 'T'> = { az: 8, el: 9, target: at(WHEEL - 0.4, 3.4, 0), radius: 9.2, ry: 4.3, wide: box(0, 0.07, 0.56, 0.88), tall: TALL };
-const S_DEC: Omit<Shot, 'T'> = { az: 8, el: 25, target: at(DEC - 6.6, 2.2, 1.2), radius: 7.7, ry: 5.4, wide: box(0.4, 0.06, 0.59, 0.9), tall: TALL };
-const S_CALL: Omit<Shot, 'T'> = { az: -4, el: 56, target: at(DEC + 1.6, 0.8, 4.6), radius: 6.4, ry: 3.1, wide: box(0.02, 0.4, 0.96, 0.56), tall: box(0, 0.08, 1, 0.42), tallRadius: 4.6 };
+const S_DEC: Omit<Shot, 'T'> = { az: 10, el: 17, target: at(DEC - 9, 4, 0.8), radius: 7.4, ry: 5.2, wide: box(0.41, 0.05, 0.58, 0.9), tall: TALL };
+const S_CALL: Omit<Shot, 'T'> = { az: -6, el: 56, target: at(DEC + 3.6, 0.8, 4.6), radius: 6.4, ry: 3.1, wide: box(0.02, 0.4, 0.96, 0.56), tall: box(0, 0.08, 1, 0.42), tallRadius: 4.6 };
 const S_DET: Omit<Shot, 'T'> = { az: -14, el: 13, target: at(DET, 3.2, 2), radius: 7, ry: 4.3, wide: box(0.01, 0.07, 0.6, 0.88), tall: TALL };
 
 export const FORWARD_SHOTS: Shot[] = [
@@ -36,7 +47,7 @@ export const FORWARD_SHOTS: Shot[] = [
 	{ T: 16.04, ...S_DEC },
 	{ T: 16.9, ...S_DEC, az: 11 },
 	{ T: 17.06, ...S_CALL },
-	{ T: 17.9, ...S_CALL, az: -3 },
+	{ T: 17.9, ...S_CALL, az: -5 },
 	{ T: 18.06, ...S_DET },
 	{ T: 18.62, ...S_DET, az: -9 },
 	{ T: 18.97, ...S_DET, az: -6, el: 40, target: at(DET, 13, 0.4), radius: 2.6, ry: 2.6 }
@@ -63,7 +74,7 @@ class Sampler {
 	private sign: THREE.Group;
 	private lamp: Lamp;
 	private a = new THREE.Vector3();
-	private from = new THREE.Vector3(3.6, PAD_Y + 6.6, 0.6);
+	private from = new THREE.Vector3(3.6, PAD_Y + 6.6, 1.5); // in front of the wheel, so it can fall past it
 	private to = new THREE.Vector3(ROW0 - WHEEL, RAIL_Y + TILE_H / 2 + 0.002, RAIL_Z);
 	private dock = new THREE.Vector3(3.6, RAIL_Y + TILE_H / 2 + 0.002, RAIL_Z);
 
@@ -267,70 +278,118 @@ class Decoder {
 	private xs: number[] = [];
 	private rider: THREE.Mesh;
 	private bead: THREE.Mesh;
-	private flash: Lamp[] = [];
-	private kv: THREE.InstancedMesh;
-	private inner: THREE.Group;
+	private plates: MapPlate[] = [];
+	private kvRows: KvRow[] = [];
+	private kvKey = '';
+	private fans: { mesh: THREE.Mesh; mat: THREE.MeshBasicMaterial }[] = [];
+	private path: THREE.CatmullRomCurve3;
+	private thread: THREE.Mesh;
 	private thinkSign: THREE.Group;
 	private toolSign: THREE.Group;
 	private stops: Lamp[] = [];
 	private a = new THREE.Vector3();
 	private b = new THREE.Vector3();
-	private port = new THREE.Vector3(DEC - 7.2, PAD_Y + 4.8, BACK_Z);
-	private portIn = new THREE.Vector3(DEC - 7.2, PAD_Y + 0.6, BACK_Z);
-	private d = new THREE.Object3D();
+	private port: THREE.Vector3;
+	private portIn: THREE.Vector3;
 
 	constructor() {
 		const m = mats();
-		const pad = createPad(13, 9.4);
-		pad.position.set(DEC - 7, PAD_Y, -1.5);
-		this.group.add(pad);
 		const stack = new THREE.Group();
-		stack.position.z = BACK_Z;
+		stack.position.set(STACK_X, 0, BACK_Z);
 		this.group.add(stack);
+		const spot = (f: number) => new THREE.Vector3(SPOTS[f][0] * SCALE, FLOOR_Y[f] + 0.03, SPOTS[f][1] * SCALE);
 
-		// One decode step: the same stack of maps as before, small, with one token going up it.
-		const ex = DEC - 7.2;
-		const frame = new Batch();
-		frame.add(rbox(6.6, 0.12, 4.4, 0.05, 3), m.steelSoft, { p: [ex, PAD_Y + 0.06, 0] });
-		for (const sx of [-1, 1]) for (const sz of [-1, 1]) frame.add(new THREE.CylinderGeometry(0.07, 0.07, 5, 12), m.steel, { p: [ex + sx * 3, PAD_Y + 2.5, sz * 1.84] });
-		stack.add(frame.build('decode-frame'));
-		shadowOn(stack, ex, PAD_Y, 0, 6.9, 4.7, 0.5);
-		for (let i = 0; i < 5; i++) {
-			const y = PLATE_Y(i);
-			const { group, material } = createMapPlate(5.7, 3.5, 0.13);
-			material.opacity = 0.42;
-			group.scale.y = 0.6;
-			group.position.set(ex, y, 0);
-			stack.add(group);
-			const lamp = new Lamp(rbox(0.3, 0.07, 0.05, 0.02, 2), '#ffc53d', 0.05);
-			lamp.mesh.position.set(ex + 2.4, y, 1.95);
-			stack.add(lamp.mesh);
-			this.flash.push(lamp);
-		}
-		const stepSign = createSign('One decode step, through every layer', 0.24);
-		stepSign.position.set(ex, PAD_Y + 0.42, 2.02);
-		stack.add(stepSign);
-		this.bead = new THREE.Mesh(rbox(0.7, TILE_H, TILE_D * 0.7, 0.055, 3), m.amber);
+		FLOOR_Y.forEach((y, f) => {
+			const plate = new MapPlate(MAP_W * SCALE, MAP_D * SCALE, 0.2);
+			plate.group.position.y = y;
+			stack.add(plate.group);
+			this.plates.push(plate);
+			const row = new KvRow(MAX_PAIRS, -2.6, 3.9, 0.075);
+			row.group.position.set(0, y - 0.1, (MAP_D * SCALE) / 2 + 0.01);
+			stack.add(row.group);
+			this.kvRows.push(row);
+			const sign = createSign(['Embedding', 'Layer 1', 'Layer 2', 'Layer 80'][f], 0.17);
+			sign.position.set((-MAP_W * SCALE) / 2 + 0.72, y - 0.1, (MAP_D * SCALE) / 2 + 0.04);
+			stack.add(sign);
+		});
+		const kvSign = createSign('KV cache: one key and one value more each step', 0.18);
+		kvSign.position.set(0.6, FLOOR_Y[0] - 0.42, (MAP_D * SCALE) / 2 + 0.06);
+		stack.add(kvSign);
+		const under = contactShadow(MAP_W * SCALE + 1, MAP_D * SCALE + 1, 0.5, 0.5, '#020818');
+		under.position.y = 0.32;
+		stack.add(under);
+
+		// What is already there: the prompt, with its threads, finished and not recomputed.
+		const pinGeo = rbox(0.42, 0.1, 0.3, 0.03, 2);
+		const pinMat = new THREE.MeshStandardMaterial({ color: '#ffd98a', roughness: 0.4, emissive: '#d88a1a', emissiveIntensity: 0.35 });
+		const pins = new THREE.InstancedMesh(pinGeo, pinMat, TOKEN_PATHS[0].length * FLOOR_Y.length);
+		pins.frustumCulled = false;
+		const threadMat = new THREE.MeshStandardMaterial({ color: '#ffd98a', roughness: 0.4, emissive: '#c07a10', emissiveIntensity: 0.25 });
+		const placed = new THREE.Object3D();
+		const LEVELS = [1, 3, 4, 6];
+		TOKEN_PATHS[0].forEach((_, i) => {
+			const points: THREE.Vector3[] = [];
+			LEVELS.forEach((level, f) => {
+				const [x, z] = TOKEN_PATHS[level][i];
+				const p = new THREE.Vector3(x * SCALE, FLOOR_Y[f] + 0.04, z * SCALE);
+				placed.position.copy(p);
+				placed.position.y += 0.05;
+				placed.updateMatrix();
+				pins.setMatrixAt(i * FLOOR_Y.length + f, placed.matrix);
+				if (f > 0) {
+					const prev = points[points.length - 1];
+					const h = (p.y - prev.y) * 0.5;
+					const c = new THREE.CubicBezierCurve3(prev.clone(), prev.clone().setY(prev.y + h), p.clone().setY(p.y - h), p.clone());
+					points.push(...c.getPoints(10).slice(1));
+				} else points.push(p);
+			});
+			stack.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), 44, 0.018, 5), threadMat));
+		});
+		stack.add(pins);
+
+		// The new token's own path, drawn as it climbs.
+		const pts: THREE.Vector3[] = [];
+		FLOOR_Y.forEach((_, f) => {
+			const p = spot(f);
+			if (f > 0) {
+				const prev = pts[pts.length - 1];
+				const h = (p.y - prev.y) * 0.5;
+				const c = new THREE.CubicBezierCurve3(prev.clone(), prev.clone().setY(prev.y + h), p.clone().setY(p.y - h), p.clone());
+				pts.push(...c.getPoints(12).slice(1));
+			} else pts.push(p);
+		});
+		this.path = new THREE.CatmullRomCurve3(pts);
+		this.path.arcLengthDivisions = 300;
+		this.thread = new THREE.Mesh(new THREE.TubeGeometry(this.path, 90, 0.04, 7), new THREE.MeshStandardMaterial({ color: '#ffb31a', emissive: '#ff8a00', emissiveIntensity: 1, roughness: 0.35 }));
+		this.thread.frustumCulled = false;
+		stack.add(this.thread);
+
+		// On every floor it looks back at all of them, in one flash.
+		FLOOR_Y.forEach((y, f) => {
+			const from = spot(f);
+			from.y += 0.16;
+			const parts: THREE.BufferGeometry[] = [];
+			TOKEN_PATHS[0].forEach((_, i) => {
+				const [x, z] = TOKEN_PATHS[LEVELS[f]][i];
+				const to = new THREE.Vector3(x * SCALE, y + 0.14, z * SCALE);
+				const c = from.clone().lerp(to, 0.5);
+				c.y += 0.25 + from.distanceTo(to) * 0.16;
+				parts.push(new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(from, c, to), 14, 0.012 + hash(i * 3.1 + f) * 0.016, 5));
+			});
+			const mat = new THREE.MeshBasicMaterial({ color: '#ff9a2e', transparent: true, opacity: 0, depthWrite: false });
+			const mesh = new THREE.Mesh(mergeGeometries(parts), mat);
+			mesh.visible = false;
+			mesh.renderOrder = 2;
+			stack.add(mesh);
+			this.fans.push({ mesh, mat });
+		});
+
+		this.bead = new THREE.Mesh(rbox(0.5, 0.16, 0.36, 0.04, 2), m.amber);
 		this.bead.castShadow = true;
 		this.bead.visible = false;
 		stack.add(this.bead);
-		this.inner = new THREE.Group();
-		this.group.add(this.inner);
-
-		// Its KV shelf, gaining a row with every token.
-		const shelf = machine({ w: 3.4, h: 5, d: 2.2, finish: 'cream', name: 'KV cache', signH: 0.26, vent: false });
-		shelf.position.set(DEC - 0.4 - 0.6, PAD_Y, -0.9);
-		stack.add(shelf);
-		shadowOn(stack, DEC - 1, PAD_Y, -0.9, 3.7, 2.5);
-		this.kv = new THREE.InstancedMesh(rbox(0.5, 0.2, 0.24, 0.05, 2), m.hbm, 44);
-		this.kv.frustumCulled = false;
-		stack.add(this.kv);
-		const link = curve([
-			[DEC - 4.1, PAD_Y + 3, 0.2],
-			[DEC - 3.4, PAD_Y + 3.3, 0.2],
-			[DEC - 2.7, PAD_Y + 3, 0.2]
-		]);
-		stack.add(tube(link, 0.12, m.greenGlow, 16));
+		this.portIn = spot(0).add(stack.position);
+		this.port = spot(3).add(stack.position);
 
 		this.rider = new THREE.Mesh(rbox(0.7, TILE_H, TILE_D, 0.055, 3), m.amber);
 		this.rider.castShadow = true;
@@ -369,10 +428,10 @@ class Decoder {
 		const title = createSign('Stop reason', 0.2);
 		title.position.set(0, 2.72, 0.05);
 		pg.add(title);
-		pg.position.set(DEC + 5.4, PAD_Y, 2.9);
+		pg.position.set(DEC + 7.4, PAD_Y, 2.9);
 		pg.rotation.x = -0.3;
 		const subPad = createPad(6.2, 2.8);
-		subPad.position.set(DEC + 5.4, PAD_Y, 3.5);
+		subPad.position.set(DEC + 7.4, PAD_Y, 3.5);
 		this.group.add(subPad, pg);
 		this.setHarness('claude');
 	}
@@ -411,7 +470,7 @@ class Decoder {
 		const working = T > THINK_A && (T < THINK_B || (T > CALL_A && T < CALL_B));
 
 		this.row.forEach((tile, i) => {
-			const appear = i === 0 ? (T >= 15.98 ? 1 : 0) : n - i - 0.55;
+			const appear = i === 0 ? (T >= 16 ? 1 : 0) : n - i - 0.55;
 			const x = this.xs[i] + shift;
 			const past = x > gate;
 			tile.group.visible = appear > 0 && !past;
@@ -423,38 +482,69 @@ class Decoder {
 			tile.group.scale.setScalar(Math.max(0.3, k));
 		});
 
-		// The newest token rides back into the machine: its K and V do not exist until the next pass.
-		const riding = working && f < 0.45 && whole >= 1;
+		// The newest token rides back into the stack: its K and V do not exist until the next pass.
+		const riding = working && f < 0.34 && whole >= 1;
 		this.rider.visible = riding;
 		if (riding) {
-			this.b.set(this.xs[whole - 1], RAIL_Y + TILE_H / 2, RAIL_Z);
-			arcPoint(this.b, this.portIn, 1.3, smooth(seg(f, 0, 0.45)), this.a);
+			this.b.set(this.xs[whole - 1], RAIL_Y + TILE_H * 1.12, RAIL_Z);
+			// Up in front of the stack, then in over the edge of the first map, between it and the one above.
+			const k = smooth(seg(f, 0, 0.34));
+			const u = 1 - k;
+			const top = this.portIn.y;
+			const w1 = 3 * u * u * k;
+			const w2 = 3 * u * k * k;
+			const w3 = k * k * k;
+			this.a.set(
+				u * u * u * this.b.x + w1 * lerp(this.b.x, this.portIn.x, 0.3) + w2 * this.portIn.x + w3 * this.portIn.x,
+				u * u * u * this.b.y + w1 * (top + 1.25) + w2 * (top + 0.85) + w3 * top,
+				u * u * u * this.b.z + w1 * this.b.z + w2 * (this.portIn.z + 0.4) + w3 * this.portIn.z
+			);
 			this.rider.position.copy(this.a);
-			this.rider.rotation.x = f * 4;
+			this.rider.position.y += TILE_H / 2;
+			this.rider.scale.setScalar(1 - k * 0.3);
+			this.rider.rotation.x = Math.sin(k * Math.PI) * 0.45;
 		}
-		const up = seg(f, 0.3, 0.62);
+		const up = seg(f, 0.3, 0.72);
 		this.bead.visible = working && up > 0 && up < 1;
-		if (this.bead.visible) this.bead.position.set(DEC - 7.2, PAD_Y + 0.7 + up * 4.1, 0);
-		this.flash.forEach((lamp, i) => {
-			const on = working ? bell(up, i / 5 - 0.1, i / 5 + 0.3) : 0;
-			lamp.set('#ffc53d', 0.05 + on * 1.3);
+		if (this.bead.visible) {
+			this.path.getPointAt(up, this.bead.position);
+			this.bead.position.y += 0.08;
+			// It draws into its thread to pass each floor, like every other token.
+			let wide = 1;
+			for (let i = 1; i < FLOOR_Y.length; i++) {
+				const y = this.bead.position.y;
+				const top = FLOOR_Y[i];
+				wide = Math.min(wide, smooth(y < top ? seg(top - 0.2 - y, 0, 0.45) : seg(y - top, 0, 0.1)));
+			}
+			this.bead.scale.setScalar(0.14 + wide * 0.86);
+		}
+		this.thread.visible = working && up > 0;
+		if (this.thread.visible) this.thread.geometry.setDrawRange(0, Math.floor(up * 90) * 7 * 6);
+		const floors = FLOOR_Y.length;
+		this.plates.forEach((plate, i) => {
+			const arrive = i / (floors - 1);
+			const on = working ? bell(up, arrive - 0.2, arrive + 0.2) : 0;
+			plate.setLit(0.03 + on * 0.97);
+			const fan = this.fans[i];
+			fan.mesh.visible = on > 0.02;
+			fan.mat.opacity = on * 0.85;
 		});
 
-		const d = this.d;
-		for (let i = 0; i < this.kv.count; i++) {
-			const row = i % 22;
-			const col = Math.floor(i / 22);
-			const made = n > i / 2 + 1 ? 1 : 0;
-			d.position.set(DEC - 1 - 1.1 + 0.55 * (row % 5) + col * 0.05, PAD_Y + 0.5 + 0.36 * Math.floor(row / 5) + col * 0.02, 0.27 + col * 0.26);
-			d.scale.setScalar(made ? 1 : 0.0001);
-			d.updateMatrix();
-			this.kv.setMatrixAt(i, d.matrix);
+		// One more key and value on each floor, as the token passes it.
+		const key = `${whole}/${Math.floor(up * floors)}`;
+		if (key !== this.kvKey) {
+			this.kvKey = key;
+			const prompt = TOKEN_PATHS[0].length;
+			this.kvRows.forEach((row, i) => {
+				const passed = up * (floors - 1) >= i;
+				const made = prompt + whole - 1 + (working && passed ? 1 : 0);
+				row.set((p) => (p < made ? 1 : 0));
+			});
 		}
-		this.kv.instanceMatrix.needsUpdate = true;
 
 		const nT = THINKING.length;
 		const midThink = (this.xs[0] + this.xs[nT - 1]) / 2 + shift;
-		const s1 = outBack(seg(T, 16.5, 16.62), 2) * (1 - seg(T, 18.1, 18.2));
+		const s1 = outBack(seg(T, 16.5, 16.62), 2) * (1 - smooth(seg(T, 16.94, 17.03)));
 		this.thinkSign.visible = s1 > 0.001;
 		this.thinkSign.scale.setScalar(Math.max(0.001, s1));
 		this.thinkSign.position.set(midThink, RAIL_Y + 0.72, RAIL_Z - 0.9);
@@ -522,10 +612,26 @@ class Detokenizer {
 		glass.renderOrder = 4;
 		this.group.add(glass);
 		const collar = new Batch();
-		collar.add(new THREE.CylinderGeometry(0.96, 1.02, 0.34, 40), m.steel, { p: [0, this.TOP + 0.65, 3.5] });
-		collar.add(new THREE.CylinderGeometry(0.86, 0.86, 0.1, 40), m.steel, { p: [0, this.TOP + 6, 3.5] });
-		collar.add(new THREE.CylinderGeometry(0.86, 0.86, 0.1, 40), m.steel, { p: [0, this.TOP + 12, 3.5] });
+		// Rings, not discs: the paper has to rise through them.
+		const ring = (outer: number, h: number) => {
+			const bore = 0.74;
+			const profile = [
+				new THREE.Vector2(bore, -h / 2),
+				new THREE.Vector2(outer, -h / 2),
+				new THREE.Vector2(outer, h / 2),
+				new THREE.Vector2(bore, h / 2),
+				new THREE.Vector2(bore, -h / 2)
+			];
+			return new THREE.LatheGeometry(profile, 48);
+		};
+		collar.add(ring(1.02, 0.34), m.steel, { p: [0, this.TOP + 0.65, 3.5] });
+		collar.add(ring(0.86, 0.1), m.steel, { p: [0, this.TOP + 6, 3.5] });
+		collar.add(ring(0.86, 0.1), m.steel, { p: [0, this.TOP + 12, 3.5] });
 		this.group.add(collar.build('collar'));
+		const mouth = new THREE.Mesh(new THREE.CircleGeometry(0.74, 48), new THREE.MeshStandardMaterial({ color: '#060f26', roughness: 0.9 }));
+		mouth.rotation.x = -Math.PI / 2;
+		mouth.position.set(0, this.TOP + 0.49, 3.5);
+		this.group.add(mouth);
 
 		SLIP_TEXT.forEach((text) => {
 			const s = new Surface(420, 170);

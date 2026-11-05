@@ -32,7 +32,7 @@ class Drawer {
 	lamp: Lamp;
 	sheet: THREE.Group;
 	private plate: Surface;
-	private y: number;
+	y: number;
 
 	constructor(public index: number, name: string, icon: string) {
 		const m = mats();
@@ -250,6 +250,11 @@ export class Harness {
 			l.set(color.amber, 0.2 + lit * (0.6 + breathe * 0.4));
 		});
 		this.roofLamp.set(color.green, 0.3 + wake * 0.7);
+	}
+
+	/** Where a drawer's contents lie once it is fully open, so something on its way there can aim at it before it has opened. */
+	catchPoint(i: number, target: THREE.Vector3) {
+		return this.group.localToWorld(target.set(0, this.drawers[i].y + 0.1, HD / 2 - 0.06 + DRAWER_TRAVEL - 0.7));
 	}
 
 	/** World position a drawer's contents lift from. */

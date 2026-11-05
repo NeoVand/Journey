@@ -26,6 +26,9 @@ const ICONS = ['doc', 'cube', 'wrench', 'chat'];
 export class Strip {
 	mesh: THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
 	private surface = new Surface(920, 170);
+	get canvas() {
+		return this.surface.canvas;
+	}
 
 	constructor(private index: number) {
 		const material = new THREE.MeshStandardMaterial({
@@ -75,6 +78,9 @@ export class RequestDoc {
 	sheet: THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
 	back: THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
 	private surface = new Surface(1104, 1488);
+	/** The same page with its strips printed in, which is what gets rolled up: strips cannot bend with it. */
+	private baked = new Surface(1104, 1488);
+	private filled = false;
 	tabs = new THREE.Group();
 	private tabMats: THREE.Material[] = [];
 	private rolled = -1;
@@ -187,6 +193,24 @@ export class RequestDoc {
 			tab.position.x = -DOC_W / 2 - 0.12 * k + (1 - k) * 0.14;
 			tab.visible = k > 0.001;
 		});
+	}
+
+	bake(strips: HTMLCanvasElement[]) {
+		this.baked.draw((c, w, h) => {
+			c.drawImage(this.surface.canvas, 0, 0);
+			const sw = (STRIP_W / DOC_W) * w;
+			const sh = (STRIP_H / DOC_H) * h;
+			strips.forEach((strip, i) => {
+				c.drawImage(strip, (w - sw) / 2, ((DOC_H / 2 - SLOT_Y[i]) / DOC_H) * h - sh / 2, sw, sh);
+			});
+		});
+	}
+
+	setFilled(on: boolean) {
+		if (on === this.filled) return;
+		this.filled = on;
+		this.sheet.material.map = on ? this.baked.texture : this.surface.texture;
+		this.sheet.material.needsUpdate = true;
 	}
 
 	setClip(planes: THREE.Plane[]) {

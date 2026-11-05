@@ -23,13 +23,17 @@ varying vec3 vN; varying vec3 vV; varying vec2 vUv;
 float line(float v, float w){ float f = abs(fract(v)-.5); return smoothstep(.5-w,.5,f); }
 void main(){
 	float fres = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 2.4);
+	// Looking in through an open end you see the far wall from inside. Kept faint, or the mouth reads as a closed lens.
+	float side = gl_FrontFacing ? 1.0 : 0.16;
 	vec2 g = vec2(vUv.y*uLen*2.6, vUv.x*22.0);
-	float grid = max(line(g.x,.035), line(g.y,.03));
+	// The grid thins out toward each end, so nothing is drawn across the open mouths.
+	float ends = smoothstep(0.,.1,vUv.y)*smoothstep(1.,.9,vUv.y);
+	float grid = max(line(g.x,.035), line(g.y,.03))*ends;
 	float sweep = smoothstep(.0,.5,sin(vUv.y*uLen*1.4 + uTime*2.4)*.5+.5);
 	vec3 deep = vec3(.05,.34,.95);
 	vec3 cyan = vec3(.40,.82,1.0);
 	vec3 col = mix(deep,cyan,fres) + cyan*grid*(.25+.55*sweep*uEnergy);
-	float a = .24 + fres*.66 + grid*(.24+.34*sweep*uEnergy);
+	float a = (.24 + fres*.56 + grid*(.24+.34*sweep*uEnergy)) * side;
 	gl_FragColor = vec4(col*(1.0+uEnergy*.3), clamp(a,0.,.92));
 	#include <colorspace_fragment>
 }`;
@@ -57,7 +61,8 @@ export class Tunnel {
 			[R + 0.2, -0.13],
 			[R + 0.2, 0.13],
 			[R + 0.13, 0.17],
-			[R - 0.04, 0.17]
+			[R - 0.04, 0.17],
+			[R - 0.04, -0.17] // a closed section: the ring has a bore you can see into
 		].map(([x, y]) => new THREE.Vector2(x, y));
 		const flange = new THREE.LatheGeometry(flangeProfile, 72);
 		const bolt = new THREE.CylinderGeometry(0.038, 0.044, 0.05, 6);
@@ -79,13 +84,31 @@ export class Tunnel {
 				[R + 0.08, -0.07],
 				[R + 0.08, 0.07],
 				[R + 0.05, 0.1],
-				[R - 0.02, 0.1]
+				[R - 0.02, 0.1],
+				[R - 0.02, -0.1]
 			].map(([x, y]) => new THREE.Vector2(x, y)),
 			72
 		);
 		b.add(collar, m.steelSoft, { p: [L / 2, 0, 0], r: [0, 0, Math.PI / 2] });
 
 		this.group.add(b.build('tunnel-frame'));
+
+		// Where the tube meets the gateway: a dark port, so what travels has somewhere to go.
+		const portCanvas = document.createElement('canvas');
+		portCanvas.width = portCanvas.height = 256;
+		const pc = portCanvas.getContext('2d')!;
+		const pg = pc.createRadialGradient(128, 128, 20, 128, 128, 128);
+		pg.addColorStop(0, '#040a1c');
+		pg.addColorStop(0.72, '#081230');
+		pg.addColorStop(1, '#22365f');
+		pc.fillStyle = pg;
+		pc.fillRect(0, 0, 256, 256);
+		const portTex = new THREE.CanvasTexture(portCanvas);
+		portTex.colorSpace = THREE.SRGBColorSpace;
+		const port = new THREE.Mesh(new THREE.CircleGeometry(R - 0.03, 72), new THREE.MeshBasicMaterial({ map: portTex }));
+		port.rotation.y = -Math.PI / 2;
+		port.position.x = L + 0.03;
+		this.group.add(port);
 
 		// Glass shell.
 		this.uniforms.uLen.value = L;

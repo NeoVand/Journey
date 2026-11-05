@@ -46,32 +46,32 @@ const S_FIN = { az: 9, el: 14, target: rel(F_POS, 0, 2.1, 0.8), radius: 10.8, ry
 const S_END = { az: 29, el: 17, target: [1.9, 1.35, 0.4] as V3, radius: 6.25, ry: 6.25, wide: box(0.4, 0.02, 0.61, 0.94), tall: box(0, 0.05, 1, 0.42) };
 
 export const BACK_SHOTS: Shot[] = [
-	{ T: 21.08, ...S_HATCH },
-	{ T: 21.64, ...S_HATCH, az: 14 },
-	{ T: 22.04, ...S_GATES },
-	{ T: 22.92, ...S_GATES, az: -22 },
-	{ T: 23.06, ...S_BOX },
-	{ T: 23.9, ...S_BOX, az: 6 },
-	{ T: 24.06, ...S_FIND },
-	{ T: 24.93, ...S_FIND, az: -5 },
-	{ T: 25.09, ...S_EDIT },
-	{ T: 25.9, ...S_EDIT, az: 7 },
-	{ T: 26.06, ...S_TEST },
-	{ T: 26.86, ...S_TEST, az: 13 },
-	{ T: 27.42, ...S_HOME },
-	{ T: 27.9, ...S_HOME, az: 21 },
-	{ T: 28.06, ...S_COMPACT },
-	{ T: 28.9, ...S_COMPACT, az: 10 },
-	{ T: 29.06, ...S_MEM },
-	{ T: 29.92, ...S_MEM, az: -8 },
-	{ T: 30.06, ...S_UNK },
-	{ T: 30.92, ...S_UNK, az: 7 },
-	{ T: 31.06, ...S_TEN },
-	{ T: 31.9, ...S_TEN, az: -7 },
-	{ T: 32.06, ...S_FIN },
-	{ T: 32.8, ...S_FIN, az: 6 },
-	{ T: 33.46, ...S_END },
-	{ T: 34, ...S_END, az: 26 }
+	{ T: 19, ...S_HATCH }, // already there when the fade from the tube lifts
+	{ T: 19.64, ...S_HATCH, az: 14 },
+	{ T: 20.04, ...S_GATES },
+	{ T: 20.92, ...S_GATES, az: -22 },
+	{ T: 21.06, ...S_BOX },
+	{ T: 21.9, ...S_BOX, az: 6 },
+	{ T: 22.06, ...S_FIND },
+	{ T: 22.93, ...S_FIND, az: -5 },
+	{ T: 23.09, ...S_EDIT },
+	{ T: 23.9, ...S_EDIT, az: 7 },
+	{ T: 24.06, ...S_TEST },
+	{ T: 24.86, ...S_TEST, az: 13 },
+	{ T: 25.42, ...S_HOME },
+	{ T: 25.9, ...S_HOME, az: 21 },
+	{ T: 26.06, ...S_COMPACT },
+	{ T: 26.9, ...S_COMPACT, az: 10 },
+	{ T: 27.06, ...S_MEM },
+	{ T: 27.92, ...S_MEM, az: -8 },
+	{ T: 28.06, ...S_UNK },
+	{ T: 28.92, ...S_UNK, az: 7 },
+	{ T: 29.06, ...S_TEN },
+	{ T: 29.9, ...S_TEN, az: -7 },
+	{ T: 30.06, ...S_FIN },
+	{ T: 30.8, ...S_FIN, az: 6 },
+	{ T: 31.46, ...S_END },
+	{ T: 32, ...S_END, az: 26 }
 ];
 
 const up = new THREE.Vector3(0, 1, 0);
@@ -123,10 +123,11 @@ class Gate {
 		this.group.add(f.build('gate-feet'));
 
 		const armB = new Batch();
-		armB.add(new THREE.BoxGeometry(0.14, 0.14, Z * 2 - 0.5), this.armMat, { p: [0, 0, -(Z * 2 - 0.5) / 2] });
-		armB.add(rbox(0.2, 0.3, 0.3, 0.05, 2), m.steelSoft, { p: [0, 0, 0.02] });
+		// Hinged on the far post, so that raising it never sweeps through the sign on the near one.
+		armB.add(new THREE.BoxGeometry(0.14, 0.14, Z * 2 - 0.5), this.armMat, { p: [0, 0, (Z * 2 - 0.5) / 2] });
+		armB.add(rbox(0.2, 0.3, 0.3, 0.05, 2), m.steelSoft, { p: [0, 0, -0.02] });
 		this.arm.add(armB.build('arm'));
-		this.arm.position.set(-0.42, 1.14, Z - 0.1);
+		this.arm.position.set(-0.44, 1.14, -(Z - 0.1));
 		this.group.add(this.arm);
 
 		const sign = createSign(name, 0.21);
@@ -143,7 +144,7 @@ class Gate {
 	}
 
 	set(open: number) {
-		this.arm.rotation.x = open * 1.42;
+		this.arm.rotation.x = -open * 1.42;
 	}
 }
 
@@ -180,8 +181,8 @@ export class Back {
 		[-30, -7, -8.8],
 		[-54, -10.4, -6.2],
 		[-58.4, GY + 0.9, -3],
-		[-59.4, GY + 0.45, -0.7],
-		[-59.5, GY + 0.3, TRACK_Z]
+		[-60, GY + 0.5, TRACK_Z - 1.6],
+		[-60.6, GY + 0.28, TRACK_Z - 0.82]
 	]);
 	private carrier = new THREE.Group();
 	private gates: Gate[] = [];
@@ -200,7 +201,7 @@ export class Back {
 	private packet!: THREE.Mesh;
 	private ripple!: THREE.Mesh;
 	private proc!: Lamp;
-	private beat23 = new THREE.Group();
+	private sandboxBeat = new THREE.Group();
 	private monitor = new THREE.Group();
 
 	private shelfHits: THREE.Mesh[] = [];
@@ -273,7 +274,7 @@ export class Back {
 
 	/* ---- the stream lands ---- */
 	private buildHatch() {
-		const g = this.zone(20.8, 23.06);
+		const g = this.zone(18.8, 21.06);
 		const m = mats();
 		for (let i = 0; i < 8; i++) {
 			const slip = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.26), m.paper);
@@ -289,7 +290,7 @@ export class Back {
 
 	/* ---- the gates ---- */
 	private buildGates() {
-		const g = this.zone(21.5, 23.4);
+		const g = this.zone(19.5, 21.4);
 		const m = mats();
 		const isl = islandAt(23, 12);
 		isl.position.set(-51, GY, 0.4);
@@ -336,7 +337,7 @@ export class Back {
 
 	/* ---- the sandbox and its workshop ---- */
 	private buildSandbox() {
-		const g = this.zone(21.9, 27.7);
+		const g = this.zone(19.9, 25.7);
 		const m = mats();
 		const isl = islandAt(32, 15);
 		isl.position.set(WX, WY, 0.4);
@@ -405,8 +406,8 @@ export class Back {
 			c.fillStyle = 'rgba(60,84,120,.35)';
 			[0.7, 0.86, 0.6].forEach((len, i) => c.fillRect(52, 720 + i * 44, (w - 104) * len, 18));
 		});
-		g.add(this.beat23);
-		const bt = this.beat23;
+		g.add(this.sandboxBeat);
+		const bt = this.sandboxBeat;
 		bt.add(this.docsCard.mesh);
 		const dstand = new Batch();
 		dstand.add(rbox(3.4, 0.12, 1, 0.04, 2), m.steelSoft, { p: [WX + 3.2, WY + 0.06, 3.4] });
@@ -463,7 +464,7 @@ export class Back {
 
 		const lb = new Batch();
 		lb.add(new THREE.TorusGeometry(0.72, 0.11, 14, 44), m.cobalt);
-		lb.add(rbox(0.2, 1.1, 0.14, 0.06, 2), m.cobalt, { p: [0.72, -0.86, 0], r: [0, 0, 0.72] });
+		lb.add(rbox(0.2, 0.8, 0.14, 0.06, 2), m.cobalt, { p: [0.64, -0.76, 0], r: [0, 0, 0.72] });
 		this.lens.add(lb.build('lens'));
 		const lensGlass = new THREE.Mesh(new THREE.CircleGeometry(0.66, 40), new THREE.MeshPhysicalMaterial({ color: '#d5ecff', transparent: true, opacity: 0.32, roughness: 0.05, depthWrite: false }));
 		this.lens.add(lensGlass);
@@ -483,8 +484,9 @@ export class Back {
 		/* -- the file on its easel -- */
 		const ex = WX;
 		const easelBase = new Batch();
-		easelBase.add(rbox(5.7, 0.14, 1.2, 0.05, 3), m.steelSoft, { p: [ex, WY + 0.07, -0.9] });
+		easelBase.add(rbox(5.7, 0.14, 1.2, 0.05, 3), m.steelSoft, { p: [0, 0.07, 0] });
 		this.easelBase = easelBase.build('code-easel-base');
+		this.easelBase.position.set(ex, WY, -0.9);
 		g.add(this.easelBase);
 		const easel = new Batch();
 		for (const s of [-1, 1]) easel.add(rbox(0.12, 6.4, 0.1, 0.03, 2), m.steel, { p: [ex + s * 2.1, 3.2, -1.12], r: [-0.1, 0, 0] });
@@ -531,7 +533,7 @@ export class Back {
 
 	/* ---- turn two ---- */
 	private buildHome() {
-		const g = this.zone(26.8, 28.4);
+		const g = this.zone(24.8, 26.4);
 		this.page.mesh.position.copy(EASEL_POS);
 		this.page.mesh.rotation.x = EASEL_TILT;
 		g.add(this.page.mesh);
@@ -539,7 +541,7 @@ export class Back {
 
 	/* ---- compaction ---- */
 	private buildCompact() {
-		const g = this.zone(27.6, 29.4, true);
+		const g = this.zone(25.6, 27.4, true);
 		const m = mats();
 		const [cx, cy, cz] = C_POS;
 		const isl = islandAt(15, 9);
@@ -619,7 +621,7 @@ export class Back {
 
 	/* ---- seven kinds of memory ---- */
 	private buildMemory() {
-		const g = this.zone(28.6, 30.3, true);
+		const g = this.zone(26.6, 28.3, true);
 		const m = mats();
 		const [cx, cy, cz] = M_POS;
 		const isl = islandAt(13, 8);
@@ -687,7 +689,7 @@ export class Back {
 
 	/* ---- unknown outcome ---- */
 	private buildUnknown() {
-		const g = this.zone(29.6, 31.3, true);
+		const g = this.zone(27.6, 29.3, true);
 		const m = mats();
 		const [cx, cy, cz] = U_POS;
 		const isl = islandAt(19, 11);
@@ -772,7 +774,7 @@ export class Back {
 
 	/* ---- ten turns ---- */
 	private buildTen() {
-		const g = this.zone(30.6, 32.3, true);
+		const g = this.zone(28.6, 30.3, true);
 		const m = mats();
 		const [cx, cy, cz] = R_POS;
 		const isl = islandAt(22, 8.5);
@@ -862,7 +864,7 @@ export class Back {
 
 	/* ---- what finished means ---- */
 	private buildFinish() {
-		const g = this.zone(31.6, 33.5);
+		const g = this.zone(29.6, 31.5);
 		const m = mats();
 		const [cx, cy, cz] = F_POS;
 		const isl = islandAt(25, 10);
@@ -1065,12 +1067,12 @@ export class Back {
 
 	/** Conversation drawer opens when something lands in it. */
 	opens(T: number) {
-		const k = smooth(seg(T, 27.32, 27.44)) * (1 - smooth(seg(T, 27.6, 27.72)));
+		const k = smooth(seg(T, 25.32, 25.44)) * (1 - smooth(seg(T, 25.6, 25.72)));
 		return [0, 0, 0, k];
 	}
 
 	jolt(T: number) {
-		return bell(T, 21.26, 21.42) * 0.6 + bell(T, 27.36, 27.5);
+		return bell(T, 19.26, 19.42) * 0.6 + bell(T, 25.36, 25.5);
 	}
 
 	private drawCode(phase: number) {
@@ -1180,30 +1182,41 @@ export class Back {
 
 	update(T: number, time: number) {
 		// On the way home the camera flies back past everything it has seen.
-		const homeward = T > 32.84 && T < 33.5;
+		const homeward = T > 30.84 && T < 31.5;
 		for (const z of this.zones) z.g.visible = (T > z.from && T < z.to) || (z.home && homeward);
 		const d = this.d;
 
 		/* ---- landing ---- */
-		if (T < 22.2) {
+		if (T < 20.2) {
 			this.rain.forEach((slip, i) => {
-				const k = seg(T, 21.04 + i * 0.03, 21.2 + i * 0.03);
+				const k = seg(T, 19.04 + i * 0.03, 19.2 + i * 0.03);
 				slip.visible = k > 0 && k < 1;
 				if (!slip.visible) return;
 				slip.position.set(1.1 + Math.sin(i * 2.3) * 0.4, lerp(14, 3.9, k * k), -0.75 + Math.cos(i * 1.6) * 0.3);
 				slip.rotation.set(k * 6 + i, k * 4 + i * 2, 0);
 			});
-			const pop = outBack(seg(T, 21.3, 21.42), 1.6);
-			const go = inOut(seg(T, 21.68, 22.02));
+			const pop = outBack(seg(T, 19.3, 19.42), 1.6);
+			const go = inOut(seg(T, 19.68, 20.02));
 			this.carrier.visible = pop > 0 && go < 1;
 			if (this.carrier.visible) {
-				// It comes out of the harness and rests beside it, in the clear, then leaves along the pipe.
-				this.a.set(lerp(1.4, 3.75, Math.min(1, pop)), lerp(2.4, 2.55, Math.min(1, pop)), lerp(0.2, 1.05, Math.min(1, pop)));
+				// It appears beside the harness, in the clear, then leaves along the pipe.
+				this.a.set(lerp(3, 3.75, Math.min(1, pop)), lerp(2.45, 2.55, Math.min(1, pop)), lerp(0.95, 1.05, Math.min(1, pop)));
 				this.carrier.position.copy(this.a);
 				if (go > 0) {
-					this.b.copy(this.gatePath.getPointAt(go));
-					this.b.y += 0.4;
-					this.carrier.position.lerp(this.b, smooth(seg(go, 0, 0.12)));
+					// Up and over the machine's roof, and down onto the pipe behind it, riding high enough to clear it.
+					const JOIN = 0.14;
+					this.b.copy(this.gatePath.getPointAt(Math.max(go, JOIN)));
+					this.b.y += 0.74;
+					if (go < JOIN) {
+						const k = inOut(go / JOIN);
+						const u = 1 - k;
+						const [ax, ay, az] = [this.a.x, this.a.y, this.a.z];
+						this.carrier.position.set(
+							u * u * u * ax + 3 * u * u * k * 4.6 + 3 * u * k * k * 2.2 + k * k * k * this.b.x,
+							u * u * u * ay + 3 * u * u * k * 6.4 + 3 * u * k * k * 6.6 + k * k * k * this.b.y,
+							u * u * u * az + 3 * u * u * k * 0.4 + 3 * u * k * k * -5 + k * k * k * this.b.z
+						);
+					} else this.carrier.position.copy(this.b);
 				}
 				this.carrier.scale.setScalar(Math.max(0.001, lerp(pop * 0.8, 0.5, go)));
 			}
@@ -1211,14 +1224,14 @@ export class Back {
 
 		/* ---- gates ---- */
 		const trackX = (k: number) => lerp(-61, -42.2, k);
-		const stopAt = (i: number) => (GATE_X[i] + 61) / 18.8 - 0.06;
-		if (T > 21.5 && T < 23.3) {
+		const stopAt = (i: number) => (GATE_X[i] + 61) / 18.8 - 0.08;
+		if (T > 19.5 && T < 21.3) {
 			// First call: Read(./.env) gets past the shape check and no further.
-			const badIn = inOut(seg(T, 22.04, 22.2));
+			const badIn = inOut(seg(T, 20.04, 20.2));
 			const badK = lerp(0, stopAt(1), badIn);
-			const fall = seg(T, 22.28, 22.38);
+			const fall = seg(T, 20.28, 20.38);
 			const bg = this.bad.group;
-			bg.visible = T > 22.02 && fall < 1;
+			bg.visible = T > 20.02 && fall < 1;
 			if (bg.visible) {
 				this.a.set(trackX(badK), CARTY, TRACK_Z);
 				arcPoint(this.a, this.bin, 0.8, inOut(fall), this.b);
@@ -1226,19 +1239,19 @@ export class Back {
 				bg.rotation.z = fall * -0.6;
 				bg.scale.setScalar(1 - fall * 0.6);
 			}
-			this.binSign.visible = T > 22.34;
-			this.binSign.scale.setScalar(Math.max(0.001, outBack(seg(T, 22.34, 22.4), 2)));
+			this.binSign.visible = T > 20.34;
+			this.binSign.scale.setScalar(Math.max(0.001, outBack(seg(T, 20.34, 20.4), 2)));
 
 			// Second call: stops at each gate in turn, and each lets it through.
 			const stations = [0, stopAt(0), stopAt(1), stopAt(2), stopAt(3), 1];
-			const A = 22.4;
-			const B = 22.98;
+			const A = 20.4;
+			const B = 20.98;
 			const p = seg(T, A, B) * (stations.length - 1);
 			const i0 = Math.min(stations.length - 2, Math.floor(p));
 			const f = p - i0;
 			const k = lerp(stations[i0], stations[i0 + 1], inOut(seg(f, 0.34, 1)));
 			const gg = this.good.group;
-			gg.visible = T > 22.38 && T < 23.02;
+			gg.visible = T > 20.38 && T < 21.02;
 			if (gg.visible) {
 				gg.position.set(trackX(k), CARTY, TRACK_Z);
 				if (k > 0.97) gg.position.y -= 0;
@@ -1246,9 +1259,9 @@ export class Back {
 			this.gates.forEach((gate, i) => {
 				const hold = A + ((B - A) * (i + 1)) / (stations.length - 1);
 				const open = smooth(seg(T, hold, hold + 0.05));
-				const firstPass = i === 0 ? smooth(seg(T, 22.13, 22.17)) * (1 - smooth(seg(T, 22.22, 22.28))) : 0;
+				const firstPass = i === 0 ? smooth(seg(T, 20.09, 20.13)) * (1 - smooth(seg(T, 20.22, 20.28))) : 0;
 				gate.set(Math.max(open, firstPass));
-				const refused = i === 1 && T > 22.2 && T < 22.42;
+				const refused = i === 1 && T > 20.2 && T < 20.42;
 				if (refused) gate.lamp.set(color.red, 1 + Math.sin(time * 14) * 0.5);
 				else gate.lamp.mix(color.amber, color.green, open, 0.25 + open * 0.9);
 			});
@@ -1259,78 +1272,85 @@ export class Back {
 			card.mesh.visible = k > 0.001;
 			card.mesh.scale.setScalar(Math.max(0.001, k));
 		};
-		callPop(this.callSearch, 24.06, 24.96);
-		callPop(this.callEdit, 25.06, 25.96);
-		callPop(this.callTest, 26.06, 26.96);
+		callPop(this.callSearch, 22.06, 22.96);
+		callPop(this.callEdit, 23.06, 23.96);
+		callPop(this.callTest, 24.06, 24.96);
 
-		this.beat23.visible = T > 22.9 && T < 24.02;
-		const signK = outBack(seg(T, 23.02, 23.1), 1.6) * (1 - seg(T, 23.96, 24.02));
+		this.sandboxBeat.visible = T > 20.9 && T < 22.02;
+		const signK = outBack(seg(T, 21.02, 21.1), 1.6) * (1 - seg(T, 21.96, 22.02));
 		this.signs.visible = signK > 0.001;
 		this.signs.scale.setScalar(1);
 		// The legs of the easel rise for the page and fold away after it, so nothing stands behind the next card.
-		const legs = outBack(seg(T, 24.5, 24.6), 1.2) * (1 - inOut(seg(T, 25.98, 26.04)));
+		const legs = outBack(seg(T, 22.5, 22.6), 1.2) * (1 - inOut(seg(T, 23.98, 24.04)));
 		this.easel.visible = legs > 0.002;
 		this.easel.scale.y = Math.max(0.002, legs);
-		// Its foot sinks into the floor with it, so the next card has clear ground.
-		this.easelBase.position.y = -0.3 * inOut(seg(T, 26, 26.05));
-		// The monitor lies flat until it is needed, then swings up on its hinge.
-		this.monitor.visible = T > 25.96;
-		this.monitor.rotation.x = -1.5 * (1 - outBack(seg(T, 26.0, 26.1), 1.3));
+		// Its foot draws in along the ground after it, so the next card has clear space.
+		const foot = 1 - inOut(seg(T, 24, 24.05));
+		this.easelBase.visible = foot > 0.001;
+		this.easelBase.scale.set(Math.max(0.001, foot), 1, Math.max(0.001, foot));
+		// The monitor lies back above its foot until it is needed, then swings up on its hinge and settles.
+		const swing = outBack(seg(T, 24.0, 24.1), 1.3);
+		const lying = Math.max(0, 1 - swing);
+		this.monitor.visible = T > 23.96;
+		this.monitor.rotation.x = -1.5 * (1 - swing);
+		this.monitor.position.y = WY + 0.1 + lying * 0.42;
+		this.monitor.scale.setScalar(Math.max(0.001, smooth(seg(T, 23.96, 24.02))));
 
 		/* ---- sandbox beat ---- */
-		if (T > 22.6 && T < 24.1) {
-			const k = outBack(seg(T, 23.08, 23.24), 1.4);
-			this.docsCard.mesh.visible = T > 23.06;
+		if (T > 20.6 && T < 22.1) {
+			const k = outBack(seg(T, 21.08, 21.24), 1.4);
+			this.docsCard.mesh.visible = T > 21.06;
 			this.a.set(WX + 3.2, WY + 7.6, 3.4);
 			this.b.set(WX + 3.2, WY + 2.1, 3.4);
 			this.docsCard.mesh.position.lerpVectors(this.a, this.b, Math.min(1, k));
 			this.docsCard.mesh.rotation.set(-0.12, 0.08, 0);
 			const m = this.docsCard.mesh.material as THREE.MeshStandardMaterial;
 			m.emissive.set(color.red);
-			m.emissiveIntensity = bell(T, 23.3, 23.56) * 0.16;
+			m.emissiveIntensity = bell(T, 21.3, 21.56) * 0.16;
 
 			const sb = this.spec !== 'copilot';
-			const leave = seg(T, 23.58, 23.72);
-			const back = seg(T, 23.72, 23.84);
+			const leave = seg(T, 21.58, 21.72);
+			const back = seg(T, 21.72, 21.84);
 			this.packet.visible = leave > 0 && (sb ? back < 1 : true);
-			const px = WX + 7.6;
+			const px = WX + 8.5;
 			const wall = WX + 13;
 			if (this.packet.visible) {
-				if (!sb) this.packet.position.set(lerp(px, wall + 2.5, inOut(seg(T, 23.58, 23.84))), WY + 1.9, 3.4);
+				this.packet.scale.setScalar(Math.max(0.001, Math.min(1, leave * 7)));
+				if (!sb) this.packet.position.set(lerp(px, wall + 2.1, inOut(seg(T, 21.58, 21.84))), WY + 1.9, 3.4);
 				else if (back > 0) this.packet.position.set(lerp(wall - 0.1, px + 1, back), WY + 1.9 - Math.sin(back * Math.PI) * 0.4, 3.4);
 				else this.packet.position.set(lerp(px, wall - 0.1, inOut(leave)), WY + 1.9, 3.4);
 			}
-			const ring = seg(T, 23.72, 23.86);
+			const ring = seg(T, 21.72, 21.86);
 			this.ripple.visible = sb && ring > 0 && ring < 1;
 			this.ripple.scale.setScalar(1 + ring * 7);
 			(this.ripple.material as THREE.MeshBasicMaterial).opacity = (1 - ring) * 0.9;
-			this.proc.set(color.orange, 0.4 + bell(T, 23.5, 23.72) * 1.1);
+			this.proc.set(color.orange, 0.4 + bell(T, 21.5, 21.72) * 1.1);
 		} else this.docsCard.mesh.visible = false;
 
 		/* ---- search ---- */
-		if (T > 23.7 && T < 25) {
+		if (T > 21.7 && T < 23) {
 			const sx = WX - 8;
-			const sweep = seg(T, 24.12, 24.56);
+			const sweep = seg(T, 22.12, 22.56);
 			const r = Math.min(2, Math.floor(sweep * 3));
 			const u = sweep * 3 - r;
 			this.lens.visible = sweep > 0 && sweep < 1;
-			this.lens.position.set(sx - 3 + (r % 2 ? 1 - u : u) * 6, WY + 2.92 - r * 1.02, 0.1);
+			this.lens.position.set(sx - 3 + (r % 2 ? 1 - u : u) * 6, WY + 2.92 - r * 0.86, 0.1);
 			this.shelfHits.forEach((h) => {
-				const on = seg(T, 24.2, 24.3);
+				const on = seg(T, 22.2, 22.3);
 				h.position.z = -0.5 + on * 0.22;
 			});
-			this.hitMat.emissiveIntensity = seg(T, 24.2, 24.3) * (0.8 + Math.sin(time * 5) * 0.25);
+			this.hitMat.emissiveIntensity = seg(T, 22.2, 22.3) * (0.8 + Math.sin(time * 5) * 0.25);
 		} else {
 			this.lens.visible = false;
 			this.hitMat.emissiveIntensity = 0;
 		}
 
 		/* ---- the file ---- */
-		if (T > 23.9 && T < 26.2) {
-			const read = seg(T, 24.58, 24.76);
+		if (T > 21.9 && T < 24.2) {
+			const read = seg(T, 22.58, 22.76);
 			const onEasel = outBack(read, 1.2);
 			// Written and renamed, the file goes back to the shelf it came from.
-			const home = seg(T, 25.92, 26.03);
+			const home = seg(T, 23.92, 24.03);
 			this.code.mesh.visible = read > 0 && home < 1;
 			if (read > 0) {
 				this.a.set(WX - 8, WY + 2.2, -0.3);
@@ -1340,13 +1360,13 @@ export class Back {
 				this.code.mesh.position.copy(this.a);
 				this.code.mesh.scale.setScalar(Math.max(0.15, k));
 			}
-			this.drawCode(T < 24.74 ? 0 : T < 25.26 ? 1 : T < 25.7 ? 2 : 3);
+			this.drawCode(T < 22.74 ? 0 : T < 23.26 ? 1 : T < 23.7 ? 2 : 3);
 			// The new version goes to a temporary file first, in plain view, then takes the old one's name.
-			const rise = seg(T, 25.46, 25.6);
-			const swap = T >= 25.7;
+			const rise = seg(T, 23.46, 23.6);
+			const swap = T >= 23.7;
 			this.tmp.mesh.visible = rise > 0 && !swap;
 			if (this.tmp.mesh.visible) {
-				this.drawTmp(T > 25.66);
+				this.drawTmp(T > 23.66);
 				const e = inOut(rise);
 				this.tmp.mesh.position.set(WX + lerp(-2, 0, e), WY + lerp(1.6, 3.3, e), lerp(0.9, -0.76, e));
 				this.tmp.mesh.rotation.x = -0.1;
@@ -1358,24 +1378,24 @@ export class Back {
 		}
 
 		/* ---- tests ---- */
-		if (T > 22.6 && T < 27.7) {
-			const n = Math.floor(seg(T, 26.12, 26.46) * 6.01);
+		if (T > 20.6 && T < 25.7) {
+			const n = Math.floor(seg(T, 24.12, 24.46) * 6.01);
 			this.drawTerm(n);
 			const failed = n >= 6;
 			this.exitLamp.set(failed ? color.red : color.amber, failed ? 1.2 : 0.2);
 		}
-		const pr = seg(T, 26.5, 26.64);
-		const toTray = seg(T, 26.76, 26.92);
-		this.result.mesh.visible = pr > 0 && T < 27.08;
+		const pr = seg(T, 24.5, 24.64);
+		const toTray = seg(T, 24.76, 24.92);
+		this.result.mesh.visible = pr > 0 && T < 25.08;
 		if (this.result.mesh.visible) {
 			this.a.set(WX + 9.9, WY + 1.0, 1.4);
 			this.b.set(-15.3, WY + 0.95, 3.5);
 			this.result.mesh.position.lerpVectors(this.a, this.b, inOut(toTray));
 			this.result.mesh.rotation.set(-0.22, 0, 0);
-			this.result.mesh.scale.setScalar(Math.max(0.001, outBack(pr, 1.6) * (1 - seg(T, 27, 27.06))));
+			this.result.mesh.scale.setScalar(Math.max(0.001, outBack(pr, 1.6) * (1 - seg(T, 25, 25.06))));
 		}
 		// Into the pipe, and home. This is the pipe from the very first frame.
-		const home = seg(T, 27.02, 27.38);
+		const home = seg(T, 25.02, 25.38);
 		this.slug.visible = home > 0 && home < 1;
 		if (this.slug.visible) {
 			const u = 1 - inOut(home);
@@ -1384,20 +1404,20 @@ export class Back {
 		}
 
 		/* ---- turn two ---- */
-		const pg = seg(T, 27.46, 27.6);
-		const away = seg(T, 27.88, 28);
+		const pg = seg(T, 25.46, 25.6);
+		const away = seg(T, 25.88, 28);
 		this.page.mesh.visible = pg > 0 && away < 1;
 		this.page.mesh.scale.setScalar(Math.max(0.001, outBack(pg, 1.2) * (1 - away)));
 
 		/* ---- compaction ---- */
-		if ((T > 27.6 && T < 29.4) || homeward) {
+		if ((T > 25.6 && T < 27.4) || homeward) {
 			const [cx, cy, cz] = C_POS;
 			const bx = cx - 2.4;
-			const grow = seg(T, 28.08, 28.46);
+			const grow = seg(T, 26.08, 26.46);
 			const count = Math.floor(grow * 30);
-			const drop = inOut(seg(T, 28.48, 28.6));
-			const lift = inOut(seg(T, 28.64, 28.76));
-			const squash = seg(T, 28.56, 28.6);
+			const drop = inOut(seg(T, 26.48, 26.6));
+			const lift = inOut(seg(T, 26.64, 26.76));
+			const squash = seg(T, 26.56, 26.6);
 			const stackTop = 0.14 + Math.max(count, 1) * 0.1;
 			for (let i = 0; i < this.sheets.count; i++) {
 				const kept = i < 3;
@@ -1419,7 +1439,7 @@ export class Back {
 			const danger = seg(level, 2.4, 4);
 			this.gaugeMat.color.set('#35d17f').lerp(new THREE.Color('#f0473c'), danger);
 			this.gaugeMat.emissive.set('#10c25a').lerp(new THREE.Color('#d6231a'), danger);
-			const out = outBack(seg(T, 28.68, 28.82), 1.4);
+			const out = outBack(seg(T, 26.68, 26.82), 1.4);
 			this.summary.mesh.visible = out > 0;
 			if (out > 0) {
 				this.summary.mesh.position.set(cx + 1.5, cy + lerp(0.8, 2.3, Math.min(1, out)), cz + 2.5);
@@ -1429,9 +1449,9 @@ export class Back {
 		}
 
 		/* ---- memory ---- */
-		if ((T > 28.6 && T < 30.3) || homeward) {
+		if ((T > 26.6 && T < 28.3) || homeward) {
 			this.memDrawers.forEach((dr, i) => {
-				const a = 29.12 + i * 0.1;
+				const a = 27.12 + i * 0.1;
 				const k = outBack(seg(T, a, a + 0.08), 1.8);
 				const settle = 1 - smooth(seg(T, a + 0.1, a + 0.18));
 				const fixed = i === 6;
@@ -1441,34 +1461,34 @@ export class Back {
 		}
 
 		/* ---- unknown ---- */
-		if ((T > 29.6 && T < 31.3) || homeward) {
+		if ((T > 27.6 && T < 29.3) || homeward) {
 			const [cx, cy, cz] = U_POS;
-			const brk = smooth(seg(T, 30.14, 30.2));
-			const heal = smooth(seg(T, 30.58, 30.66));
+			const brk = smooth(seg(T, 28.14, 28.2));
+			const heal = smooth(seg(T, 28.58, 28.66));
 			const gap = brk * (1 - heal) * 0.48;
 			this.pipeA.position.set(cx - 1.925 - gap * 0.4, cy + 1.7, cz - 1.5);
 			this.pipeB.position.set(cx + 1.825 + gap * 0.4, cy + 1.7, cz - 1.5);
 			this.pipeA.scale.x = 1 - gap * 0.42;
 			this.pipeB.scale.x = 1 - gap * 0.42;
-			const q = outBack(seg(T, 30.2, 30.28), 2) * (1 - seg(T, 30.54, 30.6));
+			const q = outBack(seg(T, 28.2, 28.28), 2) * (1 - seg(T, 28.54, 28.6));
 			this.question.visible = q > 0.001;
 			this.question.scale.setScalar(Math.max(0.001, q));
-			const look = seg(T, 30.3, 30.5);
-			this.loupe.visible = look > 0 && T < 30.62;
-			this.loupe.position.set(lerp(cx - 3.8, cx + 5.2, inOut(look)), cy + 2.5 + Math.sin(look * Math.PI) * 1.2, cz - 0.7);
-			const v = outBack(seg(T, 30.5, 30.58), 2);
+			const look = seg(T, 28.3, 28.5);
+			this.loupe.visible = look > 0 && T < 28.62;
+			this.loupe.position.set(lerp(cx - 2.7, cx + 5.2, inOut(look)), cy + 2.5 + Math.sin(look * Math.PI) * 1.2, cz - 0.7);
+			const v = outBack(seg(T, 28.5, 28.58), 2);
 			this.verdict.visible = v > 0.001;
 			this.verdict.scale.setScalar(Math.max(0.001, v));
 			this.levers.forEach((lever, i) => {
-				const a = 30.62 + i * 0.07;
+				const a = 28.62 + i * 0.07;
 				lever.rotation.z = -0.5 + outBack(seg(T, a, a + 0.06), 2) * 1;
 			});
 		}
 
 		/* ---- ten turns ---- */
-		if ((T > 30.6 && T < 32.3) || homeward) {
+		if ((T > 28.6 && T < 30.3) || homeward) {
 			this.barsCached.forEach((bar, i) => {
-				const a = 31.1 + i * 0.066;
+				const a = 29.1 + i * 0.066;
 				const k = outBack(seg(T, a, a + 0.07), 1.2);
 				const uc = bar.userData as { h: number };
 				bar.scale.y = Math.max(0.001, uc.h * k);
@@ -1480,39 +1500,39 @@ export class Back {
 				n.visible = kn > 0;
 			});
 			[5, 7, 8].forEach((i, j) => {
-				const on = seg(T, 31.14 + i * 0.066, 31.2 + i * 0.066);
+				const on = seg(T, 29.14 + i * 0.066, 29.2 + i * 0.066);
 				this.barLamps[j].set(i === 5 ? color.red : color.green, 0.08 + on * 0.9);
 			});
-			const s0 = outBack(seg(T, 31.14, 31.2), 2);
-			const s1 = outBack(seg(T, 31.76, 31.82), 2);
+			const s0 = outBack(seg(T, 29.14, 29.2), 2);
+			const s1 = outBack(seg(T, 29.76, 29.82), 2);
 			this.tags[0].scale.setScalar(Math.max(0.001, s0));
 			this.tags[1].scale.setScalar(Math.max(0.001, s1));
 		}
 
 		/* ---- finish ---- */
-		if (T > 31.6 && T < 33.5) {
+		if (T > 29.6 && T < 31.5) {
 			const [cx, cy, cz] = F_POS;
 			const P = 4;
 			const x0 = -2 * P;
 			const heights = [0.5, 1.1, 1.7, 2.3, 2.9];
-			const k = seg(T, 32.1, 32.6);
+			const k = seg(T, 30.1, 30.6);
 			const e = inOut(seg(k, 0, 0.38));
 			const e2 = inOut(seg(k, 0.5, 0.88));
 			const hop = (from: number, to: number, f: number) => {
 				const yA = cy + heights[from] + 0.15;
 				const yB = cy + heights[to] + 0.15;
-				const y = lerp(yA, yB, f) + Math.sin(f * Math.PI) * 0.9;
+				const y = lerp(yA, yB, f) + Math.sin(f * Math.PI) * 1.7;
 				return [cx + x0 + lerp(from, to, f) * P, y] as const;
 			};
 			const [x1, y1] = k < 0.5 ? [cx + x0 - 3.2 + e * 3.2, cy + 0.15 + e * heights[0] + Math.sin(e * Math.PI) * 0.8] : hop(0, 1, e2);
-			this.climber.position.set(x1, y1, cz + 0.72);
+			this.climber.position.set(x1, y1, cz + 0.86);
 			this.climber.visible = k > 0;
 			this.locks.forEach((lock, i) => {
 				const open = i === 0 ? inOut(seg(k, 0.36, 0.48)) : 0;
 				lock.shackle.position.y = 0.26 + open * 0.18;
 				lock.shackle.rotation.y = open * 1.1;
 			});
-			const s = outBack(seg(T, 32.6, 32.68), 2);
+			const s = outBack(seg(T, 30.6, 30.68), 2);
 			this.flag.visible = s > 0.001;
 			this.flag.scale.setScalar(Math.max(0.001, s));
 		}
