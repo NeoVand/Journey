@@ -122,6 +122,9 @@ export class Cluster {
 		fabricSign.position.set(0, PAD_Y + 0.62, -5);
 		fabricSign.rotation.x = -0.5;
 		before.add(fabricSign);
+		const fabricPost = new Batch();
+		fabricPost.add(rbox(0.1, 0.56, 0.1, 0.03, 2), m.steelSoft, { p: [0, PAD_Y + 0.28, -5.02] });
+		before.add(fabricPost.build('fabric-post'));
 
 		// KV cache.
 		stand(ZONE.kv + 2.6, 0, 13.4, 6.6, this.kv.group, -2.6, 0);

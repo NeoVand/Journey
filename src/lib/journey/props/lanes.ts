@@ -114,7 +114,7 @@ export class BatchLanes {
 			this.lamps.push(lamp);
 		});
 		const done = createSign('Finished', 0.2);
-		done.position.set(X1 + 0.45, 0.82, -3.74);
+		done.position.set(X1 + 0.45, 0.755, -3.74);
 		this.group.add(done);
 		const waiting = createSign('Waiting', 0.24);
 		waiting.position.set(-2.75, 0.62, BACK_Z);

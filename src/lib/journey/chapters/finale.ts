@@ -42,6 +42,10 @@ interface Leg {
 	step: number;
 	/** Inside a machine, where nobody can see it. */
 	hidden?: boolean;
+	/** Smaller than a token usually is, where there's less room. */
+	size?: number;
+	/** How soon it starts to shrink on the way into a machine: smaller is sooner. */
+	shrink?: number;
 }
 
 /** The pipes and places the token really rides, from the rest of the world. */
@@ -61,6 +65,8 @@ export interface Route {
 	slotX: number;
 	beltY: number;
 	lineZ: number;
+	/** The underside of the island the gateway stands on, which the line down passes through. */
+	islandUnder: number;
 	/** The right-hand side of the model's pedestal, where the reply leaves. */
 	flank: V3;
 }
@@ -137,19 +143,29 @@ export class Finale {
 		const hidden = true;
 		const { lineZ: z, beltY } = r;
 		const end = (path: THREE.Curve<THREE.Vector3>, u: number) => path.getPointAt(u).toArray() as V3;
+		const firstWhere = (path: THREE.Curve<THREE.Vector3>, test: (p: THREE.Vector3) => boolean) => {
+			for (let i = 0; i <= 400; i++) if (test(path.getPointAt(i / 400, this.p))) return i / 400;
+			return 1;
+		};
+		const outEnd = firstWhere(r.out, (p) => p.x > 7);
+		const above = (p: V3, h: number): V3 => [p[0], p[1] + h, p[2]];
+		const downStart = firstWhere(r.down, (p) => p.y < r.islandUnder - 0.5);
 		this.legs = [
-			{ path: curve([[-3.3, 0.85, 1], [-2.4, 1.3, 0.5], [-1.45, 0.75, -0.2], [-1.3, 0.05, -0.26]]), time: 1, ride: 0.2, step: 0 },
-			{ path: new Part(r.cable, 0.18, 1), time: 0.7, ride: 0.2, step: 0 },
+			// Up from the keys and down onto the cable, which is thin and short, so it travels small.
+			{ path: curve([[-3.3, 0.85, 1], [-2.4, 1.3, 0.5], [-1.5, 0.62, -0.3], above(end(r.cable, 0.28), 0.22), above(end(r.cable, 0.34), 0.2)]), time: 1, ride: 0, step: 0, size: 0.5 },
+			{ path: new Part(r.cable, 0.34, 1), time: 0.6, ride: 0.2, step: 0, size: 0.5, shrink: 2.5 },
 			{ path: line([0, 2, -0.65], [1.8, 2, -0.65]), time: 1.1, ride: 0, step: 1, hidden },
-			{ path: r.out, time: 1.5, ride: 0.2, step: 2 },
-			{ path: line(end(r.out, 1), end(r.under, 0)), time: 0.06, ride: 0, step: 2, hidden },
+			// Above the pipe, high enough to clear the foot of the easel, and off it before the pipe turns down into the floor.
+			{ path: new Part(r.out, 0, outEnd), time: 1.5, ride: 0.3, step: 2 },
+			{ path: line(end(r.out, outEnd), end(r.under, 0)), time: 0.06, ride: 0, step: 2, hidden },
 			{ path: r.under, time: 1, ride: 0.2, step: 2 },
 			{ path: line(end(r.under, 1), [9.7, -6, z]), time: 0.1, ride: 0, step: 2, hidden },
 			{ path: line([9.7, -6, z], [14.3, -6, z]), time: 0.9, ride: 0, step: 2 },
-			{ path: line([14.3, -6, z], end(r.down, 0)), time: 1, ride: 0, step: 3, hidden },
-			{ path: r.down, time: 1.6, ride: 0.2, step: 3 },
+			// Through the gateway, and out of the bottom of its island. The token only reappears once it's clear of it.
+			{ path: line([14.3, -6, z], end(r.down, downStart)), time: 1, ride: 0, step: 3, hidden },
+			{ path: new Part(r.down, downStart, 1), time: 1.6, ride: 0.2, step: 3 },
 			{ path: line(end(r.down, 1), [r.slotX, beltY, z]), time: 0.4, ride: 0, step: 3, hidden },
-			{ path: new Part(r.flow, 0, r.flowLip), time: 2.2, ride: 0.24, step: 3 },
+			{ path: new Part(r.flow, 0, r.flowLip), time: 2.2, ride: 0.24, step: 3, size: 0.72 },
 			{ path: line([fx - 4, fy + 8, fz], [fx - 1, fy, fz]), time: 1.9, ride: 0, step: 4, hidden },
 			{ path: home, time: 2.5, ride: 0, step: 5 },
 			{ path: line([1.1, 9, -0.75], [1.1, 4.1, -0.75]), time: 0.3, ride: 0, step: 5 },
@@ -157,7 +173,7 @@ export class Finale {
 			{ path: r.gatePath, time: 2, ride: 0.2, step: 6 },
 			{ path: line(r.dock, [r.dock[0] + 1.6, r.dock[1], r.dock[2]]), time: 0.2, ride: 0, step: 6, hidden },
 			{ path: line([r.dock[0] + 1.6, r.dock[1], r.dock[2]], r.trackEnd), time: 2.1, ride: 0, step: 6 },
-			{ path: curve([r.trackEnd, [-40.6, -12.56, 0.7], [-38.4, -13.52, 0.7], [-36.3, -14.46, 0.7]]), time: 0.6, ride: 0, step: 7 },
+			{ path: curve([r.trackEnd, [-40.4, -12.1, 0.7], [-38.2, -13, 0.7], [-36.3, -14.46, 0.7]]), time: 0.6, ride: 0, step: 7 },
 			{ path: line([-36.3, -14.46, 0.7], [-34, -14.7, 1]), time: 0.1, ride: 0, step: 7, hidden },
 			{ path: curve([[-34, -14.7, 1], [-30, -14.7, 2.4], [-24, -14.7, 3.7], [-14.4, -14.7, 3.6]]), time: 1, ride: 0, step: 7 },
 			{ path: line([-14.4, -14.36, 3.6], [-10.6, -13, 2.2]), time: 0.1, ride: 0, step: 8, hidden },
@@ -220,9 +236,10 @@ export class Finale {
 		const raw = Math.min(1, at / leg.time);
 		const k = lerp(raw, smooth(raw), 0.5);
 		// Going into a machine or coming out of one, it draws itself small enough for the way in.
-		const from = this.legs[i - 1]?.hidden ? Math.min(1, k * 7) : 1;
-		const to = this.legs[i + 1]?.hidden ? Math.min(1, (1 - k) * 7) : 1;
-		const fit = Math.max(0.12, Math.min(from, to));
+		const quick = leg.shrink ?? 7;
+		const from = this.legs[i - 1]?.hidden ? Math.min(1, k * quick) : 1;
+		const to = this.legs[i + 1]?.hidden ? Math.min(1, (1 - k) * quick) : 1;
+		const fit = Math.max(0.12, Math.min(from, to)) * (leg.size ?? 1);
 		token.visible = !leg.hidden;
 		if (!token.visible) return leg;
 		leg.path.getPointAt(k, this.p);

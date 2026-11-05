@@ -4,7 +4,7 @@ import { rbox } from '../kit/geometry';
 import { machine, curve, tube, shadowOn } from '../kit/machines';
 import { color, Lamp, mats } from '../kit/materials';
 import { bell, outBack, seg, smooth } from '../kit/math';
-import { createSign, fitting, leaving } from '../kit/parts';
+import { createSign, fitting, leaving, standSign } from '../kit/parts';
 
 /** Between the pads on either side of it, with the belt running along the front. */
 export const ROUTER_X = 43.75;
@@ -39,7 +39,8 @@ export class Router {
 		this.group.add(arch.build('router-arch'));
 		this.beam = new THREE.Group();
 		const sign = createSign('Router: who has these blocks?', 0.3);
-		sign.position.set(0, railY + 2.34, railZ);
+		// Sitting on the beam: its top is at railY + 1.95, and the sign is 0.6 tall.
+		sign.position.set(0, railY + 2.24, railZ);
 		this.beam.add(sign);
 		this.group.add(this.beam);
 
@@ -66,7 +67,7 @@ export class Router {
 			lamp.mesh.position.set(x + 1.2, 1.62, -0.48);
 			this.group.add(lamp.mesh);
 			this.lamps.push(lamp);
-			const no = createSign('Not here', 0.24);
+			const no = standSign(createSign('Not here', 0.24), 0.24, 0.24);
 			no.position.set(x, 2.52, -1.1);
 			no.visible = false;
 			this.group.add(no);

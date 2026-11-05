@@ -5,7 +5,7 @@ import { color, Lamp, mats } from '../kit/materials';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { archBlock, arcPoint, Card, machine, panel, shadowOn } from '../kit/machines';
 import { contactShadow, font, Label, Surface } from '../kit/print';
-import { createSign } from '../kit/parts';
+import { createSign, standSign } from '../kit/parts';
 import { bell, hash, inOut, lerp, outBack, outCubic, seg, smooth } from '../kit/math';
 import { createPad } from '../props/board';
 import { Tile, TILE_D, TILE_H } from '../props/tokenizer';
@@ -202,7 +202,7 @@ class Sampler {
 		this.flapper.position.set(wx, cy + R + 0.5, 0.62);
 		this.group.add(this.flapper);
 		shadowOn(this.group, wx, PAD_Y, 0, 4.4, 2.2);
-		this.sign = createSign('Sampler', 0.3);
+		this.sign = standSign(createSign('Sampler', 0.3), 0.3, 0.45);
 		this.sign.position.set(wx - 3.4, PAD_Y + 0.75, 1.2);
 		this.sign.rotation.y = 0.22;
 		this.group.add(this.sign);
@@ -640,7 +640,7 @@ class Decoder {
 			this.stops.push(lamp);
 		});
 		const title = createSign('Stop reason', 0.2);
-		title.position.set(0, 2.72, 0.05);
+		title.position.set(0, 2.575, 0.05);
 		pg.add(title);
 		pg.position.set(DEC + 10, PAD_Y, 3.5);
 		pg.rotation.x = -0.3;

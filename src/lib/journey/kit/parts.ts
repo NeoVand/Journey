@@ -72,6 +72,24 @@ export function leaving(at: V3, out: V3, r: number, low = false): V3[] {
 	return [at, [at[0] + n.x * L, at[1] + n.y * L, at[2] + n.z * L], [at[0] + n.x * L * 1.7, at[1] + n.y * L * 1.7, at[2] + n.z * L * 1.7]];
 }
 
+/**
+ * Posts under a sign, so it stands on what's below it and doesn't hover. `height` is what the sign was made with, and `drop`
+ * is how far below the plate the surface is. A sign wider than `one` gets a post either side, since one would look top-heavy.
+ */
+export function standSign(sign: THREE.Group, height: number, drop: number, one = 2.2) {
+	const plate = sign.children[0].children[0] as THREE.Mesh;
+	plate.geometry.computeBoundingBox();
+	const w = plate.geometry.boundingBox!.max.x - plate.geometry.boundingBox!.min.x;
+	const b = new Batch();
+	const m = mats();
+	for (const x of w > one ? [-w * 0.3, w * 0.3] : [0]) {
+		// Into the plate at the top and into whatever it stands on at the bottom, so there's no daylight at either end.
+		b.add(rbox(0.09, drop + 0.06, 0.06, 0.02, 2), m.steelSoft, { p: [x, -height - drop / 2 + 0.01, -0.012] });
+	}
+	sign.add(b.build('sign-post'));
+	return sign;
+}
+
 /** A printed plate: the plate is sized from its text, so every sign has the same margins. */
 export function createSign(text: string, height = 0.2, ink = '#111a2e', material?: THREE.Material) {
 	const group = new THREE.Group();

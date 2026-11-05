@@ -165,6 +165,10 @@ export function createBelt(x0: number, x1: number) {
  * Bridge over the belt carrying the cutter. Parked over the gateway's slot,
  * it walks down the strip and drops its stamp at every token boundary.
  */
+/** How far behind the belt the gantry's column stands, and how far below the belt its foot is, both before its scale. */
+export const GANTRY_REAR = -0.86;
+export const GANTRY_FLOOR = -0.375;
+
 export class Gantry {
 	group = new THREE.Group();
 	head = new THREE.Group();
@@ -173,11 +177,12 @@ export class Gantry {
 	constructor() {
 		const m = mats();
 		const b = new Batch();
-		const REAR = -0.86;
+		const REAR = GANTRY_REAR;
 		const H = 1.5;
-		// One column behind the belt and an arm reaching over it.
-		b.add(rbox(0.56, 0.1, 0.42, 0.04, 3), m.steelSoft, { p: [0, -0.06, REAR] });
-		b.add(rbox(0.3, H, 0.24, 0.07, 3), m.steel, { p: [0, H / 2 - 0.06, REAR] });
+		// One column behind the belt, running on a rail on the island, and an arm reaching over the belt.
+		const floor = GANTRY_FLOOR;
+		b.add(rbox(0.62, 0.12, 0.5, 0.04, 3), m.steelSoft, { p: [0, floor + 0.06, REAR] });
+		b.add(rbox(0.3, H - floor, 0.24, 0.07, 3), m.steel, { p: [0, (H + floor) / 2, REAR] });
 		b.add(rbox(0.42, 0.34, 1.5, 0.1, 4), m.cream, { p: [0, H + 0.02, REAR + 0.56] });
 		for (const x of [-0.17, 0.17]) screw(b, x, H + 0.195, REAR + 0.2, 'y');
 		this.group.add(b.build('gantry'));

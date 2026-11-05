@@ -239,7 +239,7 @@ export class BlockTray {
 		gate.add(rbox(0.46, 0.46, 2.6, 0.1, 3), m.cream, { p: [GATE_X, this.railY + 1.72, Z] });
 		t.add(gate.build('prefix-gate'));
 		const sign = createSign('Computed before?', 0.3);
-		sign.position.set(GATE_X, this.railY + 2.34, Z);
+		sign.position.set(GATE_X, this.railY + 2.24, Z);
 		t.add(sign);
 		this.gateLamp = new Lamp(rbox(0.2, 0.2, 0.05, 0.06, 3), color.amber, 0.2);
 		this.gateLamp.mesh.position.set(GATE_X - 0.24, this.railY + 1.72, Z);

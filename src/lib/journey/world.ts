@@ -18,7 +18,7 @@ import { Harness, HW, PORT_KEYS_Z, PORT_MCP_Z, PORT_OUT_Z, PORT_Y } from './prop
 import { createEasel, DOC_H, RequestDoc, SLOT_Y, Strip } from './props/request';
 import { createTunnelStand, Tunnel } from './props/tunnel';
 import { Gateway, GW } from './props/gateway';
-import { createBelt, createChatTemplate, Gantry, SafetyArch, Tile, TILE_D, TILE_H } from './props/tokenizer';
+import { createBelt, createChatTemplate, Gantry, GANTRY_REAR, SafetyArch, Tile, TILE_D, TILE_H } from './props/tokenizer';
 import { HARNESSES, PROMPT, TOKENS, type HarnessId } from './content';
 import { Cluster, CLUSTER_SHOTS, DIVE_T } from './cluster';
 import { RETURN_POINTS } from './layout';
@@ -44,6 +44,7 @@ const SLOT_X = TEMPLATE_X + 1.06;
 const BELT_END = 10.7;
 // As far along the path as both its feet still stand on the island.
 const SAFETY_X = 11.45;
+const GANTRY_SCALE = 1.18;
 /** When each letter of the sentence lands after the page opens, once the lid is up. Uneven, with a breath between words, as people type. */
 const LETTER_AT = (() => {
 	let at = 1.7;
@@ -160,6 +161,7 @@ export class World {
 	private bulges: THREE.Mesh[] = [];
 	private easelLegs!: THREE.Object3D;
 	private downCurve!: THREE.CatmullRomCurve3;
+	private downTight: THREE.Vector3[] = [];
 	private beltTicks!: THREE.CanvasTexture;
 	private flow!: THREE.CatmullRomCurve3;
 	private flowLen = 1;
@@ -220,6 +222,7 @@ export class World {
 			slotX: SLOT_X,
 			beltY: BELT_Y,
 			lineZ: LINE_Z,
+			islandUnder: ISLAND_B_Y - 1.01,
 			flank: [seat.x - 1.4 + 4.1, seat.y - BRAIN_FOOT + 0.95, seat.z]
 		});
 		this.root.add(this.finale.group);
@@ -387,13 +390,20 @@ export class World {
 		const tc = contactShadow(2.3, 2.2, 0.16, 0.45);
 		tc.position.set(TEMPLATE_X, ISLAND_C_Y + 0.006, LINE_Z);
 		r.add(tc);
+		// The rail the tokenizer's gantry runs on, behind the belt.
+		const railZ = LINE_Z + GANTRY_REAR * GANTRY_SCALE;
+		const railLen = BELT_END - SLOT_X + 0.2;
+		const gantryRail = new Batch();
+		gantryRail.add(rbox(railLen, 0.05, 0.62, 0.02, 2), mats().steelSoft, { p: [SLOT_X + railLen / 2, ISLAND_C_Y + 0.025, railZ] });
+		for (const s of [-1, 1]) gantryRail.add(rbox(railLen, 0.03, 0.05, 0.012, 1), mats().steel, { p: [SLOT_X + railLen / 2, ISLAND_C_Y + 0.06, railZ + s * 0.26] });
+		r.add(gantryRail.build('gantry-rail'));
 		const belt = createBelt(SLOT_X - 0.02, BELT_END);
 		belt.position.set(0, BELT_Y, LINE_Z);
 		r.add(belt);
 		const bc = contactShadow(BELT_END - SLOT_X, 1.4, 0.16, 0.4);
 		bc.position.set((SLOT_X + BELT_END) / 2, ISLAND_C_Y + 0.006, LINE_Z);
 		r.add(bc);
-		this.gantry.group.scale.setScalar(1.18);
+		this.gantry.group.scale.setScalar(GANTRY_SCALE);
 		this.gantry.group.position.set(ROW_START, BELT_Y, LINE_Z);
 		r.add(this.gantry.group);
 		this.tiles.forEach((t) => {
@@ -646,6 +656,7 @@ export class World {
 		downTube.castShadow = true;
 		this.root.add(downTube);
 		this.downCurve = down;
+		this.downTight = [gateRear, drainB, underB, templateRear].map((p) => new THREE.Vector3(...p));
 
 		// What travels down that pipe: a slug of request, swelling the tube as it goes.
 		const slugMat = new THREE.MeshPhysicalMaterial({ color: '#ffb35c', roughness: 0.2, clearcoat: 1, emissive: '#ff8a1a', emissiveIntensity: 1.5 });
@@ -1254,6 +1265,10 @@ export class World {
 			if (!slug.visible) return;
 			slug.position.copy(this.downCurve.getPointAt(u));
 			slug.quaternion.setFromUnitVectors(this.yAxis, this.downCurve.getTangentAt(u));
+			// It swells the pipe where the pipe is free, and squeezes thin to get through a fitting or an island.
+			const free = Math.min(...this.downTight.map((at) => slug.position.distanceTo(at)));
+			const thin = THREE.MathUtils.lerp(0.078 / (slug.geometry as THREE.CapsuleGeometry).parameters.radius, 1, smooth(seg(free, 0.5, 1.4)));
+			slug.scale.set(thin, 1, thin);
 		});
 	}
 

@@ -6,7 +6,7 @@ import { archBlock, arcPoint, Card, curve, hazard, islandAt, machine, panel, sha
 import { font, Surface } from '../kit/print';
 import { FINALE_T } from './finale';
 import { gearShape } from '../props/brain';
-import { createSign, fitting } from '../kit/parts';
+import { createSign, fitting, standSign } from '../kit/parts';
 import { bell, bounceDown, clamp, hash, inOut, lerp, outBack, seg, smooth, spring } from '../kit/math';
 import { createCastShadow } from '../props/island';
 import { TEN_TURNS, CALLS, HARNESSES, type HarnessId } from '../content';
@@ -31,6 +31,8 @@ const C_POS: V3 = [-20, 6, -4];
 const M_POS: V3 = [-48, 9, -4];
 const U_POS: V3 = [-78, 12, -4];
 const R_POS: V3 = [-110, 15, -4];
+/** A bar's tag sits on the top front edge of the bar, this far above its top. */
+const TAG_RISE = 0.2;
 const F_POS: V3 = [-144, 18, -4];
 
 const rel = (o: V3, x: number, y: number, z: number): V3 => [o[0] + x, o[1] + y, o[2] + z];
@@ -455,9 +457,9 @@ export class Back {
 			bin.add(rbox(0.08, 0.7, 1.5, 0.03, 2), m.red, { p: [bx + s * 1.12, GY + 0.4, bz] });
 		}
 		g.add(bin.build('bin'));
-		this.binSign = createSign('Refused: goes back as the tool result', 0.19);
-		this.binSign.position.set(bx, GY + 1.12, bz + 0.55);
-		this.binSign.rotation.y = -0.3;
+		// Stood on the front wall of the bin.
+		this.binSign = standSign(createSign('Refused: goes back as the tool result', 0.19), 0.19, 0.18);
+		this.binSign.position.set(bx, GY + 1.12, bz + 0.72);
 		this.binSign.visible = false;
 		g.add(this.binSign);
 
@@ -550,10 +552,13 @@ export class Back {
 		this.docsStand.position.set(WX + 3.2, WY, 3.4);
 		bt.add(this.docsStand);
 		this.proc = new Lamp(rbox(1, 1, 1, 0.14, 3), color.orange, 0.5);
-		this.proc.mesh.position.set(WX + 7.6, WY + 0.8, 3.4);
+		this.proc.mesh.position.set(WX + 7.6, WY + 0.62, 3.4);
 		bt.add(this.proc.mesh);
-		const procSign = createSign('A process', 0.2);
-		procSign.position.set(WX + 7.6, WY + 1.7, 3.5);
+		const procFoot = new Batch();
+		procFoot.add(rbox(1.3, 0.12, 1.3, 0.04, 2), m.steelSoft, { p: [WX + 7.6, WY + 0.06, 3.4] });
+		bt.add(procFoot.build('process-foot'));
+		const procSign = standSign(createSign('A process', 0.2), 0.2, 0.2);
+		procSign.position.set(WX + 7.6, WY + 1.52, 3.4);
 		bt.add(procSign);
 
 		const evil = (this.evil = createSign('evil.sh', 0.26, '#ffffff', m.red));
@@ -754,7 +759,7 @@ export class Back {
 		const limit = new Batch();
 		limit.add(new THREE.TorusGeometry(0.62, 0.05, 10, 40), m.red, { p: [gx, cy + 4.2, cz + 0.8], r: [Math.PI / 2, 0, 0] });
 		g.add(limit.build('limit'));
-		const gs = createSign('Context window', 0.2);
+		const gs = standSign(createSign('Context window', 0.2), 0.2, 0.18);
 		gs.position.set(gx, cy + 5.45, cz + 0.8);
 		g.add(gs);
 
@@ -893,11 +898,13 @@ export class Back {
 		g.add(collar.build('pipe-collars'));
 		g.add(this.pipeA, this.pipeB);
 
-		this.question = createSign('Did it happen?', 0.34, color.ink, m.amber);
+		// A signpost planted in the break in the pipe.
+		this.question = standSign(createSign('Did it happen?', 0.34, color.ink, m.amber), 0.34, 2.96, 9);
 		this.question.position.set(cx, cy + 3.3, cz - 1.5);
 		g.add(this.question);
 		this.verdict = createSign('It did. Carry on.', 0.3, '#ffffff', m.cobalt);
-		this.verdict.position.set(cx + 5.2, cy + 4.4, cz - 1.4);
+		// Stamped across the top of the file it's about.
+		this.verdict.position.set(cx + 5.2, cy + 4.2, cz - 1.4);
 		g.add(this.verdict);
 
 		const lb = new Batch();
@@ -1002,13 +1009,13 @@ export class Back {
 		});
 		const tag = (text: string, x: number, y: number) => {
 			const s = createSign(text, 0.22);
-			s.position.set(x, y, barZ + 0.76);
+			s.position.set(x, y, barZ + 0.69);
 			g.add(s);
 			this.tags.push(s);
 		};
 		// Above each bar, what it holds: two signs per turn, one for each way of running it.
 		DATA.forEach(([hit, added], i) => {
-			const top = cy + 0.24 + (hit + added) * SCALE + 0.52;
+			const top = cy + 0.24 + (hit + added) * SCALE + TAG_RISE;
 			const x = cx + x0 + i * P;
 			tag(hit ? `${hit.toLocaleString('en-US')} cached, ${added.toLocaleString('en-US')} new` : `${added.toLocaleString('en-US')} new`, x, top);
 			tag(`${(hit + added).toLocaleString('en-US')} to run`, x, top);
@@ -1101,6 +1108,8 @@ export class Back {
 		}
 		{
 			const [x, y] = onStep(4);
+			// A dark spine holds the three servers up, with a foot under the lowest.
+			props.add(rbox(1.5, 1.46, 0.96, 0.04, 2), m.recess, { p: [x, y + 0.73, cz - 0.3] });
 			for (let i = 0; i < 3; i++) props.add(rbox(1.7, 0.42, 1.2, 0.1, 3), m.enamelCool, { p: [x, y + 0.26 + i * 0.5, cz - 0.3] });
 		}
 		g.add(props.build('step-props'));
@@ -1157,7 +1166,8 @@ export class Back {
 			shackle.add(sb.build('shackle'));
 			shackle.position.y = 0.26;
 			group.add(shackle);
-			group.position.set(x - P / 2 + 0.5, y + 0.38, cz + 1.05);
+			// Standing on the step, not hovering over it.
+			group.position.set(x - P / 2 + 0.5, y + 0.255, cz + 1.05);
 			g.add(group);
 			this.locks.push({ group, shackle });
 		}
@@ -1165,7 +1175,7 @@ export class Back {
 		this.climber = new THREE.Mesh(rbox(0.86, 0.3, 0.86, 0.06, 3), m.amber);
 		this.climber.castShadow = true;
 		g.add(this.climber);
-		this.flag = createSign('An agent’s “done” is usually here', 0.22, '#ffffff', m.cobalt);
+		this.flag = standSign(createSign('An agent’s “done” is usually here', 0.22, '#ffffff', m.cobalt), 0.22, 0.6, 9);
 		const [fx, fy] = onStep(1);
 		this.flag.position.set(fx + 0.1, fy + 1.82, cz + 0.2);
 		g.add(this.flag);
@@ -1586,14 +1596,14 @@ export class Back {
 			if (read > 0 && read < 1) {
 				this.a.set(WX + 4.4, WY + 1.95, 3.62);
 				// In through the side of the process, under its name.
-				this.b.set(WX + 6.9, WY + 0.8, 3.4);
+				this.b.set(WX + 6.9, WY + 0.62, 3.4);
 				arcPoint(this.a, this.b, 1.3, inOut(read), pk.position);
 				pk.scale.setScalar(lerp(0.5, 0.22, read));
 			} else if (fire > 0 && fire < 1) {
 				// Out of the process's side, small and low, clear of its name, and growing as it goes.
 				const e = fire * fire;
 				const up = smooth(Math.min(1, e * 2.4));
-				pk.position.set(lerp(WX + 8.3, sb ? wall - 0.5 : WX + 14.9, e), lerp(WY + 0.85, sb ? py : lerp(py, WY + 2.5, e), up), 3.4);
+				pk.position.set(lerp(WX + 8.3, sb ? wall - 0.5 : WX + 14.9, e), lerp(WY + 0.67, sb ? py : lerp(py, WY + 2.5, e), up), 3.4);
 				pk.scale.setScalar(lerp(0.28, 1, up));
 			} else if (sb && fire >= 1 && fallen <= 0) {
 				// Flat against the glass, for the moment it takes to understand.
@@ -1611,7 +1621,7 @@ export class Back {
 			const gulp = bell(T, 21.48, 21.56);
 			const shudder = seg(T, 21.53, 21.6);
 			const recoil = bell(T, 21.6, 21.66) * 0.16;
-			this.proc.mesh.position.set(WX + 7.6 - recoil, WY + 0.8 - gulp * 0.08, 3.4);
+			this.proc.mesh.position.set(WX + 7.6 - recoil, WY + 0.62 - gulp * 0.08, 3.4);
 			this.proc.mesh.scale.set(1 + gulp * 0.12, 1 - gulp * 0.16, 1 + gulp * 0.12);
 			this.proc.mesh.rotation.z = shudder > 0 && shudder < 1 ? Math.sin(shudder * Math.PI * 7) * 0.045 : 0;
 			const ring = seg(T, 21.72, 21.88);
@@ -1707,6 +1717,10 @@ export class Back {
 			const u = 1 - inOut(home);
 			this.slug.position.copy(this.returnCurve.getPointAt(u));
 			this.slug.quaternion.setFromUnitVectors(up, this.returnCurve.getTangentAt(u));
+			// It swells the pipe wherever the pipe is free, and squeezes through the wall and the fitting at each end.
+			const free = Math.min(this.slug.position.distanceTo(this.a.set(-11.5, -14.3, 3.45)), this.slug.position.distanceTo(this.a.set(0.4, 1.3, -1.75)), this.slug.position.distanceTo(this.a.set(-13.5, -14.69, 3.6)));
+			const thin = lerp(0.54, 1, smooth(seg(free, 0.55, 1.5)));
+			this.slug.scale.set(thin, 1, thin);
 		}
 
 		/* ---- turn two ---- */
@@ -1816,7 +1830,7 @@ export class Back {
 				n.position.y = R_POS[1] + 0.24 + green;
 				n.visible = kn > 0 || off > 0;
 				// Its sign rides up on top of it.
-				const top = R_POS[1] + 0.24 + uc.h * k + un.h * kn + 0.52;
+				const top = R_POS[1] + 0.24 + uc.h * k + un.h * kn + TAG_RISE;
 				this.tags[i * 2].position.y = top;
 				this.tags[i * 2 + 1].position.y = top;
 			});

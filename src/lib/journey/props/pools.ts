@@ -178,7 +178,8 @@ export class Pools {
 		this.group.add(rail.build('rdma'));
 		for (const s of [-1, 1]) shadowOn(this.group, s * 1.5, 0, 0, 0.5, 0.5, 0.3);
 		const bridge = createSign('KV cache, over RDMA', 0.24);
-		bridge.position.set(0, 1.18, 0.62);
+		// Bolted to the front of the bridge, overlapping its edge.
+		bridge.position.set(0, 1.31, 0.59);
 		this.group.add(bridge);
 		const mouths = new Batch();
 		for (const s of [-1, 1]) mouths.add(rbox(0.05, 0.98, 1.2, 0.03, 2), m.recess, { p: [s * gap, 2.16, 0] });
