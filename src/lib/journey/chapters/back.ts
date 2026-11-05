@@ -4,6 +4,7 @@ import { extrude, rbox, roundedRect, ring } from '../kit/geometry';
 import { color, Lamp, mats } from '../kit/materials';
 import { archBlock, arcPoint, Card, curve, hazard, islandAt, machine, panel, shadowOn, stripes, tube } from '../kit/machines';
 import { font, Surface } from '../kit/print';
+import { FINALE_T } from './finale';
 import { createSign } from '../kit/parts';
 import { bell, bounceDown, clamp, hash, inOut, lerp, outBack, seg, smooth, spring } from '../kit/math';
 import { createCastShadow } from '../props/island';
@@ -45,6 +46,9 @@ const S_MEM = { az: -12, el: 9, target: rel(M_POS, 0, 3.9, 0), radius: 5.6, ry: 
 const S_UNK = { az: 10, el: 20, target: rel(U_POS, 0, 1.9, 0.7), radius: 7.6, ry: 4.3, wide: box(0.42, 0.06, 0.58, 0.9), tall: TALL };
 const S_TEN = { az: -10, el: 14, target: rel(R_POS, 0, 2.6, 0.6), radius: 9.2, ry: 4.2, wide: box(0.01, 0.42, 0.98, 0.56), tall: box(0, 0.06, 1, 0.3) };
 const S_FIN = { az: 9, el: 14, target: rel(F_POS, 0, 2.1, 0.8), radius: 10.8, ry: 3.6, wide: box(0.01, 0.4, 0.98, 0.56), tall: TALL };
+/** What the test monitor shows once the whole suite is green. */
+const PASSED = 99;
+const S_WHOLE = { az: -4, el: 13, target: [-18, -13, 0] as V3, radius: 49, ry: 25.5, wide: box(0.01, 0.05, 0.98, 0.93), tall: box(0, 0.06, 1, 0.43), tallTarget: [6, -12.8, 0] as V3, tallRadius: 26 };
 const S_END = { az: 29, el: 17, target: [1.9, 1.35, 0.4] as V3, radius: 6.25, ry: 6.25, wide: box(0.4, 0.02, 0.61, 0.94), tall: box(0, 0.05, 1, 0.42) };
 
 export const BACK_SHOTS: Shot[] = [
@@ -73,7 +77,10 @@ export const BACK_SHOTS: Shot[] = [
 	{ T: 30.06, ...S_FIN },
 	{ T: 30.8, ...S_FIN, az: 6 },
 	{ T: 31.46, ...S_END },
-	{ T: 32, ...S_END, az: 26 }
+	{ T: 32, ...S_END, az: 26 },
+	{ T: 32.02, ...S_END, az: 26 },
+	{ T: 32.3, ...S_WHOLE },
+	{ T: 33, ...S_WHOLE, az: -7 }
 ];
 
 const up = new THREE.Vector3(0, 1, 0);
@@ -265,6 +272,10 @@ export class Back {
 	private barsNew: THREE.Mesh[] = [];
 	private barLamps: Lamp[] = [];
 	private tags: THREE.Group[] = [];
+	private fromSign: THREE.Object3D[] = [];
+	private gatePipe!: THREE.Mesh;
+	private homeGlass!: THREE.Mesh;
+	private homeRingsHigh!: THREE.Group;
 	private cursor!: THREE.Group;
 	private cursorHome = { x: 0, step: 1 };
 	private turn = 0;
@@ -283,7 +294,7 @@ export class Back {
 	private a = new THREE.Vector3();
 	private b = new THREE.Vector3();
 	private d = new THREE.Object3D();
-	private zones: { g: THREE.Object3D; from: number; to: number; home: boolean }[] = [];
+	private zones: { g: THREE.Object3D; from: number; to: number; home: boolean; whole: boolean }[] = [];
 
 	constructor() {
 		this.buildHatch();
@@ -298,16 +309,16 @@ export class Back {
 		this.setHarness('claude');
 	}
 
-	private zone(from: number, to: number, home = false) {
+	private zone(from: number, to: number, home = false, whole = false) {
 		const g = new THREE.Group();
 		this.group.add(g);
-		this.zones.push({ g, from, to, home });
+		this.zones.push({ g, from, to, home, whole });
 		return g;
 	}
 
 	/* ---- the stream lands ---- */
 	private buildHatch() {
-		const g = this.zone(18.8, 21.06);
+		const g = this.zone(18.8, 21.06, false, true);
 		const m = mats();
 		for (let i = 0; i < 8; i++) {
 			const slip = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.26), m.paper);
@@ -318,32 +329,40 @@ export class Back {
 		}
 		this.carrier.add(this.topCard.mesh);
 		g.add(this.carrier);
-		g.add(tube(this.gatePath, 0.09, m.orangeGlow, 200));
+		this.gatePipe = tube(this.gatePath, 0.09, m.orangeGlow, 200);
+		g.add(this.gatePipe);
 		const fromSky = createSign('From the provider', 0.24);
 		fromSky.position.set(3.3, 6.7, -0.75);
 		g.add(fromSky);
 		const fromArm = new Batch();
 		fromArm.add(rbox(0.5, 0.05, 0.05, 0.02, 1), m.steelSoft, { p: [1.86, 6.7, -0.75] });
-		g.add(fromArm.build('from-arm'));
+		const arm = fromArm.build('from-arm');
+		g.add(arm);
+		this.fromSign = [fromSky, arm];
 
 		// The tube from the detokenizer, arriving: this is where the text was going all along. It stays, because it keeps being used.
 		const roof = 3.9;
-		const glass = new THREE.Mesh(
+		const glass = (this.homeGlass = new THREE.Mesh(
 			new THREE.CylinderGeometry(0.5, 0.5, 44, 36, 1, true),
 			new THREE.MeshPhysicalMaterial({ color: '#7fb4ea', transparent: true, opacity: 0.42, roughness: 0.08, clearcoat: 1, depthWrite: false, side: THREE.DoubleSide })
-		);
+		));
 		glass.position.set(1.1, roof + 22, -0.75);
 		glass.renderOrder = 4;
 		this.group.add(glass);
 		const rings = new Batch();
 		rings.add(ring(0.68, 0.52, 0.2), m.steel, { p: [1.1, roof + 0.1, -0.75] });
-		for (const y of [6.7, 12.7, 18.7]) rings.add(ring(0.6, 0.52, 0.08), m.steel, { p: [1.1, y, -0.75] });
+		rings.add(ring(0.6, 0.52, 0.08), m.steel, { p: [1.1, 6.7, -0.75] });
 		this.group.add(rings.build('home-tube'));
+		// These two are only there while the tube runs on up out of the frame.
+		const high = new Batch();
+		for (const y of [12.7, 18.7]) high.add(ring(0.6, 0.52, 0.08), m.steel, { p: [1.1, y, -0.75] });
+		this.homeRingsHigh = high.build('home-tube-high');
+		this.group.add(this.homeRingsHigh);
 	}
 
 	/* ---- the gates ---- */
 	private buildGates() {
-		const g = this.zone(19.5, 21.4);
+		const g = this.zone(19.5, 21.4, false, true);
 		const m = mats();
 		const isl = islandAt(23, 12);
 		isl.position.set(-51, GY, 0.4);
@@ -365,10 +384,11 @@ export class Back {
 		g.add(socket.build('dock-socket'));
 
 		const b = new Batch();
-		b.add(rbox(20, 0.1, 1.1, 0.03, 2), m.rubber, { p: [-52, GY + 0.05, TRACK_Z] });
-		for (const s of [-0.5, 0.5]) b.add(rbox(20, 0.1, 0.07, 0.03, 2), m.steel, { p: [-52, GY + 0.1, TRACK_Z + s] });
-		// A ramp from this island down to the workshop.
-		b.add(rbox(4.6, 0.1, 1.1, 0.03, 2), m.rubber, { p: [-40.2, GY - 0.92, TRACK_Z], r: [0, 0, -0.43] });
+		b.add(rbox(21.4, 0.1, 1.1, 0.03, 2), m.rubber, { p: [-51.3, GY + 0.05, TRACK_Z] });
+		for (const s of [-0.5, 0.5]) b.add(rbox(21.4, 0.1, 0.07, 0.03, 2), m.steel, { p: [-51.3, GY + 0.1, TRACK_Z + s] });
+		// A ramp from the very end of the rail, off the edge of this island and down to the workshop's floor.
+		b.add(rbox(4.84, 0.1, 1.1, 0.03, 2), m.rubber, { p: [-38.4, GY - 0.95, TRACK_Z], r: [0, 0, -0.427] });
+		for (const s of [-0.5, 0.5]) b.add(rbox(4.84, 0.1, 0.07, 0.03, 2), m.steel, { p: [-38.4, GY - 0.9, TRACK_Z + s], r: [0, 0, -0.427] });
 		g.add(b.build('track'));
 
 		const armMat = stripes('#f0473c', '#fbfaf5', 3);
@@ -402,7 +422,7 @@ export class Back {
 
 	/* ---- the sandbox and its workshop ---- */
 	private buildSandbox() {
-		const g = this.zone(19.9, 25.7);
+		const g = this.zone(19.9, 25.7, false, true);
 		const m = mats();
 		const isl = islandAt(32, 15);
 		isl.position.set(WX, WY, 0.4);
@@ -1262,23 +1282,86 @@ export class Back {
 			c.font = `500 28px ${font.mono}`;
 			c.textBaseline = 'middle';
 			c.fillText('inside the sandbox, 2 minute timeout', 28, 32);
-			const rows: [string, string][] = [
-				['$ pytest tests/test_scheduler.py -x', '#f4f8ff'],
-				['collected 12 items', '#9db6df'],
-				['test_two_workers  FAILED', '#ff8d85'],
-				['E  deadlock: lock re-entered', '#ff8d85'],
-				['E  in _dispatch', '#ff8d85'],
-				['exit code 1', '#ffc53d']
-			];
+			// By the last look the fix is in, and the whole suite has run.
+			const rows: [string, string][] = n === PASSED
+				? [
+						['$ pytest', '#f4f8ff'],
+						['collected 418 items', '#9db6df'],
+						['418 passed', '#5fe39b'],
+						['exit code 0', '#5fe39b']
+					]
+				: [
+						['$ pytest tests/test_scheduler.py -x', '#f4f8ff'],
+						['collected 12 items', '#9db6df'],
+						['test_two_workers  FAILED', '#ff8d85'],
+						['E  deadlock: lock re-entered', '#ff8d85'],
+						['E  in _dispatch', '#ff8d85'],
+						['exit code 1', '#ffc53d']
+					];
 			c.font = `600 42px ${font.mono}`;
-			rows.slice(0, n).forEach(([t, col], i) => {
+			rows.slice(0, n === PASSED ? rows.length : n).forEach(([t, col], i) => {
 				c.fillStyle = col;
 				c.fillText(t, 34, 134 + i * 92);
 			});
 		});
 	}
 
-	update(T: number, time: number) {
+	/** The route the last token rides, as far as this half of the world knows it. */
+	get finaleRoute() {
+		return { gatePath: this.gatePath, dock: [DOCK_X, CARTY + 0.3, TRACK_Z] as V3, trackEnd: [-41.4, CARTY + 0.3, TRACK_Z] as V3, back: this.returnCurve };
+	}
+
+	/** Everything comes to rest for the last look, however the reader got here: past a long scroll or by a cut. */
+	private rest(T: number, time: number, onTrack: number[]) {
+		this.play(24.96, time);
+		// The rest of the world comes up from below as the camera lets go, one island after another, like a pop-up book.
+		let rising = 0;
+		for (const z of this.zones) {
+			z.g.visible = z.whole;
+			if (!z.whole) continue;
+			const a = 31.99 + rising++ * 0.035;
+			z.g.position.y = -80 * (1 - outBack(seg(T, a, a + 0.15), 1.1));
+		}
+		// The hatch only holds the pipe, and that has to stay joined to the harness: it draws itself out instead.
+		this.gatePipe.parent!.position.y = 0;
+		this.gatePipe.geometry.setDrawRange(0, Math.floor(smooth(seg(T, 32.02, 32.17)) * 200) * 14 * 6);
+		this.fromSign.forEach((o) => (o.visible = false));
+		const short = smooth(seg(T, FINALE_T + 0.05, 32.12));
+		const length = lerp(44, 5.1, short);
+		this.homeGlass.scale.y = length / 44;
+		this.homeGlass.position.y = 3.9 + length / 2;
+		this.homeRingsHigh.visible = short < 0.5;
+		this.carrier.visible = false;
+		this.bad.group.visible = false;
+		this.good.group.visible = false;
+		this.rain.forEach((s) => (s.visible = false));
+		this.binSign.visible = false;
+		this.gates.forEach((gate, i) => {
+			let open = 0;
+			for (const x of onTrack) open = Math.max(open, 1 - smooth(seg(Math.abs(x - GATE_X[i]), 1.4, 3.4)));
+			gate.set(open > 0 ? outBack(open, 1.2) : 0);
+			gate.lamp.mix(color.amber, color.green, open, 0.25 + open * 0.9);
+		});
+		this.drawTerm(PASSED);
+		// The failed run's card has served its purpose: the suite is green now.
+		this.result.mesh.visible = false;
+		this.trayFoot.visible = false;
+		this.exitLamp.set(color.green, 1.1);
+	}
+
+	update(T: number, time: number, onTrack: number[] = []) {
+		if (T >= FINALE_T) return this.rest(T, time, onTrack);
+		this.homeGlass.scale.y = 1;
+		this.homeGlass.position.y = 25.9;
+		this.homeRingsHigh.visible = true;
+		this.trayFoot.visible = true;
+		this.fromSign.forEach((o) => (o.visible = true));
+		for (const z of this.zones) z.g.position.y = 0;
+		this.gatePipe.geometry.setDrawRange(0, Infinity);
+		this.play(T, time);
+	}
+
+	private play(T: number, time: number) {
 		// On the way home the camera flies back past everything it has seen.
 		const homeward = T > 30.84 && T < 31.5;
 		for (const z of this.zones) z.g.visible = (T > z.from && T < z.to) || (z.home && homeward);

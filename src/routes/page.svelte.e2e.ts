@@ -7,7 +7,7 @@ test('has expected h1', async ({ page }) => {
 
 test('the map goes to a chapter and gives it an address', async ({ page }) => {
 	await page.goto('/');
-	await page.getByRole('button', { name: /open the map/i }).click();
+	await page.getByRole('button', { name: /open the map of the trip/i }).click();
 	const map = page.getByRole('dialog', { name: 'Map of the trip' });
 	await expect(map).toBeVisible();
 	await map.getByRole('button', { name: 'One token is chosen', exact: true }).click();

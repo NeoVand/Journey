@@ -307,7 +307,7 @@ export const STOPS: { name: string; what: string; parts: string[] }[] = [
 	{ name: 'Your laptop again', what: 'The reply is only text. The harness decides what it may do.', parts: ['The model has no hands', 'Intent is not authority', 'When the page lies'] },
 	{ name: 'Your files and shell', what: 'Searching, editing, and running the tests.', parts: ['Finding the code', 'Three ways to edit', 'Evidence, not opinion'] },
 	{ name: 'Around the loop', what: 'Everything goes back, and the model goes again.', parts: ['Around the loop', 'When the context fills up', 'Seven things called memory', 'When the answer gets lost'] },
-	{ name: 'Done', what: 'The whole fix, what finished really means, and what it all adds up to.', parts: ['The whole fix, in ten turns', 'What finished means', 'Different bodies, one kind of mind'] }
+	{ name: 'Done', what: 'The whole fix, what finished really means, and what it all adds up to.', parts: ['The whole fix, in ten turns', 'What finished means', 'Different bodies, one kind of mind', 'The whole trip, in one look'] }
 ];
 
 /** A chapter's name in the address bar, so a stop can be shared. */
@@ -316,3 +316,16 @@ export const slug = (title: string) =>
 		.toLowerCase()
 		.replace(/[^a-z0-9]+/g, '-')
 		.replace(/^-|-$/g, '');
+
+/** The loop on one page, in the words of the book's first poster. */
+export const TRIP: { name: string; what: string }[] = [
+	{ name: 'Ask', what: 'You type one sentence.' },
+	{ name: 'Assemble', what: 'The harness wraps it in your rules, your tools and everything said so far.' },
+	{ name: 'Cross', what: 'One JSON request crosses the internet, encrypted.' },
+	{ name: 'Encode', what: 'The front door checks it, and the tokenizer cuts it into numbers.' },
+	{ name: 'Compute', what: 'The model reads it all, and writes a reply one token at a time.' },
+	{ name: 'Stream', what: 'Only text comes back. The model has touched nothing.' },
+	{ name: 'Authorize', what: 'The harness checks what the reply asks for, gate by gate.' },
+	{ name: 'Act', what: 'The tools run on your machine, and what they find is real.' },
+	{ name: 'Loop', what: 'The results go back as context, and round it goes until the tests pass.' }
+];

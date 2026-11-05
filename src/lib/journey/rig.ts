@@ -80,6 +80,8 @@ export class Rig {
 		v.set(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el)).multiplyScalar(dist).add(this.focus);
 		this.camera.position.copy(v);
 		this.camera.lookAt(this.focus);
+		// From far away the depth buffer needs its precision out there, or decals start to fight the faces they sit on.
+		this.camera.near = Math.max(0.5, (dist - 60) * 0.2);
 
 		// Lens shift: slides the image without rotating the camera, so verticals stay true.
 		this.camera.aspect = aspect;

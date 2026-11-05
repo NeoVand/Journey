@@ -9,7 +9,7 @@ import { Batch } from './kit/batch';
 import { createCastShadow, createIsland } from './props/island';
 import { Laptop } from './props/laptop';
 import { McpServer } from './props/mcp';
-import { Brain, BRAIN_SEAT } from './props/brain';
+import { Brain, BRAIN_FOOT, BRAIN_SEAT } from './props/brain';
 import { Harness, HW, PORT_KEYS_Z, PORT_MCP_Z, PORT_OUT_Z, PORT_Y } from './props/harness';
 import { createEasel, DOC_H, RequestDoc, SLOT_Y, Strip } from './props/request';
 import { createTunnelStand, Tunnel } from './props/tunnel';
@@ -19,6 +19,7 @@ import { HARNESSES, PROMPT, TOKENS, type HarnessId } from './content';
 import { Cluster, CLUSTER_SHOTS, DIVE_T } from './cluster';
 import { RETURN_POINTS } from './layout';
 import { Back, BACK_SHOTS } from './chapters/back';
+import { Finale, FINALE_T } from './chapters/finale';
 
 export const EXIT_T = 19;
 
@@ -147,6 +148,10 @@ export class World {
 	private chevron!: THREE.Texture;
 	private ribbonArrows!: THREE.CanvasTexture;
 	private loopMeshes: THREE.Mesh[] = [];
+	private routeCable!: THREE.Curve<THREE.Vector3>;
+	private routeOut!: THREE.Curve<THREE.Vector3>;
+	private routeUnder!: THREE.Curve<THREE.Vector3>;
+	private finale!: Finale;
 	private clouds: { sprite: THREE.Sprite; drift: number; base: THREE.Vector3 }[] = [];
 
 	private harnessId: HarnessId = 'claude';
@@ -179,6 +184,24 @@ export class World {
 		this.assemble();
 		this.splitLower();
 		this.root.add(this.back.group);
+		// Its route is the pipes already standing, so it can only be built once they all are.
+		const seat = this.brain.group.position;
+		this.finale = new Finale({
+			cable: this.routeCable,
+			out: this.routeOut,
+			under: this.routeUnder,
+			down: this.downCurve,
+			flow: this.flow,
+			flowLip: this.flowLipU(),
+			...this.back.finaleRoute,
+			gatewayX: GATEWAY_X,
+			templateX: TEMPLATE_X,
+			slotX: SLOT_X,
+			beltY: BELT_Y,
+			lineZ: LINE_Z,
+			flank: [seat.x - 1.4 + 4.1, seat.y - BRAIN_FOOT + 0.95, seat.z]
+		});
+		this.root.add(this.finale.group);
 		this.setHarness('claude');
 	}
 
@@ -501,6 +524,7 @@ export class World {
 			false,
 			'centripetal'
 		);
+		this.routeOut = out;
 		const outTube = new THREE.Mesh(new THREE.TubeGeometry(out, 48, 0.078, 16), m.orangeGlow);
 		outTube.castShadow = true;
 		this.root.add(outTube);
@@ -528,6 +552,7 @@ export class World {
 			false,
 			'centripetal'
 		);
+		this.routeUnder = under;
 		const underTube = new THREE.Mesh(new THREE.TubeGeometry(under, 90, 0.078, 16), m.orangeGlow);
 		underTube.castShadow = true;
 		this.root.add(underTube);
@@ -617,6 +642,7 @@ export class World {
 			false,
 			'centripetal'
 		);
+		this.routeCable = cable;
 		const cm = new THREE.Mesh(new THREE.TubeGeometry(cable, 32, 0.04, 10), m.rubber);
 		cm.castShadow = true;
 		this.root.add(cm);
@@ -816,6 +842,14 @@ export class World {
 		this.back.setTurn(turn);
 	}
 
+	pressEnter(reduced: boolean) {
+		this.finale.press(reduced);
+	}
+
+	get trip() {
+		return { step: this.finale.running ? this.finale.step : -1, laps: this.finale.laps };
+	}
+
 	setCache(on: boolean) {
 		this.back.setCache(on);
 	}
@@ -882,7 +916,9 @@ export class World {
 
 			this.root.position.y = (1 - outCubic(seg(intro, 0, 0.8))) * -0.9;
 
-			this.lower.visible = T < DIVE_T;
+			const whole = T >= FINALE_T;
+			this.lower.visible = T < DIVE_T || whole;
+			this.lower.position.y = whole ? -90 * (1 - outBack(seg(T, 32.03, 32.2), 1.08)) : 0;
 			this.back.group.visible = T >= EXIT_T;
 			if (T < DIVE_T) {
 				this.updateLaptop(T, time, intro);
@@ -894,6 +930,13 @@ export class World {
 				this.updateBulges(T);
 				this.brain.update(T, time);
 			} else {
+				if (whole) {
+					// Everything from the first half at rest, however the reader got here.
+					this.updateTunnel(5.6, time, dt);
+					this.updateGateway(6, time);
+					this.updateTokenizer(6, time);
+					this.brain.update(6.9 + this.finale.brainBusy * 0.8, time);
+				}
 				// The first half of the journey is over: its travellers have gone, its machines stay.
 				this.doc.group.visible = false;
 				this.strips.forEach((s) => (s.mesh.visible = false));
@@ -903,8 +946,9 @@ export class World {
 				this.laptop.finish(smooth(seg(T, 31.3, 31.46)));
 				this.laptop.update(PROMPT.length, 1, time, 1, false);
 				this.mcp.update(1, time);
-				this.harness.update(this.back.opens(T), [1, 1, 1, 1], 1, time, this.back.jolt(T));
-				if (this.back.group.visible) this.back.update(T, time);
+				this.finale.update(T);
+				this.harness.update(this.back.opens(T), [1, 1, 1, 1], 1, time, this.back.jolt(T) + this.finale.harnessPulse * 0.6);
+				if (this.back.group.visible) this.back.update(T, time, this.finale.onTrack);
 			}
 
 			this.chevron.offset.x = time * 0.42;

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { GLOSSARY, HARNESSES, FORMS, LOGITS, RUN_WITH_CACHE, RUN_WITHOUT_CACHE, slug, TEN_TURNS, TOP_K, wheelOdds, type HarnessId } from './content';
+	import { GLOSSARY, HARNESSES, FORMS, LOGITS, RUN_WITH_CACHE, RUN_WITHOUT_CACHE, slug, TEN_TURNS, TOP_K, TRIP, wheelOdds, type HarnessId } from './content';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import TripMap from './TripMap.svelte';
@@ -153,7 +153,7 @@
 	let mapHere = $state('How a coding agent works');
 	const headings = () => [...document.querySelectorAll<HTMLElement>('main h1, main h2')];
 	// Before the 3D is running, and when it can't run, the page is plain text that simply scrolls.
-	let cutTo = (title: string) => headings().find((h) => h.textContent === title)?.scrollIntoView();
+	let cutTo = (title: string, at?: 'at-once') => headings().find((h) => h.textContent === title)?.scrollIntoView({ behavior: at ? 'instant' : 'auto' });
 	let locate = () => mapHere;
 
 	function openMap() {
@@ -167,10 +167,28 @@
 		cutTo(title);
 	}
 
-	function followAddress() {
+	function followAddress(at?: 'at-once') {
 		const wanted = location.hash.slice(1);
 		const heading = wanted && headings().find((h) => slug(h.textContent ?? '') === wanted);
-		if (heading) cutTo(heading.textContent ?? '');
+		if (heading) cutTo(heading.textContent ?? '', at);
+	}
+
+	/** The last look at the whole world: the nine stops follow the token, and then the Enter key is yours. */
+	let tripStep = $state(0);
+	let tripLaps = $state(0);
+	let tripDone = $state(false);
+	const tripWords = $derived(
+		tripLaps >= 10 ? 'Ten turns. That’s about what this fix took.' : tripLaps ? `Turn ${tripLaps} done. Press it again.` : 'Go on, press it.'
+	);
+
+	function pressEnter() {
+		world?.pressEnter(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+	}
+
+	/** The real key works too, unless it already belongs to whatever has focus. */
+	function enterKey(event: KeyboardEvent) {
+		const target = event.target as HTMLElement | null;
+		if (event.key === 'Enter' && tripDone && !mapOpen && !target?.closest('button, a, input, dialog')) pressEnter();
 	}
 
 	/** The ten turns follow the bars as they rise. Once a turn has been told, the reader can go back to it. */
@@ -366,6 +384,9 @@
 				section = Math.min(sections.length - 1, Math.floor(T));
 				part = T < 14.15 ? null : T < 14.3 ? 'embed' : T < 14.625 ? 'attn' : T < 14.7 ? 'ffn' : T < 14.865 ? 'stack' : 'head';
 				attention = T < 14.358 ? -1 : T < 14.4 ? 0 : T < 14.43 ? 1 : T < 14.5 ? 2 : 3;
+				tripStep = w.trip.step;
+				tripLaps = w.trip.laps;
+				tripDone = T >= 32.88;
 				const reached = T < 29.1 ? -1 : Math.min(TEN_TURNS.length - 1, Math.floor((T - 29.1) / 0.066));
 				if (reached !== turnReached) {
 					turnReached = reached;
@@ -398,7 +419,7 @@
 			const startOf = (p: (typeof pins)[number]) => (p.i === 0 ? 0 : p.i + p.from + p.fade * 0.8);
 			const cutEl = document.querySelector<HTMLElement>('[data-cut]')!;
 			let cutTimer = 0;
-			cutTo = (title) => {
+			cutTo = (title, at) => {
 				const pin = pinOf(title);
 				if (!pin) return;
 				const nextT = startOf(pin);
@@ -408,7 +429,7 @@
 					head.T = nextT;
 					head.v = 0;
 				};
-				if (reduced || still) return land();
+				if (reduced || still || at) return land();
 				cutEl.style.background = nextT >= 7.96 && nextT < 19.02 ? '#060f26' : '#d6eafb';
 				cutEl.classList.add('on');
 				clearTimeout(cutTimer);
@@ -422,7 +443,8 @@
 				for (const p of pins) if (startOf(p) - p.fade <= T) at = p;
 				return at.el.querySelector('h1, h2')?.textContent ?? '';
 			};
-			window.addEventListener('hashchange', followAddress);
+			const onHash = () => followAddress();
+			window.addEventListener('hashchange', onHash);
 
 			if (params.has('debug')) {
 				(window as unknown as { __world: unknown; __head: unknown }).__world = w;
@@ -451,12 +473,13 @@
 				cancelAnimationFrame(raf);
 				window.removeEventListener('resize', resize);
 				window.removeEventListener('pointermove', move);
-				window.removeEventListener('hashchange', followAddress);
+				window.removeEventListener('hashchange', onHash);
 				clearTimeout(cutTimer);
 				w.dispose();
 			};
 			driven = true;
-			followAddress();
+			// Behind the loader nobody sees it happen, so there's no need for the cut to hide it.
+			followAddress('at-once');
 			canvas.dataset.ready = 'true';
 		})();
 
@@ -470,7 +493,7 @@
 
 	function restart(event: MouseEvent) {
 		event.preventDefault();
-		window.scrollTo({ top: 0 });
+		cutTo('How a coding agent works');
 	}
 </script>
 
@@ -519,6 +542,7 @@
 	onclick={() => (tip = null)}
 	onkeydown={(e) => {
 		if (e.key === 'Escape') tip = null;
+		enterKey(e);
 	}}
 />
 
@@ -1022,13 +1046,39 @@
 	</section>
 
 	<section data-beat class="beat" style:--h="440vh">
-		<article class="pin left end" data-in="0.44" data-out="9">
+		<article class="pin left" data-in="0.44" data-out="0.93">
 			<h2>Different bodies, one kind of mind</h2>
 			<p>The model is a function from tokens to a probability for the next token. Everything else, searching, editing, running code, remembering, asking permission, is the harness.</p>
 			<p>It doesn’t know your codebase. It searches, one tool call at a time, and forgets everything when the session ends unless the harness writes it down.</p>
-			<p class="next">Next time you press Enter, you’ll know where it goes.</p>
-			<p><small>Harness details are from public docs and source as of November 2026. Inside the data center, this follows public engines and papers, because providers don’t publish their own.</small></p>
-			<p><a class="again" href="#top" onclick={restart}>Follow it again</a></p>
+		</article>
+	</section>
+
+	<section data-beat class="beat" style:--h="900vh">
+		<article class="pin end whole" data-in="0.3" data-out="9">
+			<div class="whole-top">
+				<h2>The whole trip, in one look</h2>
+				<ol class="trip">
+					{#each TRIP as stop, i (stop.name)}
+						<li class={{ now: i === tripStep, past: tripDone || i < tripStep, model: tripDone && tripStep < 0 && i === 4 }}><b>{i + 1}</b> {stop.name}</li>
+					{/each}
+				</ol>
+				<p class="trip-what">{tripStep >= 0 ? TRIP[tripStep].what : tripDone ? 'Only one of these nine stops is the model.' : TRIP[0].what}</p>
+			</div>
+			<div class={['closing', { shown: tripDone || failed }]} inert={!tripDone && !failed}>
+				<p class="next">Next time you press Enter, you’ll know where it goes.</p>
+				<div class="enter-row">
+					<button type="button" class="enter-key" onclick={pressEnter} aria-label="Press Enter: send a token around the loop">
+						Enter
+						<svg viewBox="0 0 20 14" aria-hidden="true"><path d="M18 2v4a3 3 0 0 1-3 3H3m0 0 4-4M3 9l4 4" /></svg>
+					</button>
+					<span class="enter-words" aria-live="polite">{tripWords}</span>
+				</div>
+				<p class="sources"><small>Harness details are from public docs and source as of November 2026. Inside the data center, this follows public engines and papers, because providers don’t publish their own.</small></p>
+				<p class="ends">
+					<a class="again" href="#top" onclick={restart}>Follow it again</a>
+					<button type="button" class="again quiet" onclick={openMap}>Open the map</button>
+				</p>
+			</div>
 		</article>
 	</section>
 </main>
@@ -1040,6 +1090,169 @@
 <TripMap bind:open={mapOpen} here={mapHere} onjump={jump} />
 
 <style>
+	/* The last look runs edge to edge. Its words sit in the two open corners of the sky, left of the home island. */
+	.driven .pin.whole {
+		right: 0;
+	}
+	.pin.whole {
+		width: auto;
+		justify-content: space-between;
+		padding: 84px 0 34px;
+		margin-right: clamp(24px, 5.2vw, 88px);
+	}
+	.beat:not(.hero) .pin.whole::before {
+		display: none;
+	}
+	.whole-top {
+		max-width: min(50vw, 680px);
+	}
+	.whole h2 {
+		margin-bottom: 10px;
+		font-size: clamp(30px, 3vw, 46px);
+	}
+	.trip {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px;
+		margin: 0 0 8px;
+		padding: 0;
+		list-style: none;
+		font-size: 0.84em;
+		line-height: 1.2;
+	}
+	.trip li {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		padding: 4px 11px 4px 4px;
+		border-radius: 999px;
+		background: rgb(255 255 255 / 0.55);
+		color: var(--ink-soft);
+		font-weight: 600;
+		transition:
+			background 0.2s,
+			color 0.2s;
+	}
+	.trip b {
+		display: grid;
+		place-items: center;
+		width: 20px;
+		height: 20px;
+		border-radius: 50%;
+		background: rgb(16 26 48 / 0.1);
+		font-size: 0.86em;
+		transition: background 0.2s;
+	}
+	.trip li.past b,
+	.trip li.now b {
+		background: #ffb921;
+		color: #101a30;
+	}
+	.trip li.now,
+	.trip li.model {
+		background: #101a30;
+		color: #fff;
+	}
+	p.trip-what {
+		margin: 0;
+		min-height: 1.5em;
+	}
+	.closing {
+		max-width: min(32em, 42vw);
+		opacity: 0;
+		transform: translateY(10px);
+		transition:
+			opacity 0.5s,
+			transform 0.5s cubic-bezier(0.2, 1, 0.3, 1);
+	}
+	.closing.shown {
+		opacity: 1;
+		transform: none;
+		pointer-events: auto;
+	}
+	.closing .next {
+		margin: 0 0 12px;
+		font-size: clamp(22px, 1.9vw, 30px);
+		line-height: 1.12;
+		letter-spacing: -0.02em;
+		text-wrap: balance;
+	}
+	.enter-row {
+		display: flex;
+		align-items: center;
+		gap: 16px;
+		margin-bottom: 16px;
+	}
+	.enter-key {
+		display: inline-flex;
+		align-items: center;
+		gap: 12px;
+		padding: 13px 18px 13px 22px;
+		border: 0;
+		border-radius: 14px;
+		background: linear-gradient(#ffffff, #eef3fb);
+		color: #101a30;
+		font-family: var(--display);
+		font-weight: 700;
+		font-size: 20px;
+		line-height: 1;
+		cursor: pointer;
+		box-shadow:
+			inset 0 1px 0 #fff,
+			0 7px 0 #b3c3dc,
+			0 13px 22px rgb(30 70 140 / 0.3);
+		transition:
+			transform 0.07s,
+			box-shadow 0.07s;
+	}
+	.enter-key:hover {
+		transform: translateY(-1px);
+	}
+	.enter-key:active {
+		transform: translateY(6px);
+		box-shadow:
+			inset 0 1px 0 #fff,
+			0 1px 0 #b3c3dc,
+			0 3px 7px rgb(30 70 140 / 0.3);
+	}
+	.enter-key svg {
+		width: 20px;
+		height: 14px;
+	}
+	.enter-key path {
+		fill: none;
+		stroke: currentColor;
+		stroke-width: 2;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+	}
+	.enter-words {
+		font-weight: 600;
+		line-height: 1.25;
+		color: var(--ink);
+	}
+	p.sources {
+		margin: 0 0 10px;
+		line-height: 1.32;
+	}
+	.ends {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+		margin: 0;
+	}
+	.again.quiet {
+		border: 0;
+		background: rgb(16 26 48 / 0.09);
+		color: var(--ink);
+		font: inherit;
+		font-weight: 650;
+		cursor: pointer;
+	}
+	.again.quiet:hover {
+		background: rgb(16 26 48 / 0.15);
+	}
+
 	.ten-grid {
 		display: grid;
 		grid-template-columns: minmax(0, 28em) minmax(0, 34em);
@@ -2109,6 +2322,34 @@
 		.ten-grid {
 			grid-template-columns: 1fr;
 			gap: 10px;
+		}
+		.pin.whole {
+			justify-content: flex-end;
+			padding: 74px 20px 22px;
+			margin: 0;
+		}
+		.whole-top,
+		.closing {
+			max-width: none;
+		}
+		.whole-top {
+			margin-bottom: 12px;
+		}
+		.whole h2 {
+			font-size: 32px;
+		}
+		.closing .next {
+			margin-bottom: 10px;
+			font-size: 21px;
+		}
+		.enter-row {
+			margin-bottom: 14px;
+		}
+		/* The shortest phones keep the world and the key. The stops are named out in the world anyway. */
+		@media (max-height: 700px) {
+			.trip {
+				display: none;
+			}
 		}
 		.turns button {
 			max-width: none;
