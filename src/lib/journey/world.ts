@@ -19,7 +19,9 @@ import { createEasel, DOC_H, RequestDoc, SLOT_Y, Strip } from './props/request';
 import { createTunnelStand, Tunnel } from './props/tunnel';
 import { Gateway, GW } from './props/gateway';
 import { createBelt, createChatTemplate, Gantry, GANTRY_REAR, SafetyArch, Tile, TILE_D, TILE_H } from './props/tokenizer';
-import { HARNESSES, PROMPT, TOKENS, type HarnessId } from './content';
+import { HARNESSES, PROMPT, TOKENS, type HarnessId, type TrackId } from './content';
+import { McpTrack, MCP_SHOTS, type HarnessPose } from './tracks/mcp';
+import { hitBox } from './poke';
 import { Cluster, CLUSTER_SHOTS, DIVE_T } from './cluster';
 import { RETURN_POINTS } from './layout';
 import { Back, BACK_SHOTS } from './chapters/back';
@@ -142,6 +144,20 @@ export interface WorldState {
 export class World {
 	stage: Stage;
 	rig: Rig;
+	/** The side trip the reader is on, how far along it they are, and how far it has taken over the picture. */
+	trackId: TrackId | null = null;
+	trackT = 0;
+	trackBlend = 0;
+	trackWords = 1;
+	onTrack: (id: TrackId) => void = () => {};
+	private trackRigs!: Record<TrackId, Rig>;
+	private mcpTrack!: McpTrack;
+	private mcpLead!: THREE.Curve<THREE.Vector3>;
+	private mcpHit = hitBox(1.5, 1.5, 1.3);
+	private harnessPose: HarnessPose = { opens: [0, 0, 0, 0], filled: [0, 0, 0, 0], wake: 0.1 };
+	private camFrom = new THREE.Vector3();
+	private focusFrom = new THREE.Vector3();
+	private focusTo = new THREE.Vector3();
 	root = new THREE.Group();
 
 	private laptop = new Laptop();
@@ -226,6 +242,11 @@ export class World {
 			flank: [seat.x - 1.4 + 4.1, seat.y - BRAIN_FOOT + 0.95, seat.z]
 		});
 		this.root.add(this.finale.group);
+		this.mcpTrack = new McpTrack(this.harness, this.mcp, this.mcpLead);
+		this.root.add(this.mcpTrack.group);
+		this.trackRigs = { mcp: new Rig(this.stage.camera, MCP_SHOTS) };
+		this.mcpHit.position.set(7.2, 0.7, -0.72);
+		this.root.add(this.mcpHit);
 		this.setHarness('claude');
 		this.wirePokes();
 	}
@@ -680,6 +701,7 @@ export class World {
 			[2.84, 0.36, -1.24],
 			...leaving([HARNESS_POS.x + HW / 2, PORT_Y, HARNESS_POS.z + PORT_MCP_Z], [1, 0, 0], 0.042).reverse()
 		]);
+		this.mcpLead = lead;
 		const leadTube = new THREE.Mesh(new THREE.TubeGeometry(lead, 100, 0.042, 10), m.cobalt);
 		leadTube.castShadow = true;
 		this.root.add(leadTube);
@@ -947,16 +969,26 @@ export class World {
 		this.poker.add({ targets: [this.brain.hit], when: (T) => (T > 7.2 && T < 7.8) || finale(T), press: () => this.brain.excite() });
 		this.poker.add({ targets: [this.laptop.hit], when: finale, press: () => this.onPress('enter') });
 		this.poker.add({ targets: [this.cluster.wheelDisc], when: (T) => T > 15.1 && T < 15.86, press: () => this.onPress('wheel') });
+		// The server opens its own side trip, while the island it stands on is the story.
+		this.poker.add({ targets: [this.mcpHit], when: (T) => T < 2.76, press: () => this.onTrack('mcp') });
+	}
+
+	/** Starts or ends a side trip. The page moves trackT and trackBlend; this only says which trip. */
+	setTrack(id: TrackId | null) {
+		if (id) this.harness.pulled = -1;
+		this.trackId = id;
 	}
 
 	/** Returns whether anything answered. */
 	pressAt(x: number, y: number) {
+		if (this.trackId) return false;
 		const hit = this.poker.pick(this.lastT, x, y, this.stage.camera);
 		if (hit) hit.p.press(hit.index);
 		return !!hit;
 	}
 
 	overAt(x: number, y: number) {
+		if (this.trackId) return false;
 		return !!this.poker.pick(this.lastT, x, y, this.stage.camera);
 	}
 
@@ -1027,7 +1059,7 @@ export class World {
 
 		// The picture makes room before the words arrive, and only takes it back once they've gone.
 		this.rig.update(T, this.stage.width, this.stage.height, px, py, time, Math.max(this.wordsAt(T - 0.06), this.wordsAt(T), this.wordsAt(T + 0.06)));
-		this.stage.focusLight(this.rig.focus, this.rig.radius);
+		this.frameTrack(px, py, time);
 
 		const inside = T >= DIVE_T && T < EXIT_T;
 		this.root.visible = !inside;
@@ -1101,8 +1133,44 @@ export class World {
 			this.loopMeshes.forEach((l) => (l.visible = T < 3.9 || T >= EXIT_T));
 		}
 
+		// A side trip borrows the first island, so it plays over whatever the story has posed there.
+		if (!inside) this.mcpTrack.update(this.trackT, this.trackId === 'mcp' ? this.trackBlend : 0, time, this.harnessPose, seg(T, 1.86, 2.0));
+
 		this.state.form = formAt(T);
 		this.stage.render();
+	}
+
+	/**
+	 * The camera, when a side trip is taking over: part way through, it is between where the story had it and where the
+	 * trip wants it, moving its eye and what it looks at together, so the flight never turns away from the subject.
+	 */
+	private frameTrack(px: number, py: number, time: number) {
+		const k = this.trackId ? this.trackBlend : 0;
+		if (k <= 0 || !this.trackId) {
+			this.stage.focusLight(this.rig.focus, this.rig.radius);
+			return;
+		}
+		const cam = this.stage.camera;
+		const { width, height } = this.stage;
+		this.camFrom.copy(cam.position);
+		this.focusFrom.copy(this.rig.focus);
+		const ox = cam.view?.offsetX ?? 0;
+		const oy = cam.view?.offsetY ?? 0;
+		const near = cam.near;
+		const radius = this.rig.radius;
+		const rig = this.trackRigs[this.trackId];
+		rig.update(this.trackT, width, height, px, py, time, this.trackWords);
+		if (k >= 1) {
+			this.stage.focusLight(rig.focus, rig.radius);
+			return;
+		}
+		cam.position.lerpVectors(this.camFrom, cam.position, k);
+		this.focusTo.lerpVectors(this.focusFrom, rig.focus, k);
+		cam.lookAt(this.focusTo);
+		cam.near = Math.min(near, cam.near);
+		cam.setViewOffset(width, height, lerp(ox, cam.view?.offsetX ?? 0, k), lerp(oy, cam.view?.offsetY ?? 0, k), width, height);
+		cam.updateProjectionMatrix();
+		this.stage.focusLight(this.focusTo, lerp(radius, rig.radius, k));
 	}
 
 	private c1 = new THREE.Color();
@@ -1180,6 +1248,7 @@ export class World {
 		const landed = bell(seg(T, 1.86, 1.94), 0, 1);
 		const pulls = starts.reduce((sum, a) => sum + bell(seg(T, a + 0.02, a + 0.07), 0, 1) * 0.5, 0);
 		this.harness.update(opens, filled, 0.1 + wake * 0.9, time, landed + pulls);
+		this.harnessPose = { opens, filled, wake: 0.1 + wake * 0.9 };
 		this.harness.group.updateWorldMatrix(true, true);
 
 		/* ----- the document ----- */

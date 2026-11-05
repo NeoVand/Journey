@@ -2,6 +2,7 @@
 // node scripts/collide.mjs [from] [to] [step] [harness]
 // SIGNS=1 instead tests every visible sign plate where it stands against everything except its own posts.
 // PHONE=1 runs the page as a touch phone, where signs are printed larger.
+// TRACK=mcp scans that side trip, with from and to in the trip's own time.
 //
 // At each moment it finds every mesh that moved relative to another, samples points on the mover's surface just
 // under its skin, and asks whether those points are inside the other mesh. Anything rigidly attached is ignored,
@@ -17,7 +18,7 @@ page.on('pageerror', (e) => console.log('pageerror', e.message));
 await page.goto(`${process.env.URL ?? 'http://localhost:5199'}/?still&debug`, { waitUntil: 'load' });
 await page.waitForFunction(() => window.__journey && window.__world, null, { timeout: 90000 });
 
-await page.evaluate(async ([harness, signsOnly]) => {
+await page.evaluate(async ([harness, signsOnly, track, trackAt]) => {
 	const THREE = await import('/node_modules/three/build/three.module.js');
 	const world = window.__world;
 	const scene = world.stage.scene;
@@ -159,7 +160,13 @@ await page.evaluate(async ([harness, signsOnly]) => {
 	const hits = new Map();
 
 	window.__scan = (T) => {
-		window.__journey.seek(T, 0);
+		// TRACK=<id> scans a side trip instead: T is the trip's own time, over the story posed where the trip borrows it.
+		if (track) {
+			world.setTrack(track);
+			world.trackT = T;
+			world.trackBlend = 1;
+			world.update(trackAt, 0, 1 / 60, 0, 0, true);
+		} else window.__journey.seek(T, 0);
 		scene.updateMatrixWorld(true);
 		const live = [];
 		scene.traverseVisible((o) => {
@@ -241,7 +248,7 @@ await page.evaluate(async ([harness, signsOnly]) => {
 		return movers.length;
 	};
 	window.__report = () => [...hits.values()];
-}, [harness, !!process.env.SIGNS]);
+}, [harness, !!process.env.SIGNS, process.env.TRACK ?? null, +(process.env.TRACK_AT ?? 1.5)]);
 
 const A = +from, B = +to, S = +step;
 let maxMovers = 0;

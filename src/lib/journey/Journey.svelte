@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { GLOSSARY, HARNESSES, FORMS, LOGITS, RUN_WITH_CACHE, RUN_WITHOUT_CACHE, slug, TEN_AT, TEN_STEP, TEN_TURNS, TOP_K, TRIP, wheelOdds, type HarnessId } from './content';
+	import { GLOSSARY, HARNESSES, FORMS, LOGITS, RUN_WITH_CACHE, RUN_WITHOUT_CACHE, slug, TEN_AT, TEN_STEP, TEN_TURNS, TOP_K, TRACK_AT, TRACKS, TRIP, wheelOdds, type HarnessId, type TrackId } from './content';
 	import { tick } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
@@ -9,13 +9,13 @@
 	import { cubicOut } from 'svelte/easing';
 	import type { Attachment } from 'svelte/attachments';
 	import type { World } from './world';
-	import { PACE, Playhead } from './playhead';
+	import { PACE, Playhead, trackPace } from './playhead';
 	import { Sharpness } from './sharpness';
 	import { SvelteSet } from 'svelte/reactivity';
 	import Blueprint, { type Stage } from './Blueprint.svelte';
 	import Icon from './Icon.svelte';
 	import { ArrowLeft01Icon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
-	import { AGAIN, AGENT_MARK, CHECK_ICON, DRAWER_ICON, GATE_ICON, MAP, SPIN, SWAP } from './icons';
+	import { AGAIN, AGENT_MARK, CHECK_ICON, DRAWER_ICON, GATE_ICON, MAP, SPIN, SWAP, TRACK_ICON } from './icons';
 
 	const ids: HarnessId[] = ['claude', 'codex', 'copilot'];
 	const labels: Record<HarnessId, string> = { claude: 'Claude Code', codex: 'Codex', copilot: 'Copilot' };
@@ -172,6 +172,19 @@
 	/** Scrolls the story on to where a turn is told. Set once the page has measured itself. */
 	let reachTurn: (i: number) => void = () => {};
 
+	/** A side trip: a detour of a few cards off the main road, which brings the reader back to exactly where they left. */
+	let track = $state<TrackId | null>(null);
+	let trackCard = $state(0);
+	/** Set once the world is running. Before that, and without 3D, there's nowhere to go. */
+	let enterTrack: (id: TrackId) => void = () => {};
+	let leaveTrack: (atOnce?: boolean) => void = () => {};
+	const trip = $derived(track ? TRACKS[track] : null);
+
+	function takeTrip(id: TrackId) {
+		mapOpen = false;
+		enterTrack(id);
+	}
+
 	function openMap() {
 		mapHere = locate();
 		mapOpen = true;
@@ -179,6 +192,7 @@
 
 	function jump(title: string) {
 		mapOpen = false;
+		leaveTrack(true);
 		goto(resolve(`/#${slug(title)}`), { shallow: true, replace: true });
 		cutTo(title);
 	}
@@ -368,6 +382,8 @@
 				return tops[i] + (T - i) * heights[i];
 			};
 
+			/** Set once the trip code below exists; a trip measures its own sections. */
+			let remeasureTrip = () => {};
 			const dprFor = () => Math.min(window.devicePixelRatio || 1, 2);
 			let dpr = dprFor();
 			// The canvas is as tall as the screen ever gets, so a phone's toolbar sliding away neither stretches
@@ -380,6 +396,7 @@
 				if (turned) holdSteps();
 				const was = turned ? T : 0;
 				measure();
+				remeasureTrip();
 				if (turned) {
 					window.scrollTo(0, toY(was));
 					// Safari settles its own scroll position a moment later.
@@ -549,9 +566,10 @@
 				T = head.step(target, dt);
 				if (stepTo >= 0 && T === target) settle();
 				steppable();
+				playTrip(dt);
 				px += (mx - px) * (1 - Math.exp(-dt * 3));
 				py += (my - py) * (1 - Math.exp(-dt * 3));
-				w.update(T, reduced ? 0 : time, dt, reduced ? 0 : px, reduced ? 0 : py, reduced);
+				w.update(track && tripT !== null ? tripT : T, reduced ? 0 : time, dt, reduced ? 0 : px, reduced ? 0 : py, reduced);
 				publish();
 
 				if (now - lastAim > 140) {
@@ -601,6 +619,7 @@
 				head.hurry = 1;
 			};
 			step = (dir) => {
+				if (track) return stepTrip(dir);
 				const target = toT(window.scrollY);
 				const lag = target - head.T;
 				if (Math.sign(lag) === dir && Math.abs(lag) > 0.002) {
@@ -617,9 +636,176 @@
 				window.scrollTo({ top: toY(next), behavior: 'instant' });
 			};
 			const steppable = () => {
+				if (track) return;
 				canBack = T > stops[0] + 0.004;
 				canOn = T < stops[stops.length - 1] - 0.004;
 			};
+
+			/* ---- side trips ---- */
+			// A trip has its own scroller over the page, so the page itself, and the reader's place in it, stay where they were.
+			let tripEl: HTMLElement | null = null;
+			let tripPins: HTMLElement[] = [];
+			let tripTops: number[] = [];
+			let tripHeights: number[] = [];
+			let tripHead: Playhead | null = null;
+			let tripTo = -1;
+			/** How far the trip has taken over the picture, 0 to 1, and where it's heading. */
+			let blend = 0;
+			let blendGoal = 0;
+			/** The story time the world is posed at during a trip: null to keep the reader's own. */
+			let tripT: number | null = null;
+			let flying = false;
+			let afterFlight: (() => void) | null = null;
+			let comeBackTo: HTMLElement | null = null;
+			const cards = () => tripPins.length;
+			const measureTrip = () => {
+				if (!tripEl) return;
+				const secs = [...tripEl.querySelectorAll<HTMLElement>(':scope > section')];
+				tripTops = secs.map((s) => s.offsetTop);
+				tripHeights = secs.map((s) => s.offsetHeight);
+				tripHeights[tripHeights.length - 1] = Math.max(1, tripHeights[tripHeights.length - 1] - tripEl.clientHeight);
+			};
+			remeasureTrip = measureTrip;
+			const toTripT = (y: number) => {
+				let i = 0;
+				while (i < tripTops.length - 1 && y >= tripTops[i + 1]) i++;
+				return i + Math.min(1, Math.max(0, (y - tripTops[i]) / tripHeights[i]));
+			};
+			const toTripY = (t: number) => {
+				const i = Math.min(tripTops.length - 1, Math.floor(t));
+				return tripTops[i] + (t - i) * tripHeights[i];
+			};
+			// Like the story's own cards: on from a little way in, off just before the next.
+			const cardIn = (n: number, t: number) => (n === 0 ? 1 : seg(t - n, 0.01, 0.08));
+			const cardOut = (n: number, t: number) => (n === cards() - 1 ? 0 : seg(t - n, 0.86, 0.93));
+			const tripStops = () => [0, ...tripPins.slice(0, -1).map((_, n) => n + 0.86 - 0.012), cards()];
+			// Under a quick cover, for a reader coming from too far away to fly, or who asked for less motion.
+			const swap = (fn: () => void) => {
+				if (reduced || still) return fn();
+				cutEl.style.background = '#d6eafb';
+				cutEl.classList.add('on');
+				clearTimeout(cutTimer);
+				cutTimer = window.setTimeout(() => {
+					fn();
+					requestAnimationFrame(() => requestAnimationFrame(() => cutEl.classList.remove('on')));
+				}, 150);
+			};
+			const settleTrip = () => {
+				tripTo = -1;
+				if (tripHead) {
+					tripHead.patient = false;
+					tripHead.hurry = 1;
+				}
+			};
+			const stepTrip = (dir: 1 | -1) => {
+				if (!tripEl || !tripHead) return;
+				const target = toTripT(tripEl.scrollTop);
+				const lag = target - tripHead.T;
+				if (Math.sign(lag) === dir && Math.abs(lag) > 0.002) {
+					tripTo = target;
+					tripHead.hurry = 6;
+					return;
+				}
+				const ahead = tripStops().filter((s) => (dir === 1 ? s > tripHead!.T + 0.004 : s < tripHead!.T - 0.004));
+				const next = dir === 1 ? ahead[0] : ahead[ahead.length - 1];
+				if (next === undefined) return;
+				tripTo = next;
+				tripHead.patient = dir === 1 && !reduced;
+				tripHead.hurry = 1;
+				tripEl.scrollTo({ top: toTripY(next), behavior: 'instant' });
+			};
+			const playTrip = (dt: number) => {
+				if (blend !== blendGoal) {
+					blend = Math.min(1, Math.max(0, blend + Math.sign(blendGoal - blend) * (dt / 1.4)));
+					if (blend === blendGoal && afterFlight) {
+						const then = afterFlight;
+						afterFlight = null;
+						then();
+					}
+				}
+				w.trackBlend = blend * blend * (3 - 2 * blend);
+				if (!track || !tripEl || !tripHead) return;
+				const target = toTripT(tripEl.scrollTop);
+				if (tripTo >= 0 && Math.abs(target - tripTo) > 0.001) settleTrip();
+				const t = tripHead.step(target, dt);
+				if (tripTo >= 0 && t === target) settleTrip();
+				w.trackT = t;
+				let most = 0;
+				let at = 0;
+				tripPins.forEach((el, n) => {
+					const inK = cardIn(n, t);
+					const outK = cardOut(n, t);
+					const k = Math.min(inK, 1 - outK);
+					if (k > most) {
+						most = k;
+						at = n;
+					}
+					el.style.opacity = String(k);
+					el.style.visibility = k <= 0 ? 'hidden' : '';
+					el.style.transform = k > 0 && k < 1 ? `translateY(${(1 - inK) * 14 - outK * 10}px)` : 'none';
+					el.inert = k < 0.1;
+				});
+				w.trackWords = most;
+				if (at !== trackCard && most > 0.5) trackCard = at;
+				canBack = t > 0.004;
+				canOn = t < cards() - 0.004;
+			};
+
+			enterTrack = async (id) => {
+				if (track || flying) return;
+				comeBackTo = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+				const near = T < TRACK_AT[id].nearBefore && !reduced && !still;
+				track = id;
+				trackCard = 0;
+				await tick();
+				tripEl = document.querySelector<HTMLElement>('[data-trip]');
+				if (!tripEl) return;
+				tripPins = [...tripEl.querySelectorAll<HTMLElement>('.pin')];
+				tripPins.forEach((el) => (el.dataset.tone = 'sky'));
+				measureTrip();
+				tripEl.scrollTop = 0;
+				tripHead = new Playhead(trackPace(cards()), 0, reduced);
+				tripTo = -1;
+				w.trackT = 0;
+				w.setTrack(id);
+				if (near) {
+					// Close enough to fly: the world stays as the reader left it, and the camera goes to the trip.
+					tripT = null;
+					flying = true;
+					blendGoal = 1;
+					afterFlight = () => (flying = false);
+				} else {
+					swap(() => {
+						tripT = TRACK_AT[id].T;
+						blend = blendGoal = 1;
+					});
+				}
+				tripEl.focus({ preventScroll: true });
+			};
+			leaveTrack = (atOnce = false) => {
+				if (!track || (flying && !atOnce)) return;
+				const done = () => {
+					w.setTrack(null);
+					blend = blendGoal = 0;
+					tripT = null;
+					track = null;
+					tripEl = null;
+					tripPins = [];
+					tripHead = null;
+					flying = false;
+					afterFlight = null;
+					comeBackTo?.focus({ preventScroll: true });
+				};
+				if (atOnce) return done();
+				if (tripT === null && !reduced && !still) {
+					// The world never left: the camera flies back to the story while the trip's words go.
+					flying = true;
+					tripEl?.classList.add('leaving');
+					blendGoal = 0;
+					afterFlight = done;
+				} else swap(done);
+			};
+			w.onTrack = (id) => enterTrack(id);
 
 			// A turn the story hasn't reached yet is one press away: the page scrolls on to it, unlocking the ones between.
 			reachTurn = (i) => {
@@ -709,6 +895,13 @@
 	</div>
 {/snippet}
 
+{#snippet tripButton(id: TrackId)}
+	<button type="button" class="trip-go" disabled={!driven} onclick={() => takeTrip(id)}>
+		<Icon icon={TRACK_ICON[id]} size={17} stroke={1.8} />
+		{TRACKS[id].name}
+	</button>
+{/snippet}
+
 <!-- A phone has no room for the picker in its header, so the agent's name in each note is the way to change it. -->
 {#snippet agent()}
 	<b class="agent-name"><Icon icon={AGENT_MARK[harness]} size={15} stroke={1.8} />{spec.name}.</b>
@@ -749,6 +942,7 @@
 	onclick={() => (tip = null)}
 	onkeydown={(e) => {
 		if (e.key === 'Escape') tip = null;
+		if (e.key === 'Escape' && track && !document.querySelector('dialog[open]')) leaveTrack();
 		enterKey(e);
 		arrowKey(e);
 	}}
@@ -769,7 +963,7 @@
 <div class="dive" data-dive aria-hidden="true"></div>
 <div class="cut" data-cut aria-hidden="true"></div>
 
-<div class={['journey', { dark, words: failed }]}>
+<div class={['journey', { dark: dark && !track, words: failed, tripping: !!track }]}>
 <header class="bar">
 	<button type="button" class="brand" aria-haspopup="dialog" aria-label="The journey of a token. Open the map of the trip" onclick={openMap}>
 		<svg viewBox="0 0 24 24" aria-hidden="true">
@@ -781,19 +975,38 @@
 		<span class="name">The journey of a token</span>
 		<span class="map-chip">Map</span>
 	</button>
-	<div class={['bar-picker', { show: scrolled }]} inert={!scrolled}>
-		{@render picker(true)}
-	</div>
+	{#if trip}
+		<button type="button" class="trip-back" onclick={() => leaveTrack()}>
+			<Icon icon={ArrowLeft01Icon} size={18} stroke={2} />
+			<span class="long">Back to the journey</span>
+			<span class="short">Back</span>
+		</button>
+	{:else}
+		<div class={['bar-picker', { show: scrolled }]} inert={!scrolled}>
+			{@render picker(true)}
+		</div>
+	{/if}
 	<div class="bar-end">
 		<div class="spine" role="status" aria-live="polite">
-			<ol aria-hidden="true">
-				{#each Array.from({ length: 12 }, (_, i) => i + 1) as n (n)}
-					<li class={{ on: reachedForm(n), now: n === form }}></li>
-				{/each}
-			</ol>
-			<p>
-				<span>Form {form} of 12</span> <strong>{current.name}</strong>
-			</p>
+			{#if trip}
+				<ol aria-hidden="true">
+					{#each trip.cards as card, n (card.title)}
+						<li class={{ on: n <= trackCard, now: n === trackCard }}></li>
+					{/each}
+				</ol>
+				<p>
+					<span>Side trip {trackCard + 1} of {trip.cards.length}</span> <strong>{trip.name}</strong>
+				</p>
+			{:else}
+				<ol aria-hidden="true">
+					{#each Array.from({ length: 12 }, (_, i) => i + 1) as n (n)}
+						<li class={{ on: reachedForm(n), now: n === form }}></li>
+					{/each}
+				</ol>
+				<p>
+					<span>Form {form} of 12</span> <strong>{current.name}</strong>
+				</p>
+			{/if}
 		</div>
 		<div class={['stepper', { show: driven }]} role="group" aria-label="Step through the story" inert={!driven}>
 			<button type="button" aria-label="Previous step" aria-keyshortcuts="ArrowLeft" title="Previous step (←)" disabled={!canBack} onclick={() => step(-1)}>
@@ -806,7 +1019,32 @@
 	</div>
 </header>
 
-<main id="top" class={{ driven, words: failed }}>
+{#if trip}
+	<!-- tabindex lets the keys that scroll a page scroll this one too, once it has the focus. -->
+	<div class="trip-scroll driven" data-trip tabindex="-1" role="region" aria-label="Side trip: {trip.name}">
+		{#each trip.cards as card, n (card.title)}
+			<section class="beat" style:--h={n === trip.cards.length - 1 ? '220vh' : '300vh'}>
+				<article class="pin left" data-tone="sky">
+					<!-- Its own class keeps the trip's titles off the main road's list of chapters. -->
+					<h2 class="trip-title">{card.title}</h2>
+					{#each card.body as line (line)}
+						<p>{@render rich(line)}</p>
+					{/each}
+					{#if card.note}
+						<p class="note">{@render agent()} {@render rich(card.note[harness])}</p>
+					{/if}
+					{#if n === trip.cards.length - 1}
+						<p class="ends">
+							<button type="button" class="again" onclick={() => leaveTrack()}><Icon icon={ArrowLeft01Icon} size={17} stroke={2} />Back to the journey</button>
+						</p>
+					{/if}
+				</article>
+			</section>
+		{/each}
+	</div>
+{/if}
+
+<main id="top" class={{ driven, words: failed, away: !!track }} inert={!!track}>
 	<section data-beat class="beat hero" style:--h="170vh">
 		<div class="pin left top" data-out="0.55">
 			<h1>How a coding agent works</h1>
@@ -824,6 +1062,10 @@
 					</span>
 				</p>
 				<p class="upright">Scroll to watch. Turn your phone upright to read along.</p>
+				<p class="trips">
+					<span>Or take a side trip:</span>
+					{@render tripButton('mcp')}
+				</p>
 			{/if}
 		</div>
 	</section>
@@ -852,6 +1094,10 @@
 					</li>
 				{/each}
 			</ol>
+			<p class="trips">
+				<span>Side trip:</span>
+				{@render tripButton('mcp')}
+			</p>
 		</article>
 	</section>
 
@@ -1324,7 +1570,7 @@
 
 <Tokenizer bind:open={tryOpen} />
 
-<TripMap bind:open={mapOpen} here={mapHere} onjump={jump}>
+<TripMap bind:open={mapOpen} here={mapHere} onjump={jump} ontrip={takeTrip}>
 	{#snippet agents()}
 		{@render picker(false)}
 	{/snippet}
@@ -2542,6 +2788,88 @@
 		font-weight: 600;
 		color: var(--ink);
 	}
+	/* Side trips: a quiet way off the main road, never louder than the road itself. */
+	.trips {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 6px 10px;
+		margin: 16px 0 0;
+		font-size: 14px;
+		color: var(--ink-soft);
+	}
+	.trip-go {
+		display: inline-flex;
+		align-items: center;
+		gap: 7px;
+		padding: 7px 13px 7px 10px;
+		border: 0;
+		border-radius: 999px;
+		background: rgb(31 95 224 / 0.12);
+		color: var(--cobalt);
+		font: 650 14px/1.1 var(--sans);
+		cursor: pointer;
+		pointer-events: auto;
+		transition:
+			background 0.15s,
+			transform 0.12s;
+	}
+	.trip-go:hover:not(:disabled) {
+		background: rgb(31 95 224 / 0.2);
+		transform: translateY(-1px);
+	}
+	.trip-go:disabled {
+		opacity: 0.45;
+		cursor: default;
+	}
+	/* The story steps aside while a trip has the screen, and comes back as it ends. */
+	main {
+		transition: opacity 0.35s;
+	}
+	main.away {
+		opacity: 0;
+	}
+	.trip-scroll {
+		position: fixed;
+		z-index: 3;
+		inset: 0;
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		outline: none;
+		transition: opacity 0.35s;
+	}
+	.trip-scroll:global(.leaving) {
+		opacity: 0;
+	}
+	:global(html:has(.trip-scroll)) {
+		overflow: hidden;
+	}
+	.trip-back {
+		justify-self: center;
+		display: inline-flex;
+		align-items: center;
+		gap: 7px;
+		padding: 10px 18px 10px 13px;
+		border: 0;
+		border-radius: 999px;
+		background: #101a30;
+		color: #fff;
+		font: 650 15px/1 var(--sans);
+		cursor: pointer;
+		box-shadow: 0 6px 20px rgb(30 80 150 / 0.18);
+		transition: transform 0.12s;
+	}
+	.trip-back:hover {
+		transform: translateY(-1px);
+	}
+	.trip-back:focus-visible {
+		outline: 2px solid #1f5fe0;
+		outline-offset: 2px;
+	}
+	.trip-back .short {
+		display: none;
+	}
+
 	/* The other way through, said once, in whichever form this device has. */
 	.scroll-hint small {
 		display: block;
@@ -2793,6 +3121,21 @@
 		}
 		.bar-picker {
 			display: none;
+		}
+		/* On a trip, the way back takes the map's place, where a thumb finds it. */
+		.tripping .brand {
+			display: none;
+		}
+		.trip-back {
+			order: 3;
+			padding: 8px 12px 8px 9px;
+			font-size: 14px;
+		}
+		.trip-back .long {
+			display: none;
+		}
+		.trip-back .short {
+			display: inline;
 		}
 		/* No room for the name on a phone, so the button just says what it opens. */
 		.brand {

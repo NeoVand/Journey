@@ -372,4 +372,9 @@ export class Harness {
 		const d = this.drawers[i];
 		return d.group.localToWorld(target.set(0, 0.1, -0.7));
 	}
+
+	/** A point on the paper in a drawer's tray, near its front: where something set in the drawer stands. */
+	trayHinge(i: number, target: THREE.Vector3) {
+		return this.drawers[i].group.localToWorld(target.set(0, -0.122, -0.55));
+	}
 }

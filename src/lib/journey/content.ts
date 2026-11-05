@@ -162,6 +162,7 @@ export const GLOSSARY: Record<string, string> = {
 	pty: 'A pretend terminal a program can run inside, so it keeps going as if someone were watching.',
 	stateless: 'The server keeps nothing between requests, so each request has to carry everything.',
 	transcript: 'The full record of this session: every message, tool call and result.',
+	'json-rpc': 'A tiny message format one program uses to ask another to run something: a method name, some parameters, and an answer that comes back with the same number.',
 	'context window': 'The most a model can take in at once, measured in tokens. Think of it as the size of its desk.'
 };
 
@@ -185,7 +186,7 @@ export function wheelOdds(temperature: number) {
 	return weights.map((w) => w / sum);
 }
 
-type PerAgent = Record<HarnessId, string>;
+export type PerAgent = Record<HarnessId, string>;
 const edited: PerAgent = { claude: 'Approved and written.', codex: 'Inside the workspace, so it’s written without asking.', copilot: 'Another diff opens for review.' };
 const runs = (args: string): PerAgent => ({ claude: `Bash(pytest${args})`, codex: `shell: pytest${args}`, copilot: `runTerminal(pytest${args})` });
 
@@ -342,3 +343,84 @@ export const TRIP: { name: string; what: string }[] = [
 	{ name: 'Act', what: 'The tools run on your machine, and what they find is real.' },
 	{ name: 'Loop', what: 'The results go back as context, and round it goes until the tests pass.' }
 ];
+
+/* ---------- side trips ---------- */
+
+/** A detour off the main road, read card by card, that brings the reader back to where they left. */
+export type TrackId = 'mcp';
+export interface TrackCard {
+	title: string;
+	body: string[];
+	/** Where the three agents differ, said in the agent's own note. */
+	note?: PerAgent;
+}
+export interface Track {
+	name: string;
+	/** One line that says what's down there, for the buttons that lead to it. */
+	what: string;
+	cards: TrackCard[];
+}
+
+/**
+ * Where each trip is played. It borrows a stretch of the story: a reader already there flies in and back out, and one
+ * from anywhere else cuts over to the story at T, and back.
+ */
+export const TRACK_AT: Record<TrackId, { T: number; nearBefore: number }> = {
+	mcp: { T: 1.5, nearBefore: 2.02 }
+};
+
+export const TRACKS: Record<TrackId, Track> = {
+	mcp: {
+		name: 'How MCP connects',
+		what: 'How an outside program lends the agent new tools.',
+		cards: [
+			{
+				title: 'A server is its own program',
+				body: [
+					'Anyone can plug new tools into an agent through [[MCP]]. The blue box is an MCP server: a separate program, here one that serves a library’s documentation.',
+					'A local server runs on your laptop and talks to the harness through its input and output. A remote one is reached over the internet. Either way, every message is [[JSON-RPC]]: run this method, with these parameters.'
+				],
+				note: {
+					claude: 'Servers come from your settings, the project’s .mcp.json or your organization. Claude Code is only ever the client.',
+					codex: 'Servers are listed in config.toml. Codex can also be a server itself, so one agent can drive another.',
+					copilot: 'Servers come from .vscode/mcp.json or your settings. GitHub’s hosted connectors work like servers you don’t have to run.'
+				}
+			},
+			{
+				title: 'It says what it offers',
+				body: [
+					'The harness asks for the list. Back comes every tool: a name, a sentence about what it does, and a [[JSON Schema]] for its arguments.',
+					'They go in the Tools drawer beside the built-in ones. The model reads that drawer on every turn, so each tool costs tokens. That’s why many harnesses send only the names until a tool is needed.'
+				],
+				note: {
+					claude: 'They arrive named after their server, like mcp__docs__search_docs, and wait as names until ToolSearch fetches the rest.',
+					codex: 'They join the tools in the request. OpenAI’s API can also add tools later on, after the part that’s cached.',
+					copilot: 'They join the built-in tools in the same picker, and you can tick each one on or off.'
+				}
+			},
+			{
+				title: 'The model asks, the harness calls',
+				body: [
+					'When the model wants the docs on locking, it writes a tool call like any other: a name and some arguments. That’s all the model can do.',
+					'The harness checks the call the way it checks every call, then sends it down the cable. The server does the work. The model never talks to it.'
+				]
+			},
+			{
+				title: 'The answer is just more text',
+				body: [
+					'The server replies with blocks of content. The harness files them in the conversation as the tool’s result, and the next request carries them to the model.',
+					'If the tool failed, the model reads that and can try something else. If the connection failed, the model never hears of it: the harness retries, or tells you.',
+					'And it’s text nobody checked, so it’s handled like a fetched web page.'
+				]
+			},
+			{
+				title: 'Tools are one of three',
+				body: [
+					'Tools are actions the model can ask for. Resources are things to read, such as a file or a table. Prompts are ready-made requests, often offered to you as slash commands.',
+					'Only tools are the model’s to call. The app, or you, decides when resources and prompts come in.'
+				]
+			}
+		]
+	}
+};
+

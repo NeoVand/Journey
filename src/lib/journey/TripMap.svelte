@@ -1,20 +1,23 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
-	import { STOPS } from './content';
+	import { STOPS, TRACKS, type TrackId } from './content';
 	import Icon from './Icon.svelte';
-	import { CLOSE, STOP_ICON } from './icons';
+	import { CLOSE, STOP_ICON, TRACK_ICON } from './icons';
 
 	let {
 		open = $bindable(false),
 		here,
 		onjump,
+		ontrip,
 		agents
 	}: {
 		open?: boolean;
 		/** The chapter the reader is in, by title. */
 		here: string;
 		onjump: (title: string) => void;
+		/** Starts a side trip. */
+		ontrip: (id: TrackId) => void;
 		/** The agent picker, which belongs to the page. */
 		agents: Snippet;
 	} = $props();
@@ -66,6 +69,18 @@
 				</li>
 			{/each}
 		</ol>
+		<h3>Side trips</h3>
+		<p class="intro">Short detours off the road. Each one brings you back to where you left.</p>
+		<ul class="trips">
+			{#each Object.entries(TRACKS) as [id, t] (id)}
+				<li>
+					<button type="button" class="stop" onclick={() => ontrip(id as TrackId)}>
+						<b><Icon icon={TRACK_ICON[id as TrackId]} size={19} stroke={1.8} />{t.name}</b>
+						<span>{t.what}</span>
+					</button>
+				</li>
+			{/each}
+		</ul>
 	</div>
 </dialog>
 
@@ -241,6 +256,18 @@
 		}
 	}
 
+	h3 {
+		margin: 26px 0 0;
+		font-family: var(--display);
+		font-weight: 800;
+		font-size: 24px;
+		letter-spacing: -0.02em;
+	}
+	.trips {
+		list-style: none;
+		margin: 0 0 24px;
+		padding: 0;
+	}
 	.stop {
 		display: grid;
 		gap: 1px;

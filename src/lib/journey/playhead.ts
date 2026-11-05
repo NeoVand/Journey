@@ -120,3 +120,6 @@ export const PACE: Span[] = [
 	{ from: 32.32, to: 32.92, seconds: 11 }, // one last lap, with the whole world in view
 	{ from: 32.92, to: 33, seconds: 1 }
 ];
+
+/** A side trip's pace: each card's scene takes about this long to play, however fast it's scrolled. */
+export const trackPace = (cards: number): Span[] => Array.from({ length: cards }, (_, i) => ({ from: i, to: i + 1, seconds: 8.5 }));

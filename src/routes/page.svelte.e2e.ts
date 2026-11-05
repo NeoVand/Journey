@@ -80,6 +80,22 @@ test('the arrow keys step through the story a card at a time', async ({ page }) 
 	await expect(back).toBeEnabled({ timeout: 60_000 });
 });
 
+test('a side trip opens over the story and brings the reader back to the same place', async ({ page }) => {
+	test.setTimeout(150_000);
+	await page.goto('/#the-harness-wakes-up');
+	await page.waitForFunction(() => document.querySelector('main.driven') && scrollY > innerHeight, null, { timeout: 90_000 });
+	const before = await page.evaluate(() => scrollY);
+	await page.getByRole('button', { name: 'How MCP connects' }).first().click();
+	const trip = page.getByRole('region', { name: 'Side trip: How MCP connects' });
+	await expect(trip).toBeVisible();
+	await expect(page.locator('.spine p')).toContainText('Side trip 1 of 5');
+	await expect(page.getByRole('heading', { name: 'A server is its own program' })).toBeVisible();
+	await page.keyboard.press('Escape');
+	await expect(trip).toBeHidden({ timeout: 10_000 });
+	expect(await page.evaluate(() => scrollY)).toBe(before);
+	await expect(page.locator('.spine p')).toContainText('Form');
+});
+
 test('the last chapter leaves nothing behind when the reader jumps back', async ({ page }) => {
 	test.setTimeout(120_000);
 	type Debug = { __journey: { seek(T: number): void }; __world: { finale: { group: { visible: boolean } } } };

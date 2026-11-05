@@ -24,6 +24,7 @@ import {
 	LaptopIcon,
 	LaptopProgrammingIcon,
 	MapsIcon,
+	McpServerIcon,
 	RepeatIcon,
 	ServerStack01Icon,
 	ServerStack02Icon,
@@ -33,7 +34,7 @@ import {
 	Wallet01Icon,
 	Wrench01Icon
 } from '@hugeicons/core-free-icons';
-import type { HarnessId } from './content';
+import type { HarnessId, TrackId } from './content';
 
 /**
  * Each agent carries its maker's mark. Codex has no mark of its own in the set, so it carries OpenAI's, and the set's
@@ -54,3 +55,6 @@ export const GATE_ICON = [CodeSquareIcon, FolderLockedIcon, Shield01Icon, UserQu
 export const STOP_ICON = [Idea01Icon, LaptopIcon, Globe02Icon, ServerStack02Icon, AiBrain01Icon, LaptopProgrammingIcon, Folder01Icon, RepeatIcon, CheckmarkBadge01Icon];
 
 export { ArrowDataTransferHorizontalIcon as SWAP, Cancel01Icon as CLOSE, DiceFaces03Icon as SPIN, MapsIcon as MAP, RepeatIcon as AGAIN };
+
+/** Each side trip's own mark, on every button that leads to it. */
+export const TRACK_ICON: Record<TrackId, typeof ClaudeIcon> = { mcp: McpServerIcon };
