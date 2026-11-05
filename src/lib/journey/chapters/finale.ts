@@ -183,7 +183,7 @@ export class Finale {
 		}
 
 		// The nine stops, named where they happen. They appear as the first token reaches each one.
-		const size = isPhone ? 1.05 : 0.8;
+		const size = isPhone ? 1.6 : 0.8;
 		const where: V3[] = [
 			[-5.2, 3.6, 0.6],
 			[5.4, 5.4, -0.75],

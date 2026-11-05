@@ -22,6 +22,8 @@ export interface Shot {
 	/** Narrow screens can get their own subject, e.g. following one part of something wide. */
 	tallTarget?: [number, number, number];
 	tallRadius?: number;
+	/** How tall the subject is on a phone, when that isn't the same as how wide. */
+	tallRy?: number;
 }
 
 const DEG = Math.PI / 180;
@@ -45,7 +47,7 @@ export class Rig {
 		const region = aspect < 0.9 ? shot.tall : shot.wide;
 		const halfV = Math.tan((this.camera.fov * DEG) / 2);
 		const radius = aspect < 0.9 && shot.tallRadius ? shot.tallRadius : shot.radius;
-		const ry = aspect < 0.9 && shot.tallRadius ? shot.tallRadius : (shot.ry ?? shot.radius);
+		const ry = aspect < 0.9 && shot.tallRadius ? (shot.tallRy ?? shot.tallRadius) : (shot.ry ?? shot.radius);
 		const dist = Math.max(ry / (region.h * halfV), radius / (region.w * aspect * halfV));
 		// On the shortest phones the words take more of the screen, so the subject sits a little higher.
 		const lift = aspect < 0.9 ? Math.max(0, Math.min(1, (aspect - 0.47) / 0.09)) * 0.035 : 0;

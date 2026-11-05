@@ -34,7 +34,8 @@ const ROUTER: Omit<Shot, 'T'> = { az: -26, el: 25, target: at(ROUTER_X + 1, 0.9,
 const TURN2: Omit<Shot, 'T'> = { az: 6, el: 36, target: at(ZONE.tray - 2, 0.9, 2.4), radius: 9.8, ry: 5.0, wide: box(0, 0.12, 0.57, 0.84), tall: TALL };
 const LANES: Omit<Shot, 'T'> = { az: 9, el: 44, target: at(ZONE.lanes, 0.9, -0.5), radius: 9.1, ry: 5.2, wide: box(0.44, 0.06, 0.55, 0.9), tall: TALL, tallRadius: 9.5 };
 const POOLS: Omit<Shot, 'T'> = { az: -7, el: 13, target: at(ZONE.pools, 2.1, 1.2), radius: 8.9, ry: 3.6, wide: box(0, 0.1, 0.6, 0.82), tall: TALL };
-const INTO: Omit<Shot, 'T'> = { az: -2, el: 7, target: at(ZONE.pools - 5.8, 1.1, 1.5), radius: 3.4, ry: 2.4, wide: box(0.1, 0.1, 0.8, 0.8), tall: TALL };
+// One chip in the prefill pool, high enough that the way in passes over the sign and the table, not through them.
+const INTO: Omit<Shot, 'T'> = { az: -2, el: 7, target: at(ZONE.pools - 6.51, 2.4, 1.6), radius: 3.4, ry: 2.4, wide: box(0.1, 0.1, 0.8, 0.8), tall: box(0, 0.08, 1, 0.84) };
 
 export const CLUSTER_SHOTS: Shot[] = [
 	{ T: 8.04, ...NODE, az: 22, el: 52, radius: 9 },

@@ -49,7 +49,7 @@ const S_TEN = { az: -10, el: 14, target: rel(R_POS, 0, 2.6, 0.6), radius: 9.2, r
 const S_FIN = { az: 9, el: 14, target: rel(F_POS, 0, 2.1, 0.8), radius: 10.8, ry: 3.6, wide: box(0.01, 0.4, 0.98, 0.56), tall: TALL };
 /** What the test monitor shows once the whole suite is green. */
 const PASSED = 99;
-const S_WHOLE = { az: -4, el: 13, target: [-18, -13, 0] as V3, radius: 49, ry: 25.5, wide: box(0.01, 0.05, 0.98, 0.93), tall: box(0, 0.06, 1, 0.43), tallTarget: [6, -12.8, 0] as V3, tallRadius: 26 };
+const S_WHOLE = { az: -4, el: 13, target: [-18, -13, 0] as V3, radius: 49, ry: 25.5, wide: box(0.01, 0.05, 0.98, 0.93), tall: box(0, 0.06, 1, 0.43), tallTarget: [-18, -13, 0] as V3, tallRadius: 50, tallRy: 25.5 };
 const S_END = { az: 29, el: 17, target: [1.9, 1.35, 0.4] as V3, radius: 6.25, ry: 6.25, wide: box(0.4, 0.02, 0.61, 0.94), tall: box(0, 0.05, 1, 0.42) };
 
 export const BACK_SHOTS: Shot[] = [
