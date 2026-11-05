@@ -189,7 +189,8 @@ export class Laptop {
 		}
 
 		const typed = Math.min(PROMPT.length, Math.floor(typedF));
-		const cursor = Math.floor(time * 1.8) % 2 === 0;
+		// Solid while the keys are going, as a real cursor is. It only blinks once it's waiting for you.
+		const cursor = typedF < PROMPT.length || Math.floor(time * 1.8) % 2 === 0;
 		const s = Math.round(sent * 40) / 40;
 		if (typed !== this.typed || cursor !== this.cursor || s !== this.sent) {
 			this.typed = typed;
@@ -268,13 +269,10 @@ export class Laptop {
 		c.textBaseline = 'alphabetic';
 
 		const y0 = 240 - this.sent * 90;
-		const ghost = wrap(c, PROMPT, w - x - 190);
-		const lines = wrap(c, PROMPT.slice(0, this.typed), w - x - 190);
+		const lines = upTo(wrap(c, PROMPT, w - x - 190), this.typed);
 
 		c.fillStyle = '#6fd4ff';
 		c.fillText('>', x, y0);
-		c.fillStyle = 'rgba(160,190,235,.26)';
-		ghost.forEach((l, i) => c.fillText(l, x + 92, y0 + i * lh));
 		c.fillStyle = '#f4f8ff';
 		lines.forEach((l, i) => c.fillText(l, x + 92, y0 + i * lh));
 
@@ -354,9 +352,9 @@ export class Laptop {
 		const size = 66;
 		const lh = size * 1.25;
 		c.font = `600 ${size}px ${font.mono}`;
-		const lines = wrap(c, PROMPT.slice(0, this.typed), bw - 66);
-		const ghost = wrap(c, PROMPT, bw - 66);
-		const bh = Math.max(4, ghost.length + 1) * lh + 24;
+		const whole = wrap(c, PROMPT, bw - 66);
+		const lines = upTo(whole, this.typed);
+		const bh = Math.max(4, whole.length + 1) * lh + 24;
 		c.fillStyle = '#fff';
 		c.beginPath();
 		c.roundRect(bx, by, bw, bh, 28);
@@ -364,8 +362,6 @@ export class Laptop {
 		c.strokeStyle = '#1f5fe0';
 		c.lineWidth = 5;
 		c.stroke();
-		c.fillStyle = 'rgba(70,90,125,.3)';
-		ghost.forEach((l, i) => c.fillText(l, bx + 32, by + 92 + i * lh));
 		c.fillStyle = '#111a2e';
 		lines.forEach((l, i) => c.fillText(l, bx + 32, by + 92 + i * lh));
 		const last = lines[lines.length - 1] ?? '';
@@ -403,6 +399,17 @@ function wrap(c: CanvasRenderingContext2D, text: string, max: number) {
 	}
 	lines.push(line);
 	return lines;
+}
+
+/** The first n characters of some wrapped lines, so a word being typed never jumps to the next line halfway through. */
+function upTo(lines: string[], n: number) {
+	const shown: string[] = [];
+	for (const line of lines) {
+		if (n < 0) break;
+		shown.push(line.slice(0, n));
+		n -= line.length + 1;
+	}
+	return shown;
 }
 
 function mergeWithKeyIndex(parts: THREE.BufferGeometry[]) {

@@ -516,7 +516,9 @@
 
 			const frame = (now: number) => {
 				raf = requestAnimationFrame(frame);
-				const dt = Math.min(0.05, (now - last) / 1000);
+				// Never below zero. A frame's timestamp is when it began, which can be well before a long warm-up finished,
+				// and a negative step would hold the opening back by however long that took.
+				const dt = Math.max(0, Math.min(0.05, (now - last) / 1000));
 				last = now;
 				time += dt;
 				T = head.step(toT(window.scrollY), dt);
@@ -743,7 +745,7 @@
 		</div>
 	</section>
 
-	<section data-beat class="beat" style:--h="360vh">
+	<section data-beat class="beat" style:--h="300vh">
 		<article class="pin left" data-out="0.62">
 			<h2>It starts as a sentence</h2>
 			<p>{@render rich(`You type one request. For now it’s just ${surfaceWords}. The model hasn’t seen a thing, and nothing here is a [[token]] yet.`)}</p>

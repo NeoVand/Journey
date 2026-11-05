@@ -40,6 +40,15 @@ const SLOT_X = TEMPLATE_X + 1.06;
 const BELT_END = 10.7;
 // As far along the path as both its feet still stand on the island.
 const SAFETY_X = 11.45;
+/** When each letter of the sentence lands after the page opens, once the lid is up. Uneven, with a breath between words, as people type. */
+const LETTER_AT = (() => {
+	let at = 1.7;
+	return [...PROMPT].map((ch, i) => {
+		const landed = at;
+		at += 0.04 + (((Math.sin(i * 12.9898) * 43758.5453) % 1) + 1) % 1 * 0.04 + (ch === ' ' ? 0.05 : 0);
+		return landed;
+	});
+})();
 let WELL_FLOOR_Y = -Infinity;
 const HOLD_SHADOWS_T = 32.36;
 const DARK = '#060f26'; // the inside of the machine, and the colour of the fade
@@ -176,6 +185,7 @@ export class World {
 	private qB = new THREE.Quaternion();
 	private mat = new THREE.Matrix4();
 	private intro = 0;
+	private opened = 0;
 	/** T value of the last frame, for one-shot logic. */
 	state: WorldState = { form: 1, dive: 0, inside: false };
 
@@ -983,6 +993,7 @@ export class World {
 		// Whatever the reader pulled out goes back as soon as they scroll on.
 		if (this.harness.pulled >= 0 && Math.abs(T - this.pulledAtT) > 0.06) this.harness.pulled = -1;
 		this.intro = introDone ? 1 : Math.min(1, this.intro + dt / 1.5);
+		this.opened = introDone ? Infinity : this.opened + dt;
 		// The easel only stands while it has a page to hold: the request, then turn two.
 		const legs = inOut(seg(T, 2.02, 2.09)) * (1 - inOut(seg(T, 3.64, 3.74))) + outBack(seg(T, 25.38, 25.47), 1.2) * (1 - inOut(seg(T, 25.92, 26)));
 		this.easelLegs.visible = legs > 0.002;
@@ -1070,11 +1081,20 @@ export class World {
 	private c2 = new THREE.Color();
 	private c3 = new THREE.Color();
 
+	/** How far the sentence has typed itself since the page opened, in letters. The fraction is the key on its way down. */
+	private selfTyped() {
+		const i = LETTER_AT.findLastIndex((at) => at <= this.opened);
+		if (i < 0) return 0;
+		if (i === PROMPT.length - 1 && this.opened >= LETTER_AT[i] + 0.08) return PROMPT.length;
+		return i + Math.min(1, (this.opened - LETTER_AT[i]) / ((LETTER_AT[i + 1] ?? LETTER_AT[i] + 0.08) - LETTER_AT[i]));
+	}
+
 	private updateLaptop(T: number, time: number, intro: number) {
 		const lid = spring(seg(intro, 0.28, 1), 2.6, 5);
-		const typedF = seg(T, HOLD.type[0], HOLD.type[1]) * PROMPT.length;
+		// It types itself as the page opens. Anyone who scrolls on before it's finished only hurries it along.
+		const typedF = Math.max(seg(T, HOLD.type[0], HOLD.type[1]) * PROMPT.length, this.selfTyped());
 		const sent = seg(T, HOLD.send[0], HOLD.send[1]);
-		this.laptop.update(typedF, sent, time, lid, T > 0.9 && T < 1.8);
+		this.laptop.update(typedF, sent, time, lid, typedF < PROMPT.length || (T > 0.9 && T < 1.8));
 	}
 
 	/** Bezier-with-lift flight from where a slip is to where it is going. */
