@@ -197,7 +197,7 @@ export class RequestDoc {
 
 	bake(strips: HTMLCanvasElement[]) {
 		this.baked.draw((c, w, h) => {
-			c.drawImage(this.surface.canvas, 0, 0);
+			c.drawImage(this.surface.canvas, 0, 0, w, h);
 			const sw = (STRIP_W / DOC_W) * w;
 			const sh = (STRIP_H / DOC_H) * h;
 			strips.forEach((strip, i) => {

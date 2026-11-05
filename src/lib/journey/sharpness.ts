@@ -11,15 +11,16 @@ export type Action = { dpr: number; occlusion: boolean };
 
 export class Sharpness {
 	dpr: number;
-	occlusion = true;
+	occlusion: boolean;
 	private sum = 0;
 	private n = 0;
 	private trial: { before: number; dpr: number; occlusion: boolean } | null = null;
 	private settle = 0;
 	locked = false;
 
-	constructor(start: number) {
+	constructor(start: number, occlusion = true) {
 		this.dpr = start;
+		this.occlusion = occlusion;
 	}
 
 	/** Feed each frame's duration in seconds. Returns the new settings when they change. */

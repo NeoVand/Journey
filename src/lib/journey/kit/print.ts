@@ -28,8 +28,13 @@ export function canvasTexture(canvas: HTMLCanvasElement) {
 	return t;
 }
 
-/** A drawable surface: a canvas with its texture, redrawn when the reader changes something. */
+/** A phone: a small screen and a tight memory budget, so printed surfaces and the frame itself get lighter. */
+export const isPhone = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches && Math.min(screen.width, screen.height) < 600;
+const PRINT = isPhone ? 0.6 : 1;
+
+/** A drawable surface: a canvas with its texture, redrawn when the reader changes something. Drawn in logical pixels at any print scale. */
 export class Surface {
+	static all: Surface[] = [];
 	canvas: HTMLCanvasElement;
 	ctx: CanvasRenderingContext2D;
 	texture: THREE.CanvasTexture;
@@ -39,10 +44,12 @@ export class Surface {
 		public h: number
 	) {
 		this.canvas = document.createElement('canvas');
-		this.canvas.width = w;
-		this.canvas.height = h;
+		this.canvas.width = Math.ceil(w * PRINT);
+		this.canvas.height = Math.ceil(h * PRINT);
 		this.ctx = this.canvas.getContext('2d')!;
+		this.ctx.scale(this.canvas.width / w, this.canvas.height / h);
 		this.texture = canvasTexture(this.canvas);
+		Surface.all.push(this);
 	}
 
 	draw(fn: (c: CanvasRenderingContext2D, w: number, h: number) => void) {
@@ -87,7 +94,7 @@ export class Label {
 			align: 'center',
 			...style
 		};
-		this.px = Math.max(32, Math.round(height * this.style.density));
+		this.px = Math.max(32, Math.round(height * this.style.density * PRINT));
 		this.surface = new Surface(4, 4);
 		const material = new THREE.MeshStandardMaterial({
 			map: this.surface.texture,

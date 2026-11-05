@@ -1,10 +1,49 @@
 import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { FullScreenQuad, Pass } from 'three/addons/postprocessing/Pass.js';
+import { CopyShader } from 'three/addons/shaders/CopyShader.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
-import { setMaxAnisotropy } from './kit/print';
+import { isPhone, setMaxAnisotropy, Surface } from './kit/print';
+
+/**
+ * Only the scene's edges need antialiasing. The composer would make every later full-screen pass draw into a
+ * multisampled buffer too, which on a retina screen cost more than everything else put together.
+ */
+class SceneMsaaPass extends Pass {
+	private target: THREE.WebGLRenderTarget;
+	private copy = new THREE.ShaderMaterial({ ...CopyShader, uniforms: THREE.UniformsUtils.clone(CopyShader.uniforms), depthTest: false, depthWrite: false });
+	private quad = new FullScreenQuad(this.copy);
+
+	constructor(
+		private scene: THREE.Scene,
+		private camera: THREE.Camera,
+		samples: number
+	) {
+		super();
+		this.needsSwap = false;
+		this.target = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples });
+	}
+
+	setSize(width: number, height: number) {
+		this.target.setSize(width, height);
+	}
+
+	render(renderer: THREE.WebGLRenderer, _write: THREE.WebGLRenderTarget, read: THREE.WebGLRenderTarget) {
+		renderer.setRenderTarget(this.target);
+		renderer.render(this.scene, this.camera);
+		this.copy.uniforms.tDiffuse.value = this.target.texture;
+		renderer.setRenderTarget(read);
+		this.quad.render(renderer);
+	}
+
+	dispose() {
+		this.target.dispose();
+		this.copy.dispose();
+		this.quad.dispose();
+	}
+}
 
 /** Ambient occlusion only considers solid things: labels, glass, decals and the sky stay out of it. */
 class SolidGTAOPass extends GTAOPass {
@@ -20,9 +59,9 @@ class SolidGTAOPass extends GTAOPass {
 		});
 	}
 
-	/** Occlusion is low frequency too: under a megapixel, then scaled up. */
+	/** Occlusion is low frequency, so it runs on a fraction of a megapixel and is scaled up. */
 	setSize(width: number, height: number) {
-		const k = Math.min(1, 1100 / Math.max(1, width));
+		const k = Math.min(1, 800 / Math.max(1, width));
 		super.setSize(Math.max(1, Math.round(width * k)), Math.max(1, Math.round(height * k)));
 	}
 }
@@ -30,7 +69,7 @@ class SolidGTAOPass extends GTAOPass {
 /** Bloom is soft by nature, so a small buffer looks the same at a fraction of the cost. */
 class SoftBloomPass extends UnrealBloomPass {
 	setSize(width: number, height: number) {
-		const k = Math.min(1 / 2, 720 / Math.max(1, width));
+		const k = Math.min(1 / 2, 480 / Math.max(1, width));
 		super.setSize(Math.max(1, Math.round(width * k)), Math.max(1, Math.round(height * k)));
 	}
 }
@@ -74,11 +113,11 @@ export class Stage {
 
 		this.sun = new THREE.DirectionalLight('#ffeccd', 2.7);
 		this.sun.castShadow = true;
-		this.sun.shadow.mapSize.set(2048, 2048);
+		this.sun.shadow.mapSize.setScalar(isPhone ? 1024 : 2048);
 		this.sun.shadow.bias = -0.0002;
 		this.sun.shadow.normalBias = 0.02;
 		this.sun.shadow.radius = 5;
-		this.sun.shadow.blurSamples = 12;
+		this.sun.shadow.blurSamples = 8;
 		this.scene.add(this.sun, this.sun.target);
 
 		// Cool kicker from behind the camera's right, so flanks separate from the sky.
@@ -92,17 +131,21 @@ export class Stage {
 
 		// On a retina screen the pixels are already fine, so two samples look the same as four.
 		const samples = window.devicePixelRatio >= 1.5 ? 2 : 4;
-		const rt = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples });
-		this.composer = new EffectComposer(renderer, rt);
-		this.composer.addPass(new RenderPass(this.scene, this.camera));
+		this.composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, depthBuffer: false }));
+		this.composer.addPass(new SceneMsaaPass(this.scene, this.camera, samples));
 		this.ao = new SolidGTAOPass(this.scene, this.camera, 4, 4);
 		this.ao.blendIntensity = 1;
-		this.ao.updateGtaoMaterial({ radius: 0.42, distanceExponent: 1.4, thickness: 1.2, scale: 1.25, samples: 10, distanceFallOff: 1, screenSpaceRadius: false });
-		this.ao.updatePdMaterial({ lumaPhi: 10, depthPhi: 0.6, normalPhi: 1, radius: 5, radiusExponent: 1.5, rings: 2, samples: 10 });
+		this.ao.updateGtaoMaterial({ radius: 0.42, distanceExponent: 1.4, thickness: 1.2, scale: 1.25, samples: 8, distanceFallOff: 1, screenSpaceRadius: false });
+		this.ao.updatePdMaterial({ lumaPhi: 10, depthPhi: 0.6, normalPhi: 1, radius: 5, radiusExponent: 1.5, rings: 2, samples: 8 });
 		this.composer.addPass(this.ao);
 		this.bloom = new SoftBloomPass(new THREE.Vector2(4, 4), 0.2, 0.42, 2.4);
 		this.composer.addPass(this.bloom);
 		this.composer.addPass(new OutputPass());
+		// Phones have plenty of depth from the lighting alone, and much better uses for the time.
+		this.ao.enabled = !isPhone;
+
+		// Phones drop the context when backgrounded. Three restores its own state, but the environment was rendered once, into memory that is now gone.
+		canvas.addEventListener('webglcontextrestored', () => this.buildEnvironment());
 	}
 
 	/** The sky is a small gradient texture: it never enters depth, normals or occlusion. */
@@ -204,6 +247,29 @@ export class Stage {
 
 	render() {
 		this.composer.render();
+	}
+
+	/**
+	 * Draws everything the journey will ever show, once, into a tiny frame, behind the loading screen. The first time the GPU
+	 * meets a mesh it has to upload it and build a pipeline for it, and that is what used to stall a frame in the middle of a scene.
+	 */
+	warmUp() {
+		const saved: [THREE.Object3D, boolean, boolean][] = [];
+		this.scene.traverse((o) => {
+			saved.push([o, o.visible, o.frustumCulled]);
+			o.visible = true;
+			o.frustumCulled = false;
+		});
+		this.composer.setPixelRatio(1);
+		this.composer.setSize(80, 50);
+		this.composer.render();
+		for (const surface of Surface.all) this.renderer.initTexture(surface.texture);
+		const gl = this.renderer.getContext();
+		gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4)); // waits for the GPU to finish all of it
+		for (const [o, visible, culled] of saved) {
+			o.visible = visible;
+			o.frustumCulled = culled;
+		}
 	}
 
 	setOcclusion(on: boolean) {

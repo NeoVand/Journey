@@ -18,6 +18,7 @@
 	let scrolled = $state(false);
 	let dark = $state(false);
 	let driven = $state(false);
+	let failed = $state(false);
 	let section = $state(0);
 	let part = $state<Stage>(null);
 	let attention = $state(-1);
@@ -190,6 +191,7 @@
 			} catch (error) {
 				// Without WebGL the page is still the whole explanation, over the plain sky.
 				console.warn('The 3D scene could not start:', error);
+				failed = true;
 				return;
 			}
 			if (disposed) {
@@ -224,6 +226,9 @@
 				measure();
 				w.resize(window.innerWidth, window.innerHeight, dpr);
 			};
+			performance.mark('journey:built');
+			w.stage.warmUp();
+			performance.mark('journey:warm');
 			resize();
 			window.addEventListener('resize', resize);
 
@@ -242,7 +247,7 @@
 
 			let last = performance.now();
 			let time = 0;
-			const sharpness = new Sharpness(dpr);
+			const sharpness = new Sharpness(dpr, w.stage.ao.enabled);
 
 			const pins = sections.flatMap((s, i) =>
 					[...s.querySelectorAll<HTMLElement>('.pin')].map((el) => {
@@ -415,9 +420,19 @@
 />
 
 <canvas class="stage" {@attach stage} aria-hidden="true"></canvas>
+{#if !driven && !failed}
+	<div class="loader" aria-hidden="true">
+		<div class="hops">
+			{#each [46, 30, 60, 38, 52] as width, i (i)}
+				<i style:--w="{width}px" style:--i={i}></i>
+			{/each}
+		</div>
+		<p>Warming up the machines</p>
+	</div>
+{/if}
 <div class="dive" data-dive aria-hidden="true"></div>
 
-<div class={['journey', { dark }]}>
+<div class={['journey', { dark, words: failed }]}>
 <header class="bar">
 	<a class="brand" href="#top">The journey of a token</a>
 	<div class={['bar-picker', { show: scrolled }]} inert={!scrolled}>
@@ -435,13 +450,17 @@
 	</div>
 </header>
 
-<main id="top" class={{ driven }}>
+<main id="top" class={{ driven, words: failed }}>
 	<section data-beat class="beat hero" style:--h="170vh">
 		<div class="pin left top" data-out="0.55">
 			<h1>How a coding agent works</h1>
 			<p class="lede">You type one sentence. Follow it all the way to the model and back, until the bug is fixed. Pick your agent, then scroll.</p>
 			{@render picker(false)}
-			<p class="scroll-hint"><span class="arrow" aria-hidden="true"></span>Scroll to begin</p>
+			{#if failed}
+				<p class="fallback">This browser can’t draw the 3D scenes right now, so here’s the whole story in words.</p>
+			{:else}
+				<p class="scroll-hint"><span class="arrow" aria-hidden="true"></span>Scroll to begin</p>
+			{/if}
 		</div>
 	</section>
 
@@ -855,6 +874,102 @@
 </div>
 
 <style>
+	.loader {
+		position: fixed;
+		z-index: 2;
+		left: 70%;
+		top: 50%;
+		display: grid;
+		justify-items: center;
+		gap: 16px;
+		transform: translate(-50%, -50%);
+		color: var(--ink-soft);
+		font-size: 14.5px;
+		pointer-events: none;
+		animation: loader-in 0.3s 0.25s both;
+	}
+	.loader p {
+		margin: 0;
+	}
+	.hops {
+		display: flex;
+		align-items: flex-end;
+		gap: 5px;
+	}
+	.hops i {
+		display: block;
+		width: var(--w);
+		height: 26px;
+		border-radius: 6px;
+		background: var(--amber);
+		box-shadow:
+			inset 0 2px 0 rgb(255 255 255 / 0.5),
+			inset 0 -5px 0 rgb(176 104 0 / 0.5);
+		/* Transform only, so it keeps hopping while the main thread is busy building the world. */
+		animation: hop 1.1s calc(var(--i) * 0.09s) infinite cubic-bezier(0.3, 0.7, 0.4, 1);
+	}
+	@keyframes hop {
+		0%,
+		55%,
+		100% {
+			transform: none;
+		}
+		22% {
+			transform: translateY(-22px) scaleY(1.04);
+		}
+		46% {
+			transform: scale(1.06, 0.9);
+		}
+	}
+	@keyframes loader-in {
+		from {
+			opacity: 0;
+		}
+	}
+	@media (max-aspect-ratio: 9/10) {
+		.loader {
+			left: 50%;
+			top: 72%;
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.hops i {
+			animation: none;
+		}
+	}
+	/* No 3D: just the story, read straight down. */
+	.journey.words .spine,
+	.journey.words .bar-picker {
+		display: none;
+	}
+	.journey.words .bar {
+		position: absolute;
+	}
+	.words .beat {
+		height: auto;
+		min-height: 0;
+	}
+	.words .pin {
+		position: static;
+		min-height: 0;
+		padding-block: 6vh;
+		justify-content: flex-start;
+	}
+	.words .pin::before {
+		display: none;
+	}
+	.words .steps li {
+		opacity: 1;
+	}
+	.words .steps li span {
+		display: block;
+	}
+	.fallback {
+		margin-top: 18px;
+		font-size: 15.5px;
+		color: var(--ink-soft);
+	}
+
 	.term {
 		appearance: none;
 		display: inline;
