@@ -754,8 +754,8 @@
 		<article class="pin left" data-out="0.86">
 			<h2>Sharing the chips</h2>
 			<p>{@render rich('A chip only earns its keep when it works on many requests at once. So at every step, the [[scheduler]] gathers a batch of requests that each need one more token.')}</p>
-			<p>When one finishes, a waiting one takes its lane right away. Nobody waits for a batch to fill.</p>
-			<p>Yours is the amber one.</p>
+			<p>When one finishes, a waiting one takes its lane right away. Nobody waits for a batch to fill. If memory runs short, someone gets paused and picked up again later.</p>
+			<p>Yours is the amber one. Its long prompt goes in slices between everyone else’s steps, so your arrival doesn’t freeze their typing.</p>
 		</article>
 	</section>
 
