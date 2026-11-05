@@ -157,7 +157,10 @@ export class Laptop {
 	 * sent: 0 to 1, the prompt has left the input and moved up into the transcript.
 	 */
 	update(typedF: number, sent: number, time: number, lidOpen: number, keysOn: boolean) {
-		this.lid.rotation.x = THREE.MathUtils.lerp(Math.PI / 2, -0.2, lidOpen);
+		// Enter is the one key anybody hits hard: the lid feels it, and shivers back.
+		const thud = Math.max(0, sent - 0.22) / 0.78;
+		const shiver = thud > 0 ? Math.sin(thud * Math.PI * 7) * Math.exp(-5 * thud) * 0.05 : 0;
+		this.lid.rotation.x = THREE.MathUtils.lerp(Math.PI / 2, -0.2, lidOpen) + shiver;
 
 		const press = this.pressUniform.value;
 		press.fill(0);

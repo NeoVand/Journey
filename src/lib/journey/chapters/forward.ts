@@ -366,7 +366,11 @@ class Sampler {
 		const c = this.chosen.group;
 		c.visible = pick > 0 && ride < 1;
 		if (c.visible) {
-			c.scale.setScalar(outBack(Math.min(1, pick * 1.5), 2));
+			// Long and thin in the air, and it squashes where it lands, gathering itself before it rides off.
+			const size = outBack(Math.min(1, pick * 1.5), 2);
+			const air = bell(pick, 0.2, 0.9);
+			const squash = bell(ride, 0, 0.28);
+			c.scale.set(size * (1 - air * 0.06 + squash * 0.1), size * (1 + air * 0.2 - squash * 0.28), size * (1 - air * 0.06 + squash * 0.1));
 			arcPoint(this.from, this.dock, 0.7, inOut(pick), this.a);
 			if (ride > 0) this.a.lerpVectors(this.dock, this.to, inOut(ride));
 			c.position.copy(this.a);
@@ -636,6 +640,12 @@ class Decoder {
 			if (k < 1) arcPoint(this.port, this.a, 1.4, smooth(k), this.a);
 			tile.group.position.copy(this.a);
 			tile.group.scale.setScalar(Math.max(0.3, k));
+			// Each new token lands on the rail with a little weight.
+			const squash = bell(appear, 0.43, 0.8);
+			if (squash > 0) {
+				tile.group.scale.set(1 + squash * 0.03, 1 - squash * 0.26, 1 + squash * 0.12);
+				tile.group.position.y -= (squash * 0.26 * TILE_H) / 2;
+			}
 		});
 
 		// The newest token rides back into the stack: its K and V do not exist until the next pass.

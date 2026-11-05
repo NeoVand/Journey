@@ -20,6 +20,10 @@ export const outBack = (t: number, s = 1.70158) => {
 export const spring = (t: number, freq = 3.2, decay = 5.5) =>
 	t >= 1 ? 1 : 1 - Math.exp(-decay * t) * Math.cos(freq * Math.PI * t);
 
+/** A weight coming down on its stop, 1 to 0: it reaches it, bounces, and settles, and never goes through. */
+export const bounceDown = (t: number, freq = 3, decay = 5) =>
+	t >= 1 ? 0 : Math.abs(Math.exp(-decay * t) * Math.cos(freq * Math.PI * t));
+
 /** 0 → 1 → 0 over the window, for pulses. */
 export const bell = (t: number, a: number, b: number) => {
 	const x = seg(t, a, b);

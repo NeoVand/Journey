@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Stage } from './stage';
 import { Rig, type Shot } from './rig';
-import { bell, inOut, lerp, outBack, outCubic, seg, smooth, smoother, spring } from './kit/math';
+import { bell, inOut, lerp, outBack, outCubic, seg, smooth, smoother, spring, inCubic } from './kit/math';
 import { contactShadow, Label, loadFonts } from './kit/print';
 import { extrude, frameAt, rbox, roundedRect, sweep } from './kit/geometry';
 import { mats, color } from './kit/materials';
@@ -1119,9 +1119,15 @@ export class World {
 			const rest = (TILE_H * thick) / 2 + 0.002;
 			const pop = bell(cuts[i], 0, 1) * 0.1;
 			const hop = bell(hopK, 0, 1) * 0.92;
+			// Landing after the flip: a squash, then one small bounce to shake it off.
+			const after = seg(T, 6.68 + i * 0.01, 6.74 + i * 0.01);
+			const squash = bell(after, 0, 0.4);
+			const bounce = bell(after, 0.3, 1) * 0.07;
 			const idle = hopK >= 1 && D === 0 ? (Math.sin(time * 2.1 - i * 0.55) * 0.5 + 0.5) * 0.022 : 0;
-			frame(s, tile.group, rest + pop + hop + idle);
+			const low = 1 - squash * 0.3;
+			frame(s, tile.group, rest * low + pop + hop + bounce + idle);
 			tile.group.rotateX(flip * Math.PI);
+			tile.group.scale.set(1 + squash * 0.04, low, 1 + squash * 0.12);
 			tile.group.visible = s < this.flowLen - 0.1 && feed > 0;
 		});
 
@@ -1135,8 +1141,17 @@ export class World {
 				? boundary(n - 1) + smooth(seg(T, CUT_B, CUT_B + 0.1)) * 0.42
 				: lerp(boundary(stepI - 1), boundary(stepI), moveK);
 		this.gantry.group.position.x = gx;
-		const stamp = T > CUT_A && T < CUT_B ? bell(stepF, 0.55, 1) : 0;
-		this.gantry.update(smooth(stamp), moving);
+		// The stamp draws back a little, comes down hard, and takes its time going up.
+		const blow = seg(stepF, 0.5, 1);
+		const stamp =
+			T <= CUT_A || T >= CUT_B
+				? 0
+				: blow < 0.2
+					? -0.16 * smooth(blow / 0.2)
+					: blow < 0.42
+						? lerp(-0.16, 1, inCubic((blow - 0.2) / 0.22))
+						: 1 - smooth((blow - 0.42) / 0.58);
+		this.gantry.update(stamp, moving);
 
 		// The rest of the request pours out behind the named tiles.
 		const d = this.dummy;

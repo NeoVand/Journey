@@ -296,7 +296,9 @@ export class BlockTray {
 				this.a.set(PRESS_X, 1.4, FRESH_Z);
 				b.mesh.position.lerpVectors(this.a, b.to, smooth(seg(e, 0, 0.74)));
 				b.mesh.position.y += 1.3 * smooth(seg(e, 0, 0.3)) * (1 - smooth(seg(e, 0.74, 1)));
-				b.mesh.scale.setScalar(lerp(0.6, 1, e));
+				const landed = bell(out, 0.84, 1);
+				const grown = lerp(0.6, 1, e);
+				b.mesh.scale.set(grown * (1 + landed * 0.08), grown * (1 - landed * 0.2), grown * (1 + landed * 0.08));
 				b.material.emissiveIntensity = 0.45 + bell(out, 0.7, 1) * 1.4;
 				return;
 			}
@@ -308,7 +310,9 @@ export class BlockTray {
 			b.mesh.position.lerpVectors(b.from, b.to, smooth(seg(e, 0, 0.74)));
 			b.mesh.position.y += 1.7 * smooth(seg(e, 0, 0.3)) * (1 - smooth(seg(e, 0.74, 1)));
 			b.mesh.rotation.z = Math.sin(e * Math.PI) * 0.22;
-			b.mesh.scale.setScalar(outBack(seg(place, 0, 0.12), 2));
+			const landed = bell(k, 0.82, 1);
+			const grown = outBack(seg(place, 0, 0.12), 2);
+			b.mesh.scale.set(grown * (1 + landed * 0.08), grown * (1 - landed * 0.2), grown * (1 + landed * 0.08));
 			// Recognised: the block in memory stands up, because it is the one being reused.
 			const flash = step === i && hit < 1 ? bell(f, 0.5, 1) : 0;
 			b.mesh.position.y += flash * 0.42;

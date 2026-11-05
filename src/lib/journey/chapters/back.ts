@@ -5,7 +5,7 @@ import { color, Lamp, mats } from '../kit/materials';
 import { archBlock, arcPoint, Card, curve, hazard, islandAt, machine, panel, shadowOn, stripes, tube } from '../kit/machines';
 import { font, Surface } from '../kit/print';
 import { createSign } from '../kit/parts';
-import { bell, hash, inOut, lerp, outBack, seg, smooth } from '../kit/math';
+import { bell, bounceDown, clamp, hash, inOut, lerp, outBack, seg, smooth, spring } from '../kit/math';
 import { createCastShadow } from '../props/island';
 import { CALLS, HARNESSES, type HarnessId } from '../content';
 import { EASEL_POS, EASEL_TILT, RETURN_POINTS } from '../layout';
@@ -106,6 +106,9 @@ function printCall(card: Card, title: string, call: string, accent: string, foot
 
 /* --------------------------------------------------------------------- gates ---- */
 
+/** A gate arm flies up past where it stops, and shakes it off. */
+const raise = (k: number) => (k <= 0 ? 0 : spring(k, 2.8, 6));
+
 class Gate {
 	group = new THREE.Group();
 	arm = new THREE.Group();
@@ -153,6 +156,7 @@ class Gate {
 class Cart {
 	group = new THREE.Group();
 	card: Card;
+	private cardX = 0;
 
 	constructor(public cw = 1.86, public ch = 1.16) {
 		const m = mats();
@@ -165,6 +169,18 @@ class Cart {
 		this.card.mesh.position.set(0, 0.2 + ch / 2 + 0.06, 0);
 		this.card.mesh.rotation.y = -0.3;
 		this.group.add(this.card.mesh);
+		this.cardX = this.card.mesh.position.x;
+	}
+
+	/** The card sits loose on its stem. It lags when the cart sets off and pitches forward when it brakes. */
+	lean(path: (T: number) => number, T: number) {
+		const d = 0.014;
+		const accel = (path(T + d) - 2 * path(T) + path(T - d)) / (d * d);
+		const a = clamp(accel * 0.000028, -0.2, 0.2);
+		const reach = (Math.sin(a) * this.ch) / 2;
+		this.card.mesh.rotation.z = a;
+		this.card.mesh.position.x = this.cardX - reach * Math.cos(0.3);
+		this.card.mesh.position.z = -reach * Math.sin(0.3);
 	}
 }
 
@@ -1282,8 +1298,8 @@ export class Back {
 		const stopAt = (i: number) => (GATE_X[i] + 61) / 18.8 - 0.08;
 		if (T > 19.5 && T < 21.3) {
 			// First call: Read(./.env) gets past the shape check and no further.
-			const badIn = inOut(seg(T, 20.04, 20.2));
-			const badK = lerp(0, stopAt(1), badIn);
+			const badAt = (t: number) => lerp(0, stopAt(1), inOut(seg(t, 20.04, 20.2)));
+			const badK = badAt(T);
 			const fall = seg(T, 20.28, 20.38);
 			const bg = this.bad.group;
 			bg.visible = T > 20.02 && fall < 1;
@@ -1293,6 +1309,7 @@ export class Back {
 				bg.position.copy(fall > 0 ? this.b : this.a);
 				bg.rotation.z = fall * -0.6;
 				bg.scale.setScalar(1 - fall * 0.6);
+				this.bad.lean((t) => trackX(badAt(t)), T);
 			}
 			this.binSign.visible = T > 20.34;
 			this.binSign.scale.setScalar(Math.max(0.001, outBack(seg(T, 20.34, 20.4), 2)));
@@ -1301,24 +1318,30 @@ export class Back {
 			const stations = [0, stopAt(0), stopAt(1), stopAt(2), stopAt(3), 1];
 			const A = 20.4;
 			const B = 20.98;
-			const p = seg(T, A, B) * (stations.length - 1);
-			const i0 = Math.min(stations.length - 2, Math.floor(p));
-			const f = p - i0;
-			const k = lerp(stations[i0], stations[i0 + 1], inOut(seg(f, 0.34, 1)));
+			const goodAt = (t: number) => {
+				const p = seg(t, A, B) * (stations.length - 1);
+				const i0 = Math.min(stations.length - 2, Math.floor(p));
+				return lerp(stations[i0], stations[i0 + 1], inOut(seg(p - i0, 0.34, 1)));
+			};
 			const gg = this.good.group;
 			gg.visible = T > 20.38 && T < 21.02;
 			if (gg.visible) {
-				gg.position.set(trackX(k), CARTY, TRACK_Z);
-				if (k > 0.97) gg.position.y -= 0;
+				gg.position.set(trackX(goodAt(T)), CARTY, TRACK_Z);
+				this.good.lean((t) => trackX(goodAt(t)), T);
 			}
 			this.gates.forEach((gate, i) => {
 				const hold = A + ((B - A) * (i + 1)) / (stations.length - 1);
-				const open = smooth(seg(T, hold, hold + 0.05));
-				const firstPass = i === 0 ? smooth(seg(T, 20.09, 20.13)) * (1 - smooth(seg(T, 20.22, 20.28))) : 0;
-				gate.set(Math.max(open, firstPass));
+				const open = raise(seg(T, hold, hold + 0.1));
+				const opened = seg(T, hold, hold + 0.05);
+				// The first gate lets the bad call through, then drops behind it and bounces on its stop.
+				const firstPass = i === 0 ? raise(seg(T, 20.09, 20.16)) * bounceDown(seg(T, 20.22, 20.34)) : 0;
+				// The second one has seen enough: it rattles on its stop.
+				const refusing = seg(T, 20.2, 20.3);
+				const rattle = i === 1 && refusing > 0 && refusing < 1 ? Math.abs(Math.sin(refusing * Math.PI * 3)) * 0.05 * (1 - refusing) : 0;
+				gate.set(Math.max(open, firstPass, rattle));
 				const refused = i === 1 && T > 20.2 && T < 20.42;
 				if (refused) gate.lamp.set(color.red, 1 + Math.sin(time * 14) * 0.5);
-				else gate.lamp.mix(color.amber, color.green, open, 0.25 + open * 0.9);
+				else gate.lamp.mix(color.amber, color.green, smooth(opened), 0.25 + smooth(opened) * 0.9);
 			});
 		}
 
