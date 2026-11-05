@@ -30,7 +30,7 @@ const NODE: Omit<Shot, 'T'> = { az: 13, el: 36, target: at(0, 1.3, 1), radius: 8
 const KV: Omit<Shot, 'T'> = { az: -9, el: 13, target: at(ZONE.kv + 2.5, 2.6, 2), radius: 6.2, ry: 3.3, wide: box(0.38, 0.08, 0.6, 0.86), tall: TALL };
 const TRAY: Omit<Shot, 'T'> = { az: -5, el: 40, target: at(ZONE.tray - 2.3, 0.8, 1.6), radius: 10, ry: 5.0, wide: box(0.4, 0.08, 0.59, 0.86), tall: TALL };
 const TURN2: Omit<Shot, 'T'> = { az: 6, el: 36, target: at(ZONE.tray - 2, 0.9, 2.4), radius: 9.8, ry: 5.0, wide: box(0, 0.12, 0.57, 0.84), tall: TALL };
-const LANES: Omit<Shot, 'T'> = { az: 9, el: 44, target: at(ZONE.lanes, 0.7, -0.4), radius: 7.6, ry: 4.9, wide: box(0.43, 0.06, 0.56, 0.9), tall: TALL };
+const LANES: Omit<Shot, 'T'> = { az: 9, el: 44, target: at(ZONE.lanes, 0.7, -0.4), radius: 7.6, ry: 4.9, wide: box(0.46, 0.06, 0.53, 0.9), tall: TALL };
 const POOLS: Omit<Shot, 'T'> = { az: -7, el: 13, target: at(ZONE.pools, 2.1, 1.2), radius: 8.9, ry: 3.6, wide: box(0, 0.1, 0.6, 0.82), tall: TALL };
 const INTO: Omit<Shot, 'T'> = { az: -2, el: 7, target: at(ZONE.pools - 5.8, 1.1, 1.5), radius: 3.4, ry: 2.4, wide: box(0.1, 0.1, 0.8, 0.8), tall: TALL };
 

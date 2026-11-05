@@ -314,6 +314,7 @@ const LIT: [number, number, number, number, number][] = [
 	[14.838, 14.872, 16, 17, 1]
 ];
 
+const LOGITS_FLY_START = 15.014;
 const MAP_SHOT = { el: 31, radius: 9.3, ry: 5.2, wide: box(0.41, 0.07, 0.59, 0.84), tall: TALL };
 const S_TOWER: Omit<Shot, 'T'> = { az: 32, el: 8, target: at(0, 19.6, CZ), radius: 12.5, ry: 20, wide: box(0.42, 0.1, 0.58, 0.87), tall: TALL };
 const S_FLOOR0: Omit<Shot, 'T'> = { ...MAP_SHOT, az: 9, el: 33, target: at(0, FLOORS[0] + 0.1, CZ + 1.2), ry: 5.6 };
@@ -333,7 +334,7 @@ export const TRANSFORMER_SHOTS: Shot[] = [
 	{ T: 14.738, ...S_TOWER, az: 34 },
 	{ T: 14.856, ...S_TOWER, az: 24 },
 	{ T: 14.892, ...S_TOP },
-	{ T: 14.99, ...S_TOP, az: 8 }
+	{ T: LOGITS_FLY_START, ...S_TOP, az: 8 }
 ];
 
 /** A token's path up the stack, walked by arc length. It lies on each map and rises between them. */
@@ -484,6 +485,17 @@ const CANDIDATES: Pick[] = [
 	{ text: 'Cat', score: 0.2, x: 6, z: -2.5 }
 ];
 
+/**
+ * The highest scores become the logits chart: they lift off the map and line up in order, and that one chart then
+ * travels to the board by the wheel, with the camera following it.
+ */
+export const LOGITS_LINE: [number, number] = [14.984, 15.014];
+export const LOGITS_FLY: [number, number] = [15.014, 15.092];
+export const PICK_W = 0.45;
+export const PICK_STARTS = CANDIDATES.map((p) => ({ text: p.text, x: PRE + p.x, y: FLOORS[4] + 0.01, z: CZ + p.z, h: p.score * 0.86 }));
+/** Where the chart's middle column stands once it has lined up. Height clears the field of scores below it. */
+export const LOGITS_ROW = { x: PRE, y: FLOORS[4] + 1.4, z: CZ + 2 };
+
 export class Transformer {
 	group = new THREE.Group();
 
@@ -631,7 +643,8 @@ export class Transformer {
 			v.add(vFace);
 			group.add(k, v);
 			const pct = createSign(`${Math.round(share * 100)}%`, 0.3);
-			pct.position.set(0, 0.86, 0.02);
+			// Up and to the far side of the chips: the line comes in over them from "job", and must not cross its own label.
+			pct.position.set(-0.7, 0.86, 0.02);
 			pct.scale.setScalar(0.0001);
 			group.add(pct);
 			group.visible = false;
@@ -754,7 +767,7 @@ export class Transformer {
 		this.d.scale.set(1, 1, 1);
 		this.group.add(this.bars);
 
-		const big = rbox(pitch - 0.05, 1, pitch - 0.05, 0.06, 2);
+		const big = rbox(PICK_W, 1, PICK_W, 0.06, 2);
 		big.translate(0, 0.5, 0);
 		CANDIDATES.forEach((p) => {
 			const group = new THREE.Group();
@@ -769,7 +782,7 @@ export class Transformer {
 			group.add(sign);
 			this.picks.push({ group, bar, sign, h: p.score * 0.86 });
 		});
-		this.headSign = createSign('LM head: one score for every word', 0.34, '#ffffff', m.cobalt);
+		this.headSign = createSign('LM head: one logit for every word', 0.34, '#ffffff', m.cobalt);
 		this.headSign.position.set(3.6, y - 0.17, CZ + D / 2 + 0.08);
 		this.headSign.scale.setScalar(0.0001);
 		this.group.add(this.headSign);
@@ -848,7 +861,8 @@ export class Transformer {
 			const mat = tile.body.material;
 			const later = i > JOB ? dim : 0;
 			mat.color.copy(this.baseColor[i]).lerp(this.dimColor, later);
-			mat.emissiveIntensity = 0.4 * (1 - later);
+			// The last token lights up just before its scores rise: they all come from it.
+			mat.emissiveIntensity = 0.4 * (1 - later) + (i === LAST ? bell(T, BARS[0] - 0.014, BARS[0] + 0.03) * 1.6 : 0);
 		});
 
 		/* ---- one map lit at a time, and a wave up the stack to open with ---- */
@@ -889,8 +903,8 @@ export class Transformer {
 			t.bead.visible = v > 0 && v < 1;
 			if (t.bead.visible) {
 				t.path.getPoint(1 - inOut(v), t.bead.position);
-				// Each one is absorbed as it arrives, rather than piling up inside "job".
-				t.bead.scale.setScalar((0.12 + SHARES[i] * 0.95) * Math.min(1, (1 - v) * 6));
+				// Each is absorbed on the way in, so they never pile up where the lines meet.
+				t.bead.scale.setScalar(Math.max(0.001, (0.12 + SHARES[i] * 0.95) * smooth(seg(1 - v, 0.04, 0.45))));
 			}
 		});
 
@@ -948,6 +962,7 @@ export class Transformer {
 			this.bars.instanceMatrix.needsUpdate = true;
 		}
 		this.picks.forEach((p, i) => {
+			p.group.visible = T < LOGITS_LINE[0];
 			const k = outBack(seg(T, PICKS[0] + i * 0.003, PICKS[0] + i * 0.003 + 0.018), 1.3);
 			const h = Math.max(0.0001, p.h * Math.max(0, k));
 			p.bar.scale.y = h;

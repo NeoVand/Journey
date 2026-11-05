@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import { Batch } from '../kit/batch';
-import { rbox } from '../kit/geometry';
+import { rbox, ring } from '../kit/geometry';
 import { color, Lamp, mats } from '../kit/materials';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { arcPoint, machine, panel, shadowOn } from '../kit/machines';
+import { arcPoint, archBlock, machine, panel, shadowOn } from '../kit/machines';
 import { contactShadow, font, Label, Surface } from '../kit/print';
 import { createSign } from '../kit/parts';
 import { bell, hash, inOut, lerp, outBack, outCubic, seg, smooth } from '../kit/math';
@@ -12,7 +12,7 @@ import { Tile, TILE_D, TILE_H } from '../props/tokenizer';
 import { CALLS, type HarnessId } from '../content';
 import { ORIGIN, PAD_Y, RAIL_Y, RAIL_Z } from '../layout';
 import type { Shot } from '../rig';
-import { KvRow, MAP_D, MAP_W, MapPlate, TOKEN_PATHS, Transformer, TRANSFORMER_SHOTS } from './transformer';
+import { KvRow, MAP_D, MAP_W, MapPlate, LOGITS_FLY, LOGITS_LINE, LOGITS_ROW, PICK_STARTS, PICK_W, TOKEN_PATHS, Transformer, TRANSFORMER_SHOTS } from './transformer';
 
 const WHEEL = 193;
 const DEC = 233;
@@ -38,11 +38,46 @@ const TALL = box(0, 0.06, 1, 0.47);
 const S_WHEEL: Omit<Shot, 'T'> = { az: 8, el: 9, target: at(WHEEL - 0.4, 3.4, 0), radius: 9.2, ry: 4.3, wide: box(0, 0.07, 0.56, 0.88), tall: TALL };
 const S_DEC: Omit<Shot, 'T'> = { az: 10, el: 17, target: at(DEC - 9, 4, 0.8), radius: 7.4, ry: 5.2, wide: box(0.41, 0.05, 0.58, 0.9), tall: TALL };
 const S_CALL: Omit<Shot, 'T'> = { az: -6, el: 56, target: at(DEC + 3.6, 0.8, 4.6), radius: 6.4, ry: 3.1, wide: box(0.02, 0.4, 0.96, 0.56), tall: box(0, 0.08, 1, 0.42), tallRadius: 4.6 };
-const S_DET: Omit<Shot, 'T'> = { az: -14, el: 13, target: at(DET, 3.2, 2), radius: 7, ry: 4.3, wide: box(0.01, 0.07, 0.6, 0.88), tall: TALL };
+const S_DET: Omit<Shot, 'T'> = { az: -14, el: 13, target: at(DET, 3.2, 3.5), radius: 7, ry: 4.3, wide: box(0.01, 0.07, 0.6, 0.88), tall: TALL };
+
+/* The logits chart, on its way from the top of the stack to the board. Its path is shared with the camera that follows it. */
+const BOARD_X = -4.8;
+const BAR_GAP = 6.9 / 7;
+const BAR_Y = PAD_Y + 0.84;
+const BAR_Z = 0.28;
+const ROW_X = LOGITS_ROW.x - WHEEL;
+function chartAt(k: number, out: THREE.Vector3) {
+	const u = 1 - k;
+	const w0 = u * u * u;
+	const w1 = 3 * u * u * k;
+	const w2 = 3 * u * k * k;
+	const w3 = k * k * k;
+	// Out past the map's edge at its own height, then straight down in front of the board.
+	return out.set(
+		w0 * ROW_X + w1 * (BOARD_X - 1.2) + w2 * BOARD_X + w3 * BOARD_X,
+		w0 * LOGITS_ROW.y + w1 * (LOGITS_ROW.y + 1.3) + w2 * (LOGITS_ROW.y - 0.2) + w3 * BAR_Y,
+		w0 * LOGITS_ROW.z + w1 * LOGITS_ROW.z + w2 * 0.8 + w3 * BAR_Z
+	);
+}
+const CHART_SHOTS: Shot[] = [0.16, 0.34, 0.5, 0.66, 0.84].map((k) => {
+	const c = chartAt(inOut(k), new THREE.Vector3());
+	const near = smooth(seg(k, 0.5, 1));
+	return {
+		T: LOGITS_FLY[0] + (LOGITS_FLY[1] - LOGITS_FLY[0]) * k,
+		az: 8,
+		el: lerp(30, 9, smooth(k)),
+		target: at(WHEEL + c.x, c.y + 1.3, c.z),
+		radius: lerp(6, 8, near),
+		ry: lerp(4.4, 4.3, near),
+		wide: box(0.22, 0.1, 0.6, 0.8),
+		tall: TALL
+	};
+});
 
 export const FORWARD_SHOTS: Shot[] = [
 	...TRANSFORMER_SHOTS,
-	{ T: 15.04, ...S_WHEEL },
+	...CHART_SHOTS,
+	{ T: 15.096, ...S_WHEEL },
 	{ T: 15.9, ...S_WHEEL, az: -5 },
 	{ T: 16.04, ...S_DEC },
 	{ T: 16.9, ...S_DEC, az: 11 },
@@ -50,7 +85,7 @@ export const FORWARD_SHOTS: Shot[] = [
 	{ T: 17.9, ...S_CALL, az: -5 },
 	{ T: 18.06, ...S_DET },
 	{ T: 18.62, ...S_DET, az: -9 },
-	{ T: 18.97, ...S_DET, az: -6, el: 40, target: at(DET, 13, 0.4), radius: 2.6, ry: 2.6 }
+	{ T: 18.97, ...S_DET, az: -6, el: 40, target: at(DET, 13, 1.9), radius: 2.6, ry: 2.6 }
 ];
 
 /* ------------------------------------------------------------------ sampler ---- */
@@ -68,7 +103,7 @@ const SPINS = 4;
 
 class Sampler {
 	group = new THREE.Group();
-	private bars: { mesh: THREE.Mesh; h: number; cut: boolean }[] = [];
+	private bars: { mesh: THREE.Mesh; sign: THREE.Group; home: THREE.Vector3; h: number; cut: boolean }[] = [];
 	private wheel = new THREE.Group();
 	private chosen: Tile;
 	private sign: THREE.Group;
@@ -86,10 +121,14 @@ class Sampler {
 		this.group.add(pad);
 
 		// The logits board.
-		const lx = -4.8;
-		const board = machine({ w: 7.4, h: 4.6, d: 1.2, finish: 'cream', name: 'Logits: one score per token', signH: 0.24, vent: false });
+		const lx = BOARD_X;
+		const board = machine({ w: 7.4, h: 4.6, d: 1.2, finish: 'cream', name: 'Logits: the highest scores', signH: 0.24, vent: false });
 		board.position.set(lx, PAD_Y, -0.6);
 		this.group.add(board);
+		// A dark window for the scores to arrive in.
+		const logitsWindow = new Batch();
+		logitsWindow.add(rbox(7, 3.14, 0.04, 0.05, 2), m.recess, { p: [lx, PAD_Y + 2.36, 0.015] });
+		this.group.add(logitsWindow.build('logits-window'));
 		shadowOn(this.group, lx, PAD_Y, -0.6, 7.6, 1.4);
 		const plate = new Surface(1480, 150);
 		plate.draw((c, w, h) => {
@@ -105,12 +144,15 @@ class Sampler {
 		const barGeo = rbox(0.66, 1, 0.34, 0.06, 2);
 		barGeo.translate(0, 0.5, 0);
 		LOGITS.forEach((l, i) => {
-			const mat = (m.cobalt as THREE.MeshPhysicalMaterial).clone();
+			const mat = (m.amber as THREE.MeshPhysicalMaterial).clone();
 			const mesh = new THREE.Mesh(barGeo, mat);
-			mesh.position.set(lx + ((i + 0.5) / LOGITS.length - 0.5) * 6.9, PAD_Y + 0.84, 0.28);
+			const home = new THREE.Vector3(lx + ((i + 0.5) / LOGITS.length - 0.5) * 6.9, BAR_Y, BAR_Z);
+			mesh.position.copy(home);
 			mesh.castShadow = true;
 			this.group.add(mesh);
-			this.bars.push({ mesh, h: l.score * 0.82, cut: l.p === 0 });
+			const sign = createSign(l.text, 0.36);
+			this.group.add(sign);
+			this.bars.push({ mesh, sign, home, h: l.score * 0.82, cut: l.p === 0 });
 		});
 
 		// The wheel of the next token.
@@ -191,12 +233,39 @@ class Sampler {
 		this.group.add(this.chosen.group);
 	}
 
-	update(rise: number, cut: number, spin: number, pick: number, ride: number, time: number) {
+	update(T: number, cut: number, spin: number, pick: number, ride: number, time: number) {
 		this.bars.forEach((b, i) => {
-			const r = outBack(seg(rise, i * 0.07, i * 0.07 + 0.55), 1.4);
+			// The very columns that rose on the map. First they line up in order, which makes them a chart.
+			const line = seg(T, LOGITS_LINE[0], LOGITS_LINE[1]);
+			const k = seg(T, LOGITS_FLY[0], LOGITS_FLY[1]);
+			const from = PICK_STARTS[i];
+			const e = inOut(k);
+			const across = smooth(seg(line, 0.14, 0.86));
+			const slot = (i - 3) * BAR_GAP;
+			// The two small ones have to cross the map, so they go over the others.
+			const lane = (i === 5 ? 3.5 : i === 6 ? 3.9 : 0) * smooth(seg(line, 0.04, 0.3)) * (1 - smooth(seg(line, 0.74, 1)));
+			if (k > 0) {
+				chartAt(e, this.a);
+				b.mesh.position.set(this.a.x + slot, this.a.y, this.a.z);
+			} else {
+				b.mesh.position.set(
+					lerp(from.x - WHEEL, ROW_X + slot, across),
+					lerp(from.y, LOGITS_ROW.y, smooth(seg(line, 0, 0.3))) + lane,
+					lerp(from.z, LOGITS_ROW.z, across)
+				);
+			}
 			const sink = b.cut ? 1 - inOut(cut) : 1;
-			b.mesh.scale.y = Math.max(0.001, b.h * r * sink);
-			b.mesh.visible = r * sink > 0.001;
+			const h = lerp(from.h, b.h, e) * sink;
+			b.mesh.scale.set(lerp(PICK_W / 0.66, 1, across), Math.max(0.001, h), lerp(PICK_W / 0.34, 1, smooth(seg(k, 0.5, 1))));
+			b.mesh.visible = line > 0 && h > 0.001;
+			// Each keeps its name until it lands, where the board's own label takes over.
+			const named = line > 0 ? 1 - smooth(seg(k, 0.84, 1)) : 0;
+			b.sign.visible = named > 0.001;
+			if (b.sign.visible) {
+				b.sign.position.set(b.mesh.position.x, b.mesh.position.y + h + 0.46, b.mesh.position.z + 0.3);
+				// Smaller once they stand side by side, so neighbouring names never touch.
+				b.sign.scale.setScalar(Math.max(0.001, named * lerp(1, 0.78, across)));
+			}
 			const lit = i === 0 ? smooth(pick) : 0;
 			const mat = b.mesh.material as THREE.MeshPhysicalMaterial;
 			mat.emissive.set(color.amber);
@@ -483,7 +552,7 @@ class Decoder {
 		});
 
 		// The newest token rides back into the stack: its K and V do not exist until the next pass.
-		const riding = working && f < 0.34 && whole >= 1;
+		const riding = T < THINK_B && working && f < 0.34 && whole >= 1;
 		this.rider.visible = riding;
 		if (riding) {
 			this.b.set(this.xs[whole - 1], RAIL_Y + TILE_H * 1.12, RAIL_Z);
@@ -562,13 +631,15 @@ class Decoder {
 
 /* -------------------------------------------------------------- detokenizer ---- */
 
+const DET_H = 3.7;
+const DET_Z = RAIL_Z - 1.26; // the block's centre, and its tube's
 const SLIP_TEXT = ['Grep', '("lock', '|schedule', '", src', '/")', 'The user', ' wants', ' the race'];
 
 class Detokenizer {
 	group = new THREE.Group();
 	private slips: THREE.Mesh[] = [];
 	private lamp: Lamp;
-	private TOP = PAD_Y + 4;
+	private TOP = PAD_Y + DET_H + 0.3;
 
 	constructor() {
 		const m = mats();
@@ -577,61 +648,52 @@ class Detokenizer {
 		pad.position.set(0, PAD_Y, 2.4);
 		this.group.add(pad);
 
-		// An arch over the belt: tiles go in, nothing but paper comes out.
-		const b = new Batch();
+		// One block across the belt: tiles run into its mouth, and nothing but paper comes out of the top.
 		const W = 3.6;
-		const H = 3.5;
-		const D = 8;
-		for (const z of [-0.6, 7.6]) {
-			b.add(rbox(W, H + 0.2, 1.1, 0.14, 3), m.cream, { p: [0, PAD_Y + (H + 0.2) / 2, z] });
-		}
-		b.add(rbox(W, 1.1, D + 1.1, 0.2, 4), m.cream, { p: [0, PAD_Y + H + 0.3, 3.5] });
-		b.add(rbox(0.1, 3.06, 1.3, 0.02, 1), m.recess, { p: [-W / 2 - 0.005, PAD_Y + 1.56, RAIL_Z] });
-		this.group.add(b.build('detok'));
+		const H = DET_H;
+		const D = 4.6;
+		const block = archBlock({ w: W, d: D, h: H, archZ: RAIL_Z - DET_Z, archD: 1.6, archH: 1.4 });
+		block.position.set(0, PAD_Y, DET_Z);
+		block.castShadow = true;
+		this.group.add(block);
+		shadowOn(this.group, 0, PAD_Y, DET_Z, W + 0.2, D + 0.2, 0.34);
 
 		const sign = createSign('Detokenizer: IDs become text', 0.24);
-		sign.position.set(-0.2, PAD_Y + H + 0.3, 8.06);
+		sign.position.set(0, PAD_Y + H - 0.55, DET_Z + D / 2 + 0.03);
 		this.group.add(sign);
 		const stay = createSign('Token IDs stay here', 0.24, '#ffffff', m.red);
-		stay.position.set(-W / 2 - 2.2, PAD_Y + 2.2, RAIL_Z + 1.8);
-		stay.rotation.y = 0.3;
+		stay.position.set(-W / 2 - 1.9, PAD_Y + 2.2, RAIL_Z - 1.5);
+		stay.rotation.y = 0.2;
 		const pole = new Batch();
-		pole.add(rbox(0.1, 2.2, 0.1, 0.03, 2), m.steelSoft, { p: [-W / 2 - 2.2, PAD_Y + 1.1, RAIL_Z + 1.72] });
+		pole.add(rbox(0.1, 2.2, 0.1, 0.03, 2), m.steelSoft, { p: [-W / 2 - 1.9, PAD_Y + 1.1, RAIL_Z - 1.56] });
 		this.group.add(stay, pole.build('pole'));
 
 		this.lamp = new Lamp(rbox(0.14, 0.14, 0.04, 0.05, 3), color.amber, 0.3);
-		this.lamp.mesh.position.set(W / 2 - 0.3, PAD_Y + H + 0.3, 8.06);
+		this.lamp.mesh.position.set(W / 2 - 0.26, PAD_Y + H - 0.26, DET_Z + D / 2 + 0.02);
 		this.group.add(this.lamp.mesh);
 
-		// The way out: a glass tube, up through the ceiling.
+		// The way out: a glass tube, up through the ceiling and home to your laptop.
+		const roof = PAD_Y + H;
 		const glass = new THREE.Mesh(
 			new THREE.CylinderGeometry(0.72, 0.72, 40, 40, 1, true),
 			new THREE.MeshPhysicalMaterial({ color: '#d5ecff', transparent: true, opacity: 0.2, roughness: 0.08, clearcoat: 1, depthWrite: false, side: THREE.DoubleSide })
 		);
-		glass.position.set(0, this.TOP + 20.5, 3.5);
+		glass.position.set(0, roof + 20, DET_Z);
 		glass.renderOrder = 4;
 		this.group.add(glass);
 		const collar = new Batch();
-		// Rings, not discs: the paper has to rise through them.
-		const ring = (outer: number, h: number) => {
-			const bore = 0.74;
-			const profile = [
-				new THREE.Vector2(bore, -h / 2),
-				new THREE.Vector2(outer, -h / 2),
-				new THREE.Vector2(outer, h / 2),
-				new THREE.Vector2(bore, h / 2),
-				new THREE.Vector2(bore, -h / 2)
-			];
-			return new THREE.LatheGeometry(profile, 48);
-		};
-		collar.add(ring(1.02, 0.34), m.steel, { p: [0, this.TOP + 0.65, 3.5] });
-		collar.add(ring(0.86, 0.1), m.steel, { p: [0, this.TOP + 6, 3.5] });
-		collar.add(ring(0.86, 0.1), m.steel, { p: [0, this.TOP + 12, 3.5] });
+		collar.add(ring(1.02, 0.74, 0.34), m.steel, { p: [0, roof + 0.17, DET_Z] });
+		collar.add(ring(0.86, 0.74, 0.1), m.steel, { p: [0, this.TOP + 6, DET_Z] });
+		collar.add(ring(0.86, 0.74, 0.1), m.steel, { p: [0, this.TOP + 12, DET_Z] });
+		collar.add(rbox(0.5, 0.05, 0.05, 0.02, 1), m.steelSoft, { p: [0.93, this.TOP + 3.4, DET_Z] });
 		this.group.add(collar.build('collar'));
 		const mouth = new THREE.Mesh(new THREE.CircleGeometry(0.74, 48), new THREE.MeshStandardMaterial({ color: '#060f26', roughness: 0.9 }));
 		mouth.rotation.x = -Math.PI / 2;
-		mouth.position.set(0, this.TOP + 0.49, 3.5);
+		mouth.position.set(0, roof + 0.012, DET_Z);
 		this.group.add(mouth);
+		const home = createSign('Back to your laptop', 0.26);
+		home.position.set(2.32, this.TOP + 3.4, DET_Z);
+		this.group.add(home);
 
 		SLIP_TEXT.forEach((text) => {
 			const s = new Surface(420, 170);
@@ -662,8 +724,9 @@ class Detokenizer {
 			const live = k > 0.04 + (i / this.slips.length) * 0.3 && run > 0;
 			slip.visible = live;
 			if (!live) return;
-			slip.position.set(Math.sin(i * 2.3 + time) * 0.14, this.TOP + 0.5 + run * 22, 3.5 + Math.cos(i * 1.7) * 0.14);
-			slip.rotation.set(Math.sin(run * 8 + i) * 0.35, 0.3 + run * 2.4 + i, Math.sin(run * 5 + i) * 0.2);
+			slip.position.set(Math.sin(i * 2.3 + time) * 0.14, this.TOP - 0.55 + run * 22, DET_Z + Math.cos(i * 1.7) * 0.14);
+			// It flutters, but it never turns its back: the text stays readable.
+			slip.rotation.set(Math.sin(run * 8 + i) * 0.3, Math.sin(run * 6 + i * 2) * 0.55, Math.sin(run * 5 + i) * 0.16);
 		});
 	}
 }
@@ -689,7 +752,7 @@ export class Forward {
 		const near = (g: THREE.Object3D, a: number, b: number) => (g.visible = T > a && T < b);
 		if (near(this.prefill.group, 13.9, 15.4)) this.prefill.update(T, time);
 		if (near(this.sampler.group, 14.7, 16.3)) {
-			this.sampler.update(seg(T, 15.06, 15.3), seg(T, 15.3, 15.42), seg(T, 15.42, 15.78), seg(T, 15.78, 15.88), seg(T, 15.88, 16), time);
+			this.sampler.update(T, seg(T, 15.3, 15.42), seg(T, 15.42, 15.78), seg(T, 15.78, 15.88), seg(T, 15.88, 16), time);
 		}
 		if (near(this.decoder.group, 15.7, 18.8)) {
 			this.decoder.update(T, inOut(seg(T, 18.06, 18.64)) * 46, DET - 0.2, time);

@@ -59,6 +59,18 @@ export function chamferRect(w: number, h: number, ch: number, r: number) {
  * Extrudes along Z, centred, with the bevel kept inside the outline so stated sizes stay true.
  * Creased normals make the bevels read as one smooth soft edge.
  */
+/** A flat collar with a real bore, standing on the y axis. */
+export function ring(outer: number, bore: number, h: number, segments = 48) {
+	const profile = [
+		new THREE.Vector2(bore, -h / 2),
+		new THREE.Vector2(outer, -h / 2),
+		new THREE.Vector2(outer, h / 2),
+		new THREE.Vector2(bore, h / 2),
+		new THREE.Vector2(bore, -h / 2)
+	];
+	return new THREE.LatheGeometry(profile, segments);
+}
+
 export function extrude(
 	shape: THREE.Shape,
 	depth: number,

@@ -75,7 +75,7 @@ const CUT = {
 };
 const NEXT = { az: 18, el: 22, target: [7.6, -18.0, 5.5] as [number, number, number], radius: 6.2, wide: box(0.38, 0.06, 0.6, 0.88), tall: box(0, 0.06, 1, 0.5) };
 const INTAKE = { az: 26, el: 38, target: [1.4, -25.9, 1.0] as [number, number, number], radius: 3.3, ry: 2.3, wide: box(0.38, 0.08, 0.62, 0.84), tall: box(0, 0.08, 1, 0.48) };
-const ARRIVE = { az: 26, el: 13, target: [0.6, -31.4, 1.2] as [number, number, number], radius: 10, ry: 8.6, wide: box(0.38, 0.03, 0.62, 0.92), tall: box(0, 0.05, 1, 0.5) };
+const ARRIVE = { az: 24, el: 25, target: [0.8, -30.6, 1.2] as [number, number, number], radius: 10, ry: 8.6, wide: box(0.38, 0.03, 0.62, 0.92), tall: box(0, 0.05, 1, 0.5) };
 
 const SHOTS: Shot[] = [
 	...hold(0, 0.5, HERO),
@@ -90,9 +90,9 @@ const SHOTS: Shot[] = [
 	...hold(6.68, 6.8, TOKENS_SHOT, { az: 1 }),
 	{ T: 7, ...NEXT },
 	{ T: 7.44, ...ARRIVE },
-	{ T: 7.6, ...ARRIVE, az: 22 },
-	{ T: 7.76, ...INTAKE },
-	{ T: 7.87, ...INTAKE, az: 18, el: 50, radius: 2.5, ry: 1.9 },
+	{ T: 7.68, ...ARRIVE, az: 22 },
+	{ T: 7.81, ...INTAKE },
+	{ T: 7.89, ...INTAKE, az: 18, el: 50, radius: 2.5, ry: 1.9 },
 	{ T: 7.985, az: 10, el: 80, target: [1.4, -27.0, 1.2], radius: 0.3, ry: 0.22, wide: box(0, 0, 1, 1), tall: box(0, 0, 1, 1) },
 	...CLUSTER_SHOTS,
 	...BACK_SHOTS
@@ -376,13 +376,15 @@ export class World {
 			[6.5, y, z],
 			[BELT_END - 0.4, y, z],
 			[BELT_END + 0.5, y - 0.03, z + 0.32],
-			[12.7, y - 0.6, z + 1.7],
-			[13.3, y - 1.7, z + 3.9],
-			[12.6, y - 4, z + 6.4],
-			[10.4, y - 6.9, z + 7.2],
-			[8.9, y - 7.6, z + 4],
-			[8.3, y - 8.0, z - 0.3],
-			[6.9, y - 8.3, z - 3.6],
+			[12.8, y - 0.55, z + 1.6],
+			[14, y - 1.7, z + 3.8],
+			[13.9, y - 3.2, z + 6.2],
+			[12.3, y - 4.8, z + 7.9],
+			[10, y - 6.1, z + 7.9],
+			[8.5, y - 7, z + 6],
+			[7.9, y - 7.6, z + 3.2],
+			[7.6, y - 8, z],
+			[6.6, y - 8.3, z - 3.4],
 			[4.2, y - 8.5, z - 5],
 			[2, y - 8.62, z - 4.2],
 			[1.4, y - 8.72, z - 2.5],
@@ -517,11 +519,11 @@ export class World {
 			[
 				new THREE.Vector3(7.35, -0.7, LINE_Z - 0.12),
 				new THREE.Vector3(7.6, -1.8, 0.35),
-				new THREE.Vector3(8.4, -3.4, -0.3),
-				new THREE.Vector3(8.85, -5.4, -0.45),
-				new THREE.Vector3(8.9, -6.9, -0.3),
-				new THREE.Vector3(9.0, -7.38, 0.15),
-				new THREE.Vector3(9.25, -7.46, 0.62)
+				new THREE.Vector3(7.9, -3.4, -0.3),
+				new THREE.Vector3(8.15, -5.4, -0.45),
+				new THREE.Vector3(8.2, -6.9, -0.25),
+				new THREE.Vector3(8.5, -7.4, 0.25),
+				new THREE.Vector3(9.25, -7.46, 0.66)
 			],
 			false,
 			'centripetal'

@@ -294,8 +294,8 @@ export class BlockTray {
 				if (!out) return;
 				const e = inOut(out);
 				this.a.set(PRESS_X, 1.4, FRESH_Z);
-				b.mesh.position.lerpVectors(this.a, b.to, e);
-				b.mesh.position.y += Math.sin(e * Math.PI) * 1.3;
+				b.mesh.position.lerpVectors(this.a, b.to, smooth(seg(e, 0, 0.74)));
+				b.mesh.position.y += 1.3 * smooth(seg(e, 0, 0.3)) * (1 - smooth(seg(e, 0.74, 1)));
 				b.mesh.scale.setScalar(lerp(0.6, 1, e));
 				b.material.emissiveIntensity = 0.45 + bell(out, 0.7, 1) * 1.4;
 				return;
@@ -304,8 +304,9 @@ export class BlockTray {
 			const k = seg(place, delay, delay + 0.46);
 			b.mesh.visible = place > 0;
 			const e = inOut(k);
-			b.mesh.position.lerpVectors(b.from, b.to, e);
-			b.mesh.position.y += Math.sin(e * Math.PI) * 1.7;
+			// Up, across, and straight down into its slot, so it clears the blocks already there.
+			b.mesh.position.lerpVectors(b.from, b.to, smooth(seg(e, 0, 0.74)));
+			b.mesh.position.y += 1.7 * smooth(seg(e, 0, 0.3)) * (1 - smooth(seg(e, 0.74, 1)));
 			b.mesh.rotation.z = Math.sin(e * Math.PI) * 0.22;
 			b.mesh.scale.setScalar(outBack(seg(place, 0, 0.12), 2));
 			// Recognised: the block in memory stands up, because it is the one being reused.

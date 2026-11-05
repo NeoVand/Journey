@@ -8,7 +8,9 @@ const TRANSFORMER_PACE = [
 	{ from: 14.54, to: 14.62, seconds: 5 }, // then all of them
 	{ from: 14.62, to: 14.695, seconds: 7 }, // the small network
 	{ from: 14.695, to: 14.86, seconds: 10 }, // eighty floors
-	{ from: 14.86, to: 15.06, seconds: 10 } // one score for every word
+	{ from: 14.86, to: 14.984, seconds: 7.5 }, // one score for every word
+	{ from: 14.984, to: 15.014, seconds: 2.4 }, // the highest line up
+	{ from: 15.014, to: 15.092, seconds: 3.6 } // and travel to the board
 ];
 
 /**
@@ -81,7 +83,7 @@ export const PACE: Span[] = [
 	{ from: 5.62, to: 6.16, seconds: 2.8 },
 	{ from: 6.16, to: 6.56, seconds: 5.5 }, // eleven cuts
 	{ from: 6.56, to: 6.86, seconds: 2 }, // the wave of flips
-	{ from: 6.86, to: 7.72, seconds: 3.6 },
+	{ from: 6.86, to: 7.72, seconds: 6.4 }, // long enough to read before the camera moves in
 	{ from: 7.72, to: 8.1, seconds: 3.2 }, // pouring in, then the dive
 	{ from: 8.1, to: 8.7, seconds: 3.8 }, // weights split across chips
 	{ from: 8.7, to: 9.06, seconds: 2.2 },
@@ -96,7 +98,7 @@ export const PACE: Span[] = [
 	{ from: 12.92, to: 13.08, seconds: 1.4 },
 	{ from: 13.08, to: 14.0, seconds: 8.5 }, // two pools, and into the first
 	...TRANSFORMER_PACE,
-	{ from: 15.06, to: 15.42, seconds: 2.4 },
+	{ from: 15.092, to: 15.42, seconds: 2.2 },
 	{ from: 15.42, to: 15.88, seconds: 3.8 }, // the wheel
 	{ from: 15.88, to: 16.06, seconds: 1.4 },
 	{ from: 16.06, to: 16.9, seconds: 7.4 }, // thirteen thinking tokens

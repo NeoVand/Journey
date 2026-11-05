@@ -28,7 +28,8 @@ export class KvCache {
 	private readCurve: THREE.CatmullRomCurve3;
 	private writeCurve: THREE.CatmullRomCurve3;
 	private blockMat: THREE.MeshPhysicalMaterial;
-	private outPort = new THREE.Vector3(AX - 1.9, 1.5, 1.55);
+	/** The K and the V on the machine's face: what gets stored is a copy of what it just made. */
+	private made = [new THREE.Vector3(AX + 0.68, 1.82, 1.46), new THREE.Vector3(AX + 0.68, 0.94, 1.46)];
 
 	constructor() {
 		const m = mats();
@@ -130,12 +131,12 @@ export class KvCache {
 
 		// Two pipes, the two directions: reading on top, storing below.
 		this.readCurve = new THREE.CatmullRomCurve3(
-			[new THREE.Vector3(CW / 2, 3.1, 0.2), new THREE.Vector3(2.6, 3.32, 0.2), new THREE.Vector3(3.1, 3.2, 0.2), new THREE.Vector3(AX - AW / 2, 2.8, 0.2)],
+			[new THREE.Vector3(CW / 2, 2.9, 0.2), new THREE.Vector3(2.5, 2.9, 0.2), new THREE.Vector3(2.95, 2.9, 0.2), new THREE.Vector3(AX - AW / 2, 2.9, 0.2)],
 			false,
 			'centripetal'
 		);
 		this.writeCurve = new THREE.CatmullRomCurve3(
-			[new THREE.Vector3(AX - AW / 2, 0.62, 0.3), new THREE.Vector3(2.9, 0.42, 0.3), new THREE.Vector3(2.5, 0.5, 0.3), new THREE.Vector3(CW / 2, 0.72, 0.3)],
+			[new THREE.Vector3(AX - AW / 2, 0.92, 0.2), new THREE.Vector3(2.95, 0.92, 0.2), new THREE.Vector3(2.5, 0.92, 0.2), new THREE.Vector3(CW / 2, 0.92, 0.2)],
 			false,
 			'centripetal'
 		);
@@ -146,6 +147,14 @@ export class KvCache {
 		};
 		tube(this.readCurve, m.orangeGlow);
 		tube(this.writeCurve, m.greenGlow);
+		// Each pipe ends in a socket on both machines, so it visibly plugs in.
+		const sockets = new Batch();
+		for (const y of [2.9, 0.92]) {
+			for (const [x, s] of [[CW / 2, 1], [AX - AW / 2, -1]] as const) {
+				sockets.add(new THREE.CylinderGeometry(0.21, 0.25, 0.12, 24), m.steel, { p: [x + s * 0.05, y, 0.2], r: [0, 0, (s * -Math.PI) / 2] });
+			}
+		}
+		this.group.add(sockets.build('kv-sockets'));
 		const pulse = new THREE.SphereGeometry(0.17, 16, 12);
 		const pulseMat = new THREE.MeshStandardMaterial({ color: '#fff0c8', emissive: color.amber, emissiveIntensity: 3 });
 		for (let i = 0; i < 4; i++) {
@@ -162,22 +171,28 @@ export class KvCache {
 		this.rows.forEach((row, i) => {
 			const delay = (i / n) * 0.84;
 			row.kv.forEach((mesh, j) => {
-				const k = seg(write, delay + j * 0.03, delay + j * 0.03 + 0.13);
+				// The value leaves once the key is well clear of the port.
+				const k = seg(write, delay + j * 0.07, delay + j * 0.07 + 0.13);
 				mesh.visible = k > 0;
 				if (!k) return;
 				const home = 0.28 + j * 0.8;
 				const e = inOut(k);
 				const zHome = CD / 2 + 0.1;
+				// Across the front of the cabinet to its own row, then straight in, so it never crosses the rows already filled.
+				const across = smooth(seg(e, 0, 0.74));
+				const zFront = zHome + 0.62;
+				const start = this.made[j];
+				const toFront = start.z + (zFront - start.z) * smooth(seg(e, 0, 0.3));
 				// Reading slides each block out a little: this is the look-back made physical.
 				const wave = bell(read, (i / n) * 0.7, (i / n) * 0.7 + 0.3) * 0.3;
 				mesh.position.set(
-					this.outPort.x + (home - this.outPort.x) * e,
-					this.outPort.y + (row.y - this.outPort.y) * e + Math.sin(e * Math.PI) * 1.1,
-					this.outPort.z + (zHome - this.outPort.z) * e + wave
+					start.x + (home - start.x) * across,
+					start.y + (row.y - start.y) * across + Math.sin(across * Math.PI) * 0.7,
+					toFront + (zHome - toFront) * smooth(seg(e, 0.74, 1)) + wave
 				);
 				mesh.scale.setScalar(outBack(Math.min(1, k * 2.4), 2));
 			});
-			const filled = seg(write, delay + 0.13, delay + 0.17);
+			const filled = seg(write, delay + 0.2, delay + 0.24);
 			const reading = bell(read, (i / n) * 0.7, (i / n) * 0.7 + 0.3);
 			row.lamp.mix(color.amber, color.green, filled, 0.12 + filled * 0.5 + reading * 1.1);
 		});

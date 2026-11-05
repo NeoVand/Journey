@@ -36,6 +36,57 @@ export function machine({ w, h, d, finish = 'cream', name, signH = 0.26, vent = 
 	return group;
 }
 
+interface BlockOptions {
+	/** Along the belt, along the arch, and height. */
+	w: number;
+	d: number;
+	h: number;
+	/** Where the arch runs, as an offset in z from the block's centre, and how big it is. */
+	archZ: number;
+	archD: number;
+	archH: number;
+	/** Close the left end instead of plugging the middle, so things can only come out of the right. */
+	closedLeft?: boolean;
+}
+
+/**
+ * A block a belt really runs into. The arch is cut out of one solid profile and lined in dark, so its mouth has depth.
+ * Its base sits at y = 0 and its belt runs along x.
+ */
+export function archBlock({ w, d, h, archZ, archD, archH, closedLeft = false }: BlockOptions) {
+	const m = mats();
+	const r = 0.16;
+	const a = -archZ - archD / 2;
+	const b = -archZ + archD / 2;
+	// Drawn in (-z, y), so that extruding along local z and turning a quarter lays it along x.
+	const s = new THREE.Shape();
+	s.moveTo(-d / 2, 0);
+	s.lineTo(a, 0);
+	s.lineTo(a, archH);
+	s.lineTo(b, archH);
+	s.lineTo(b, 0);
+	s.lineTo(d / 2, 0);
+	s.lineTo(d / 2, h - r);
+	s.quadraticCurveTo(d / 2, h, d / 2 - r, h);
+	s.lineTo(-d / 2 + r, h);
+	s.quadraticCurveTo(-d / 2, h, -d / 2, h - r);
+	s.closePath();
+	const batch = new Batch();
+	batch.add(extrude(s, w, 0.05, 4, 8), m.cream, { r: [0, Math.PI / 2, 0] });
+	// The lining: everything you can see once you look into the mouth.
+	const t = 0.02;
+	const inner = w - 0.12;
+	batch.add(new THREE.BoxGeometry(inner, t, archD), m.recess, { p: [0, archH - t / 2, archZ] });
+	for (const sz of [-1, 1]) batch.add(new THREE.BoxGeometry(inner, archH, t), m.recess, { p: [0, archH / 2, archZ + (sz * (archD - t)) / 2] });
+	if (closedLeft) {
+		batch.add(rbox(0.14, archH + 0.04, archD + 0.04, 0.03, 2), m.cream, { p: [-w / 2 + 0.07, (archH + 0.04) / 2, archZ] });
+		batch.add(new THREE.BoxGeometry(t, archH, archD), m.recess, { p: [-w / 2 + 0.15, archH / 2, archZ] });
+	} else {
+		batch.add(new THREE.BoxGeometry(0.04, archH, archD), m.recess, { p: [0, archH / 2, archZ] });
+	}
+	return batch.build('arch-block');
+}
+
 /** A floating porcelain island centred on its own origin, with its top at y = 0. */
 export function islandAt(w: number, d: number, thickness = 0.6) {
 	const n = 12;

@@ -151,8 +151,20 @@ export class Harness {
 		const shell = extrude(profile, HD, 0.085, 6, 10);
 		b.add(shell, m.cream, { p: [0, midY, 0] });
 
-		// Interior and back wall, dark so drawers read against it.
-		b.add(rbox(OPEN_W + 0.08, OPEN_H + 0.08, HD - 0.3, 0.02, 1), m.recess, { p: [0, OPEN_Y, -0.1] });
+		// A real cavity, dark so drawers read against it, with a bay for each drawer: nothing stands in a tray's way as it slides out.
+		const BACK = -0.98;
+		const LIP = HD / 2 - 0.12;
+		const deep = LIP - BACK;
+		const midZ = (LIP + BACK) / 2;
+		const t = 0.012;
+		b.add(new THREE.BoxGeometry(OPEN_W, OPEN_H, 0.03), m.recess, { p: [0, OPEN_Y, BACK] });
+		for (const s of [-1, 1]) {
+			b.add(new THREE.BoxGeometry(t, OPEN_H, deep), m.recess, { p: [s * (OPEN_W / 2 - t / 2), OPEN_Y, midZ] });
+			b.add(new THREE.BoxGeometry(OPEN_W, t, deep), m.recess, { p: [0, OPEN_Y + s * (OPEN_H / 2 - t / 2), midZ] });
+		}
+		for (let row = 1; row < ROWS; row++) {
+			b.add(new THREE.BoxGeometry(OPEN_W, 0.016, deep), m.recess, { p: [0, OPEN_Y + OPEN_H / 2 - ROW_H * row, midZ] });
+		}
 
 		// Metal reveal lining the opening.
 		const trimOuter = roundedRect(OPEN_W + 0.1, OPEN_H + 0.1, 0.1);

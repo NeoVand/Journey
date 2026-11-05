@@ -469,7 +469,7 @@
 	</section>
 
 	<section data-beat class="beat" style:--h="400vh">
-		<article class="pin left" data-out="0.72">
+		<article class="pin left" data-out="0.58">
 			<h2>Thousands more behind it</h2>
 			<p>
 				Your sentence is only the tail of the request. Instructions and tool schemas count too, and turn one comes to
@@ -657,8 +657,8 @@
 		<article class="pin left tight" data-in="0.885" data-out="0.985" data-fade="0.014">
 			<h2>One score for every word</h2>
 			<p>
-				After the last layer, only the final position matters. One more normalize, then the LM head gives a raw score to every entry in the
-				vocabulary. Those scores are all the model ever outputs. <small>Scores on the map are illustrative.</small>
+				After the last layer, only the final position matters. One more normalize, then the LM head gives a raw score, called a logit, to every entry in the
+				vocabulary. Those logits are all the model ever outputs. <small>Scores on the map are illustrative.</small>
 			</p>
 			<p>The time until they exist is the time to first token, usually 0.3 to 2 seconds for a prompt this size.</p>
 			<Blueprint compact stage={part} />
@@ -666,10 +666,10 @@
 	</section>
 
 	<section data-beat class="beat" style:--h="520vh">
-		<article class="pin right" data-out="0.86">
+		<article class="pin right" data-in="0.1" data-out="0.86">
 			<h2>One token is chosen</h2>
 			<p>
-				This is the only probabilistic step in the whole journey. The scores become probabilities. Temperature reshapes them,
+				This is the only probabilistic step in the whole journey. The highest logits land here and become probabilities. Temperature reshapes them,
 				and top-p or top-k cut off the unlikely tail.
 			</p>
 			<p>Then a random draw picks one. Coding agents run near temperature 0 or a provider default, so the wheel is heavily weighted, but it is still a wheel.</p>
@@ -716,18 +716,16 @@
 	</section>
 
 	<section data-beat class="beat" style:--h="460vh">
-		<article class="pin top-band" data-in="0.05" data-out="0.56">
+		<article class="pin right" data-in="0.05" data-out="0.56">
 			<h2>The model has no hands</h2>
-			<div class="cols">
-				<p>
-					The harness buffers the stream until the tool-call block closes, then parses it. Only now does anyone know
-					the full call.
-				</p>
-				<p>
-					And it is only a request, the way a web form is a request to a server. The model cannot read a file. It can only write the
-					text “please read this file.” Everything after this decides whether to honor it.
-				</p>
-			</div>
+			<p>
+				The tube ends at your laptop, in the harness. It buffers the stream until the tool-call block closes, then parses it. Only now does anyone know
+				the full call.
+			</p>
+			<p>
+				And it is only a request, the way a web form is a request to a server. The model cannot read a file. It can only write the
+				text “please read this file.” Everything after this decides whether to honor it.
+			</p>
 		</article>
 	</section>
 
@@ -916,7 +914,7 @@
 	/* Each card carries the colours of the world it stands in. */
 	.pin {
 		--veil: 214 234 251;
-		--veil-a: 0.82;
+		--veil-a: 0.93;
 	}
 	.pin:global([data-tone='sky']) {
 		--ink: #101a30;
@@ -934,7 +932,7 @@
 		--green: #41e58a;
 		--rule: rgb(243 247 255 / 0.22);
 		--veil: 6 15 38;
-		--veil-a: 0.9;
+		--veil-a: 0.97;
 	}
 
 	.bar {

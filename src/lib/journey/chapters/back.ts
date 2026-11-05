@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { Batch } from '../kit/batch';
-import { extrude, rbox, roundedRect } from '../kit/geometry';
+import { extrude, rbox, roundedRect, ring } from '../kit/geometry';
 import { color, Lamp, mats } from '../kit/materials';
-import { arcPoint, Card, curve, hazard, islandAt, machine, panel, shadowOn, stripes, tube } from '../kit/machines';
+import { archBlock, arcPoint, Card, curve, hazard, islandAt, machine, panel, shadowOn, stripes, tube } from '../kit/machines';
 import { font, Surface } from '../kit/print';
 import { createSign } from '../kit/parts';
 import { bell, hash, inOut, lerp, outBack, seg, smooth } from '../kit/math';
@@ -22,6 +22,8 @@ const WY = -15;
 const GATE_X = [-57, -53.5, -50, -46.5];
 const TRACK_Z = 0.7;
 const CARTY = GY + 0.2;
+const DOCK_X = -60.6;
+const DOCK_H = 2.3;
 const WX = -24.5;
 const C_POS: V3 = [-20, 6, -4];
 const M_POS: V3 = [-48, 9, -4];
@@ -31,11 +33,11 @@ const F_POS: V3 = [-144, 18, -4];
 
 const rel = (o: V3, x: number, y: number, z: number): V3 => [o[0] + x, o[1] + y, o[2] + z];
 
-const S_HATCH = { az: 17, el: 14, target: [1.6, 1.5, 0] as V3, radius: 8.6, ry: 3.1, wide: box(0.02, 0.4, 0.96, 0.56), tall: TALL };
-const S_GATES = { az: -24, el: 17, target: [-51.6, GY + 1.9, 0.9] as V3, radius: 6.7, ry: 4.6, wide: box(0.46, 0.08, 0.54, 0.88), tall: TALL };
-const S_BOX = { az: 9, el: 12, target: [-16.2, WY + 3, 2.2] as V3, radius: 8, ry: 4.7, wide: box(0, 0.05, 0.6, 0.92), tall: TALL };
+const S_HATCH = { az: 17, el: 12, target: [1.4, 3.2, 0] as V3, radius: 8.6, ry: 4.4, wide: box(0.01, 0.04, 0.58, 0.92), tall: TALL };
+const S_GATES = { az: -20, el: 17, target: [-52.8, GY + 2.2, 0.9] as V3, radius: 8.4, ry: 5.7, wide: box(0.47, 0.06, 0.52, 0.9), tall: TALL };
+const S_BOX = { az: 9, el: 12, target: [-16.2, WY + 3.7, 2.2] as V3, radius: 8.8, ry: 5.4, wide: box(0, 0.05, 0.6, 0.92), tall: TALL };
 const S_FIND = { az: -8, el: 13, target: [WX - 4, WY + 2.8, 0.8] as V3, radius: 7.2, ry: 4.3, wide: RIGHT, tall: TALL };
-const S_EDIT = { az: 4, el: 8, target: [WX - 1.3, WY + 3.1, 1.5] as V3, radius: 5.1, ry: 3.7, wide: LEFT, tall: TALL };
+const S_EDIT = { az: 4, el: 8, target: [WX - 1.3, WY + 2.4, 1.5] as V3, radius: 5.1, ry: 3.7, wide: LEFT, tall: TALL };
 const S_TEST = { az: 10, el: 11, target: [WX + 7.6, WY + 2.5, 1.5] as V3, radius: 3.9, ry: 3.5, wide: RIGHT, tall: TALL };
 const S_HOME = { az: 24, el: 15, target: [1.2, 1.9, 0.6] as V3, radius: 6.1, ry: 4.15, wide: box(0, 0.12, 0.58, 0.82), tall: TALL };
 const S_COMPACT = { az: 14, el: 15, target: rel(C_POS, 0, 2.6, 0), radius: 5.9, ry: 3.8, wide: RIGHT, tall: TALL };
@@ -179,10 +181,11 @@ export class Back {
 		[-0.6, 3.3, -3.4],
 		[-8, 0, -7.6],
 		[-30, -7, -8.8],
-		[-54, -10.4, -6.2],
-		[-58.4, GY + 0.9, -3],
-		[-60, GY + 0.5, TRACK_Z - 1.6],
-		[-60.6, GY + 0.28, TRACK_Z - 0.82]
+		[-50, -7.5, -9.4],
+		[-58, -8, -6.8],
+		[DOCK_X - 0.2, GY + 3.9, TRACK_Z - 2.6],
+		[DOCK_X, GY + 3, TRACK_Z - 0.5],
+		[DOCK_X, GY + DOCK_H + 0.02, TRACK_Z]
 	]);
 	private carrier = new THREE.Group();
 	private gates: Gate[] = [];
@@ -207,6 +210,10 @@ export class Back {
 	private shelfHits: THREE.Mesh[] = [];
 	private hitMat!: THREE.MeshStandardMaterial;
 	private lens = new THREE.Group();
+	private callStands = new Map<Card, THREE.Object3D>();
+	private docsStand!: THREE.Object3D;
+	private monitorFoot!: THREE.Object3D;
+	private trayFoot!: THREE.Object3D;
 	private callSearch = new Card(2.7, 1.4, 300);
 	private callEdit = new Card(2.7, 1.4, 300);
 	private callTest = new Card(2.7, 1.4, 300);
@@ -286,6 +293,26 @@ export class Back {
 		this.carrier.add(this.topCard.mesh);
 		g.add(this.carrier);
 		g.add(tube(this.gatePath, 0.09, m.orangeGlow, 200));
+		const fromSky = createSign('From the provider', 0.24);
+		fromSky.position.set(3.3, 6.7, -0.75);
+		g.add(fromSky);
+		const fromArm = new Batch();
+		fromArm.add(rbox(0.5, 0.05, 0.05, 0.02, 1), m.steelSoft, { p: [1.86, 6.7, -0.75] });
+		g.add(fromArm.build('from-arm'));
+
+		// The tube from the detokenizer, arriving: this is where the text was going all along. It stays, because it keeps being used.
+		const roof = 3.9;
+		const glass = new THREE.Mesh(
+			new THREE.CylinderGeometry(0.5, 0.5, 44, 36, 1, true),
+			new THREE.MeshPhysicalMaterial({ color: '#7fb4ea', transparent: true, opacity: 0.42, roughness: 0.08, clearcoat: 1, depthWrite: false, side: THREE.DoubleSide })
+		);
+		glass.position.set(1.1, roof + 22, -0.75);
+		glass.renderOrder = 4;
+		this.group.add(glass);
+		const rings = new Batch();
+		rings.add(ring(0.68, 0.52, 0.2), m.steel, { p: [1.1, roof + 0.1, -0.75] });
+		for (const y of [6.7, 12.7, 18.7]) rings.add(ring(0.6, 0.52, 0.08), m.steel, { p: [1.1, y, -0.75] });
+		this.group.add(rings.build('home-tube'));
 	}
 
 	/* ---- the gates ---- */
@@ -298,6 +325,18 @@ export class Back {
 		const shade = createCastShadow(22, 11, 0.16);
 		shade.position.set(-51, GY - 8, 0.4);
 		g.add(shade);
+
+		// Where the pipe lands: calls arrive through the roof and leave on carts through the open end.
+		const dock = archBlock({ w: 3, d: 3.2, h: DOCK_H, archZ: 0, archD: 1.5, archH: 1.86, closedLeft: true });
+		dock.position.set(DOCK_X, GY, TRACK_Z);
+		g.add(dock);
+		shadowOn(g, DOCK_X, GY, TRACK_Z, 3.2, 3.4, 0.34);
+		const dockSign = createSign('Parsed calls', 0.24);
+		dockSign.position.set(DOCK_X, GY + DOCK_H - 0.26, TRACK_Z + 1.63);
+		g.add(dockSign);
+		const socket = new Batch();
+		socket.add(new THREE.CylinderGeometry(0.2, 0.26, 0.2, 24), m.steel, { p: [DOCK_X, GY + DOCK_H + 0.1, TRACK_Z] });
+		g.add(socket.build('dock-socket'));
 
 		const b = new Batch();
 		b.add(rbox(20, 0.1, 1.1, 0.03, 2), m.rubber, { p: [-52, GY + 0.05, TRACK_Z] });
@@ -349,7 +388,7 @@ export class Back {
 		// Glass walls on steel posts.
 		const W = 26;
 		const D = 11;
-		const H = 7;
+		const H = 8;
 		const x0 = WX - W / 2;
 		const x1 = WX + W / 2;
 		const f = new Batch();
@@ -371,11 +410,15 @@ export class Back {
 		};
 		pane(W, H, [WX, WY + H / 2, -D / 2]);
 		pane(D, H, [x1, WY + H / 2, 0], Math.PI / 2);
+		// Where the green pipe leaves: results go out of the sandbox through a fitting, not through the glass.
+		const gland = new Batch();
+		gland.add(ring(0.24, 0.1, 0.16, 28), m.steel, { p: [x1, -14.3, 3.45], r: [0, 0, Math.PI / 2] });
+		g.add(gland.build('pipe-gland'));
 		pane(D, H, [x0, WY + H / 2, 0], Math.PI / 2);
 
 		const signFor = (text: string) => {
 			const s = createSign(text, 0.3);
-			s.position.set(WX + 8, WY + H + 0.5, D / 2 - 0.5);
+			s.position.set(WX + 8, WY + H + 0.34, D / 2 - 0.1);
 			this.signs.add(s);
 			return s;
 		};
@@ -410,8 +453,10 @@ export class Back {
 		const bt = this.sandboxBeat;
 		bt.add(this.docsCard.mesh);
 		const dstand = new Batch();
-		dstand.add(rbox(3.4, 0.12, 1, 0.04, 2), m.steelSoft, { p: [WX + 3.2, WY + 0.06, 3.4] });
-		bt.add(dstand.build('docs-stand'));
+		dstand.add(rbox(3.4, 0.12, 1, 0.04, 2), m.steelSoft, { p: [0, 0.06, 0] });
+		this.docsStand = dstand.build('docs-stand');
+		this.docsStand.position.set(WX + 3.2, WY, 3.4);
+		bt.add(this.docsStand);
 		this.proc = new Lamp(rbox(1, 1, 1, 0.14, 3), color.orange, 0.5);
 		this.proc.mesh.position.set(WX + 7.6, WY + 0.8, 3.4);
 		bt.add(this.proc.mesh);
@@ -474,12 +519,15 @@ export class Back {
 			card.mesh.position.set(x, WY + 0.95, 3.5);
 			card.mesh.rotation.x = -0.28;
 			const st = new Batch();
-			st.add(rbox(card.w + 0.2, 0.12, 0.7, 0.04, 2), m.steelSoft, { p: [x, WY + 0.06, 3.46] });
-			g.add(st.build('call-stand'), card.mesh);
+			st.add(rbox(card.w + 0.2, 0.12, 0.7, 0.04, 2), m.steelSoft, { p: [0, 0.06, 0] });
+			const stand = st.build('call-stand');
+			stand.position.set(x, WY, 3.46);
+			this.callStands.set(card, stand);
+			g.add(stand, card.mesh);
 		};
 		small(this.callSearch, sx);
 		small(this.callEdit, WX - 4.25);
-		small(this.callTest, WX + 7.1);
+		small(this.callTest, WX + 6.1);
 
 		/* -- the file on its easel -- */
 		const ex = WX;
@@ -489,11 +537,11 @@ export class Back {
 		this.easelBase.position.set(ex, WY, -0.9);
 		g.add(this.easelBase);
 		const easel = new Batch();
-		for (const s of [-1, 1]) easel.add(rbox(0.12, 6.4, 0.1, 0.03, 2), m.steel, { p: [ex + s * 2.1, 3.2, -1.12], r: [-0.1, 0, 0] });
+		for (const s of [-1, 1]) easel.add(rbox(0.12, 5.8, 0.1, 0.03, 2), m.steel, { p: [ex + s * 2.1, 2.9, -1.12], r: [-0.1, 0, 0] });
 		this.easel = easel.build('code-easel');
 		this.easel.position.y = WY;
 		g.add(this.easel);
-		shadowOn(g, ex, WY, -0.9, 5.7, 1.2);
+		shadowOn(this.easelBase, 0, 0, 0, 5.7, 1.2);
 		this.code.mesh.position.set(ex, WY + 3.3, -0.8);
 		this.code.mesh.rotation.x = -0.1;
 		g.add(this.code.mesh);
@@ -506,26 +554,32 @@ export class Back {
 		mon.add(extrude(roundedRect(5.3, 4, 0.2), 0.26, 0.06, 4, 10), new THREE.MeshStandardMaterial({ color: '#dfe3ea', roughness: 0.62, metalness: 0.08 }), { p: [tx, WY + 3.2, -1.1] });
 		mon.add(rbox(0.7, 1.3, 0.34, 0.08, 3), m.steelSoft, { p: [tx, WY + 0.65, -1.2] });
 		const monBase = new Batch();
-		monBase.add(rbox(3, 0.12, 1.3, 0.05, 3), m.steelSoft, { p: [tx, WY + 0.06, -1.1] });
-		g.add(monBase.build('monitor-base'));
+		monBase.add(rbox(3, 0.12, 1.3, 0.05, 3), m.steelSoft, { p: [0, 0.06, 0] });
+		this.monitorFoot = monBase.build('monitor-base');
+		this.monitorFoot.position.set(tx, WY, -1.1);
+		shadowOn(this.monitorFoot, 0, 0, 0, 3.2, 1.4);
+		g.add(this.monitorFoot);
 		g.add(this.monitor);
 		this.monitor.position.set(tx, WY + 0.1, -1.1);
 		const built = mon.build('monitor');
 		built.position.set(-tx, -WY - 0.1, 1.1);
 		this.monitor.add(built);
-		shadowOn(g, tx, WY, -1.1, 3.2, 1.4);
 		const face = panel(5, 3.71, this.term, 1);
 		face.position.set(0, 3.1, 0.135);
 		this.monitor.add(face);
 		this.exitLamp = new Lamp(rbox(0.14, 0.14, 0.04, 0.05, 2), color.amber, 0.2);
-		this.exitLamp.mesh.position.set(2.2, 0.98, 0.16);
+		this.exitLamp.mesh.position.set(2.36, 1.17, 0.14);
 		this.monitor.add(this.exitLamp.mesh);
 
 		g.add(this.result.mesh);
 		const tray = new Batch();
-		tray.add(rbox(2.2, 0.12, 1.4, 0.05, 2), m.steelSoft, { p: [-15.2, WY + 0.06, 3.6] });
 		tray.add(new THREE.CylinderGeometry(0.28, 0.32, 0.5, 24), m.steel, { p: [-13.9, WY + 0.34, 3.6], r: [0, 0, Math.PI / 2] });
 		g.add(tray.build('return-tray'));
+		const trayFoot = new Batch();
+		trayFoot.add(rbox(2.7, 0.12, 0.7, 0.04, 2), m.steelSoft, { p: [0, 0.06, 0] });
+		this.trayFoot = trayFoot.build('result-stand');
+		this.trayFoot.position.set(-15.55, WY, 3.46);
+		g.add(this.trayFoot);
 		this.slug = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.5, 6, 16), new THREE.MeshStandardMaterial({ color: '#b8ffd6', emissive: color.green, emissiveIntensity: 2.2 }));
 		this.slug.visible = false;
 		g.add(this.slug);
@@ -847,8 +901,9 @@ export class Back {
 
 		// The two runs that came back with a verdict.
 		[5, 7, 8].forEach((i) => {
-			const lamp = new Lamp(rbox(0.22, 0.08, 0.22, 0.03, 2), i === 5 ? color.red : color.green, 0.1);
-			lamp.mesh.position.set(cx + x0 + i * P, cy + 1.2, cz + 1.17);
+			const lamp = new Lamp(rbox(0.2, 0.2, 0.05, 0.03, 2), i === 5 ? color.red : color.green, 0.1);
+			lamp.mesh.position.set(cx + x0 + i * P + 0.46, cy + 0.98, cz + 1.365);
+			lamp.mesh.rotation.x = -0.5;
 			g.add(lamp.mesh);
 			this.barLamps.push(lamp);
 		});
@@ -1189,11 +1244,11 @@ export class Back {
 		/* ---- landing ---- */
 		if (T < 20.2) {
 			this.rain.forEach((slip, i) => {
-				const k = seg(T, 19.04 + i * 0.03, 19.2 + i * 0.03);
+				const k = seg(T, 19.08 + i * 0.03, 19.26 + i * 0.03);
 				slip.visible = k > 0 && k < 1;
 				if (!slip.visible) return;
-				slip.position.set(1.1 + Math.sin(i * 2.3) * 0.4, lerp(14, 3.9, k * k), -0.75 + Math.cos(i * 1.6) * 0.3);
-				slip.rotation.set(k * 6 + i, k * 4 + i * 2, 0);
+				slip.position.set(1.1 + Math.sin(i * 2.3) * 0.1, lerp(15, 4, k * k), -0.75 + Math.cos(i * 1.6) * 0.08);
+				slip.rotation.set(Math.sin(k * 7 + i) * 0.5, Math.sin(k * 5 + i * 2) * 0.6, Math.sin(k * 4 + i) * 0.2);
 			});
 			const pop = outBack(seg(T, 19.3, 19.42), 1.6);
 			const go = inOut(seg(T, 19.68, 20.02));
@@ -1206,7 +1261,7 @@ export class Back {
 					// Up and over the machine's roof, and down onto the pipe behind it, riding high enough to clear it.
 					const JOIN = 0.14;
 					this.b.copy(this.gatePath.getPointAt(Math.max(go, JOIN)));
-					this.b.y += 0.74;
+					this.b.y += 0.82;
 					if (go < JOIN) {
 						const k = inOut(go / JOIN);
 						const u = 1 - k;
@@ -1218,7 +1273,7 @@ export class Back {
 						);
 					} else this.carrier.position.copy(this.b);
 				}
-				this.carrier.scale.setScalar(Math.max(0.001, lerp(pop * 0.8, 0.5, go)));
+				this.carrier.scale.setScalar(Math.max(0.001, lerp(pop * 0.8, 0.5, go) * (1 - smooth(seg(go, 0.86, 0.99)))));
 			}
 		} else this.carrier.visible = false;
 
@@ -1271,6 +1326,9 @@ export class Back {
 			const k = outBack(seg(T, a, a + 0.06), 1.8) * (1 - seg(T, b - 0.05, b));
 			card.mesh.visible = k > 0.001;
 			card.mesh.scale.setScalar(Math.max(0.001, k));
+			const stand = this.callStands.get(card)!;
+			stand.visible = k > 0.001;
+			stand.scale.set(Math.max(0.001, k), 1, Math.max(0.001, k));
 		};
 		callPop(this.callSearch, 22.06, 22.96);
 		callPop(this.callEdit, 23.06, 23.96);
@@ -1285,12 +1343,15 @@ export class Back {
 		this.easel.visible = legs > 0.002;
 		this.easel.scale.y = Math.max(0.002, legs);
 		// Its foot draws in along the ground after it, so the next card has clear space.
-		const foot = 1 - inOut(seg(T, 24, 24.05));
+		const foot = inOut(seg(T, 22.44, 22.5)) * (1 - inOut(seg(T, 24, 24.05)));
 		this.easelBase.visible = foot > 0.001;
 		this.easelBase.scale.set(Math.max(0.001, foot), 1, Math.max(0.001, foot));
 		// The monitor lies back above its foot until it is needed, then swings up on its hinge and settles.
 		const swing = outBack(seg(T, 24.0, 24.1), 1.3);
 		const lying = Math.max(0, 1 - swing);
+		const monFoot = Math.max(0.001, inOut(seg(T, 23.92, 23.98)));
+		this.monitorFoot.scale.set(monFoot, 1, monFoot);
+		this.monitorFoot.visible = T > 23.92;
 		this.monitor.visible = T > 23.96;
 		this.monitor.rotation.x = -1.5 * (1 - swing);
 		this.monitor.position.y = WY + 0.1 + lying * 0.42;
@@ -1300,6 +1361,8 @@ export class Back {
 		if (T > 20.6 && T < 22.1) {
 			const k = outBack(seg(T, 21.08, 21.24), 1.4);
 			this.docsCard.mesh.visible = T > 21.06;
+			const standK = Math.max(0.001, inOut(seg(T, 21.02, 21.08)));
+			this.docsStand.scale.set(standK, 1, standK);
 			this.a.set(WX + 3.2, WY + 7.6, 3.4);
 			this.b.set(WX + 3.2, WY + 2.1, 3.4);
 			this.docsCard.mesh.position.lerpVectors(this.a, this.b, Math.min(1, k));
@@ -1360,7 +1423,7 @@ export class Back {
 				this.code.mesh.position.copy(this.a);
 				this.code.mesh.scale.setScalar(Math.max(0.15, k));
 			}
-			this.drawCode(T < 22.74 ? 0 : T < 23.26 ? 1 : T < 23.7 ? 2 : 3);
+			this.drawCode(T < 22.62 ? 0 : T < 23.26 ? 1 : T < 23.7 ? 2 : 3);
 			// The new version goes to a temporary file first, in plain view, then takes the old one's name.
 			const rise = seg(T, 23.46, 23.6);
 			const swap = T >= 23.7;
@@ -1368,7 +1431,7 @@ export class Back {
 			if (this.tmp.mesh.visible) {
 				this.drawTmp(T > 23.66);
 				const e = inOut(rise);
-				this.tmp.mesh.position.set(WX + lerp(-2, 0, e), WY + lerp(1.6, 3.3, e), lerp(0.9, -0.76, e));
+				this.tmp.mesh.position.set(WX + lerp(-2, 0, e), WY + lerp(1.72, 3.3, e), lerp(0.9, -0.76, e));
 				this.tmp.mesh.rotation.x = -0.1;
 				this.tmp.mesh.scale.setScalar(lerp(0.55, 1, e));
 			}
@@ -1386,12 +1449,15 @@ export class Back {
 		}
 		const pr = seg(T, 24.5, 24.64);
 		const toTray = seg(T, 24.76, 24.92);
+		const trayK = inOut(seg(T, 24.7, 24.78)) * (1 - inOut(seg(T, 25, 25.06)));
+		this.trayFoot.visible = trayK > 0.001;
+		this.trayFoot.scale.set(Math.max(0.001, trayK), 1, Math.max(0.001, trayK));
 		this.result.mesh.visible = pr > 0 && T < 25.08;
 		if (this.result.mesh.visible) {
 			this.a.set(WX + 9.9, WY + 1.0, 1.4);
-			this.b.set(-15.3, WY + 0.95, 3.5);
+			this.b.set(-15.55, WY + 0.95, 3.5);
 			this.result.mesh.position.lerpVectors(this.a, this.b, inOut(toTray));
-			this.result.mesh.rotation.set(-0.22, 0, 0);
+			this.result.mesh.rotation.set(-0.28, 0, 0);
 			this.result.mesh.scale.setScalar(Math.max(0.001, outBack(pr, 1.6) * (1 - seg(T, 25, 25.06))));
 		}
 		// Into the pipe, and home. This is the pipe from the very first frame.
@@ -1444,7 +1510,7 @@ export class Back {
 			if (out > 0) {
 				this.summary.mesh.position.set(cx + 1.5, cy + lerp(0.8, 2.3, Math.min(1, out)), cz + 2.5);
 				this.summary.mesh.rotation.set(-0.08, -0.12, 0);
-				this.summary.mesh.scale.setScalar(Math.max(0.001, out));
+				this.summary.mesh.scale.setScalar(Math.max(0.001, out * 0.88));
 			}
 		}
 
