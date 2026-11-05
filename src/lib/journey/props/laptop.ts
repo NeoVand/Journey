@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { hitBox } from '../poke';
 import { Batch } from '../kit/batch';
 import { extrude, rbox, roundedRect } from '../kit/geometry';
 import { mats } from '../kit/materials';
@@ -29,6 +30,7 @@ const LAYOUT: Key[][] = [
 export class Laptop {
 	group = new THREE.Group();
 	lid = new THREE.Group();
+	hit: THREE.Mesh;
 	private screen: Surface;
 	private screenMat: THREE.MeshBasicMaterial;
 	private pressUniform = { value: new Float32Array(72) };
@@ -77,6 +79,9 @@ export class Laptop {
 
 		this.lid.position.set(0, BASE_H + 0.02, -D / 2 + 0.03);
 		this.group.add(this.lid);
+		this.hit = hitBox(W, LID_H + 0.3, D + 0.4);
+		this.hit.position.y = (LID_H + 0.3) / 2;
+		this.group.add(this.hit);
 	}
 
 	private buildKeys(width: number, depth: number, z: number) {

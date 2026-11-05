@@ -158,6 +158,10 @@ export class Cluster {
 		return this.forward.spinWheel(reduced);
 	}
 
+	get wheelDisc() {
+		return this.forward.wheelDisc;
+	}
+
 	update(T: number, time: number) {
 		this.forward.update(T, time);
 		// Things leave the frame when the camera leaves them. The one exception is the dive, under the veil at its darkest.

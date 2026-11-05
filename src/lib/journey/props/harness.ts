@@ -3,7 +3,9 @@ import { Batch } from '../kit/batch';
 import { chamferRect, extrude, rbox, roundedRect } from '../kit/geometry';
 import { Lamp, color, mats } from '../kit/materials';
 import { drawIcon, Label, Surface, font, roundRectPath } from '../kit/print';
+import { Card } from '../kit/machines';
 import { plinth, screw, ventX } from '../kit/parts';
+import { hitBox } from '../poke';
 
 export const HW = 2.7;
 export const HH = 3.7;
@@ -23,14 +25,40 @@ const OPEN_Y = 1.62;
 const ROWS = 4;
 const ROW_H = OPEN_H / ROWS;
 const DRAWER_TRAVEL = 1.25;
+/** How far a drawer comes out when the reader pulls it. */
+const PULL = 0.96;
+/** A sheet may only stand once its drawer is this far out, or it would swing into the drawer above. */
+const CLEAR = 0.9;
+/** How far back a standing sheet leans. */
+const LEAN = 0.14;
+
+/** A number with a little give in it, so things arrive like objects rather than slides. */
+class Give {
+	x = 0;
+	private v = 0;
+
+	to(goal: number, stiff: number, damp: number, dt: number) {
+		this.v += ((goal - this.x) * stiff - this.v * damp) * dt;
+		this.x = Math.max(0, this.x + this.v * dt);
+	}
+}
 
 export const DRAWER_NAMES = ['Instructions', 'Environment', 'Tools', 'Conversation'] as const;
 const DRAWER_ICONS = ['doc', 'cube', 'wrench', 'chat'];
+/** What stands up out of a drawer when the reader pulls it open to look. */
+const DRAWER_PAPER = [
+	['Who the agent is', 'Your project’s rules'],
+	['Folder, git branch', 'OS, date, shell'],
+	['What it may ask for', 'Built in, or from MCP'],
+	['Your prompt', 'Just that, on turn one']
+];
 
 class Drawer {
 	group = new THREE.Group();
 	lamp: Lamp;
 	sheet: THREE.Group;
+	hit: THREE.Mesh;
+	sheetHit: THREE.Object3D;
 	private plate: Surface;
 	y: number;
 
@@ -109,10 +137,42 @@ class Drawer {
 
 		this.sheet = new THREE.Group();
 		this.group.add(this.sheet);
+
+		// From this low the inside of a tray can't be seen, so its top sheet stands up to be read.
+		const card = new Card(1.6, 1, 330, 0.012);
+		card.mesh.position.y = 0.5;
+		card.draw((c, w, h) => {
+			c.fillStyle = color.amber;
+			c.fillRect(0, 0, 16, h);
+			c.textBaseline = 'middle';
+			// Both lines in the top half, because the drawer's front hides the rest.
+			const line = (text: string, y: number, weight: number, ink: string) => {
+				let size = h * 0.135;
+				c.font = `${weight} ${size}px ${font.sans}`;
+				while (c.measureText(text).width > w - 70) c.font = `${weight} ${--size}px ${font.sans}`;
+				c.fillStyle = ink;
+				c.fillText(text, 44, y);
+			};
+			line(DRAWER_PAPER[index][0], h * 0.15, 700, color.ink);
+			line(DRAWER_PAPER[index][1], h * 0.33, 600, '#46546e');
+		});
+		this.sheet.add(card.mesh);
+		this.sheetHit = card.mesh;
+		// Hinged at the near edge of the pile, lying on top of it until it's called for.
+		this.sheet.position.set(0, -fh / 2 + 0.16, -0.16);
+		this.sheet.visible = false;
+
+		// The tray as well as the front, so a drawer that's out can be pushed back wherever you press it.
+		this.hit = hitBox(fw, fh, 1.7);
+		this.hit.position.z = -0.72;
+		this.group.add(this.hit);
 	}
 
-	update(open: number) {
+	update(open: number, stand = 0) {
 		this.group.position.set(0, this.y, HD / 2 - 0.06 + open * DRAWER_TRAVEL);
+		this.sheet.visible = stand > 0.01;
+		// Lying flat at 0, leaning back at 1. The spring's overshoot brings it up to plumb and no further.
+		if (this.sheet.visible) this.sheet.rotation.x = -(LEAN + (1 - Math.min(stand, 1.1)) * (Math.PI / 2 - LEAN));
 	}
 }
 
@@ -245,6 +305,45 @@ export class Harness {
 		});
 	}
 
+	/** Each drawer's front and tray, then each drawer's sheet: index modulo the number of drawers says which. */
+	get drawerHits() {
+		return [...this.drawers.map((d) => d.hit), ...this.drawers.map((d) => d.sheetHit)];
+	}
+
+	/** The drawer the reader has pulled out, if any. One at a time, as in a real cabinet with an interlock. */
+	pulled = -1;
+	private slide = [new Give(), new Give(), new Give(), new Give()];
+	private stand = [new Give(), new Give(), new Give(), new Give()];
+	private shut = [new Give(), new Give(), new Give(), new Give()];
+	private out = [0, 0, 0, 0];
+	private lastSettle = 0;
+
+	pull(i: number) {
+		this.pulled = this.pulled === i ? -1 : i;
+	}
+
+	/**
+	 * Keeps the moving parts out of each other's way by doing things in order. Other drawers go in first,
+	 * even one the story has open, then this one comes out, and only then does its sheet stand. Going back,
+	 * the sheet lies down before the drawer moves.
+	 */
+	private settlePulls(opens: number[]) {
+		const now = performance.now();
+		const dt = Math.min(0.05, (now - this.lastSettle) / 1000);
+		this.lastSettle = now;
+		this.drawers.forEach((_, i) => {
+			const mine = this.pulled === i;
+			const inTheWay = this.out.some((o, j) => j !== i && o > 0.2);
+			const goal = mine ? (inTheWay ? 0 : PULL) : this.stand[i].x > 0.02 ? PULL : 0;
+			this.slide[i].to(goal, 110, 13, dt);
+			this.stand[i].to(mine && this.slide[i].x > CLEAR ? 1 : 0, 170, 17, dt);
+			// Nothing the story has open comes back out over a sheet that's still lying down.
+			const sheetUp = this.stand.some((sheet, j) => j !== i && sheet.x > 0.02);
+			this.shut[i].to((this.pulled >= 0 && !mine) || sheetUp ? 1 : 0, 110, 16, dt);
+			this.out[i] = Math.max(opens[i] * (1 - Math.min(1, this.shut[i].x)), this.slide[i].x);
+		});
+	}
+
 	/**
 	 * opens: 0..1(+) per drawer. wake: 0..1 powers the machine up.
 	 * filled: 0..1 per drawer, its lamp goes green once its contents have been taken.
@@ -252,8 +351,9 @@ export class Harness {
 	update(opens: number[], filled: number[], wake: number, time: number, jolt = 0) {
 		// A soft squash when something lands in it. Scale comes from the base, so it stays planted.
 		this.group.scale.set(1 + jolt * 0.016, 1 - jolt * 0.024, 1 + jolt * 0.016);
+		this.settlePulls(opens);
 		this.drawers.forEach((d, i) => {
-			d.update(opens[i]);
+			d.update(this.out[i], this.stand[i].x);
 			d.lamp.mix(color.amber, color.green, filled[i], 0.3 + wake * 0.6 + filled[i] * 0.3);
 		});
 		this.sideLamps.forEach((l, i) => {

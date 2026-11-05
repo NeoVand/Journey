@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { hitBall } from '../poke';
 import { Batch } from '../kit/batch';
 import { extrude, rbox, roundedRect, sweep } from '../kit/geometry';
 import { color, Lamp, mats } from '../kit/materials';
@@ -185,6 +186,10 @@ export class Brain {
 	private foldMat: THREE.MeshPhysicalMaterial;
 	private gears: { mesh: THREE.Object3D; rate: number; phase: number }[] = [];
 	private lamps: Lamp[] = [];
+	hit!: THREE.Mesh;
+	private excited = 0;
+	private extraTurn = 0;
+	private lastUpdate = 0;
 
 	constructor() {
 		// What runs along the folds. One soft band every so often, drifting.
@@ -329,6 +334,11 @@ export class Brain {
 		folds.castShadow = true;
 		folds.receiveShadow = true;
 		this.group.add(folds);
+		folds.geometry.computeBoundingSphere();
+		const round = folds.geometry.boundingSphere!;
+		this.hit = hitBall(round.radius);
+		this.hit.position.copy(round.center);
+		this.group.add(this.hit);
 	}
 
 	/* ---- a window in the side, with the works turning behind it ---- */
@@ -497,11 +507,21 @@ export class Brain {
 	}
 
 	/** Busy while tokens pour in, otherwise ticking over. */
+	/** Press it and it gets to thinking. */
+	excite() {
+		this.excited = 1;
+	}
+
 	update(T: number, time: number) {
+		const now = performance.now();
+		const dt = Math.min(0.05, (now - this.lastUpdate) / 1000);
+		this.lastUpdate = now;
+		this.excited *= Math.exp(-dt * 0.9);
+		this.extraTurn += this.excited * dt * 7;
 		const busy = smooth(seg(T, 7.2, 7.7));
-		this.pulses.offset.x = -time * 0.05 - T * 0.6;
-		this.foldMat.emissiveIntensity = 0.2 + busy * 0.75;
-		const turn = time * 0.5 + T * 2.2;
+		this.pulses.offset.x = -time * 0.05 - T * 0.6 - this.extraTurn * 0.4;
+		this.foldMat.emissiveIntensity = 0.2 + busy * 0.75 + this.excited * 1.5;
+		const turn = time * 0.5 + T * 2.2 + this.extraTurn;
 		this.gears.forEach((g) => {
 			g.mesh.rotation.z = turn * g.rate + g.phase;
 		});

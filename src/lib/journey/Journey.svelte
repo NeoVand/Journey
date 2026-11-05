@@ -19,6 +19,9 @@
 	let harness = $state<HarnessId>('claude');
 	let form = $state(1);
 	let drawer = $state(-1);
+	/** A drawer the reader has pulled out takes over from the story's. */
+	let pulled = $state(-1);
+	const shownDrawer = $derived(pulled >= 0 ? pulled : drawer);
 	let check = $state(-1);
 	let gate = $state(-1);
 	let scrolled = $state(false);
@@ -337,6 +340,31 @@
 			};
 			window.addEventListener('pointermove', move, { passive: true });
 
+			// A press on the scene itself. A drag or a scroll isn't one, and neither is anything aimed at the page's own controls.
+			let downAt: { x: number; y: number; time: number } | null = null;
+			const clip = (e: PointerEvent) => [(e.clientX / window.innerWidth) * 2 - 1, 1 - (e.clientY / window.innerHeight) * 2] as const;
+			const onScene = (e: PointerEvent) => !(e.target as Element | null)?.closest?.('button, a, input, textarea, select, label, dialog');
+			const down = (e: PointerEvent) => {
+				downAt = onScene(e) ? { x: e.clientX, y: e.clientY, time: performance.now() } : null;
+			};
+			const up = (e: PointerEvent) => {
+				if (downAt && onScene(e) && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) < 10 && performance.now() - downAt.time < 500) w.pressAt(...clip(e));
+				downAt = null;
+			};
+			window.addEventListener('pointerdown', down, { passive: true });
+			window.addEventListener('pointerup', up, { passive: true });
+			w.onPress = (what) => {
+				if (what === 'wheel') spinIt();
+				else pressEnter();
+			};
+			// With a mouse, the cursor says what can be pressed. A few times a second is plenty for that.
+			let aiming: [number, number] | null = null;
+			let lastAim = 0;
+			const aim = (e: PointerEvent) => {
+				aiming = e.pointerType === 'mouse' && onScene(e) ? [...clip(e)] : null;
+			};
+			window.addEventListener('pointermove', aim, { passive: true });
+
 			let last = performance.now();
 			let time = 0;
 			const sharpness = new Sharpness(dpr, w.stage.ao.enabled);
@@ -389,6 +417,7 @@
 					if (T >= a) dr = i;
 				});
 				drawer = T > 2.74 ? 4 : dr;
+				pulled = w.pulledDrawer;
 				check = T < 5 ? -1 : Math.min(5, Math.floor(((T - 5.04) / 0.58) * 5));
 				// The first call stops at the second gate, and the list has to say so.
 				gate = T < 20.04 ? -1 : T < 20.4 ? 1 : Math.min(4, Math.floor(((T - 20.4) / 0.58) * 5));
@@ -416,6 +445,11 @@
 				py += (my - py) * (1 - Math.exp(-dt * 3));
 				w.update(T, reduced ? 0 : time, dt, reduced ? 0 : px, reduced ? 0 : py, reduced);
 				publish();
+
+				if (now - lastAim > 140) {
+					lastAim = now;
+					document.documentElement.style.cursor = aiming && w.overAt(aiming[0], aiming[1]) ? 'pointer' : '';
+				}
 
 				const change = params.has('debug') ? null : sharpness.frame(dt);
 				if (change) {
@@ -484,6 +518,10 @@
 				cancelAnimationFrame(raf);
 				window.removeEventListener('resize', resize);
 				window.removeEventListener('pointermove', move);
+				window.removeEventListener('pointermove', aim);
+				window.removeEventListener('pointerdown', down);
+				window.removeEventListener('pointerup', up);
+				document.documentElement.style.cursor = '';
 				window.removeEventListener('hashchange', onHash);
 				clearTimeout(cutTimer);
 				w.dispose();
@@ -635,11 +673,11 @@
 			<h2>The harness wakes up</h2>
 			<p>
 				The harness is the program around the model, the part you installed. Before anything leaves your laptop, it spends a few hundred
-				milliseconds packing what the model will need.
+				milliseconds packing what the model will need. Pull out a drawer to see what’s in it.
 			</p>
 			<ol class="steps">
 				{#each DRAWERS as d, i (d.name)}
-					<li class={{ on: drawer === i, done: drawer > i }}>
+					<li class={{ on: shownDrawer === i, done: drawer > i && shownDrawer !== i }}>
 						<strong>{d.name}</strong>
 						<span>{@render rich(d.text)}</span>
 					</li>
@@ -694,7 +732,7 @@
 				</p>
 				<p>
 					Each piece has a number, and those numbers are all the model will ever read. No letters. The two “the” tiles get the same number,
-					and the blue tiles are markers the template added. <small>IDs are illustrative.</small>
+					and the blue tiles are markers the template added. <small>IDs are illustrative. Press a tile to flip it.</small>
 				</p>
 			</div>
 			<button type="button" class="try-it" onclick={() => (tryOpen = true)}>

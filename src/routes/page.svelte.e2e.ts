@@ -29,3 +29,23 @@ test('the tokenizer cuts what you type', async ({ page }) => {
 	await page.keyboard.press('Escape');
 	await expect(sheet).toBeHidden();
 });
+
+test('a drawer in the scene can be pulled out', async ({ page }) => {
+	test.setTimeout(120_000);
+	type Debug = { __journey: { seek(T: number): void }; __world: { harness: { drawerHits: { getWorldPosition(v: unknown): { project(c: unknown): { x: number; y: number } }; position: { constructor: new () => unknown } }[] }; stage: { camera: unknown } } };
+	await page.goto('/?still&debug');
+	await page.waitForFunction(() => '__world' in window, null, { timeout: 90_000 });
+	const seek = () => page.evaluate(() => (window as unknown as Debug).__journey.seek(2.1));
+	await seek();
+	await seek();
+	const [x, y] = await page.evaluate(() => {
+		const { __world: w } = window as unknown as Debug;
+		const hit = w.harness.drawerHits[2];
+		const v = hit.getWorldPosition(new hit.position.constructor()).project(w.stage.camera);
+		return [((v.x + 1) / 2) * innerWidth, ((1 - v.y) / 2) * innerHeight];
+	});
+	await page.mouse.click(x, y);
+	await seek();
+	await expect(page.locator('.steps li.on strong').first()).toHaveText('Tools');
+});
+

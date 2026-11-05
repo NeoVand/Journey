@@ -102,6 +102,7 @@ class Sampler {
 	private bars: { mesh: THREE.Mesh; sign: THREE.Group; home: THREE.Vector3; h: number; cut: boolean }[] = [];
 	private wheel = new THREE.Group();
 	private wheelFace = new Surface(1200, 1200);
+	wheelDisc!: THREE.Mesh;
 	private flapper: THREE.Group;
 	private temperature = 1;
 	private dirty = false;
@@ -169,6 +170,7 @@ class Sampler {
 		const cy = PAD_Y + 3.5;
 		this.paintWheel();
 		const face = new THREE.Mesh(new THREE.CircleGeometry(R, 96), new THREE.MeshStandardMaterial({ map: this.wheelFace.texture, roughness: 0.45 }));
+		this.wheelDisc = face;
 		face.position.z = 0.1;
 		this.wheel.add(face);
 		const wb = new Batch();
@@ -969,6 +971,10 @@ export class Forward {
 
 	spinWheel(reduced: boolean) {
 		return this.sampler.spin(reduced);
+	}
+
+	get wheelDisc() {
+		return this.sampler.wheelDisc;
 	}
 
 	update(T: number, time: number) {

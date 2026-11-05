@@ -11,6 +11,7 @@ import { Laptop } from './props/laptop';
 import { McpServer } from './props/mcp';
 import { Brain, BRAIN_FOOT, BRAIN_SEAT } from './props/brain';
 import { SkillShelf } from './props/skills';
+import { Poker } from './poke';
 import { Harness, HW, PORT_KEYS_Z, PORT_MCP_Z, PORT_OUT_Z, PORT_Y } from './props/harness';
 import { createEasel, DOC_H, RequestDoc, SLOT_Y, Strip } from './props/request';
 import { createTunnelStand, Tunnel } from './props/tunnel';
@@ -205,6 +206,7 @@ export class World {
 		});
 		this.root.add(this.finale.group);
 		this.setHarness('claude');
+		this.wirePokes();
 	}
 
 	/**
@@ -848,6 +850,58 @@ export class World {
 		this.back.setTurn(turn);
 	}
 
+	/** What the reader can press, and when. Tell the page about anything that belongs to it. */
+	onPress: (what: 'wheel' | 'enter') => void = () => {};
+	private poker = new Poker();
+	private lastT = 0;
+	/** Which way up each tile has been turned by hand, and how far along that is. */
+	private tileSide = TOKENS.map(() => 0);
+	private tileFrom = TOKENS.map(() => 0);
+	private tileAt = TOKENS.map(() => -1e6);
+	private pulledAtT = 0;
+
+	private wirePokes() {
+		const finale = (T: number) => T >= 32.3;
+		this.poker.add({
+			targets: this.harness.drawerHits,
+			when: (T) => T > 2.04 && T < 2.78,
+			press: (i) => {
+				this.harness.pull(i % 4);
+				this.pulledAtT = this.lastT;
+			}
+		});
+		this.poker.add({ targets: this.tiles.map((t) => t.body), when: (T) => T > 6.56 && T < 6.86, press: (i) => this.flipTile(i) });
+		this.poker.add({ targets: [this.brain.hit], when: (T) => (T > 7.2 && T < 7.8) || finale(T), press: () => this.brain.excite() });
+		this.poker.add({ targets: [this.laptop.hit], when: finale, press: () => this.onPress('enter') });
+		this.poker.add({ targets: [this.cluster.wheelDisc], when: (T) => T > 15.1 && T < 15.86, press: () => this.onPress('wheel') });
+	}
+
+	/** Returns whether anything answered. */
+	pressAt(x: number, y: number) {
+		const hit = this.poker.pick(this.lastT, x, y, this.stage.camera);
+		if (hit) hit.p.press(hit.index);
+		return !!hit;
+	}
+
+	overAt(x: number, y: number) {
+		return !!this.poker.pick(this.lastT, x, y, this.stage.camera);
+	}
+
+	get pulledDrawer() {
+		return this.harness.pulled;
+	}
+
+	private tileShown(i: number, now: number) {
+		return lerp(this.tileFrom[i], this.tileSide[i], smooth(seg(now, this.tileAt[i], this.tileAt[i] + 560)));
+	}
+
+	private flipTile(i: number) {
+		const now = performance.now();
+		this.tileFrom[i] = this.tileShown(i, now);
+		this.tileSide[i] = 1 - this.tileSide[i];
+		this.tileAt[i] = now;
+	}
+
 	pressEnter(reduced: boolean) {
 		this.finale.press(reduced);
 	}
@@ -885,6 +939,9 @@ export class World {
 
 	/** Pure function of T (scroll) plus time (idle life). Any scroll position can be rendered directly. */
 	update(T: number, time: number, dt: number, px = 0, py = 0, introDone = false) {
+		this.lastT = T;
+		// Whatever the reader pulled out goes back as soon as they scroll on.
+		if (this.harness.pulled >= 0 && Math.abs(T - this.pulledAtT) > 0.06) this.harness.pulled = -1;
 		this.intro = introDone ? 1 : Math.min(1, this.intro + dt / 1.5);
 		// The easel only stands while it has a page to hold: the request, then turn two.
 		const legs = inOut(seg(T, 2.02, 2.09)) * (1 - inOut(seg(T, 3.64, 3.74))) + outBack(seg(T, 25.38, 25.47), 1.2) * (1 - inOut(seg(T, 25.92, 26)));
@@ -1184,8 +1241,13 @@ export class World {
 			const bounce = bell(after, 0.3, 1) * 0.07;
 			const idle = hopK >= 1 && D === 0 ? (Math.sin(time * 2.1 - i * 0.55) * 0.5 + 0.5) * 0.022 : 0;
 			const low = 1 - squash * 0.3;
-			frame(s, tile.group, rest * low + pop + hop + bounce + idle);
-			tile.group.rotateX(flip * Math.PI);
+			// A tile the reader has pressed hops up, turns over, and lands the other way up. It rights itself before the row sets off.
+			if ((T <= 6.56 || T >= 6.86) && this.tileSide[i]) this.flipTile(i);
+			const now = performance.now();
+			const turned = this.tileShown(i, now);
+			const leap = bell(seg(now, this.tileAt[i], this.tileAt[i] + 560), 0, 1) * 0.92;
+			frame(s, tile.group, rest * low + pop + hop + bounce + idle + leap);
+			tile.group.rotateX((flip + turned) * Math.PI);
 			tile.group.scale.set(1 + squash * 0.04, low, 1 + squash * 0.12);
 			tile.group.visible = s < this.flowLen - 0.1 && feed > 0;
 		});
