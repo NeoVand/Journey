@@ -6,7 +6,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { archBlock, arcPoint, Card, machine, panel, shadowOn } from '../kit/machines';
 import { contactShadow, font, Label, Surface } from '../kit/print';
 import { createSign, standSign } from '../kit/parts';
-import { bell, hash, inOut, lerp, outBack, outCubic, seg, smooth } from '../kit/math';
+import { bell, hash, inCubic, inOut, lerp, outBack, outCubic, seg, smooth } from '../kit/math';
 import { createPad } from '../props/board';
 import { Tile, TILE_D, TILE_H } from '../props/tokenizer';
 import { CALLS, LOGITS, TOP_K, wheelOdds, type HarnessId } from '../content';
@@ -433,6 +433,11 @@ let thinkMat: THREE.MeshPhysicalMaterial | undefined;
 
 const THINK_A = 16.06;
 const THINK_B = 16.9;
+/** The belt's back rail, behind its centre, and how high above it the note on the thinking stands. */
+const THINK_RAIL = 0.62;
+const THINK_UP = 0.66;
+/** How far along the rail it rolls in from, which is off the left of every screen. */
+const THINK_ROLL = 26;
 const CALL_A = 17.06;
 const CALL_B = 17.72;
 
@@ -484,7 +489,8 @@ class Decoder {
 			stack.add(sign);
 		});
 		const kvSign = createSign('KV cache: one key and one value more each step', 0.18);
-		kvSign.position.set(0.6, FLOOR_Y[0] - 0.42, (MAP_D * SCALE) / 2 + 0.06);
+		// Its top edge is set into the map's front lip, just under the lights it explains.
+		kvSign.position.set(0.6, FLOOR_Y[0] - 0.33, (MAP_D * SCALE) / 2 + 0.025);
 		stack.add(kvSign);
 		const under = contactShadow(MAP_W * SCALE + 1, MAP_D * SCALE + 1, 0.5, 0.5, '#020818');
 		under.position.y = 0.32;
@@ -573,8 +579,22 @@ class Decoder {
 			copilot: this.buildCall('copilot')
 		};
 
-		this.thinkSign = createSign('Thinking: billed as output, kept private', 0.22);
-		this.thinkSign.rotation.x = -0.6;
+		// The note on the thinking rides the belt's back rail on two clamps, like the tokenizer's gantry rides its own.
+		this.thinkSign = new THREE.Group();
+		const note = createSign('Thinking: billed as output, kept private', 0.22);
+		note.rotation.x = -0.6;
+		note.position.set(0, THINK_UP, 0.05);
+		this.thinkSign.add(note);
+		const plate = note.children[0].children[0] as THREE.Mesh;
+		plate.geometry.computeBoundingBox();
+		const noteW = plate.geometry.boundingBox!.max.x - plate.geometry.boundingBox!.min.x;
+		const clamp = new Batch();
+		for (const x of [-noteW * 0.3, noteW * 0.3]) {
+			// The shoe wraps the rail, and the post runs from it into the back of the plate.
+			clamp.add(rbox(0.24, 0.1, 0.12, 0.03, 2), m.steel, { p: [x, -0.005, 0] });
+			clamp.add(rbox(0.09, THINK_UP - 0.01, 0.06, 0.02, 2), m.steelSoft, { p: [x, 0.035 + (THINK_UP - 0.01) / 2, 0] });
+		}
+		this.thinkSign.add(clamp.build('sign-post'));
 		this.group.add(this.thinkSign);
 		const subPad = createPad(13.4, 3);
 		subPad.position.set(DEC + 6.7, PAD_Y, 3.4);
@@ -807,10 +827,12 @@ class Decoder {
 
 		const nT = THINKING.length;
 		const midThink = (this.xs[0] + this.xs[nT - 1]) / 2 + shift;
-		const s1 = outBack(seg(T, 16.5, 16.62), 2) * (1 - smooth(seg(T, 16.94, 17.03)));
-		this.thinkSign.visible = s1 > 0.001;
-		this.thinkSign.scale.setScalar(Math.max(0.001, s1));
-		this.thinkSign.position.set(midThink, RAIL_Y + 0.72, RAIL_Z - 0.9);
+		// The note rolls in along the rail from off the left of the picture and stops behind the thinking. When the
+		// thinking is done it rolls back out the way it came, as the camera moves on to the call.
+		const roll = seg(T, 16.44, 16.64);
+		const away = seg(T, 16.93, 17.05);
+		this.thinkSign.visible = roll > 0 && away < 1;
+		this.thinkSign.position.set(midThink - THINK_ROLL * (1 - outBack(roll, 0.6) + inCubic(away)), RAIL_Y, RAIL_Z - THINK_RAIL);
 
 		// Each token that lands sends a little of itself up to the paper, and the paper comes up a step to take it.
 		const nCall = this.row.length - nT;
