@@ -96,7 +96,7 @@ export const PACE: Span[] = [
 	{ from: 11.86, to: 12.06, seconds: 1.4 },
 	{ from: 12.06, to: 12.92, seconds: 11.5 }, // fourteen scheduler steps, and five comings and goings to follow
 	{ from: 12.92, to: 13.08, seconds: 1.4 },
-	{ from: 13.08, to: 14.0, seconds: 8.5 }, // two pools, and into the first
+	{ from: 13.08, to: 14.0, seconds: 12 }, // two pools, and into the first
 	...TRANSFORMER_PACE,
 	{ from: 15.092, to: 15.42, seconds: 2.2 },
 	{ from: 15.42, to: 15.88, seconds: 3.8 }, // the wheel

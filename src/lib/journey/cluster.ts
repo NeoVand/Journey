@@ -48,7 +48,7 @@ export const CLUSTER_SHOTS: Shot[] = [
 	{ T: 12.04, ...LANES },
 	{ T: 12.9, ...LANES, az: 5 },
 	{ T: 13.06, ...POOLS },
-	{ T: 13.74, ...POOLS, az: -4 },
+	{ T: 13.8, ...POOLS, az: -4 },
 	{ T: 13.9, ...INTO },
 	{ T: 13.975, ...INTO, az: 0, el: 3, radius: 0.5, ry: 0.36 },
 	...FORWARD_SHOTS
@@ -177,6 +177,6 @@ export class Cluster {
 			this.tray.update(seg(T, 10.12, 10.62), seg(T, 11.08, 11.24), seg(T, 11.24, 11.64), seg(T, 11.64, 11.86), time);
 		}
 		if (T > 11.8 && T < 13.2) this.lanes.update(seg(T, 12.08, 12.92) * STEPS);
-		if (T > 12.8 && T < 14.1) this.pools.update(seg(T, 13.08, 13.42), seg(T, 13.36, 13.6), seg(T, 13.54, 13.86), time);
+		if (T > 12.8 && T < 14.1) this.pools.update(seg(T, 13.08, 13.3), seg(T, 13.28, 13.44), seg(T, 13.4, 13.74), seg(T, 13.46, 13.68), seg(T, 13.7, 13.76), time);
 	}
 }

@@ -760,11 +760,11 @@
 	</section>
 
 	<section data-beat class="beat" style:--h="520vh">
-		<article class="pin right" data-out="0.74">
+		<article class="pin right" data-out="0.72">
 			<h2>Reading and writing</h2>
-			<p>{@render rich('Reading your prompt is called [[prefill]]: thousands of tokens at once, limited by compute. Writing the answer is called [[decode]]: one token per step, limited by memory.')}</p>
-			<p>{@render rich('So many clusters split them into two pools, and ship the KV cache across over [[RDMA]]. It’s a choice, not a law. For some work, one shared pool still wins.')}</p>
-			<p class="next">Next stop: inside those chips. What are they actually running?</p>
+			<p>{@render rich('Reading your prompt is called [[prefill]]: thousands of tokens at once, limited by compute. Writing the answer is called [[decode]]: one token per step, limited by memory, because every step reads all the weights.')}</p>
+			<p>{@render rich('On one chip, a big new prompt would make everyone’s typing stutter. So many clusters split the two jobs into pools, and ship the KV cache across over [[RDMA]]. It’s a choice, not a law. For some work, one shared pool still wins.')}</p>
+			<p class="next">Your prompt is in the first one. What’s actually running in there?</p>
 		</article>
 	</section>
 
