@@ -7,7 +7,7 @@ import { font, Surface } from '../kit/print';
 import { createSign } from '../kit/parts';
 import { bell, bounceDown, clamp, hash, inOut, lerp, outBack, seg, smooth, spring } from '../kit/math';
 import { createCastShadow } from '../props/island';
-import { CALLS, HARNESSES, type HarnessId } from '../content';
+import { TEN_TURNS, CALLS, HARNESSES, type HarnessId } from '../content';
 import { EASEL_POS, EASEL_TILT, RETURN_POINTS } from '../layout';
 import type { Shot } from '../rig';
 
@@ -43,7 +43,7 @@ const S_HOME = { az: 24, el: 15, target: [1.2, 1.9, 0.6] as V3, radius: 6.1, ry:
 const S_COMPACT = { az: 14, el: 15, target: rel(C_POS, 0, 2.6, 0), radius: 5.9, ry: 3.8, wide: RIGHT, tall: TALL };
 const S_MEM = { az: -12, el: 9, target: rel(M_POS, 0, 3.9, 0), radius: 5.6, ry: 4.3, wide: LEFT, tall: TALL };
 const S_UNK = { az: 10, el: 20, target: rel(U_POS, 0, 1.9, 0.7), radius: 7.6, ry: 4.3, wide: box(0.42, 0.06, 0.58, 0.9), tall: TALL };
-const S_TEN = { az: -10, el: 14, target: rel(R_POS, 0, 2.6, 0.6), radius: 9.2, ry: 4.2, wide: box(0.01, 0.34, 0.98, 0.62), tall: box(0, 0.06, 1, 0.47) };
+const S_TEN = { az: -10, el: 14, target: rel(R_POS, 0, 2.6, 0.6), radius: 9.2, ry: 4.2, wide: box(0.01, 0.42, 0.98, 0.56), tall: box(0, 0.06, 1, 0.3) };
 const S_FIN = { az: 9, el: 14, target: rel(F_POS, 0, 2.1, 0.8), radius: 10.8, ry: 3.6, wide: box(0.01, 0.4, 0.98, 0.56), tall: TALL };
 const S_END = { az: 29, el: 17, target: [1.9, 1.35, 0.4] as V3, radius: 6.25, ry: 6.25, wide: box(0.4, 0.02, 0.61, 0.94), tall: box(0, 0.05, 1, 0.42) };
 
@@ -265,6 +265,16 @@ export class Back {
 	private barsNew: THREE.Mesh[] = [];
 	private barLamps: Lamp[] = [];
 	private tags: THREE.Group[] = [];
+	private cursor!: THREE.Group;
+	private cursorHome = { x: 0, step: 1 };
+	private turn = 0;
+	private cacheOn = true;
+	/** 0 with the cache, 1 without. The reader's switch, so it runs on the clock rather than on the scroll. */
+	private cacheOff = 0;
+	private tenClock = 0;
+	private tagKey = 0;
+	private tagFrom = -1;
+	private tagAt = 0;
 
 	private climber!: THREE.Mesh;
 	private locks: { group: THREE.Group; shackle: THREE.Group }[] = [];
@@ -854,18 +864,7 @@ export class Back {
 		shade.position.set(cx, cy - 8, cz);
 		g.add(shade);
 
-		const DATA: [number, number, string][] = [
-			[0, 21000, 'Search'],
-			[21000, 1500, 'Read'],
-			[22500, 2000, 'Tests'],
-			[24500, 1200, 'Edit'],
-			[25700, 300, 'New test'],
-			[26000, 250, 'Run'],
-			[26250, 500, 'Fix'],
-			[26750, 250, 'Run'],
-			[27000, 200, 'All tests'],
-			[27200, 150, 'Done']
-		];
+		const DATA = TEN_TURNS.map((t): [number, number, string] => [t.cached, t.fresh, t.label]);
 		const SCALE = 5 / 27350;
 		const P = 1.72;
 		const x0 = -((DATA.length - 1) * P) / 2;
@@ -877,7 +876,8 @@ export class Back {
 		g.add(base.build('bars-base'));
 		shadowOn(g, cx, cy, cz + 0.1, P * 10 + 0.6, 3.9, 0.34);
 
-		const geo = rbox(1.32, 1, 1.32, 0.05, 2);
+		// Narrower than the occlusion radius would like otherwise: a gap that size speckles the sides.
+		const geo = rbox(1.14, 1, 1.32, 0.05, 2);
 		geo.translate(0, 0.5, 0);
 		const cached = new THREE.MeshPhysicalMaterial({ color: '#2fcf7d', roughness: 0.34, clearcoat: 0.7 });
 		const fresh = m.amber;
@@ -929,8 +929,35 @@ export class Back {
 			g.add(s);
 			this.tags.push(s);
 		};
-		tag('21,000 new', cx + x0 + 0.5, cy + 4.5);
-		tag('27,200 cached, 150 new', cx + x0 + 9 * P - 1.8, cy + 6.05);
+		// Above each bar, what it holds: two signs per turn, one for each way of running it.
+		DATA.forEach(([hit, added], i) => {
+			const top = cy + 0.24 + (hit + added) * SCALE + 0.52;
+			const x = cx + x0 + i * P;
+			tag(hit ? `${hit.toLocaleString('en-US')} cached, ${added.toLocaleString('en-US')} new` : `${added.toLocaleString('en-US')} new`, x, top);
+			tag(`${(hit + added).toLocaleString('en-US')} to run`, x, top);
+		});
+
+		// The cursor on the rail, a slide rule's, sits on the turn being told.
+		const W = P - 0.22;
+		const H = 1.2;
+		const frame = roundedRect(W, H, 0.14);
+		frame.holes.push(roundedRect(W - 0.12, H - 0.12, 0.09));
+		const cursor = new Batch();
+		cursor.add(extrude(frame, 0.05, 0.012, 2, 8), m.cobalt);
+		this.cursor = cursor.build('turn-cursor');
+		this.cursorHome = { x: cx + x0, step: P };
+		// Riding just off the plate, so it clears the verdict lamps as it slides past them.
+		this.cursor.position.set(cx + x0, cy + 0.803, cz + 1.531);
+		this.cursor.rotation.x = -0.5;
+		g.add(this.cursor);
+	}
+
+	setTurn(i: number) {
+		this.turn = i;
+	}
+
+	setCache(on: boolean) {
+		this.cacheOn = on;
 	}
 
 	/* ---- what finished means ---- */
@@ -1576,26 +1603,57 @@ export class Back {
 
 		/* ---- ten turns ---- */
 		if ((T > 28.6 && T < 30.3) || homeward) {
+			const now = performance.now();
+			const gap = now - this.tenClock;
+			this.tenClock = now;
+			// Anything long since the last frame is a jump, not motion, so it goes straight to where it belongs.
+			const dt = gap > 200 ? 10 : gap / 1000;
+			const toward = this.cacheOn ? 0 : 1;
+			this.cacheOff += clamp(toward - this.cacheOff, -dt / 1.15, dt / 1.15);
 			this.barsCached.forEach((bar, i) => {
 				const a = 29.1 + i * 0.066;
 				const k = outBack(seg(T, a, a + 0.07), 1.2);
 				const uc = bar.userData as { h: number };
-				bar.scale.y = Math.max(0.001, uc.h * k);
+				// Without the cache the bars are the same height, because the requests are the same. They just all have to run.
+				const off = smooth(seg(this.cacheOff, i * 0.06, i * 0.06 + 0.46));
+				const green = uc.h * k * (1 - off);
+				bar.scale.y = Math.max(0.001, green);
+				bar.visible = green > 0.002;
 				const n = this.barsNew[i];
 				const un = n.userData as { h: number };
 				const kn = seg(T, a + 0.05, a + 0.09);
-				n.scale.y = Math.max(0.001, un.h * kn);
-				n.position.y = R_POS[1] + 0.24 + uc.h * k;
-				n.visible = kn > 0;
+				n.scale.y = Math.max(0.001, un.h * kn + uc.h * k * off);
+				n.position.y = R_POS[1] + 0.24 + green;
+				n.visible = kn > 0 || off > 0;
+				// Its sign rides up on top of it.
+				const top = R_POS[1] + 0.24 + uc.h * k + un.h * kn + 0.52;
+				this.tags[i * 2].position.y = top;
+				this.tags[i * 2 + 1].position.y = top;
 			});
+			const reveal = seg(T, 29.14, 29.2);
+			const key = this.turn * 2 + (this.cacheOn ? 0 : 1);
+			if (key !== this.tagKey) {
+				this.tagFrom = this.tagKey;
+				this.tagKey = key;
+				this.tagAt = gap > 200 ? now - 1000 : now;
+			}
+			const age = now - this.tagAt;
+			this.tags.forEach((tag, j) => {
+				const v = j === this.tagKey ? outBack(Math.min(1, age / 240), 2) : j === this.tagFrom ? 1 - smooth(Math.min(1, age / 120)) : 0;
+				const shown = v * outBack(reveal, 2);
+				tag.visible = shown > 0.001;
+				tag.scale.setScalar(Math.max(0.001, shown));
+			});
+			const c = this.cursor;
+			const goal = this.cursorHome.x + this.turn * this.cursorHome.step;
+			c.position.x += (goal - c.position.x) * (1 - Math.exp(-dt * 10));
+			// It swings a little as it slides, like something loose on a rail.
+			c.rotation.z = clamp((c.position.x - goal) * 0.06, -0.12, 0.12);
+			c.scale.setScalar(Math.max(0.001, outBack(reveal, 1.6)));
 			[5, 7, 8].forEach((i, j) => {
 				const on = seg(T, 29.14 + i * 0.066, 29.2 + i * 0.066);
 				this.barLamps[j].set(i === 5 ? color.red : color.green, 0.08 + on * 0.9);
 			});
-			const s0 = outBack(seg(T, 29.14, 29.2), 2);
-			const s1 = outBack(seg(T, 29.76, 29.82), 2);
-			this.tags[0].scale.setScalar(Math.max(0.001, s0));
-			this.tags[1].scale.setScalar(Math.max(0.001, s1));
 		}
 
 		/* ---- finish ---- */

@@ -1,5 +1,7 @@
 <script lang="ts">
-	import { GLOSSARY, HARNESSES, FORMS, LOGITS, TOP_K, wheelOdds, type HarnessId } from './content';
+	import { GLOSSARY, HARNESSES, FORMS, LOGITS, RUN_WITH_CACHE, RUN_WITHOUT_CACHE, TEN_TURNS, TOP_K, wheelOdds, type HarnessId } from './content';
+	import { Tween } from 'svelte/motion';
+	import { cubicOut } from 'svelte/easing';
 	import type { Attachment } from 'svelte/attachments';
 	import type { World } from './world';
 	import { PACE, Playhead } from './playhead';
@@ -97,11 +99,6 @@
 			codex: 'A client-side /compact, or server-side compaction that returns an encrypted item to append.',
 			copilot: 'A background summarizer watches the budget, with a simpler fallback if the full mode fails.'
 		}[harness],
-		turns: {
-			claude: 'Grep, Read, Edit, Bash. A classifier approves the edit in auto mode.',
-			codex: '[[rg|ripgrep]] and sed in the shell, apply_patch for edits, pytest in a [[sandbox]] with no network.',
-			copilot: 'Text search and usages, editFiles with a reviewable diff, and the Problems panel before any test runs.'
-		}[harness],
 		door: {
 			claude: 'One front door: Anthropic’s own, or Bedrock, Vertex or Foundry for the same models.',
 			codex: 'One front door. With a ChatGPT login the request goes to ChatGPT’s backend rather than the public API host.',
@@ -146,6 +143,27 @@
 		wins[pick]++;
 		landed = pick;
 		spinning = false;
+	}
+
+	/** The ten turns follow the bars as they rise. Once a turn has been told, the reader can go back to it. */
+	let turnReached = $state(-1);
+	let turnPinned = $state(-1);
+	const turn = $derived(turnPinned >= 0 ? turnPinned : Math.max(0, turnReached));
+	const ticket = $derived(TEN_TURNS[turn]);
+
+	function pinTurn(i: number) {
+		turnPinned = i;
+		world?.setTurn(i);
+	}
+
+	let cacheOn = $state(true);
+	const ran = new Tween(RUN_WITH_CACHE, { duration: 900, easing: cubicOut });
+
+	function setCache(on: boolean) {
+		cacheOn = on;
+		world?.setCache(on);
+		const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+		ran.set(on ? RUN_WITH_CACHE : RUN_WITHOUT_CACHE, reduced ? { duration: 0 } : undefined);
 	}
 
 	/** Words the reader may not know get a dotted underline. Hover, focus or tap shows what they mean. */
@@ -320,6 +338,12 @@
 				section = Math.min(sections.length - 1, Math.floor(T));
 				part = T < 14.15 ? null : T < 14.3 ? 'embed' : T < 14.625 ? 'attn' : T < 14.7 ? 'ffn' : T < 14.865 ? 'stack' : 'head';
 				attention = T < 14.358 ? -1 : T < 14.4 ? 0 : T < 14.43 ? 1 : T < 14.5 ? 2 : 3;
+				const reached = T < 29.1 ? -1 : Math.min(TEN_TURNS.length - 1, Math.floor((T - 29.1) / 0.066));
+				if (reached !== turnReached) {
+					turnReached = reached;
+					turnPinned = -1;
+					w.setTurn(Math.max(0, reached));
+				}
 			};
 
 			const frame = (now: number) => {
@@ -876,15 +900,41 @@
 		</article>
 	</section>
 
-	<section data-beat class="beat" style:--h="500vh">
-		<article class="pin top-band" data-out="0.88">
+	<section data-beat class="beat" style:--h="1000vh">
+		<article class="pin top-band ten" data-out="0.88">
 			<h2>The whole fix, in ten turns</h2>
-			<div class="cols">
-				<p>
-					Each bar is one request. Green was already cached, amber is new. Only turn one pays for all of it. After that, every turn is 95 to 99
-					percent cache hit. <small>Claude Code’s numbers. Illustrative.</small>
-				</p>
-				<p class="note"><b>{spec.name}.</b> {@render rich(callouts.turns)}</p>
+			<div class="ten-grid">
+				<div class="ledger">
+					<p class="ten-intro">Each bar is one request. Green was already cached, amber is new. Only turn one pays for all of it. After that, more than nine tokens in ten are already there.</p>
+					<div class="cache-row">
+						<div class="picker compact" role="radiogroup" aria-label="Run the ten turns with the cache, or without it">
+							<button type="button" role="radio" aria-checked={cacheOn} class={{ on: cacheOn }} onclick={() => setCache(true)}>With the cache</button>
+							<button type="button" role="radio" aria-checked={!cacheOn} class={{ on: !cacheOn }} onclick={() => setCache(false)}>Without it</button>
+						</div>
+						<p class="tally"><b>{Math.round(ran.current).toLocaleString('en-US')}</b> tokens to run</p>
+					</div>
+					<p class="tally-why">
+						{#if cacheOn}
+							The chips skip the other {(RUN_WITHOUT_CACHE - RUN_WITH_CACHE).toLocaleString('en-US')}. They come straight from memory, at a tenth of the price.
+						{:else}
+							Same requests, but the chips run every token. Nine times the work, about five times the bill, and every reply slower to start.
+						{/if}
+						<small>Claude Code’s numbers. Illustrative.</small>
+					</p>
+				</div>
+				<div class="ticket">
+					<div class="turns" role="group" aria-label="Choose a turn">
+						{#each TEN_TURNS as t, i (i)}
+							<button type="button" class={{ on: turn === i }} disabled={driven && i > turnReached} aria-label="Turn {i + 1}: {t.label}" aria-current={turn === i} onclick={() => pinTurn(i)}>{i + 1}</button>
+						{/each}
+					</div>
+					<dl>
+						<div><dt>It sees</dt><dd>{@render rich(ticket.sees)}</dd></div>
+						<div><dt>It thinks</dt><dd>{@render rich(ticket.thinks)}</dd></div>
+						<div><dt>It calls</dt><dd><code>{ticket.calls[harness]}</code></dd></div>
+						<div><dt>Then</dt><dd>{@render rich(ticket.after[harness])}</dd></div>
+					</dl>
+				</div>
 			</div>
 		</article>
 	</section>
@@ -916,6 +966,105 @@
 </div>
 
 <style>
+	.ten-grid {
+		display: grid;
+		grid-template-columns: minmax(0, 28em) minmax(0, 34em);
+		gap: 8px 44px;
+		align-items: start;
+	}
+	.ledger p {
+		margin-bottom: 8px;
+	}
+	.cache-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 6px 14px;
+		pointer-events: auto;
+	}
+	.cache-row .picker {
+		align-self: center;
+	}
+	p.tally {
+		margin: 0;
+		font-size: 0.92em;
+		white-space: nowrap;
+	}
+	.tally b {
+		font-family: var(--display);
+		font-weight: 800;
+		font-size: 1.3em;
+		font-variant-numeric: tabular-nums;
+		color: var(--ink);
+	}
+	p.tally-why {
+		margin: 6px 0 0;
+		font-size: 0.92em;
+		line-height: 1.4;
+	}
+	.ticket {
+		display: grid;
+		gap: 9px;
+		pointer-events: auto;
+	}
+	.turns {
+		display: flex;
+		gap: 4px;
+	}
+	.turns button {
+		flex: 1;
+		max-width: 38px;
+		height: 30px;
+		padding: 0;
+		border: 0;
+		border-radius: 9px;
+		background: rgb(255 255 255 / 0.62);
+		color: #33415c;
+		font: 700 14px/1 var(--sans);
+		cursor: pointer;
+		transition:
+			background 0.18s,
+			color 0.18s,
+			transform 0.12s;
+	}
+	.turns button:hover:not(:disabled):not(.on) {
+		background: #fff;
+		transform: translateY(-1px);
+	}
+	.turns button:disabled {
+		cursor: default;
+		opacity: 0.38;
+	}
+	.turns button.on {
+		background: #101a30;
+		color: #fff;
+	}
+	.ticket dl {
+		display: grid;
+		gap: 3px;
+		margin: 0;
+		font-size: 0.9em;
+		line-height: 1.36;
+	}
+	.ticket dl div {
+		display: grid;
+		grid-template-columns: 4.6em minmax(0, 1fr);
+		gap: 8px;
+	}
+	.ticket dt {
+		font-weight: 650;
+		color: var(--ink);
+	}
+	.ticket dd {
+		margin: 0;
+	}
+	.ticket code {
+		font-family: var(--mono);
+		font-size: 0.92em;
+		color: var(--ink);
+		overflow-wrap: anywhere;
+	}
+
 	.dial {
 		display: grid;
 		gap: 9px;
@@ -1811,6 +1960,23 @@
 			margin-bottom: 10px;
 			padding: 9px 10px;
 			font-size: 13px;
+		}
+		.ten-grid {
+			grid-template-columns: 1fr;
+			gap: 10px;
+		}
+		.turns button {
+			max-width: none;
+		}
+		/* On the shortest phones the ticket keeps its room, and the explaining gives way. */
+		@media (max-height: 760px) {
+			.ten-intro,
+			.tally-why {
+				display: none;
+			}
+			.ten h2 {
+				margin-bottom: 8px;
+			}
 		}
 		.dial {
 			gap: 6px;

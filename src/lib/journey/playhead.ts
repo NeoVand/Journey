@@ -110,5 +110,6 @@ export const PACE: Span[] = [
 	{ from: 20.04, to: 21.04, seconds: 8 }, // the gates
 	{ from: 21.04, to: 25.04, seconds: 22 }, // sandbox and tools
 	{ from: 25.04, to: 29.04, seconds: 21 }, // round the loop
-	{ from: 29.04, to: 32, seconds: 16 } // the end
+	{ from: 29.04, to: 29.84, seconds: 14 }, // ten turns, each with something to read
+	{ from: 29.84, to: 32, seconds: 11 } // the end
 ];

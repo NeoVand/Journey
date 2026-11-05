@@ -147,6 +147,8 @@ export const GLOSSARY: Record<string, string> = {
 	atomically: 'All or nothing. Anyone looking sees the old file or the new one, never something in between.',
 	hunk: 'One changed block in a diff.',
 	'stdout, stderr and the exit code': 'A command’s normal output, its error output, and a number saying how it went. Zero means fine.',
+	classifier: 'A small model that reads each call and judges whether it’s safe to run without asking you.',
+	rlock: 'A lock the thread holding it can take again without waiting for itself. A plain lock would wait forever here.',
 	deadlocks: 'When a program waits forever for something that can never happen. Here, a thread waits for a lock it is already holding.',
 	pty: 'A pretend terminal a program can run inside, so it keeps going as if someone were watching.',
 	stateless: 'The server keeps nothing between requests, so each request has to carry everything.',
@@ -173,3 +175,116 @@ export function wheelOdds(temperature: number) {
 	const sum = weights.reduce((a, b) => a + b, 0);
 	return weights.map((w) => w / sum);
 }
+
+type PerAgent = Record<HarnessId, string>;
+const edited: PerAgent = { claude: 'Approved and written.', codex: 'Inside the workspace, so it’s written without asking.', copilot: 'Another diff opens for review.' };
+const runs = (args: string): PerAgent => ({ claude: `Bash(pytest${args})`, codex: `shell: pytest${args}`, copilot: `runTerminal(pytest${args})` });
+
+/**
+ * The fix, turn by turn. Token counts are the book's, for Claude Code, and illustrative. Marked terms are in the glossary.
+ * sees: what is new in the request. thinks: the model's short reasoning. calls: what it asks for. after: what the harness does.
+ */
+export const TEN_TURNS: { label: string; cached: number; fresh: number; sees: string; thinks: string; calls: PerAgent; after: PerAgent }[] = [
+	{
+		label: 'Search',
+		cached: 0,
+		fresh: 21000,
+		sees: 'Your prompt.',
+		thinks: 'I need the scheduler code and the library’s lock docs.',
+		calls: { claude: 'Grep("lock|schedule", src/), WebFetch(docs)', codex: 'shell: rg -n "lock|schedule" src/', copilot: '#search/textSearch, #web/fetch' },
+		after: { claude: 'Runs both at once.', codex: 'There’s no search tool here. The shell does it.', copilot: 'The model may also ask the code index for related files.' }
+	},
+	{
+		label: 'Read',
+		cached: 21000,
+		fresh: 1500,
+		sees: '14 matching lines and 600 tokens of docs.',
+		thinks: 'JobScheduler.run touches self.queue without the lock.',
+		calls: { claude: 'Read(src/scheduler.py, 60-160)', codex: 'shell: sed -n \'60,160p\' src/scheduler.py', copilot: '#read/readFile, #search/usages' },
+		after: { claude: 'Returns 100 numbered lines.', codex: 'There’s no read tool either. Same shell.', copilot: 'The language server finds every caller, no grep needed.' }
+	},
+	{
+		label: 'Tests',
+		cached: 22500,
+		fresh: 2000,
+		sees: '100 lines of code.',
+		thinks: 'Two threads can pop the same job. It needs a lock around lines 101 to 108. But first, the test file.',
+		calls: { claude: 'Glob("tests/*sched*"), Read(tests/test_scheduler.py)', codex: 'shell: cat tests/test_scheduler.py', copilot: '#read/readFile(tests/test_scheduler.py)' },
+		after: { claude: 'Runs both.', codex: 'The whole file comes back through the shell.', copilot: 'Reads it by line range.' }
+	},
+	{
+		label: 'Edit',
+		cached: 24500,
+		fresh: 1200,
+		sees: 'A file list and the test code.',
+		thinks: 'No test covers this. Fix it, then add one.',
+		calls: { claude: 'Edit(src/scheduler.py, old, new)', codex: 'apply_patch(src/scheduler.py)', copilot: 'editFiles(src/scheduler.py)' },
+		after: {
+			claude: 'A [[classifier]] approves it in auto mode. Written all at once, and the linter is happy.',
+			codex: 'Inside the workspace, so it’s written without asking.',
+			copilot: 'The diff opens for review, and the type checker answers within milliseconds.'
+		}
+	},
+	{
+		label: 'New test',
+		cached: 25700,
+		fresh: 300,
+		sees: 'The edit went in: lines 101 to 109.',
+		thinks: 'Now a test with two worker threads.',
+		calls: { claude: 'Edit(tests/test_scheduler.py)', codex: 'apply_patch(tests/test_scheduler.py)', copilot: 'editFiles(tests/test_scheduler.py)' },
+		after: edited
+	},
+	{
+		label: 'Run',
+		cached: 26000,
+		fresh: 250,
+		sees: 'The test went in.',
+		thinks: 'Run the tests.',
+		calls: runs(' tests/test_scheduler.py -x'),
+		after: {
+			claude: 'In the [[sandbox]], 8 seconds. Exit code 1: it failed.',
+			codex: 'In the [[sandbox]], with no network. Exit code 1: it failed.',
+			copilot: 'In the terminal, after a confirmation card. Exit code 1: it failed.'
+		}
+	},
+	{
+		label: 'Fix',
+		cached: 26250,
+		fresh: 500,
+		sees: 'FAILED: a [[deadlock|deadlocks]]. The output is trimmed to 400 tokens.',
+		thinks: 'The lock is taken again inside _dispatch. Use an [[RLock]].',
+		calls: { claude: 'Edit(src/scheduler.py)', codex: 'apply_patch(src/scheduler.py)', copilot: 'editFiles(src/scheduler.py)' },
+		after: edited
+	},
+	{
+		label: 'Run',
+		cached: 26750,
+		fresh: 250,
+		sees: 'The fix went in.',
+		thinks: 'Run them again.',
+		calls: runs(' -x'),
+		after: { claude: 'Exit code 0: it passes.', codex: 'Exit code 0: it passes.', copilot: 'Exit code 0: it passes.' }
+	},
+	{
+		label: 'All tests',
+		cached: 27000,
+		fresh: 200,
+		sees: '12 passed.',
+		thinks: 'Run the whole suite, to be safe.',
+		calls: runs(''),
+		after: { claude: '40 seconds. Exit code 0.', codex: '40 seconds. Exit code 0.', copilot: '40 seconds. Exit code 0.' }
+	},
+	{
+		label: 'Done',
+		cached: 27200,
+		fresh: 150,
+		sees: '418 passed.',
+		thinks: 'Done. Summarize.',
+		calls: { claude: 'Plain text, then end_turn', codex: 'Plain text, and the turn ends', copilot: 'Plain text, and the turn ends' },
+		after: { claude: 'Shows the diff and summary, and saves the session.', codex: 'The terminal lists the changed files.', copilot: 'The Agents window shows the files and diffs beside the chat.' }
+	}
+];
+
+/** The tokens the chips really run across the ten turns, with the cache and without it. */
+export const RUN_WITH_CACHE = TEN_TURNS.reduce((sum, t) => sum + t.fresh, 0);
+export const RUN_WITHOUT_CACHE = TEN_TURNS.reduce((sum, t) => sum + t.cached + t.fresh, 0);

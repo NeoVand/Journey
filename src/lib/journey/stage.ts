@@ -136,7 +136,7 @@ export class Stage {
 		this.ao = new SolidGTAOPass(this.scene, this.camera, 4, 4);
 		this.ao.blendIntensity = 1;
 		this.ao.updateGtaoMaterial({ radius: 0.42, distanceExponent: 1.4, thickness: 1.2, scale: 1.25, samples: 8, distanceFallOff: 1, screenSpaceRadius: false });
-		this.ao.updatePdMaterial({ lumaPhi: 10, depthPhi: 0.6, normalPhi: 1, radius: 5, radiusExponent: 1.5, rings: 2, samples: 8 });
+		this.ao.updatePdMaterial({ lumaPhi: 10, depthPhi: 0.6, normalPhi: 1, radius: 9, radiusExponent: 1.5, rings: 3, samples: 16 });
 		this.composer.addPass(this.ao);
 		this.bloom = new SoftBloomPass(new THREE.Vector2(4, 4), 0.2, 0.42, 2.4);
 		this.composer.addPass(this.bloom);

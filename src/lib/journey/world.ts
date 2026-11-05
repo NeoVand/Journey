@@ -812,6 +812,14 @@ export class World {
 		});
 	}
 
+	setTurn(turn: number) {
+		this.back.setTurn(turn);
+	}
+
+	setCache(on: boolean) {
+		this.back.setCache(on);
+	}
+
 	setTemperature(temperature: number) {
 		this.cluster.setTemperature(temperature);
 	}
