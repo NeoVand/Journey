@@ -5,7 +5,7 @@ import { color, Lamp, mats } from '../kit/materials';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { archBlock, arcPoint, Card, machine, panel, shadowOn } from '../kit/machines';
 import { contactShadow, font, Label, Surface } from '../kit/print';
-import { createSign, standSign } from '../kit/parts';
+import { createSign, grown, SIGN_PHONE, signWidth, standSign } from '../kit/parts';
 import { bell, hash, inCubic, inOut, lerp, outBack, outCubic, seg, smooth } from '../kit/math';
 import { createPad } from '../props/board';
 import { Tile, TILE_D, TILE_H } from '../props/tokenizer';
@@ -159,7 +159,8 @@ class Sampler {
 			mesh.position.copy(home);
 			mesh.castShadow = true;
 			this.group.add(mesh);
-			const sign = createSign(l.text, 0.36);
+			// Fitted: each word sits under its own bar, about a metre apart.
+			const sign = createSign(l.text, 0.36, undefined, undefined, true);
 			this.group.add(sign);
 			this.bars.push({ mesh, sign, home, h: l.score * 0.82, cut: i >= TOP_K });
 		});
@@ -490,7 +491,7 @@ class Decoder {
 		});
 		const kvSign = createSign('KV cache: one key and one value more each step', 0.18);
 		// Its top edge is set into the map's front lip, just under the lights it explains.
-		kvSign.position.set(0.6, FLOOR_Y[0] - 0.33, (MAP_D * SCALE) / 2 + 0.025);
+		kvSign.position.set(0.6, FLOOR_Y[0] - 0.33 - grown(0.18), (MAP_D * SCALE) / 2 + 0.025);
 		stack.add(kvSign);
 		const under = contactShadow(MAP_W * SCALE + 1, MAP_D * SCALE + 1, 0.5, 0.5, '#020818');
 		under.position.y = 0.32;
@@ -659,7 +660,8 @@ class Decoder {
 			pg.add(lamp.mesh);
 			this.stops.push(lamp);
 		});
-		const title = createSign('Stop reason', 0.2);
+		// Fitted: any bigger and it would sit over the reasons printed under it.
+		const title = createSign('Stop reason', 0.2, undefined, undefined, true);
 		title.position.set(0, 2.575, 0.05);
 		pg.add(title);
 		pg.position.set(DEC + 10, PAD_Y, 3.5);
@@ -901,10 +903,12 @@ class Detokenizer {
 		sign.position.set(0, PAD_Y + H - 0.55, DET_Z + D / 2 + 0.03);
 		this.group.add(sign);
 		const stay = createSign('Token IDs stay here', 0.24, '#ffffff', m.red);
-		stay.position.set(-W / 2 - 1.9, PAD_Y + 2.2, RAIL_Z - 1.5);
+		// A phone's bigger sign moves out along with its pole, so its near end stays clear of the block's own sign.
+		const stayX = -W / 2 - 1.9 - grown(signWidth(stay) / SIGN_PHONE / 2);
+		stay.position.set(stayX, PAD_Y + 2.2, RAIL_Z - 1.5);
 		stay.rotation.y = 0.2;
 		const pole = new Batch();
-		pole.add(rbox(0.1, 2.2, 0.1, 0.03, 2), m.steelSoft, { p: [-W / 2 - 1.9, PAD_Y + 1.1, RAIL_Z - 1.56] });
+		pole.add(rbox(0.1, 2.2, 0.1, 0.03, 2), m.steelSoft, { p: [stayX, PAD_Y + 1.1, RAIL_Z - 1.56] });
 		this.group.add(stay, pole.build('pole'));
 
 		this.lamp = new Lamp(rbox(0.14, 0.14, 0.04, 0.05, 3), color.amber, 0.3);
@@ -943,7 +947,8 @@ class Detokenizer {
 		mouth.renderOrder = 5;
 		this.group.add(mouth);
 		const home = createSign('Back to your laptop', 0.26);
-		home.position.set(2.32, this.TOP + 3.4, DET_Z);
+		// Its left end stays at the tube: a phone's bigger sign grows to the right.
+		home.position.set(2.32 + grown(signWidth(home) / SIGN_PHONE / 2), this.TOP + 3.4, DET_Z);
 		this.group.add(home);
 
 		SLIP_TEXT.forEach((text) => {

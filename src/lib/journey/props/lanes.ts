@@ -4,7 +4,7 @@ import { rbox } from '../kit/geometry';
 import { shadowOn } from '../kit/machines';
 import { color, Lamp, mats } from '../kit/materials';
 import { bell, inOut, lerp, outBack, seg, smooth } from '../kit/math';
-import { createSign } from '../kit/parts';
+import { createSign, grown } from '../kit/parts';
 import { font, isPhone, Label, Surface } from '../kit/print';
 
 const CELL = 0.56;
@@ -114,10 +114,10 @@ export class BatchLanes {
 			this.lamps.push(lamp);
 		});
 		const done = createSign('Finished', 0.2);
-		done.position.set(X1 + 0.45, 0.755, -3.74);
+		done.position.set(X1 + 0.45, 0.755 + grown(0.2), -3.74);
 		this.group.add(done);
 		const waiting = createSign('Waiting', 0.24);
-		waiting.position.set(-2.75, 0.62, BACK_Z);
+		waiting.position.set(-2.75, 0.62 + grown(0.24), BACK_Z);
 		this.group.add(waiting);
 		const waitingLeg = new Batch();
 		waitingLeg.add(rbox(0.1, 0.4, 0.1, 0.03, 2), m.steelSoft, { p: [-2.75, 0.2, BACK_Z] });

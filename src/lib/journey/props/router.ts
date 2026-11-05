@@ -4,7 +4,7 @@ import { rbox } from '../kit/geometry';
 import { machine, curve, tube, shadowOn } from '../kit/machines';
 import { color, Lamp, mats } from '../kit/materials';
 import { bell, outBack, seg, smooth } from '../kit/math';
-import { createSign, fitting, leaving, standSign } from '../kit/parts';
+import { createSign, fitting, grown, leaving, standSign } from '../kit/parts';
 
 /** Between the pads on either side of it, with the belt running along the front. */
 export const ROUTER_X = 43.75;
@@ -111,7 +111,7 @@ export class Router {
 		this.group.add(box.build('router-box'));
 		shadowOn(this.group, 0, 0, 3.9, 1.1, 0.7, 0.34);
 		const found = createSign('Copy 3 still has them', 0.3, color.ink, m.hbm);
-		found.position.set(THIRD[0] + 0.1, 0.42, 2.1);
+		found.position.set(THIRD[0] + 0.1, 0.42 + grown(0.3) * Math.cos(0.5), 2.1);
 		found.rotation.x = -0.5;
 		found.visible = false;
 		this.group.add(found);

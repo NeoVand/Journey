@@ -777,7 +777,8 @@ export class Transformer {
 			bar.scale.y = 0.0001;
 			group.add(bar);
 			this.group.add(group);
-			const sign = createSign(p.text, 0.36);
+			// Fitted: the words fly into a row spaced for this size.
+			const sign = createSign(p.text, 0.36, undefined, undefined, true);
 			sign.scale.setScalar(0.0001);
 			group.add(sign);
 			this.picks.push({ group, bar, sign, h: p.score * 0.86 });

@@ -232,7 +232,8 @@ export class Finale {
 			[-5.2, -7.2, -1]
 		];
 		TRIP.forEach((stop, i) => {
-			const group = createSign(`${i + 1}  ${stop.name}`, size);
+			// Already sized for phones above, so it opts out of the general phone enlargement.
+			const group = createSign(`${i + 1}  ${stop.name}`, size, undefined, undefined, true);
 			group.position.set(...where[i]);
 			group.visible = false;
 			this.group.add(group);

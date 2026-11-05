@@ -1,5 +1,7 @@
 // Scans the whole timeline for moving things passing through solid things.
 // node scripts/collide.mjs [from] [to] [step] [harness]
+// SIGNS=1 instead tests every visible sign plate where it stands against everything except its own posts.
+// PHONE=1 runs the page as a touch phone, where signs are printed larger.
 //
 // At each moment it finds every mesh that moved relative to another, samples points on the mover's surface just
 // under its skin, and asks whether those points are inside the other mesh. Anything rigidly attached is ignored,
@@ -9,17 +11,19 @@ import { writeFileSync } from 'node:fs';
 
 const [from = '0', to = '32', step = '0.01', harness = 'claude'] = process.argv.slice(2);
 const browser = await chromium.launch({ headless: true, channel: 'chromium', args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
-const page = await browser.newPage({ viewport: { width: 640, height: 400 } });
+const phone = !!process.env.PHONE;
+const page = await browser.newPage({ viewport: phone ? { width: 402, height: 874 } : { width: 640, height: 400 }, hasTouch: phone, isMobile: phone });
 page.on('pageerror', (e) => console.log('pageerror', e.message));
 await page.goto(`${process.env.URL ?? 'http://localhost:5199'}/?still&debug`, { waitUntil: 'load' });
 await page.waitForFunction(() => window.__journey && window.__world, null, { timeout: 90000 });
 
-await page.evaluate(async (harness) => {
+await page.evaluate(async ([harness, signsOnly]) => {
 	const THREE = await import('/node_modules/three/build/three.module.js');
 	const world = window.__world;
 	const scene = world.stage.scene;
 	world.stage.render = () => {}; // geometry only: nothing needs drawing
 	window.__journey.seek(0, 0, harness);
+	window.__signsOnly = signsOnly;
 
 	const SKIN = 0.018;
 	const POINTS = 160;
@@ -177,17 +181,25 @@ await page.evaluate(async (harness) => {
 			live.push({ o, id: -1, key: o.uuid, world: o.matrixWorld, box: wbox.clone(), m: o.matrixWorld.elements.slice(), v: g.attributes.position.version, flat: flat(o) });
 		});
 		const prev = window.__prev;
-		const movers = prev ? live.filter((e) => {
+		// With SIGNS=1 every sign plate is tested where it stands, moving or not, against everything but its own parts.
+		const signs = window.__signsOnly;
+		const under = (o, root) => {
+			for (let p = o; p; p = p.parent) if (p === root) return true;
+			return false;
+		};
+		const movers = signs ? live.filter((e) => e.o.parent?.name === 'sign') : prev ? live.filter((e) => {
 			const p = prev.get(e.key);
 			return p && (!same(p.m, e.m) || p.v !== e.v);
 		}) : [];
 		for (const mover of movers) {
+			const root = signs ? mover.o.parent.parent : null;
 			for (const other of live) {
 				if (other === mover || other.flat || !mover.box.intersectsBox(other.box)) continue;
 				if (other.o === mover.o && mover.id < 0) continue;
+				if (root && under(other.o, root)) continue;
 				// Rigidly attached: the two moved together, so whatever is between them was built that way.
-				const pm = prev.get(mover.key), po = prev.get(other.key);
-				if (po && pm.v === mover.v) {
+				const pm = prev?.get(mover.key), po = prev?.get(other.key);
+				if (!signs && po && pm.v === mover.v) {
 					full.fromArray(po.m);
 					inv.copy(full).invert();
 					const before = rel.fromArray(pm.m).premultiply(inv).elements.slice();
@@ -229,7 +241,7 @@ await page.evaluate(async (harness) => {
 		return movers.length;
 	};
 	window.__report = () => [...hits.values()];
-}, harness);
+}, [harness, !!process.env.SIGNS]);
 
 const A = +from, B = +to, S = +step;
 let maxMovers = 0;

@@ -33,7 +33,8 @@ function shell(name: string, strap: string) {
 	// A window onto what is inside, because that is the whole difference between them.
 	b.add(extrude(roundedRect(W - 0.6, WIN_H, 0.14), 0.05, 0.016, 2, 8), m.recess, { p: [0, WIN_Y, D / 2 + 0.012] });
 	group.add(b.build(`pool-${name}`));
-	const sign = createSign(name, 0.34);
+	// Fitted: there's no room between the roof and the line printed under it.
+	const sign = createSign(name, 0.34, undefined, undefined, true);
 	sign.position.set(-0.05, 4.16, D / 2 + 0.04);
 	group.add(sign);
 	const l = new Label(strap, 0.25, { color: '#ffffff', weight: 700, font: font.sans });
@@ -164,7 +165,8 @@ export class Pools {
 			}
 		}
 		this.group.add(this.feed, this.feedNext);
-		this.yours = createSign('Your prompt is in here', 0.2);
+		// Fitted: it lies in the pool's mouth, which has no room for a bigger one.
+		this.yours = createSign('Your prompt is in here', 0.2, undefined, undefined, true);
 		this.yours.position.set(-X, MOUTH_Y - 0.08, TABLE_Z);
 		this.yours.visible = false;
 		this.group.add(this.yours);
@@ -177,7 +179,7 @@ export class Pools {
 		for (const s of [-1, 1]) rail.add(rbox(0.2, 1.5, 0.2, 0.05, 2), m.steelSoft, { p: [s * 1.5, 0.75, 0] });
 		this.group.add(rail.build('rdma'));
 		for (const s of [-1, 1]) shadowOn(this.group, s * 1.5, 0, 0, 0.5, 0.5, 0.3);
-		const bridge = createSign('KV cache, over RDMA', 0.24);
+		const bridge = createSign('KV cache, over RDMA', 0.24, undefined, undefined, true);
 		// Bolted to the front of the bridge, overlapping its edge.
 		bridge.position.set(0, 1.31, 0.59);
 		this.group.add(bridge);

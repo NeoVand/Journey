@@ -6,7 +6,7 @@ import { archBlock, arcPoint, Card, curve, hazard, islandAt, machine, panel, sha
 import { font, Surface } from '../kit/print';
 import { FINALE_T } from './finale';
 import { gearShape } from '../props/brain';
-import { createSign, fitting, standSign } from '../kit/parts';
+import { createSign, fitting, grown, standSign } from '../kit/parts';
 import { bell, bounceDown, clamp, hash, inOut, lerp, outBack, outCubic, seg, smooth, spring } from '../kit/math';
 import { createCastShadow } from '../props/island';
 import { TEN_TURNS, CALLS, HARNESSES, type HarnessId } from '../content';
@@ -197,7 +197,8 @@ class Gate {
 		this.group.add(this.hook);
 		this.hookSigns = ['Your hooks', 'Your rules'].map((text) => {
 			const sign = createSign(text, 0.15);
-			sign.position.set(0, 1.26, Z + 0.33);
+			// Under the wheel: on a phone it grows downward, away from it.
+			sign.position.set(0, 1.26 - grown(0.15), Z + 0.33);
 			this.group.add(sign);
 			return sign;
 		});
@@ -971,7 +972,8 @@ export class Back {
 		this.question.add(question);
 		this.question.position.set(cx, cy, cz - 1.5);
 		g.add(this.question);
-		this.verdict = createSign('It did. Carry on.', 0.3, '#ffffff', m.cobalt);
+		// Fitted: it has to stay inside the file it's stuck to.
+		this.verdict = createSign('It did. Carry on.', 0.3, '#ffffff', m.cobalt, true);
 		// Stuck onto the file it's about, in the blank under the code, leaning back with the paper.
 		this.verdict.position.set(cx + FILE_X, cy + 1.6, cz - 1.5 + 0.32 * Math.tan(0.1) + 0.045);
 		this.verdict.rotation.x = -0.1;
@@ -1004,7 +1006,7 @@ export class Back {
 			g.add(lever);
 			this.levers.push(lever);
 			const sign = createSign(name, 0.24);
-			sign.position.set(x, cy + 0.27, z + 0.61);
+			sign.position.set(x, cy + 0.27 + grown(0.24), z + 0.61);
 			g.add(sign);
 		});
 	}

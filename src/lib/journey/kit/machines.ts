@@ -3,7 +3,7 @@ import { Batch } from './batch';
 import { chamferRect, extrude, paper, rbox, sweep } from './geometry';
 import { color, Lamp, mats } from './materials';
 import { contactShadow, Surface } from './print';
-import { createSign, plinth, ventX } from './parts';
+import { createSign, plinth, SIGN_PHONE, ventX } from './parts';
 import { createIsland } from '../props/island';
 
 export type Finish = 'cream' | 'cobalt' | 'enamel';
@@ -29,8 +29,11 @@ export function machine({ w, h, d, finish = 'cream', name, signH = 0.26, vent = 
 	if (vent && h > 1.6) ventX(b, w / 2 + 0.002, 0.14 + h * 0.46, 0, h * 0.5, d * 0.62, Math.round(h * 2.8));
 	group.add(b.build('machine'));
 	if (name) {
-		const sign = createSign(name, signH);
-		sign.position.set(0, 0.14 + h - Math.max(0.5, signH * 2), d / 2 + 0.03);
+		// Kept inside the face: a short machine keeps its desktop-sized sign on a phone, and sits it clear of the plinth.
+		const fit = 2 * signH * SIGN_PHONE > h - 0.3;
+		const sign = createSign(name, signH, undefined, undefined, fit);
+		const half = fit ? signH : signH * SIGN_PHONE;
+		sign.position.set(0, Math.max(0.14 + h - Math.max(0.5, signH * 2), 0.14 + half + 0.08), d / 2 + 0.03);
 		group.add(sign);
 	}
 	return group;

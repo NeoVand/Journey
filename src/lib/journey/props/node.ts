@@ -3,7 +3,7 @@ import { Batch } from '../kit/batch';
 import { rbox } from '../kit/geometry';
 import { mats } from '../kit/materials';
 import { font, Label, Surface } from '../kit/print';
-import { createSign } from '../kit/parts';
+import { createSign, grown } from '../kit/parts';
 import { hash, inOut, lerp, outBack, seg } from '../kit/math';
 
 const CX = [-4.8, -1.6, 1.6, 4.8];
@@ -170,7 +170,7 @@ export class Node3D {
 		const s = 1 - seg(split, 0, 0.05);
 		this.sign.visible = drop > 0.001 && s > 0.001;
 		this.sign.scale.setScalar(Math.max(0.001, s));
-		this.sign.position.set(0, hover + SLAB_H / 2 + 0.34, 2.2);
+		this.sign.position.set(0, hover + SLAB_H / 2 + 0.34 + grown(0.42), 2.2);
 		this.links.emissiveIntensity = active * (0.5 + 0.5 * Math.sin(time * 4)) * 1.5;
 	}
 }

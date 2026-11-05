@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Batch } from './batch';
 import { extrude, rbox, roundedRect } from './geometry';
-import { Label } from './print';
+import { isPhone, Label } from './print';
 import { mats } from './materials';
 
 /** Louvred vent on a face whose normal is +X. Slats tilt so they catch the light. */
@@ -80,6 +80,9 @@ export function standSign(sign: THREE.Group, height: number, drop: number, one =
 	const plate = sign.children[0].children[0] as THREE.Mesh;
 	plate.geometry.computeBoundingBox();
 	const w = plate.geometry.boundingBox!.max.x - plate.geometry.boundingBox!.min.x;
+	// Printed larger on a phone: the plate rises so its bottom edge still sits on the posts.
+	const lift = (plate.geometry.boundingBox!.max.y - plate.geometry.boundingBox!.min.y) / 2 - height;
+	if (SIGN_PHONE > 1 && lift > 0.001) for (const part of sign.children.slice(0, 2)) part.position.y += lift;
 	const b = new Batch();
 	const m = mats();
 	for (const x of w > one ? [-w * 0.3, w * 0.3] : [0]) {
@@ -90,8 +93,25 @@ export function standSign(sign: THREE.Group, height: number, drop: number, one =
 	return sign;
 }
 
-/** A printed plate: the plate is sized from its text, so every sign has the same margins. */
-export function createSign(text: string, height = 0.2, ink = '#111a2e', material?: THREE.Material) {
+/** On a phone the whole scene is small, so signs are printed larger there to stay readable. */
+export const SIGN_PHONE = isPhone ? 1.5 : 1;
+/** How much further a sign of this size reaches from its centre on a phone, each way. Lift a sign that rests on
+ * something by this much, so its bottom edge stays put. */
+export const grown = (size: number) => size * (SIGN_PHONE - 1);
+
+/** A sign's plate width, as printed here. */
+export function signWidth(sign: THREE.Group) {
+	const plate = sign.children[0].children[0] as THREE.Mesh;
+	plate.geometry.computeBoundingBox();
+	return plate.geometry.boundingBox!.max.x - plate.geometry.boundingBox!.min.x;
+}
+
+/**
+ * A printed plate: the plate is sized from its text, so every sign has the same margins. On phones it grows by
+ * SIGN_PHONE about its centre, unless it's `fitted` to something that can't take a bigger plate.
+ */
+export function createSign(text: string, size = 0.2, ink = '#111a2e', material?: THREE.Material, fitted = false) {
+	const height = fitted ? size : size * SIGN_PHONE;
 	const group = new THREE.Group();
 	const label = new Label(text, height, { color: ink, weight: 700 });
 	const w = label.worldWidth + height * 1.2;

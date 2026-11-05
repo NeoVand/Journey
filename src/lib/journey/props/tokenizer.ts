@@ -3,7 +3,7 @@ import { Batch } from '../kit/batch';
 import { extrude, rbox, roundedRect } from '../kit/geometry';
 import { Lamp, color, mats } from '../kit/materials';
 import { Label, Surface, font } from '../kit/print';
-import { createSign, screw, ventZ } from '../kit/parts';
+import { createSign, grown, screw, ventZ } from '../kit/parts';
 import { shadowOn } from '../kit/machines';
 import { bell, outBack } from '../kit/math';
 import type { TOKENS } from '../content';
@@ -251,7 +251,7 @@ export class SafetyArch {
 		this.body.add(this.bar.mesh);
 
 		this.sign = createSign('Safety check', 0.19);
-		this.sign.position.set(0, H + 0.82, -SIGN_Z);
+		this.sign.position.set(0, H + 0.82 + grown(0.19), -SIGN_Z);
 		this.sign.rotation.y = faceCamera;
 		this.body.add(this.sign);
 		this.group.add(this.body);

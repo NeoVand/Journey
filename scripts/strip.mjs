@@ -1,5 +1,6 @@
 // Dense review of a transition: node scripts/strip.mjs <out.png> <WxH> <from> <to> <count> [cols] [harness]
 // Captures evenly spaced T values through the real page, cards included, then lays them out as one sheet.
+// PHONE=1 emulates a touch phone, so the page runs its phone tier (bigger signs, lighter rendering).
 import { chromium } from 'playwright';
 import { mkdirSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -15,7 +16,8 @@ const browser = await chromium.launch({
 	channel: 'chromium',
 	args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--enable-unsafe-swiftshader']
 });
-const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: 1 });
+const phone = !!process.env.PHONE;
+const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: phone ? 2 : 1, hasTouch: phone, isMobile: phone });
 const errors = [];
 page.on('console', (m) => {
 	if (m.type() === 'error') errors.push(m.text());
