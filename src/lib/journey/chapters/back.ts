@@ -88,7 +88,8 @@ const up = new THREE.Vector3(0, 1, 0);
 
 /* --------------------------------------------------------- printed call card ---- */
 
-function printCall(card: Card, title: string, call: string, accent: string, foot = 'call_id: c7') {
+/** `alongside` is a card standing next to this one: both come out the same size, as one pair. */
+function printCall(card: Card, title: string, call: string, accent: string, foot = 'call_id: c7', alongside = '') {
 	card.draw((c, w, h) => {
 		c.fillStyle = accent;
 		c.fillRect(0, 0, 22, h);
@@ -99,9 +100,11 @@ function printCall(card: Card, title: string, call: string, accent: string, foot
 		c.fillStyle = color.ink;
 		let size = h * 0.2;
 		c.font = `600 ${size}px ${font.mono}`;
-		const words = call.replace(/\(/, '(​').split('​');
+		const cut = (text: string) => text.replace(/\(/, '(​').split('​');
+		const words = cut(call);
+		const fits = [...words, ...cut(alongside)];
 		// Long calls wrap at the bracket; anything still too wide comes down a size.
-		while (Math.max(...words.map((l) => c.measureText(l).width)) > w - 96 && size > 12) {
+		while (Math.max(...fits.map((l) => c.measureText(l).width)) > w - 96 && size > 12) {
 			size -= 1;
 			c.font = `600 ${size}px ${font.mono}`;
 		}
@@ -274,6 +277,7 @@ export class Back {
 	private monitorFoot!: THREE.Object3D;
 	private trayFoot!: THREE.Object3D;
 	private callSearch = new Card(2.7, 1.4, 300);
+	private callFetch = new Card(2.7, 1.4, 300);
 	private callEdit = new Card(2.7, 1.4, 300);
 	private callTest = new Card(2.7, 1.4, 300);
 	private code = new Card(5.4, 6, 240, 0.04);
@@ -616,6 +620,8 @@ export class Back {
 			g.add(stand, card.mesh);
 		};
 		small(this.callSearch, sx);
+		// Far enough along that they don't bump as they pop up and overshoot.
+		small(this.callFetch, sx + 3.4);
 		small(this.callEdit, WX - 4.25);
 		small(this.callTest, WX + 6.1);
 
@@ -1166,7 +1172,8 @@ export class Back {
 		printCall(this.bad.card, 'Tool call', refused, color.red, `${idName}: c1`);
 		printCall(this.topCard, 'Tool call', calls.search, color.amber, `${idName}: c7`);
 		printCall(this.good.card, 'Tool call', calls.search, color.amber, `${idName}: c7`);
-		printCall(this.callSearch, 'Tool call, turn 1', calls.search, color.amber, `${idName}: c7`);
+		printCall(this.callSearch, 'Tool call, turn 1', calls.search, color.amber, `${idName}: c7`, calls.alongside);
+		if (calls.alongside) printCall(this.callFetch, 'Tool call, turn 1', calls.alongside, color.amber, `${idName}: c8`, calls.search);
 		printCall(this.callEdit, 'Tool call, turn 4', calls.edit, color.amber, `${idName}: c4`);
 		printCall(this.callTest, 'Tool call, turn 6', calls.test, color.amber, `${idName}: c6`);
 		this.result.draw((c, w, h) => {
@@ -1514,6 +1521,12 @@ export class Back {
 			stand.scale.set(Math.max(0.001, k), 1, Math.max(0.001, k));
 		};
 		callPop(this.callSearch, 22.06, 22.96);
+		// The same turn, the same moment: two calls that don't need each other's answers.
+		callPop(this.callFetch, 22.06, 22.96);
+		if (!CALLS[this.spec].alongside) {
+			this.callFetch.mesh.visible = false;
+			this.callStands.get(this.callFetch)!.visible = false;
+		}
 		callPop(this.callEdit, 23.06, 23.96);
 		callPop(this.callTest, 24.06, 24.96);
 

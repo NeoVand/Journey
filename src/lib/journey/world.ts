@@ -16,7 +16,7 @@ import { Harness, HW, PORT_KEYS_Z, PORT_MCP_Z, PORT_OUT_Z, PORT_Y } from './prop
 import { createEasel, DOC_H, RequestDoc, SLOT_Y, Strip } from './props/request';
 import { createTunnelStand, Tunnel } from './props/tunnel';
 import { Gateway, GW } from './props/gateway';
-import { createBelt, createChatTemplate, Gantry, Tile, TILE_D, TILE_H } from './props/tokenizer';
+import { createBelt, createChatTemplate, Gantry, SafetyArch, Tile, TILE_D, TILE_H } from './props/tokenizer';
 import { HARNESSES, PROMPT, TOKENS, type HarnessId } from './content';
 import { Cluster, CLUSTER_SHOTS, DIVE_T } from './cluster';
 import { RETURN_POINTS } from './layout';
@@ -38,6 +38,9 @@ const BELT_Y = ISLAND_C_Y + 0.5;
 const TEMPLATE_X = -3.4;
 const SLOT_X = TEMPLATE_X + 1.06;
 const BELT_END = 10.7;
+// As far along the path as both its feet still stand on the island.
+const SAFETY_X = 11.45;
+let WELL_FLOOR_Y = -Infinity;
 const HOLD_SHADOWS_T = 32.36;
 const DARK = '#060f26'; // the inside of the machine, and the colour of the fade
 const REST = 66; // tiles behind the named ones, and their spacing
@@ -407,7 +410,8 @@ export class World {
 			[3.5, y, z],
 			[6.5, y, z],
 			[BELT_END - 0.4, y, z],
-			[BELT_END + 0.5, y - 0.03, z + 0.32],
+			[BELT_END + 0.5, y - 0.005, z + 0.14],
+			[12, y - 0.2, z + 0.62],
 			[12.8, y - 0.55, z + 1.6],
 			[14, y - 1.7, z + 3.8],
 			[13.9, y - 3.2, z + 6.2],
@@ -416,19 +420,47 @@ export class World {
 			[8.5, y - 7, z + 6],
 			[7.9, y - 7.6, z + 3.2],
 			[7.6, y - 8, z],
-			[6.6, y - 8.3, z - 3.4],
-			[4.2, y - 8.5, z - 5],
-			[2, y - 8.62, z - 4.2],
-			[1.4, y - 8.72, z - 2.5],
+			[6.2, y - 8.3, z - 3.55],
+			[3.6, y - 8.5, z - 4.6],
+			[2.04, y - 8.62, z - 3.96],
+			[1.4, y - 8.72, z - 2.4],
 			[1.4, y - 8.84, z - 1.5],
 			[1.4, y - 8.98, z - 0.75],
 			[1.4, y - 9.42, z - 0.12],
 			[1.4, y - 10.2, z + 0.2],
 			[1.4, y - 11.5, z + 0.3]
 		];
-		this.flow = new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(...p)), false, 'centripetal');
-		this.flow.arcLengthDivisions = 800;
+		// Even out the bends between the belt and the last run to the hatch. Tiles are rigid and some are long,
+		// and a sudden tight bend would drive their corners through the rails.
+		const rough = new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(...p)), false, 'centripetal');
+		rough.arcLengthDivisions = 800;
+		const roughLen = rough.getLength();
+		const fine = rough.getSpacedPoints(300);
+		const belt = BELT_END - 0.2 - SLOT_X;
+		const home = fine.findLastIndex((q) => q.z < z - 2.4) / 300 * roughLen;
+		const give = fine.map((_, i) => {
+			const at = (i / 300) * roughLen;
+			return smooth(seg(at, belt, belt + 1.6)) * (1 - smooth(seg(at, home - 1, home)));
+		});
+		for (let pass = 0; pass < 60; pass++) {
+			const was = fine.map((q) => q.clone());
+			for (let i = 1; i < 300; i++) fine[i].lerp(this.v1.copy(was[i - 1]).add(was[i + 1]).multiplyScalar(0.5), give[i] * 0.5);
+		}
+		this.flow = new THREE.CatmullRomCurve3(fine.filter((_, i) => i % 2 === 0), false, 'centripetal');
+		this.flow.arcLengthDivisions = 1200;
 		this.flowLen = this.flow.getLength();
+
+		// The safety check stands where the path is about to leave the island, square to it.
+		let archU = 0;
+		while (this.flow.getPointAt(archU).x < SAFETY_X) archU += 0.001;
+		const archAt = this.flow.getPointAt(archU);
+		const archAlong = this.flow.getTangentAt(archU);
+		const archTurn = -Math.atan2(archAlong.z, archAlong.x);
+		this.safety = new SafetyArch(-archTurn + 0.2);
+		this.safety.group.position.set(archAt.x, ISLAND_C_Y, archAt.z);
+		this.safety.group.rotation.y = archTurn;
+		this.root.add(this.safety.group);
+		this.safetyS = archU * this.flowLen;
 
 		// Open channel for everything past the belt.
 		const u0 = (BELT_END - 0.25 - SLOT_X) / this.flowLen;
@@ -802,6 +834,7 @@ export class World {
 		const floor = new THREE.Mesh(new THREE.PlaneGeometry(1.06, 1.18), new THREE.MeshBasicMaterial({ color: DARK }));
 		floor.rotation.x = -Math.PI / 2;
 		floor.position.set(x, roof + 0.13, z);
+		WELL_FLOOR_Y = floor.position.y;
 		this.root.add(floor);
 	}
 
@@ -859,6 +892,8 @@ export class World {
 	private tileSide = TOKENS.map(() => 0);
 	private tileFrom = TOKENS.map(() => 0);
 	private tileAt = TOKENS.map(() => -1e6);
+	private safety!: SafetyArch;
+	private safetyS = 0;
 	private pulledAtT = 0;
 
 	private wirePokes() {
@@ -1014,6 +1049,7 @@ export class World {
 				this.laptop.update(PROMPT.length, 1, time, 1, false);
 				this.mcp.update(1, time);
 				this.finale.update(T);
+				this.safety.update(1, 1, 1, 1, 0, time);
 				this.harness.update(this.back.opens(T), [1, 1, 1, 1], 1, time, this.back.jolt(T) + this.finale.harnessPulse * 0.6);
 				if (this.back.group.visible) this.back.update(T, time, this.finale.onTrack);
 			}
@@ -1213,6 +1249,8 @@ export class World {
 		const start = ROW_START - SLOT_X + (feed - 1) * (rowLen + 1.6);
 		this.beltTicks.offset.x = -(start + D) / 0.44;
 
+		// Past the belt they ride a little smaller, so that the longest can round a bend without touching a rail or each other.
+		const small = (s: number) => 1 - 0.2 * smooth(seg(s, BELT_END - SLOT_X - 1.4, BELT_END - SLOT_X));
 		const frame = (s: number, target: THREE.Object3D, y = 0) => {
 			if (s <= 0) {
 				target.position.set(SLOT_X + s, BELT_Y + y, LINE_Z);
@@ -1249,10 +1287,12 @@ export class World {
 			const now = performance.now();
 			const turned = this.tileShown(i, now);
 			const leap = bell(seg(now, this.tileAt[i], this.tileAt[i] + 560), 0, 1) * 0.92;
-			frame(s, tile.group, rest * low + pop + hop + bounce + idle + leap);
+			const size = small(s);
+			// A hair above the floor once it's in the channel, because the channel twists and a tile can't.
+			frame(s, tile.group, rest * low * size + (1 - size) * 0.08 + pop + hop + bounce + idle + leap);
 			tile.group.rotateX((flip + turned) * Math.PI);
-			tile.group.scale.set(1 + squash * 0.04, low, 1 + squash * 0.12);
-			tile.group.visible = s < this.flowLen - 0.1 && feed > 0;
+			tile.group.scale.set((1 + squash * 0.04) * size, low * size, (1 + squash * 0.12) * size);
+			tile.group.visible = feed > 0 && tile.group.position.y > WELL_FLOOR_Y - 0.85;
 		});
 
 		// The gantry walks from one boundary to the next, then stamps.
@@ -1283,19 +1323,25 @@ export class World {
 		const started = seg(T, 6.86, 6.95);
 		for (let j = 0; j < count; j++) {
 			const s = start - (j + 1) * REST_GAP + D;
-			if (s < 0.2 || s > this.flowLen - 0.1 || started <= 0) {
+			if (s < 0.2 || started <= 0) {
 				d.position.set(0, -500, 0);
 				d.scale.setScalar(0);
 				d.quaternion.identity();
 			} else {
-				frame(s, d, TILE_H * 0.46);
-				d.scale.setScalar(1);
+				const size = small(s);
+				frame(s, d, TILE_H * 0.46 * size + (1 - size) * 0.08);
+				d.scale.setScalar(d.position.y > WELL_FLOOR_Y - 0.85 ? size : 0);
 			}
 			d.updateMatrix();
 			this.rest.setMatrixAt(j, d.matrix);
 		}
 		this.rest.instanceMatrix.needsUpdate = true;
 		this.rest.visible = started > 0;
+
+		// The first token under the arch turns its light green, and it stays busy until the last one has gone through.
+		const seen = seg(start + rowLen + D, this.safetyS - 0.5, this.safetyS);
+		const through = seg(start - count * REST_GAP + D, this.safetyS, this.safetyS + 1.5);
+		this.safety.update(seg(T, 6.84, 6.895), seg(T, 6.895, 6.935), outBack(seg(T, 6.9, 6.95), 2), seen, seen * (1 - through), time);
 	}
 
 	dispose() {

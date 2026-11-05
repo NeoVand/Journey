@@ -3,8 +3,9 @@ import { Batch } from '../kit/batch';
 import { extrude, rbox, roundedRect } from '../kit/geometry';
 import { Lamp, color, mats } from '../kit/materials';
 import { Label, Surface, font } from '../kit/print';
-import { screw, ventZ } from '../kit/parts';
-import { outBack } from '../kit/math';
+import { createSign, screw, ventZ } from '../kit/parts';
+import { shadowOn } from '../kit/machines';
+import { bell, outBack } from '../kit/math';
 import type { TOKENS } from '../content';
 
 export const TILE_D = 0.8;
@@ -209,6 +210,65 @@ export class Gantry {
 	update(drop: number, active: boolean) {
 		this.head.position.y = THREE.MathUtils.lerp(0.72, 0.13, drop);
 		this.lamp.set(active ? color.green : color.amber, active ? 2 : 0.6);
+	}
+}
+
+/**
+ * The first safety check, standing over the path where it leaves the island. Small classifiers, not the model,
+ * read every token on its way out. It comes down from above as the row sets off, legs either side of the path.
+ */
+export class SafetyArch {
+	group = new THREE.Group();
+	private body = new THREE.Group();
+	private bar: Lamp;
+	private sign: THREE.Group;
+	private shadows: THREE.Object3D[] = [];
+
+	/** faceCamera turns the sign back towards the reader, whichever way the path happens to run here. */
+	constructor(faceCamera: number) {
+		const m = mats();
+		const b = new Batch();
+		const Z = 0.92;
+		const H = 1.06;
+		const SIGN_Z = 0.55;
+		for (const s of [-1, 1]) {
+			b.add(rbox(0.5, 0.1, 0.5, 0.03, 2), m.steelSoft, { p: [0, 0.05, s * Z] });
+			b.add(rbox(0.3, H, 0.3, 0.07, 3), m.cream, { p: [0, H / 2 + 0.06, s * Z] });
+			this.shadows.push(shadowOn(this.group, 0, 0, s * Z, 0.5, 0.5, 0.3));
+		}
+		b.add(rbox(0.46, 0.34, Z * 2 + 0.46, 0.09, 4), m.cream, { p: [0, H + 0.22, 0] });
+		b.add(rbox(0.02, 0.14, Z * 2 - 0.1, 0.008, 1), m.recess, { p: [0.232, H + 0.22, 0] });
+		b.add(rbox(0.1, 0.24, 0.1, 0.02, 1), m.steelSoft, { p: [0, H + 0.5, -SIGN_Z] });
+		this.body.add(b.build('safety-arch'));
+
+		this.bar = new Lamp(rbox(0.02, 0.06, Z * 2 - 0.26, 0.008, 1), color.amber, 0.5);
+		this.bar.mesh.position.set(0.244, H + 0.22, 0);
+		this.body.add(this.bar.mesh);
+
+		this.sign = createSign('Safety check', 0.19);
+		this.sign.position.set(0, H + 0.82, -SIGN_Z);
+		this.sign.rotation.y = faceCamera;
+		this.body.add(this.sign);
+		this.group.add(this.body);
+	}
+
+	/**
+	 * fall: 0 still up in the sky, 1 landed. land: 0 to 1 over the squash and the small bounce that follow.
+	 * named: its sign. seen: 0 before the first token gets here, 1 after. reading: 1 while tokens pass under it.
+	 */
+	update(fall: number, land: number, named: number, seen: number, reading: number, time: number) {
+		this.group.visible = fall > 0;
+		if (fall <= 0) return;
+		const squash = bell(land, 0, 0.45) * 0.09;
+		const bounce = bell(land, 0.35, 1) * 0.1;
+		this.body.position.y = (1 - fall) * (1 - fall) * 6.5 + bounce;
+		this.body.scale.set(1 + squash * 0.3, 1 - squash, 1 + squash * 0.3);
+		// Its shadow gathers under it as it nears the ground.
+		const near = Math.max(0.001, fall * fall * fall);
+		this.shadows.forEach((s) => s.scale.setScalar(near));
+		this.sign.visible = named > 0;
+		if (named > 0) this.sign.scale.setScalar(Math.max(0.001, named));
+		this.bar.mix(color.amber, color.green, seen, 0.5 + seen * 0.3 + reading * (1 + Math.sin(time * 11) * 0.4));
 	}
 }
 

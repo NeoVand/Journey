@@ -797,7 +797,7 @@
 				Your sentence is only the tail. The instructions and tool descriptions count too, so turn one comes to about 21,000 tokens.
 				<small>Illustrative.</small>
 			</p>
-			<p>All of them are headed for a machine already serving hundreds of other people.</p>
+			<p>{@render rich('On the way out, small [[classifiers]] check them against the rules, and a clear violation stops here. The rest head for a machine already serving hundreds of other people.')}</p>
 			<p class="next">{@render rich('Next stop: inside the [[inference cluster]].')}</p>
 		</article>
 	</section>
@@ -1048,7 +1048,7 @@
 		<article class="pin left" data-out="0.88">
 			<h2>Finding the code</h2>
 			<p>{@render rich('An approved call becomes a [[system call]], real work on your machine. The model searches the way an engineer does: look for the words, list the candidates, read the promising file by line range.')}</p>
-			<p>Each step is its own turn: call, result, think, next call. It will read about 250 lines of your repository, not all of it.</p>
+			<p>Each step is its own turn: call, result, think, next call. Calls that don’t need each other’s answers can share one, and the harness runs them side by side. In the end the model reads about 250 lines of your repository, not all of it.</p>
 			<p class="note">{@render agent()} {@render rich(callouts.search)}</p>
 		</article>
 	</section>

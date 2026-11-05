@@ -90,9 +90,11 @@ export const FORMS = [
 ];
 
 /** How the same three calls look in each harness's own catalog. */
-export const CALLS: Record<HarnessId, { search: string; edit: string; test: string; pieces: string[] }> = {
+/** `alongside` is the other call in turn one, when the agent makes two. */
+export const CALLS: Record<HarnessId, { search: string; alongside?: string; edit: string; test: string; pieces: string[] }> = {
 	claude: {
 		search: 'Grep("lock|schedule", src/)',
+		alongside: 'WebFetch(docs)',
 		edit: 'Edit(src/scheduler.py, old, new)',
 		test: 'Bash(pytest tests/test_scheduler.py -x)',
 		pieces: ['Grep', '{"', 'pattern', '":"', 'lock', '|', 'schedule', '","', 'path', '":"', 'src', '/', '"}']
@@ -105,6 +107,7 @@ export const CALLS: Record<HarnessId, { search: string; edit: string; test: stri
 	},
 	copilot: {
 		search: 'textSearch("lock|schedule")',
+		alongside: 'fetch(docs)',
 		edit: 'editFiles(src/scheduler.py)',
 		test: 'runTerminal(pytest tests/test_scheduler.py -x)',
 		pieces: ['text', 'Search', '{"', 'query', '":"', 'lock', '|', 'schedule', '"}']
@@ -139,7 +142,7 @@ export const GLOSSARY: Record<string, string> = {
 	'top-p or top-k': 'Two ways to cut the long shots. Top-k keeps only the k best tokens. Top-p keeps the smallest group whose chances add up to p.',
 	'speculative decoding': 'A quick helper guesses the next few tokens, and the big model checks them all in one pass. Same answers, less waiting.',
 	ripgrep: 'A very fast command-line search tool, run as rg.',
-	classifiers: 'Small models that sort text into categories. Here: fine to show, or not.',
+	classifiers: 'Small models that sort text into categories. Here: within the rules, or not.',
 	'prompt injection': 'Text in a file or web page written to trick a model into obeying it as if you had said it.',
 	seatbelt: 'macOS’s built-in way to fence a program in. Bubblewrap does the same job on Linux. Anything the program starts stays inside the fence.',
 	sandbox: 'A fence around a process: it can only touch the files and network it has been allowed.',
