@@ -7,7 +7,7 @@ import { font, Surface } from '../kit/print';
 import { FINALE_T } from './finale';
 import { gearShape } from '../props/brain';
 import { createSign, fitting, standSign } from '../kit/parts';
-import { bell, bounceDown, clamp, hash, inOut, lerp, outBack, seg, smooth, spring } from '../kit/math';
+import { bell, bounceDown, clamp, hash, inOut, lerp, outBack, outCubic, seg, smooth, spring } from '../kit/math';
 import { createCastShadow } from '../props/island';
 import { TEN_TURNS, CALLS, HARNESSES, type HarnessId } from '../content';
 import { EASEL_POS, EASEL_TILT, RETURN_POINTS } from '../layout';
@@ -27,9 +27,25 @@ const CARTY = GY + 0.2;
 const DOCK_X = -60.6;
 const DOCK_H = 2.3;
 const WX = -24.5;
+/** The scanner over the repository shelf: its rail's height and depth, its posts and reach either side of the
+ * shelf's centre, where the lens parks, and the lens's size. */
+const SCAN_RAIL_Y = 6.1;
+const SCAN_Z = 0.1;
+const SCAN_HALF = 4.05;
+const SCAN_REACH = 3;
+const SCAN_PARK_Y = WY + 4.7;
+const LENS_R = 0.72;
 const C_POS: V3 = [-20, 6, -4];
 const M_POS: V3 = [-48, 9, -4];
 const U_POS: V3 = [-78, 12, -4];
+/** Along that island from its centre: the file, the post the pipe plugs into, and the loupe's arm on the post. */
+const FILE_X = 5.5;
+const POST_X = 3.87;
+const LOUPE_PIVOT_Y = 3.55;
+const LOUPE_ARM = 0.71;
+/** The arm's angle parked up over the pipe, and looking at the changed line. */
+const LOUPE_REST = 2.2;
+const LOUPE_LOOK = -0.554;
 const R_POS: V3 = [-110, 15, -4];
 /** A bar's tag sits on the top front edge of the bar, this far above its top. */
 const TAG_RISE = 0.2;
@@ -278,6 +294,8 @@ export class Back {
 	private shelfHits: THREE.Mesh[] = [];
 	private hitMat!: THREE.MeshStandardMaterial;
 	private lens = new THREE.Group();
+	private lensCarriage = new THREE.Group();
+	private lensArm!: THREE.Mesh;
 	private callStands = new Map<Card, THREE.Object3D>();
 	private docsStand!: THREE.Object3D;
 	private monitorFoot!: THREE.Object3D;
@@ -308,7 +326,7 @@ export class Back {
 
 	private pipeA!: THREE.Mesh;
 	private pipeB!: THREE.Mesh;
-	private question!: THREE.Group;
+	private question = new THREE.Group();
 	private verdict!: THREE.Group;
 	private loupe = new THREE.Group();
 	private levers: THREE.Group[] = [];
@@ -335,7 +353,7 @@ export class Back {
 
 	private climber!: THREE.Mesh;
 	private locks: { group: THREE.Group; shackle: THREE.Group }[] = [];
-	private flag!: THREE.Group;
+	private flag = new THREE.Group();
 
 	private a = new THREE.Vector3();
 	private b = new THREE.Vector3();
@@ -592,6 +610,8 @@ export class Back {
 		const folders = new Batch();
 		folders.add(rbox(6.5, 3.0, 0.1, 0.03, 1), m.recess, { p: [sx, WY + 1.84, -0.62] });
 		const fg = rbox(0.58, 0.76, 0.2, 0.05, 2);
+		const hitGeo = rbox(0.58, 0.76, 0.56, 0.05, 2);
+		hitGeo.translate(0, 0, -0.18);
 		const hits = new Set([9, 13, 18]);
 		this.hitMat = new THREE.MeshStandardMaterial({ color: '#ffcf4a', emissive: '#ff9600', emissiveIntensity: 0 });
 		for (let i = 0; i < 27; i++) {
@@ -600,7 +620,8 @@ export class Back {
 			const fx = sx - 2.84 + col * 0.71;
 			const fy = WY + 2.92 - row * 1.02;
 			if (hits.has(i)) {
-				const mesh = new THREE.Mesh(fg, this.hitMat);
+				// A match is a drawer: its body runs back into the shelf, so it slides out instead of floating free.
+				const mesh = new THREE.Mesh(hitGeo, this.hitMat);
 				mesh.position.set(fx, fy, -0.5);
 				g.add(mesh);
 				this.shelfHits.push(mesh);
@@ -610,13 +631,34 @@ export class Back {
 		}
 		g.add(folders.build('folders'));
 
+		// The lens hangs from a carriage on a gantry over the shelf, like the tokenizer's cutter over its belt. It
+		// parks at the top left, comes down to read the rows, and goes back up.
+		const gantry = new Batch();
+		for (const side of [-1, 1]) {
+			const px = sx + side * SCAN_HALF;
+			gantry.add(rbox(0.7, 0.1, 0.7, 0.03, 2), m.steelSoft, { p: [px, WY + 0.05, SCAN_Z] });
+			gantry.add(rbox(0.22, SCAN_RAIL_Y, 0.22, 0.06, 2), m.steelSoft, { p: [px, WY + SCAN_RAIL_Y / 2, SCAN_Z] });
+		}
+		gantry.add(rbox(SCAN_HALF * 2 + 0.22, 0.24, 0.26, 0.06, 2), m.steel, { p: [sx, WY + SCAN_RAIL_Y, SCAN_Z] });
+		g.add(gantry.build('scan-gantry'));
+		const carriage = new Batch();
+		carriage.add(rbox(0.62, 0.42, 0.44, 0.08, 3), m.cobalt);
+		this.lensCarriage.add(carriage.build('scan-carriage'));
+		const armGeo = new THREE.CylinderGeometry(0.05, 0.05, 1, 10);
+		armGeo.translate(0, -0.5, 0);
+		this.lensArm = new THREE.Mesh(armGeo, m.steel);
+		this.lensArm.position.y = -0.18;
+		this.lensCarriage.add(this.lensArm);
+		this.lensCarriage.position.set(sx, WY + SCAN_RAIL_Y, SCAN_Z);
+		g.add(this.lensCarriage);
 		const lb = new Batch();
-		lb.add(new THREE.TorusGeometry(0.72, 0.11, 14, 44), m.cobalt);
-		lb.add(rbox(0.2, 0.8, 0.14, 0.06, 2), m.cobalt, { p: [0.64, -0.76, 0], r: [0, 0, 0.72] });
+		lb.add(new THREE.TorusGeometry(LENS_R, 0.11, 14, 44), m.cobalt);
+		lb.add(rbox(0.16, 0.2, 0.16, 0.04, 2), m.steel, { p: [0, LENS_R + 0.12, 0] });
 		this.lens.add(lb.build('lens'));
-		const lensGlass = new THREE.Mesh(new THREE.CircleGeometry(0.66, 40), new THREE.MeshPhysicalMaterial({ color: '#d5ecff', transparent: true, opacity: 0.32, roughness: 0.05, depthWrite: false }));
+		const lensGlass = new THREE.Mesh(new THREE.CircleGeometry(LENS_R - 0.06, 40), new THREE.MeshPhysicalMaterial({ color: '#d5ecff', transparent: true, opacity: 0.32, roughness: 0.05, depthWrite: false }));
 		this.lens.add(lensGlass);
 		g.add(this.lens);
+		this.placeLens(0);
 
 		const small = (card: Card, x: number) => {
 			card.mesh.position.set(x, WY + 0.95, 3.5);
@@ -881,11 +923,15 @@ export class Back {
 				c.fillText(t, 30, 164 + i * 74);
 			});
 		});
-		this.fileCard.mesh.position.set(cx + 5.2, cy + 2.15, cz - 1.5);
+		// The file stands on its base, slotted into a post. The pipe from the harness plugs into the post's face.
+		this.fileCard.mesh.position.set(cx + FILE_X, cy + 1.92, cz - 1.5);
 		this.fileCard.mesh.rotation.x = -0.1;
 		g.add(this.fileCard.mesh);
 		const st = new Batch();
-		st.add(rbox(3.3, 0.12, 1, 0.04, 2), m.steelSoft, { p: [cx + 5.2, cy + 0.06, cz - 1.6] });
+		st.add(rbox(3.6, 0.12, 1, 0.04, 2), m.steelSoft, { p: [cx + FILE_X - 0.1, cy + 0.06, cz - 1.6] });
+		st.add(rbox(0.34, 3.75, 0.5, 0.08, 3), m.steelSoft, { p: [cx + POST_X, cy + 1.975, cz - 1.5] });
+		// The stub the loupe's arm turns on.
+		st.add(new THREE.CylinderGeometry(0.09, 0.09, 0.34, 16), m.steel, { p: [cx + POST_X, cy + LOUPE_PIVOT_Y, cz - 1.12], r: [Math.PI / 2, 0, 0] });
 		g.add(st.build('file-stand'));
 
 		const glass = new THREE.MeshPhysicalMaterial({ color: '#7fc4ff', transparent: true, opacity: 0.55, roughness: 0.12, clearcoat: 1, depthWrite: false });
@@ -899,18 +945,25 @@ export class Back {
 		g.add(this.pipeA, this.pipeB);
 
 		// A signpost planted in the break in the pipe.
-		this.question = standSign(createSign('Did it happen?', 0.34, color.ink, m.amber), 0.34, 2.96, 9);
-		this.question.position.set(cx, cy + 3.3, cz - 1.5);
+		// It grows up from its foot, so its post never hangs in the air or sinks into the island.
+		const question = standSign(createSign('Did it happen?', 0.34, color.ink, m.amber), 0.34, 2.96, 9);
+		question.position.y = 3.3;
+		this.question.add(question);
+		this.question.position.set(cx, cy, cz - 1.5);
 		g.add(this.question);
 		this.verdict = createSign('It did. Carry on.', 0.3, '#ffffff', m.cobalt);
-		// Stamped across the top of the file it's about.
-		this.verdict.position.set(cx + 5.2, cy + 4.2, cz - 1.4);
+		// Stuck onto the file it's about, in the blank under the code, leaning back with the paper.
+		this.verdict.position.set(cx + FILE_X, cy + 1.6, cz - 1.5 + 0.32 * Math.tan(0.1) + 0.045);
+		this.verdict.rotation.x = -0.1;
 		g.add(this.verdict);
 
+		// A loupe on an arm, hinged to the post like a desk magnifier. It swings down over the file to look.
 		const lb = new Batch();
-		lb.add(new THREE.TorusGeometry(0.62, 0.1, 14, 40), m.cobalt);
-		lb.add(rbox(0.18, 0.96, 0.12, 0.05, 2), m.cobalt, { p: [0.62, -0.74, 0], r: [0, 0, 0.72] });
+		lb.add(new THREE.CylinderGeometry(0.13, 0.13, 0.16, 18), m.steel, { r: [Math.PI / 2, 0, 0] });
+		lb.add(rbox(LOUPE_ARM, 0.12, 0.1, 0.04, 2), m.cobalt, { p: [LOUPE_ARM / 2, 0, 0] });
+		lb.add(new THREE.TorusGeometry(0.62, 0.1, 14, 40), m.cobalt, { p: [LOUPE_ARM + 0.62, 0, 0] });
 		this.loupe.add(lb.build('loupe'));
+		this.loupe.position.set(cx + POST_X, cy + LOUPE_PIVOT_Y, cz - 0.95);
 		g.add(this.loupe);
 
 		const names = ['Steer', 'Cancel', 'Terminate', 'Roll back'];
@@ -1158,13 +1211,14 @@ export class Back {
 			lb.add(extrude(roundedRect(0.62, 0.52, 0.11), 0.22, 0.04, 3, 8), m.cobalt);
 			lb.add(new THREE.CircleGeometry(0.06, 16), m.recess, { p: [0, 0.03, 0.112] });
 			group.add(lb.build('lock'));
+			// The shackle turns on its long leg, which never leaves the body. The short leg sits in its hole when shut.
 			const shackle = new THREE.Group();
 			const sb = new Batch();
-			sb.add(new THREE.TorusGeometry(0.17, 0.04, 10, 22, Math.PI), m.steel, { p: [0, 0.2, 0] });
-			sb.add(new THREE.CylinderGeometry(0.04, 0.04, 0.2, 10), m.steel, { p: [-0.17, 0.1, 0] });
-			sb.add(new THREE.CylinderGeometry(0.04, 0.04, 0.2, 10), m.steel, { p: [0.17, 0.1, 0] });
+			sb.add(new THREE.TorusGeometry(0.17, 0.04, 10, 22, Math.PI), m.steel, { p: [0.17, 0.2, 0] });
+			sb.add(new THREE.CylinderGeometry(0.04, 0.04, 0.46, 10), m.steel, { p: [0, -0.03, 0] });
+			sb.add(new THREE.CylinderGeometry(0.04, 0.04, 0.28, 10), m.steel, { p: [0.34, 0.06, 0] });
 			shackle.add(sb.build('shackle'));
-			shackle.position.y = 0.26;
+			shackle.position.set(-0.17, 0.26, 0);
 			group.add(shackle);
 			// Standing on the step, not hovering over it.
 			group.position.set(x - P / 2 + 0.5, y + 0.255, cz + 1.05);
@@ -1175,10 +1229,40 @@ export class Back {
 		this.climber = new THREE.Mesh(rbox(0.86, 0.3, 0.86, 0.06, 3), m.amber);
 		this.climber.castShadow = true;
 		g.add(this.climber);
-		this.flag = standSign(createSign('An agent’s “done” is usually here', 0.22, '#ffffff', m.cobalt), 0.22, 0.6, 9);
+		// Planted in the top of the gate's box: it grows up from its foot, so its posts never sink into the box.
+		const flag = standSign(createSign('An agent’s “done” is usually here', 0.22, '#ffffff', m.cobalt), 0.22, 0.6, 9);
+		flag.position.y = 0.84;
+		this.flag.add(flag);
 		const [fx, fy] = onStep(1);
-		this.flag.position.set(fx + 0.1, fy + 1.82, cz + 0.2);
+		this.flag.position.set(fx + 0.1, fy + 0.98, cz + 0.2);
 		g.add(this.flag);
+	}
+
+	/** Parked at the top left until 22, then down, along each row of files and down to the next, and back up. */
+	private placeLens(T: number) {
+		const sx = WX - 8;
+		const left = sx - SCAN_REACH;
+		const right = sx + SCAN_REACH;
+		const row = (r: number) => WY + 2.92 - r * 1.02;
+		const sweep = seg(T, 22.12, 22.56);
+		let x = left;
+		let y: number;
+		if (sweep <= 0) y = lerp(SCAN_PARK_Y, row(0), smooth(seg(T, 22.0, 22.12)));
+		else if (sweep < 1) {
+			const r = Math.min(2, Math.floor(sweep * 3));
+			const u = sweep * 3 - r;
+			const along = inOut(seg(u, 0, 0.82));
+			x = r % 2 ? lerp(right, left, along) : lerp(left, right, along);
+			y = row(r + (r < 2 ? smooth(seg(u, 0.82, 1)) : 0));
+		} else {
+			const back = inOut(seg(T, 22.56, 22.7));
+			x = lerp(right, left, back);
+			y = lerp(row(2), SCAN_PARK_Y, back);
+		}
+		this.lens.position.set(x, y, SCAN_Z);
+		this.lensCarriage.position.x = x;
+		// From under the carriage down into the clamp on top of the ring.
+		this.lensArm.scale.y = WY + SCAN_RAIL_Y - 0.18 - (y + LENS_R + 0.18);
 	}
 
 	setHarness(id: HarnessId) {
@@ -1641,19 +1725,14 @@ export class Back {
 
 		/* ---- search ---- */
 		if (T > 21.7 && T < 23) {
-			const sx = WX - 8;
-			const sweep = seg(T, 22.12, 22.56);
-			const r = Math.min(2, Math.floor(sweep * 3));
-			const u = sweep * 3 - r;
-			this.lens.visible = sweep > 0 && sweep < 1;
-			this.lens.position.set(sx - 3 + (r % 2 ? 1 - u : u) * 6, WY + 2.92 - r * 0.86, 0.1);
+			this.placeLens(T);
 			this.shelfHits.forEach((h) => {
 				const on = seg(T, 22.2, 22.3);
 				h.position.z = -0.5 + on * 0.22;
 			});
 			this.hitMat.emissiveIntensity = seg(T, 22.2, 22.3) * (0.8 + Math.sin(time * 5) * 0.25);
 		} else {
-			this.lens.visible = false;
+			this.placeLens(0);
 			this.hitMat.emissiveIntensity = 0;
 		}
 
@@ -1793,9 +1872,9 @@ export class Back {
 			const q = outBack(seg(T, 28.2, 28.28), 2) * (1 - seg(T, 28.54, 28.6));
 			this.question.visible = q > 0.001;
 			this.question.scale.setScalar(Math.max(0.001, q));
-			const look = seg(T, 28.3, 28.5);
-			this.loupe.visible = look > 0 && T < 28.62;
-			this.loupe.position.set(lerp(cx - 2.7, cx + 5.2, inOut(look)), cy + 2.5 + Math.sin(look * Math.PI) * 1.2, cz - 0.7);
+			// The loupe swings down over the changed line, holds while the verdict comes, then swings back up.
+			const look = outBack(seg(T, 28.3, 28.42), 1.2) * (1 - inOut(seg(T, 28.6, 28.7)));
+			this.loupe.rotation.z = lerp(LOUPE_REST, LOUPE_LOOK, look);
 			const v = outBack(seg(T, 28.5, 28.58), 2);
 			this.verdict.visible = v > 0.001;
 			this.verdict.scale.setScalar(Math.max(0.001, v));
@@ -1842,8 +1921,10 @@ export class Back {
 				this.tagAt = gap > 200 ? now - 1000 : now;
 			}
 			const age = now - this.tagAt;
+			// A sign is wider than the gap between bars, so the new one waits until the old one has gone.
+			const wait = this.tagFrom >= 0 ? 120 : 0;
 			this.tags.forEach((tag, j) => {
-				const v = j === this.tagKey ? outBack(Math.min(1, age / 240), 2) : j === this.tagFrom ? 1 - smooth(Math.min(1, age / 120)) : 0;
+				const v = j === this.tagKey ? outBack(clamp((age - wait) / 240), 2) : j === this.tagFrom ? 1 - smooth(Math.min(1, age / 120)) : 0;
 				const shown = v * outBack(reveal, 2);
 				tag.visible = shown > 0.001;
 				tag.scale.setScalar(Math.max(0.001, shown));
@@ -1852,8 +1933,9 @@ export class Back {
 			const goal = this.cursorHome.x + this.turn * this.cursorHome.step;
 			c.position.x += (goal - c.position.x) * (1 - Math.exp(-dt * 10));
 			// It swings a little as it slides, like something loose on a rail.
-			c.rotation.z = clamp((c.position.x - goal) * 0.06, -0.12, 0.12);
-			c.scale.setScalar(Math.max(0.001, outBack(reveal, 1.6)));
+			c.rotation.z = clamp((c.position.x - goal) * 0.02, -0.035, 0.035);
+			// No overshoot: it sits just off the base, and any bigger would put its edge into it.
+			c.scale.setScalar(Math.max(0.001, outCubic(reveal)));
 			[5, 7, 8].forEach((i, j) => {
 				const on = seg(T, 29.14 + i * 0.066, 29.2 + i * 0.066);
 				this.barLamps[j].set(i === 5 ? color.red : color.green, 0.08 + on * 0.9);
@@ -1876,12 +1958,13 @@ export class Back {
 				return [cx + x0 + lerp(from, to, f) * P, y] as const;
 			};
 			const [x1, y1] = k < 0.5 ? [cx + x0 - 3.2 + e * 3.2, cy + 0.15 + e * heights[0] + Math.sin(e * Math.PI) * 0.8] : hop(0, 1, e2);
-			this.climber.position.set(x1, y1, cz + 0.86);
+			this.climber.position.set(x1, y1, cz + 0.96);
 			this.climber.visible = k > 0;
 			this.locks.forEach((lock, i) => {
-				const open = i === 0 ? inOut(seg(k, 0.36, 0.48)) : 0;
-				lock.shackle.position.y = 0.26 + open * 0.18;
-				lock.shackle.rotation.y = open * 1.1;
+				// Up first, so the short leg is clear of its hole, then round.
+				const open = i === 0 ? seg(k, 0.36, 0.5) : 0;
+				lock.shackle.position.y = 0.26 + inOut(seg(open, 0, 0.45)) * 0.18;
+				lock.shackle.rotation.y = inOut(seg(open, 0.4, 1)) * 1.1;
 			});
 			const s = outBack(seg(T, 30.6, 30.68), 2);
 			this.flag.visible = s > 0.001;
