@@ -885,6 +885,8 @@ export class World {
 	}
 
 	/** What the reader can press, and when. Tell the page about anything that belongs to it. */
+	/** How much of a chapter's words are up at this point in the story, 0 to 1. The page knows, and tells the camera. */
+	wordsAt: (T: number) => number = () => 1;
 	onPress: (what: 'wheel' | 'enter') => void = () => {};
 	private poker = new Poker();
 	private lastT = 0;
@@ -987,7 +989,8 @@ export class World {
 		this.easelLegs.scale.y = Math.max(0.002, legs);
 		const intro = this.intro;
 
-		this.rig.update(T, this.stage.width, this.stage.height, px, py, time);
+		// The picture makes room before the words arrive, and only takes it back once they've gone.
+		this.rig.update(T, this.stage.width, this.stage.height, px, py, time, Math.max(this.wordsAt(T - 0.06), this.wordsAt(T), this.wordsAt(T + 0.06)));
 		this.stage.focusLight(this.rig.focus, this.rig.radius);
 
 		const inside = T >= DIVE_T && T < EXIT_T;

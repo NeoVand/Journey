@@ -904,9 +904,21 @@ class Detokenizer {
 		collar.add(ring(0.86, 0.74, 0.1), m.steel, { p: [0, this.TOP + 12, DET_Z] });
 		collar.add(rbox(0.5, 0.05, 0.05, 0.02, 1), m.steelSoft, { p: [0.93, this.TOP + 3.4, DET_Z] });
 		this.group.add(collar.build('collar'));
-		const mouth = new THREE.Mesh(new THREE.CircleGeometry(0.74, 48), new THREE.MeshStandardMaterial({ color: '#060f26', roughness: 0.9 }));
+		// A dark throat with a lit rim, so it reads as a way down. Drawn after the glass, which would wash it out to a flat grey disc.
+		const throat = new Surface(160, 160);
+		throat.draw((c, w, h) => {
+			const g = c.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
+			g.addColorStop(0, '#060f26');
+			g.addColorStop(0.66, '#060f26');
+			g.addColorStop(0.88, '#14244c');
+			g.addColorStop(1, '#3d5589');
+			c.fillStyle = g;
+			c.fillRect(0, 0, w, h);
+		});
+		const mouth = new THREE.Mesh(new THREE.CircleGeometry(0.74, 48), new THREE.MeshBasicMaterial({ map: throat.texture, transparent: true }));
 		mouth.rotation.x = -Math.PI / 2;
 		mouth.position.set(0, roof + 0.012, DET_Z);
+		mouth.renderOrder = 5;
 		this.group.add(mouth);
 		const home = createSign('Back to your laptop', 0.26);
 		home.position.set(2.32, this.TOP + 3.4, DET_Z);

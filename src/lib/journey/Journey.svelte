@@ -116,7 +116,7 @@
 	const DRAWERS = $derived([
 		{ name: 'Instructions', text: `Who the agent is, plus your project’s rules from ${spec.ruleFile}.` },
 		{ name: 'Environment', text: 'Where you are: folder, git branch, operating system, date, shell.' },
-		{ name: 'Tools', text: 'Everything it may ask to do, built in or from [[MCP]] servers. Each has a name, a description and a [[JSON Schema]], and each costs tokens on every turn. [[Skills]] stay shut on their shelf until a task needs them.' },
+		{ name: 'Tools', text: 'What it may ask to do, built in or from [[MCP]] servers. Each has a [[JSON Schema]] and costs tokens every turn. [[Skills]] wait on their shelf until needed.' },
 		{ name: 'Conversation', text: 'Your prompt. On turn one, nothing else.' }
 	]);
 
@@ -417,12 +417,21 @@
 				const mixSky = (k: number) => `rgb(${[198, 229, 253].map((sky, i) => Math.round(sky + ([6, 15, 38][i] - sky) * k)).join(' ')})`;
 				const seg = (v: number, a: number, b: number) => Math.min(1, Math.max(0, (v - a) / (b - a)));
 				const shownKey: number[] = [];
+				const inAt = (n: number, at: number) => (n === 0 ? 1 : seg(at - pins[n].i, pins[n].from - pins[n].fade * 0.3, pins[n].from + pins[n].fade * 0.7));
+				const outAt = (n: number, at: number) => (n === lastPin ? 0 : seg(at - pins[n].i, pins[n].end, pins[n].end + pins[n].fade));
+				w.wordsAt = (at) => {
+					let most = 0;
+					// A card can still be going as the next section starts, so this looks at the last two sections' cards.
+					pins.forEach((pin, n) => {
+						if (pin.i <= at && pin.i > at - 2) most = Math.max(most, Math.min(inAt(n, at), 1 - outAt(n, at)));
+					});
+					return most;
+				};
 				const fade = () => {
 					// Cards belong to the playhead, not the scroll bar, so text and scene can never drift apart.
-					pins.forEach(({ el, i, from, end, fade: f }, n) => {
-						const t = T - i;
-						const inK = n === 0 ? 1 : seg(t, from - f * 0.3, from + f * 0.7);
-						const outK = n === lastPin ? 0 : seg(t, end, end + f);
+					pins.forEach(({ el }, n) => {
+						const inK = inAt(n, T);
+						const outK = outAt(n, T);
 						const k = Math.min(inK, 1 - outK);
 						const key = k <= 0 ? -1 : Math.round(k * 200) + (outK > 0 ? 1000 : 0);
 						if (shownKey[n] === key) return;

@@ -29,6 +29,9 @@ export interface Shot {
 const DEG = Math.PI / 180;
 const v = new THREE.Vector3();
 
+/** Where a phone's picture sits with no words up: the middle of the screen, nudged down clear of the header. */
+const WORDLESS_Y = 0.03;
+
 /**
  * Art direction for the camera. Each shot says what to look at and where on screen it
  * must land. Distance and lens shift are solved from that, so a subject stays put in its
@@ -58,7 +61,8 @@ export class Rig {
 		};
 	}
 
-	update(T: number, width: number, height: number, parallaxX = 0, parallaxY = 0, time = 0) {
+	/** words: 1 with a chapter's words up, 0 with none. */
+	update(T: number, width: number, height: number, parallaxX = 0, parallaxY = 0, time = 0, words = 1) {
 		const aspect = width / height;
 		const { shots } = this;
 		let i = 0;
@@ -74,7 +78,9 @@ export class Rig {
 		const el = lerp(a.el, b.el, k) * DEG + parallaxY * 0.012 + Math.sin(time * 0.23 + 1.1) * 0.0028;
 		const dist = Math.exp(lerp(Math.log(A.dist), Math.log(B.dist), k));
 		const sx = lerp(A.shiftX, B.shiftX, k);
-		const sy = lerp(A.shiftY, B.shiftY, k);
+		// A phone gives half its screen to the words. When they go, the picture takes the whole screen.
+		const framed = lerp(A.shiftY, B.shiftY, k);
+		const sy = aspect < 0.9 ? lerp(WORDLESS_Y, framed, smoother(words)) : framed;
 
 		const ta = aspect < 0.9 && a.tallTarget ? a.tallTarget : a.target;
 		const tb = aspect < 0.9 && b.tallTarget ? b.tallTarget : b.target;
