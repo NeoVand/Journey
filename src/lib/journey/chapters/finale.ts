@@ -86,6 +86,7 @@ export class Finale {
 	private legs: Leg[] = [];
 	private total = 0;
 	private tokens: THREE.Mesh[] = [];
+	private halos: THREE.Sprite[] = [];
 	private runs: number[] = [];
 	private glass: THREE.Mesh;
 	private tubeSegments = 300;
@@ -190,12 +191,31 @@ export class Finale {
 		const amber = (m.amber as THREE.MeshPhysicalMaterial).clone();
 		amber.emissive.set('#ff9600');
 		amber.emissiveIntensity = 1.15;
+		// From this far away a token is a few pixels, so each one carries a glow that stays the same size on screen.
+		const glow = document.createElement('canvas');
+		glow.width = glow.height = 128;
+		const gc = glow.getContext('2d')!;
+		const fall = gc.createRadialGradient(64, 64, 0, 64, 64, 64);
+		fall.addColorStop(0, 'rgba(255,244,214,1)');
+		fall.addColorStop(0.14, 'rgba(255,196,64,0.86)');
+		fall.addColorStop(0.36, 'rgba(255,160,20,0.28)');
+		fall.addColorStop(1, 'rgba(255,150,0,0)');
+		gc.fillStyle = fall;
+		gc.fillRect(0, 0, 128, 128);
+		const glowMap = new THREE.CanvasTexture(glow);
+		glowMap.colorSpace = THREE.SRGBColorSpace;
 		for (let i = 0; i <= MOST; i++) {
 			const token = new THREE.Mesh(geo, amber);
 			token.castShadow = true;
 			token.visible = false;
 			this.group.add(token);
 			this.tokens.push(token);
+			const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowMap, transparent: true, depthWrite: false, depthTest: false, sizeAttenuation: false }));
+			halo.scale.setScalar(isPhone ? 0.06 : 0.045);
+			halo.renderOrder = 6;
+			halo.visible = false;
+			this.group.add(halo);
+			this.halos.push(halo);
 		}
 
 		// The nine stops, named where they happen. They appear as the first token reaches each one.
@@ -306,5 +326,10 @@ export class Finale {
 			else ride(this.tokens[i], (now - start) / LAP_MS);
 		}
 		this.step = newest;
+		this.tokens.forEach((token, i) => {
+			const halo = this.halos[i];
+			halo.visible = token.visible && token.scale.x > 0.2;
+			if (halo.visible) halo.position.copy(token.position);
+		});
 	}
 }
