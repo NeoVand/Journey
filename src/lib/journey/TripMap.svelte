@@ -1,16 +1,20 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
 	import { STOPS } from './content';
 
 	let {
 		open = $bindable(false),
 		here,
-		onjump
+		onjump,
+		agents
 	}: {
 		open?: boolean;
 		/** The chapter the reader is in, by title. */
 		here: string;
 		onjump: (title: string) => void;
+		/** The agent picker, which belongs to the page. */
+		agents: Snippet;
 	} = $props();
 
 	const hereStop = $derived(STOPS.findIndex((s) => s.parts.includes(here)));
@@ -40,7 +44,8 @@
 				<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13" /></svg>
 			</button>
 		</div>
-		<p class="intro">One sentence goes out, and comes back as a fix. Jump to any stop along the way.</p>
+		<p class="intro">One sentence goes out, and comes back as a fix. Jump to any stop along the way, or follow a different agent.</p>
+		<div class="agents">{@render agents()}</div>
 		<ol class="route">
 			{#each STOPS as stop, n (stop.name)}
 				<li class={{ past: n < hereStop, at: n === hereStop }}>
@@ -156,11 +161,15 @@
 		stroke-linecap: round;
 	}
 	.intro {
-		margin: 8px 0 22px;
+		margin: 8px 0 14px;
 		font-size: 16px;
 		line-height: 1.42;
 		color: var(--soft);
 		text-wrap: pretty;
+	}
+
+	.agents {
+		margin: 0 0 24px;
 	}
 
 	.route,

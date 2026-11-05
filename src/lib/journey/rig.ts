@@ -47,10 +47,12 @@ export class Rig {
 		const radius = aspect < 0.9 && shot.tallRadius ? shot.tallRadius : shot.radius;
 		const ry = aspect < 0.9 && shot.tallRadius ? shot.tallRadius : (shot.ry ?? shot.radius);
 		const dist = Math.max(ry / (region.h * halfV), radius / (region.w * aspect * halfV));
+		// On the shortest phones the words take more of the screen, so the subject sits a little higher.
+		const lift = aspect < 0.9 ? Math.max(0, Math.min(1, (aspect - 0.47) / 0.09)) * 0.035 : 0;
 		return {
 			dist,
 			shiftX: region.x + region.w / 2 - 0.5,
-			shiftY: region.y + region.h / 2 - 0.5
+			shiftY: region.y + region.h / 2 - 0.5 - lift
 		};
 	}
 

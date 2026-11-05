@@ -35,9 +35,11 @@ const box = (x: number, y: number, w: number, h: number) => ({ x, y, w, h });
 const at = (x: number, y: number, z: number): [number, number, number] => [ORIGIN.x + x, ORIGIN.y + y, ORIGIN.z + z];
 const TALL = box(0, 0.06, 1, 0.47);
 
-const S_WHEEL: Omit<Shot, 'T'> = { az: 8, el: 9, target: at(WHEEL - 0.4, 3.4, 0), radius: 9.2, ry: 4.3, wide: box(0, 0.07, 0.56, 0.88), tall: TALL };
+const S_WHEEL: Omit<Shot, 'T'> = { az: 8, el: 9, target: at(WHEEL - 0.4, 3.4, 0), radius: 9.2, ry: 4.3, wide: box(0, 0.07, 0.56, 0.88), tall: box(0, 0.05, 1, 0.34) };
 const S_DEC: Omit<Shot, 'T'> = { az: 10, el: 17, target: at(DEC - 9, 4, 0.8), radius: 7.4, ry: 5.2, wide: box(0.41, 0.05, 0.58, 0.9), tall: TALL };
 const S_CALL: Omit<Shot, 'T'> = { az: -6, el: 56, target: at(DEC + 6.7, 0.8, 4.4), radius: 7.7, ry: 3.2, wide: box(0.02, 0.4, 0.96, 0.56), tall: box(0, 0.08, 1, 0.42), tallTarget: at(DEC + 3.8, 0.8, 4.2), tallRadius: 4.9 };
+// On a phone the ticket and the board don't fit side by side at a size you can read, so the camera goes to the ticket first and takes in both for the verdict.
+const S_CALL_WHY: Omit<Shot, 'T'> = { ...S_CALL, az: -5, tallTarget: at(DEC + 8.4, 0.9, 4.2), tallRadius: 5.6 };
 const S_DET: Omit<Shot, 'T'> = { az: -14, el: 13, target: at(DET, 3.2, 3.5), radius: 7, ry: 4.3, wide: box(0.01, 0.07, 0.6, 0.88), tall: TALL };
 
 /* The logits chart, on its way from the top of the stack to the board. Its path is shared with the camera that follows it. */
@@ -82,7 +84,9 @@ export const FORWARD_SHOTS: Shot[] = [
 	{ T: 16.04, ...S_DEC },
 	{ T: 16.9, ...S_DEC, az: 11 },
 	{ T: 17.06, ...S_CALL },
-	{ T: 17.9, ...S_CALL, az: -5 },
+	{ T: 17.8, ...S_CALL, az: -5.2 },
+	{ T: 17.87, ...S_CALL_WHY },
+	{ T: 17.95, ...S_CALL_WHY },
 	{ T: 18.06, ...S_DET },
 	{ T: 18.62, ...S_DET, az: -9 },
 	{ T: 18.97, ...S_DET, az: -6, el: 40, target: at(DET, 13, 1.9), radius: 2.6, ry: 2.6 }

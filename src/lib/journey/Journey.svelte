@@ -249,6 +249,8 @@
 	/** An agent breathes while this page has something to show for it that the reader has not looked at yet. */
 	const hinting = (id: HarnessId) => differs && id !== harness && !tried.has(`${section}/${id}`);
 
+	const nextAgent = $derived(ids[(ids.indexOf(harness) + 1) % ids.length]);
+
 	function choose(id: HarnessId) {
 		tried.add(`${section}/${harness}`);
 		tried.add(`${section}/${id}`);
@@ -512,6 +514,15 @@
 	</div>
 {/snippet}
 
+<!-- A phone has no room for the picker in its header, so the agent's name in each note is the way to change it. -->
+{#snippet agent()}
+	<b class="agent-name">{spec.name}.</b>
+	<button type="button" class={['agent', { hint: hinting(nextAgent) }]} aria-label="{spec.name}. Show this for {labels[nextAgent]}" onclick={() => choose(nextAgent)}>
+		{spec.name}
+		<svg viewBox="0 0 14 14" aria-hidden="true"><path d="M1.5 5H11L8 2M12.5 9H3l3 3" /></svg>
+	</button>
+{/snippet}
+
 {#snippet rich(text: string)}
 	{#each pieces(text) as piece, i (i)}
 		{#if piece.key}<button
@@ -606,7 +617,7 @@
 			<h2>It starts as a sentence</h2>
 			<p>{@render rich(`You type one request. For now it’s just ${surfaceWords}. The model hasn’t seen a thing, and nothing here is a [[token]] yet.`)}</p>
 			<p>Your request will change form twelve times on this trip. The corner up there keeps count.</p>
-			<p class="note"><b>{spec.name}.</b> {@render rich(callouts.prompt)}</p>
+			<p class="note">{@render agent()} {@render rich(callouts.prompt)}</p>
 		</article>
 	</section>
 
@@ -645,7 +656,7 @@
 			<h2>Across the wire</h2>
 			<p>{@render rich('The harness opens a secure connection, and [[TLS]] scrambles every byte, so nobody along the way can read your code.')}</p>
 			<p>It also asks for the answer as a stream. That’s why you see the agent typing instead of waiting for one big reply.</p>
-			<p class="note"><b>{spec.name}.</b> {@render rich(callouts.wire)}</p>
+			<p class="note">{@render agent()} {@render rich(callouts.wire)}</p>
 		</article>
 	</section>
 
@@ -661,7 +672,7 @@
 					</li>
 				{/each}
 			</ol>
-			<p class="note"><b>{spec.name}.</b> {@render rich(callouts.door)}</p>
+			<p class="note">{@render agent()} {@render rich(callouts.door)}</p>
 		</article>
 	</section>
 
@@ -735,7 +746,7 @@
 				new part runs. Remember the careful order on that JSON page? This is why.
 			</p>
 			<p>It saves computing. It isn’t the model remembering you. Unused blocks get thrown out, usually within minutes, so coming back after an hour costs full price once.</p>
-			<p class="note"><b>{spec.name}.</b> {@render rich(callouts.cache)}</p>
+			<p class="note short-note">{@render agent()} {@render rich(callouts.cache)}</p>
 		</article>
 	</section>
 
@@ -878,17 +889,17 @@
 			<h2>One at a time</h2>
 			<p>Now the loop. The new token climbs the same stack, alone. On each layer it looks back at everything through the KV cache, and adds its own key and value to the row of lights. One step takes 10 to 40 milliseconds. That’s the typing speed you see.</p>
 			<p>In 2026 the model usually thinks first. Thinking tokens are ordinary tokens, billed as output.</p>
-			<p class="note"><b>{spec.name}.</b> {@render rich(callouts.thinking)}</p>
+			<p class="note">{@render agent()} {@render rich(callouts.thinking)}</p>
 			<p><small>{@render rich('[[Speculative decoding]] can check several guessed tokens in one pass, often 2 to 3 times faster on code, with the same answers.')}</small></p>
 		</article>
 	</section>
 
 	<section data-beat class="beat" style:--h="520vh">
-		<article class="pin top-band" data-in="0.08" data-out="0.84">
+		<article class="pin top-band" data-in="0.08" data-out="0.9">
 			<h2>A tool call is born</h2>
 			<div class="cols">
 				<p>The model opens a tool call with a special token, then writes the name and arguments as more tokens. That’s all it does. When it’s done it stops, and says why. The file may not exist and the command may not be allowed. Those checks come later.</p>
-				<p class="note"><b>{spec.name}.</b> {@render rich(callouts.toolcall)}</p>
+				<p class="note">{@render agent()} {@render rich(callouts.toolcall)}</p>
 			</div>
 		</article>
 	</section>
@@ -898,7 +909,7 @@
 			<h2>Only text comes back</h2>
 			<p>Each number is looked up in the vocabulary. The detokenizer waits until it has a whole character, then sends a small chunk of text. Token numbers never leave the data center.</p>
 			<p>{@render rich('A second set of [[classifiers]] reads along. If the text crosses a line, generation stops mid-sentence.')}</p>
-			<p class="note"><b>{spec.name}.</b> {@render rich(callouts.stream)}</p>
+			<p class="note">{@render agent()} {@render rich(callouts.stream)}</p>
 		</article>
 	</section>
 
@@ -922,7 +933,7 @@
 					</li>
 				{/each}
 			</ol>
-			<p class="note"><b>{spec.name}.</b> {@render rich(callouts.policy)}</p>
+			<p class="note">{@render agent()} {@render rich(callouts.policy)}</p>
 		</article>
 	</section>
 
@@ -931,7 +942,7 @@
 			<h2>When the page lies</h2>
 			<p>{@render rich('Our agent fetched the library’s docs. Now that page sits in the same context as your instructions, and it can say anything. This is [[prompt injection]], the main unsolved security problem of agents.')}</p>
 			<p>So the defenses come in layers. The strongest doesn’t have to be convinced of anything: an operating-system fence that every child process inherits.</p>
-			<p class="note"><b>{spec.name}.</b> {@render rich(callouts.sandbox)}</p>
+			<p class="note">{@render agent()} {@render rich(callouts.sandbox)}</p>
 		</article>
 	</section>
 
@@ -940,7 +951,7 @@
 			<h2>Finding the code</h2>
 			<p>{@render rich('An approved call becomes a [[system call]], real work on your machine. The model searches the way an engineer does: look for the words, list the candidates, read the promising file by line range.')}</p>
 			<p>Each step is its own turn: call, result, think, next call. It will read about 250 lines of your repository, not all of it.</p>
-			<p class="note"><b>{spec.name}.</b> {@render rich(callouts.search)}</p>
+			<p class="note">{@render agent()} {@render rich(callouts.search)}</p>
 		</article>
 	</section>
 
@@ -948,7 +959,7 @@
 		<article class="pin right" data-in="0.09" data-out="0.88">
 			<h2>Three ways to edit</h2>
 			<p>A few turns later the model knows what to change, and asks. The edit goes through the same gates.</p>
-			<p class="note"><b>{spec.name}.</b> {@render rich(callouts.edit)}</p>
+			<p class="note">{@render agent()} {@render rich(callouts.edit)}</p>
 			<p>{@render rich('All three agents write [[atomically]]: a temporary file, then a rename, so a crash never leaves half a file. Proposing a patch and applying it are different events, and the result says which happened.')}</p>
 		</article>
 	</section>
@@ -958,7 +969,7 @@
 			<h2>Evidence, not opinion</h2>
 			<p>{@render rich('The harness runs the tests inside the [[sandbox]] with a time limit, and captures everything: [[stdout, stderr and the exit code]]. Here they failed: the new lock [[deadlocks]].')}</p>
 			<p>That isn’t the tool going wrong. It’s a successful tool call whose text says failed, and it’s the most useful thing the model has read all session.</p>
-			<p class="note"><b>{spec.name}.</b> {@render rich(callouts.test)}</p>
+			<p class="note">{@render agent()} {@render rich(callouts.test)}</p>
 		</article>
 	</section>
 
@@ -967,7 +978,7 @@
 			<h2>Around the loop</h2>
 			<p>{@render rich('Remember the green pipe in the very first frame? This is what it carries. The result joins the [[transcript]], and the whole conversation goes back to the provider.')}</p>
 			<p>One trip around is a turn. A real fix takes five to thirty.</p>
-			<p class="note"><b>{spec.name}.</b> {@render rich(callouts.loop)}</p>
+			<p class="note">{@render agent()} {@render rich(callouts.loop)}</p>
 		</article>
 	</section>
 
@@ -975,7 +986,7 @@
 		<article class="pin left" data-out="0.86">
 			<h2>When the context fills up</h2>
 			<p>{@render rich('A long session reads many files, and the transcript creeps up on the [[context window]]. So a separate model call writes a summary, which replaces the old messages. The cache is lost once, then rebuilt.')}</p>
-			<p class="note"><b>{spec.name}.</b> {@render rich(callouts.compact)}</p>
+			<p class="note">{@render agent()} {@render rich(callouts.compact)}</p>
 		</article>
 	</section>
 
@@ -1087,7 +1098,11 @@
 {/if}
 </div>
 
-<TripMap bind:open={mapOpen} here={mapHere} onjump={jump} />
+<TripMap bind:open={mapOpen} here={mapHere} onjump={jump}>
+	{#snippet agents()}
+		{@render picker(false)}
+	{/snippet}
+</TripMap>
 
 <style>
 	/* The last look runs edge to edge. Its words sit in the two open corners of the sky, left of the home island. */
@@ -1251,6 +1266,67 @@
 	}
 	.again.quiet:hover {
 		background: rgb(16 26 48 / 0.15);
+	}
+
+	/* Only phones get this, in place of the plain name. */
+	.agent {
+		display: none;
+		position: relative;
+		align-items: center;
+		gap: 5px;
+		margin: -3px 2px -3px 0;
+		padding: 3px 8px 3px 10px;
+		border: 0;
+		border-radius: 999px;
+		background: rgb(127 150 190 / 0.2);
+		color: var(--ink);
+		font: inherit;
+		font-weight: 650;
+		vertical-align: baseline;
+		white-space: nowrap;
+		cursor: pointer;
+		pointer-events: auto;
+		-webkit-tap-highlight-color: transparent;
+		transition: transform 0.1s;
+	}
+	/* A bigger target than it looks. */
+	.agent::after {
+		content: '';
+		position: absolute;
+		inset: -10px -6px;
+	}
+	.agent:active {
+		transform: scale(0.95);
+	}
+	.agent svg {
+		width: 13px;
+		height: 13px;
+		flex: none;
+	}
+	.agent path {
+		fill: none;
+		stroke: currentColor;
+		stroke-width: 1.7;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+	}
+	.agent.hint {
+		animation: agent-hint 3.2s ease-in-out infinite;
+	}
+	@keyframes agent-hint {
+		0%,
+		100% {
+			box-shadow: inset 0 0 0 1.5px rgb(110 162 255 / 0);
+		}
+		50% {
+			box-shadow: inset 0 0 0 1.5px var(--cobalt);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.agent.hint {
+			animation: none;
+			box-shadow: inset 0 0 0 1.5px var(--cobalt);
+		}
 	}
 
 	.ten-grid {
@@ -2297,19 +2373,25 @@
 		.pin > :global(*) {
 			position: relative;
 		}
-		.pin::before {
+		/* The ground under a card starts where its words start, however many there are. Everything above it stays the scene's. */
+		.driven .beat:not(.hero) .pin > :global(:first-child)::before {
 			content: '';
 			position: absolute;
-			inset: auto 0 0;
-			height: 58%;
-			background: linear-gradient(to top, rgb(var(--veil) / 0.96) 72%, rgb(var(--veil) / 0));
+			z-index: -1;
+			top: calc(var(--ramp, 52px) * -1);
+			left: -20px;
+			right: -20px;
+			height: 200vh;
+			background: linear-gradient(to bottom, rgb(var(--veil) / 0), rgb(var(--veil) / 0.97) var(--ramp, 52px));
 			pointer-events: none;
 		}
-		/* These cards carry the most, and a phone has the least room: keep what teaches, and give it solid ground. */
-		.pin.tight::before {
-			height: 70%;
-			background: linear-gradient(to top, rgb(var(--veil) / 0.97) 82%, rgb(var(--veil) / 0));
+		.wheel-card {
+			--ramp: 30px;
 		}
+		.whole {
+			--ramp: 18px;
+		}
+		/* These cards carry the most, and a phone has the least room: keep what teaches. */
 		.pin.tight small,
 		.pin.tight :global(.crumbs) {
 			display: none;
@@ -2317,7 +2399,9 @@
 		.eq {
 			margin-bottom: 10px;
 			padding: 9px 10px;
-			font-size: 13px;
+			/* Sized to the room it has, so the formula always holds on one line. */
+			font-size: min(13px, calc((100vw - 60px) * 0.0375));
+			flex-wrap: nowrap;
 		}
 		.ten-grid {
 			grid-template-columns: 1fr;
@@ -2353,6 +2437,13 @@
 		}
 		.turns button {
 			max-width: none;
+			height: 36px;
+		}
+		.agent {
+			display: inline-flex;
+		}
+		.agent-name {
+			display: none;
 		}
 		/* On the shortest phones the ticket keeps its room, and the explaining gives way. */
 		@media (max-height: 760px) {
@@ -2368,6 +2459,43 @@
 			gap: 6px;
 			margin: 2px 0 8px;
 			padding: 9px 12px 12px;
+		}
+		/* The shortest phones: everything a notch tighter, so the scene keeps its share of the screen. */
+		@media (max-height: 700px) {
+			.pin,
+			.pin.right,
+			.pin.top-band {
+				padding-bottom: 16px;
+				font-size: 15px;
+				line-height: 1.4;
+			}
+			h2 {
+				margin-bottom: 8px;
+				font-size: 28px;
+			}
+			p {
+				margin-bottom: 8px;
+			}
+			.note {
+				margin-top: 4px;
+			}
+			.steps {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 3px 14px;
+				margin-top: 4px;
+				line-height: 1.3;
+			}
+			.eq {
+				margin-bottom: 6px;
+				padding: 6px 10px;
+			}
+			.scroll-hint {
+				display: none;
+			}
+			.short-note {
+				display: none;
+			}
 		}
 		/* On the shortest phones the wheel still has to show, so the toy keeps its room and the words give way. */
 		@media (max-height: 700px) {
@@ -2400,6 +2528,9 @@
 			display: none;
 		}
 		.hero .pin::before {
+			content: '';
+			position: absolute;
+			pointer-events: none;
 			inset: 0 0 auto;
 			height: 56%;
 			background: linear-gradient(to bottom, rgb(var(--veil) / 0.9) 72%, rgb(var(--veil) / 0));

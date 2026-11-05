@@ -104,7 +104,8 @@ export const PACE: Span[] = [
 	{ from: 16.06, to: 16.9, seconds: 7.4 }, // thirteen thinking tokens
 	{ from: 16.9, to: 17.06, seconds: 1.2 },
 	{ from: 17.06, to: 17.8, seconds: 5.6 }, // the call
-	{ from: 17.8, to: 18.1, seconds: 1.6 },
+	{ from: 17.8, to: 17.95, seconds: 2.4 }, // the stamp, and the reason it stopped
+	{ from: 17.95, to: 18.1, seconds: 1 },
 	{ from: 18.1, to: 19.04, seconds: 5.2 }, // only text leaves
 	{ from: 19.04, to: 20.04, seconds: 5.4 },
 	{ from: 20.04, to: 21.04, seconds: 8 }, // the gates

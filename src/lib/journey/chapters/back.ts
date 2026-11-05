@@ -1245,6 +1245,8 @@ export class Back {
 			c.font = `500 ${fs}px ${font.mono}`;
 			const LH = h * 0.073;
 			const y0 = h * 0.225;
+			// Room for three digits, then a gap, so a line's + or - can never land on its number.
+			const gutter = 24 + c.measureText('000').width + fs * 0.35;
 			const row = (i: number, n: number, text: string, kind: '' | 'hot' | 'del' | 'add') => {
 				const y = y0 + i * LH;
 				if (kind) {
@@ -1255,7 +1257,7 @@ export class Back {
 				c.fillText(String(n), 24, y);
 				c.fillStyle = kind === 'del' ? '#c9261c' : kind === 'add' ? '#0f8a4a' : color.ink;
 				const sign = kind === 'del' ? '-' : kind === 'add' ? '+' : ' ';
-				c.fillText(`${sign}${text}`, 90, y);
+				c.fillText(`${sign}${text}`, gutter, y);
 			};
 			if (phase === 1) {
 				OLD.forEach((t, i) => row(i, 99 + i, t, i >= 2 && i <= 3 ? 'hot' : ''));
@@ -1484,11 +1486,11 @@ export class Back {
 		this.signs.visible = signK > 0.001;
 		this.signs.scale.setScalar(1);
 		// The legs of the easel rise for the page and fold away after it, so nothing stands behind the next card.
-		const legs = outBack(seg(T, 22.5, 22.6), 1.2) * (1 - inOut(seg(T, 23.98, 24.04)));
+		const legs = outBack(seg(T, 22.53, 22.6), 1.2) * (1 - inOut(seg(T, 23.98, 24.04)));
 		this.easel.visible = legs > 0.002;
 		this.easel.scale.y = Math.max(0.002, legs);
 		// Its foot draws in along the ground after it, so the next card has clear space.
-		const foot = inOut(seg(T, 22.44, 22.5)) * (1 - inOut(seg(T, 24, 24.05)));
+		const foot = inOut(seg(T, 22.47, 22.53)) * (1 - inOut(seg(T, 24, 24.05)));
 		this.easelBase.visible = foot > 0.001;
 		this.easelBase.scale.set(Math.max(0.001, foot), 1, Math.max(0.001, foot));
 		// The monitor lies back above its foot until it is needed, then swings up on its hinge and settles.
@@ -1591,7 +1593,8 @@ export class Back {
 
 		/* ---- the file ---- */
 		if (T > 21.9 && T < 24.2) {
-			const read = seg(T, 22.58, 22.76);
+			// It comes as the legs go up, so they never stand there waiting with nothing to hold.
+			const read = seg(T, 22.55, 22.69);
 			const onEasel = outBack(read, 1.2);
 			// Written and renamed, the file goes back to the shelf it came from.
 			const home = seg(T, 23.92, 24.03);
