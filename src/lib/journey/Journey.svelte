@@ -2769,6 +2769,21 @@
 			gap: 10px;
 		}
 	}
+	/* Narrower still, the count leaves the screen and the name stays: the dots above it already say how far along it
+	   is. A screen reader still hears it. */
+	@media (min-aspect-ratio: 9/10) and (max-width: 1120px) {
+		.spine p span {
+			position: absolute;
+			width: 1px;
+			height: 1px;
+			overflow: hidden;
+			clip-path: inset(50%);
+			white-space: nowrap;
+		}
+		.spine strong {
+			margin-left: 0;
+		}
+	}
 	.spine li.on {
 		background: var(--ink);
 	}
@@ -3300,23 +3315,29 @@
 	}
 
 	@media (max-aspect-ratio: 9/10) {
-		/* One row: where you are on the left, then the steps and the map within reach of a thumb on the right. */
+		/* One row: where you are on the left, then sound, the steps and the map within reach of a thumb on the right. */
 		.bar {
-			grid-template-columns: minmax(0, 1fr) auto auto;
+			grid-template-columns: minmax(0, 1fr) auto auto auto;
 			column-gap: 4px;
 			padding: 14px 10px 14px 20px;
 		}
 		.bar-end {
 			display: contents;
 		}
-		/* The narrowest phones keep the dots and the form's name, and let the count go. */
+		/* A phone keeps the dots and the form's name, and lets the count leave the screen: a screen reader still hears it. */
+		.spine p span {
+			position: absolute;
+			width: 1px;
+			height: 1px;
+			overflow: hidden;
+			clip-path: inset(50%);
+			white-space: nowrap;
+		}
+		.spine strong {
+			margin-left: 0;
+		}
+		/* The narrowest phones also tighten the dots and the buttons. */
 		@media (max-width: 380px) {
-			.spine p span {
-				display: none;
-			}
-			.spine strong {
-				margin-left: 0;
-			}
 			.bar .spine ol {
 				gap: 4px;
 			}
@@ -3381,8 +3402,12 @@
 		.dark .bar::before {
 			background: linear-gradient(to bottom, rgb(6 15 38 / 0.92) 60%, rgb(6 15 38 / 0));
 		}
+		/* Small enough that the dots stop short of the sound button, with the map beside the steps. */
+		.bar .spine ol {
+			gap: 4px;
+		}
 		.spine li {
-			width: 9px;
+			width: 8px;
 		}
 		.pin,
 		.pin.right,
