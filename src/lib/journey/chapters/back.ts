@@ -58,6 +58,8 @@ const R_POS: V3 = [-110, 15, -4];
 /** A bar's tag sits on the top front edge of the bar, this far above its top. */
 const TAG_RISE = 0.2;
 const F_POS: V3 = [-144, 18, -4];
+/** How high each step's top stands. The lowest still clears the name plates on the fronts, so what climbs them is seen. */
+const STEP_H = [1.3, 1.9, 2.5, 3.1, 3.7];
 
 const rel = (o: V3, x: number, y: number, z: number): V3 => [o[0] + x, o[1] + y, o[2] + z];
 
@@ -72,7 +74,7 @@ const S_COMPACT = { az: 14, el: 15, target: rel(C_POS, 0, 2.6, 0), radius: 5.9, 
 const S_MEM = { az: -12, el: 9, target: rel(M_POS, 0, 3.9, 0), radius: 5.6, ry: 4.3, wide: LEFT, tall: TALL };
 const S_UNK = { az: 10, el: 20, target: rel(U_POS, 0, 1.9, 0.7), radius: 7.6, ry: 4.3, wide: box(0.42, 0.06, 0.58, 0.9), tall: TALL };
 const S_TEN = { az: -10, el: 14, target: rel(R_POS, 0, 2.6, 0.6), radius: 9.2, ry: 4.2, wide: box(0.01, 0.42, 0.98, 0.56), tall: box(0, 0.06, 1, 0.3) };
-const S_FIN = { az: 9, el: 14, target: rel(F_POS, 0, 2.1, 0.8), radius: 10.8, ry: 3.6, wide: box(0.01, 0.4, 0.98, 0.56), tall: TALL };
+const S_FIN = { az: 9, el: 14, target: rel(F_POS, 0, 2.5, 0.8), radius: 10.8, ry: 3.6, wide: box(0.01, 0.4, 0.98, 0.56), tall: TALL };
 /** What the test monitor shows once the whole suite is green. */
 const PASSED = 99;
 const S_WHOLE = { az: -4, el: 13, target: [-18, -13, 0] as V3, radius: 49, ry: 25.5, wide: box(0.01, 0.05, 0.98, 0.93), tall: box(0, 0.06, 1, 0.43), tallTarget: [-18, -13, 0] as V3, tallRadius: 50, tallRy: 25.5 };
@@ -109,7 +111,9 @@ export const BACK_SHOTS: Shot[] = [
 	{ T: 29.06, ...S_TEN },
 	{ T: 29.9, ...S_TEN, az: -7 },
 	{ T: 30.06, ...S_FIN },
-	{ T: 30.8, ...S_FIN, az: 6 },
+	// A phone can't read five steps across its width, so it opens on all five, then moves in on the first three as the
+	// agent climbs, in time for the flag on Commit. Desktop keeps the whole staircase.
+	{ T: 30.8, ...S_FIN, az: 6, tallTarget: rel(F_POS, -4, 2.6, 0.8), tallRadius: 6.2, tallRy: 3 },
 	{ T: 31.46, ...S_END },
 	{ T: 32, ...S_END, az: 26 },
 	{ T: 32.02, ...S_END, az: 26 },
@@ -1244,7 +1248,7 @@ export class Back {
 		];
 		const P = 4;
 		const x0 = -((STEPS.length - 1) * P) / 2;
-		const heights = [0.5, 1.1, 1.7, 2.3, 2.9];
+		const heights = STEP_H;
 		const b = new Batch();
 		STEPS.forEach((st, i) => {
 			const x = cx + x0 + i * P;
@@ -2084,7 +2088,7 @@ export class Back {
 			const [cx, cy, cz] = F_POS;
 			const P = 4;
 			const x0 = -2 * P;
-			const heights = [0.5, 1.1, 1.7, 2.3, 2.9];
+			const heights = STEP_H;
 			const k = seg(T, 30.1, 30.6);
 			const e = inOut(seg(k, 0, 0.38));
 			const e2 = inOut(seg(k, 0.5, 0.88));
@@ -2094,7 +2098,7 @@ export class Back {
 				const y = lerp(yA, yB, f) + Math.sin(f * Math.PI) * 1.7;
 				return [cx + x0 + lerp(from, to, f) * P, y] as const;
 			};
-			const [x1, y1] = k < 0.5 ? [cx + x0 - 3.2 + e * 3.2, cy + 0.15 + e * heights[0] + Math.sin(e * Math.PI) * 0.8] : hop(0, 1, e2);
+			const [x1, y1] = k < 0.5 ? [cx + x0 - 3.2 + e * 3.2, cy + 0.15 + e * heights[0] + Math.sin(e * Math.PI) * 1.3] : hop(0, 1, e2);
 			this.climber.position.set(x1, y1, cz + 0.96);
 			this.climber.visible = k > 0;
 			this.locks.forEach((lock, i) => {
