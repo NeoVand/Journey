@@ -2,6 +2,7 @@
 // node scripts/sound/lab.mjs   then open http://localhost:5300
 // Picks and notes are saved to sound-lab/picks.json as they're made.
 import { createServer } from 'node:http';
+import { execFile } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { measure } from './measure.mjs';
 
@@ -62,10 +63,14 @@ h1 { font-size: 26px; margin: 0 0 4px; }
 .note { margin-top: 10px; display: flex; gap: 8px; }
 .note input { flex: 1; border: 1px solid #ccd6e6; border-radius: 10px; padding: 7px 10px; font: inherit; }
 .none { font-size: 13px; color: #5a6680; display: flex; gap: 5px; align-items: center; }
+.build { border: 0; border-radius: 999px; background: #101a30; color: #fff; padding: 9px 16px; font: 600 14px/1 inherit; cursor: pointer; }
+.build:disabled { opacity: .5; }
+#built { color: #33415c; font-size: 13px; margin-left: 8px; }
 .saved { position: fixed; right: 18px; bottom: 18px; background: #101a30; color: #fff; padding: 8px 14px; border-radius: 999px; opacity: 0; transition: opacity .2s; }
 .saved.on { opacity: 1; }
 </style></head><body>
 <h1>Sound board</h1>
+<p class="lead"><button id="build" class="build">Use my picks on the site</button> <span id="built"></span></p>
 <p class="lead">Each sound has a few takes. Press play to listen (they're levelled so quiet ones are easy to judge), pick the one that fits, or say what's wrong in the note and I'll make more. Everything saves as you go.</p>
 <div id="list"></div>
 <div class="saved" id="saved">Saved</div>
@@ -89,6 +94,12 @@ async function save(picks) {
   await fetch('/picks', { method: 'POST', body: JSON.stringify(picks) });
   const s = document.getElementById('saved'); s.classList.add('on'); clearTimeout(saveTimer); saveTimer = setTimeout(() => s.classList.remove('on'), 900);
 }
+document.getElementById('build').onclick = async (e) => {
+  const b = e.currentTarget; b.disabled = true; document.getElementById('built').textContent = 'Building…';
+  const r = await fetch('/build', { method: 'POST' });
+  document.getElementById('built').textContent = r.ok ? 'Done. Reload the site to hear them.' : 'Something went wrong: ' + (await r.text()).slice(0, 120);
+  b.disabled = false;
+};
 fetch('/state').then((r) => r.json()).then(({ cues, stats, picks }) => {
   const list = document.getElementById('list');
   let group = null;
@@ -137,6 +148,13 @@ createServer((req, res) => {
 		req.on('end', () => {
 			writeFileSync(picksFile, JSON.stringify(JSON.parse(body), null, 1));
 			res.end('ok');
+		});
+		return;
+	}
+	if (req.method === 'POST' && req.url === '/build') {
+		execFile('node', [new URL('build.mjs', import.meta.url).pathname], { maxBuffer: 1 << 24 }, (err, stdout, stderr) => {
+			res.statusCode = err ? 500 : 200;
+			res.end(err ? stderr || String(err) : stdout);
 		});
 		return;
 	}
