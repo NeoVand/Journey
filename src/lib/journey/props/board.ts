@@ -97,7 +97,10 @@ export function createBoard(x0: number, x1: number, z0: number, z1: number) {
 	const b = new Batch();
 	b.add(extrude(roundedRect(w, d, 0.6), 0.7, 0.14, 5, 10), rim, { p: [cx, -0.38, cz], r: [-Math.PI / 2, 0, 0] });
 	group.add(b.build('board-rim'));
-	const line = new THREE.Mesh(new THREE.BoxGeometry(w - 1.2, 0.035, 0.035), new THREE.MeshBasicMaterial({ color: new THREE.Color('#4f8dff').multiplyScalar(1.4) }));
+	const line = new THREE.Mesh(
+		new THREE.BoxGeometry(w - 1.2, 0.035, 0.035),
+		new THREE.MeshBasicMaterial({ color: new THREE.Color('#4f8dff').multiplyScalar(1.4) })
+	);
 	line.position.set(cx, -0.012, z1 - 0.07);
 	group.add(line);
 
@@ -184,11 +187,7 @@ export function createRacks(x0: number, x1: number, z: number) {
 	const group = new THREE.Group();
 	const pitch = 5.2;
 	const n = Math.ceil((x1 - x0) / pitch);
-	const rack = new THREE.InstancedMesh(
-		rbox(4.6, 26, 3, 0.1, 2),
-		new THREE.MeshStandardMaterial({ color: '#14264f', roughness: 0.7, metalness: 0.2 }),
-		n
-	);
+	const rack = new THREE.InstancedMesh(rbox(4.6, 26, 3, 0.1, 2), new THREE.MeshStandardMaterial({ color: '#14264f', roughness: 0.7, metalness: 0.2 }), n);
 	const face = new THREE.InstancedMesh(
 		new THREE.PlaneGeometry(4.4, 26),
 		new THREE.MeshStandardMaterial({ map: rackFace(26, 0.92, 26, -7), roughness: 0.55, metalness: 0.3 }),

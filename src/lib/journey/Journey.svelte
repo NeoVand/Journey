@@ -502,6 +502,8 @@
 				const MAP_PAPER = '#fdf7e9';
 				const MAP_WIDTH = 452;
 				const mixSky = (k: number) => `rgb(${[198, 229, 253].map((sky, i) => Math.round(sky + ([6, 15, 38][i] - sky) * k)).join(' ')})`;
+				// The sky's middle in the late light of the finale, as world.ts paints it.
+				const mixLate = (k: number) => `rgb(${[198, 229, 253].map((sky, i) => Math.round(sky + ([242, 226, 220][i] - sky) * k)).join(' ')})`;
 				const seg = (v: number, a: number, b: number) => Math.min(1, Math.max(0, (v - a) / (b - a)));
 				const shownKey: number[] = [];
 				const inAt = (n: number, at: number) => (n === 0 ? 1 : seg(at - pins[n].i, pins[n].from - pins[n].fade * 0.3, pins[n].from + pins[n].fade * 0.7));
@@ -536,10 +538,12 @@
 					// A phone browser paints the page's own colour around the page, so it has to go dark with the world.
 					// Inside the harness it's the cream of the room instead.
 					// On a phone the map covers the whole screen, so the edges take its paper's colour while it's open.
-					const shade = mapOpen && innerWidth <= MAP_WIDTH ? -3 : w.trackIn ? -2 : Math.round((w.state.inside ? 1 : w.state.dive) * 32);
+					// At the very end the light goes over to late afternoon, and the edges warm with it.
+					const dusk = Math.round(w.state.dusk * 16);
+					const shade = mapOpen && innerWidth <= MAP_WIDTH ? -3 : w.trackIn ? -2 : dusk > 0 ? 100 + dusk : Math.round((w.state.inside ? 1 : w.state.dive) * 32);
 					if (shade !== edgeShade) {
 						edgeShade = shade;
-						const tone = shade === -3 ? MAP_PAPER : shade === -2 ? ROOM_EDGE : mixSky(shade / 32);
+						const tone = shade === -3 ? MAP_PAPER : shade === -2 ? ROOM_EDGE : shade > 100 ? mixLate((shade - 100) / 16) : mixSky(shade / 32);
 						document.documentElement.style.backgroundColor = tone;
 						edgeEl.style.setProperty('--tone', tone);
 						// The top strip comes from the header's own colour on a phone, so it gets the same tone.

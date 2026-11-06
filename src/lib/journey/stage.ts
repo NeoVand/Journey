@@ -494,6 +494,11 @@ class ClearOutputPass extends OutputPass {
 	}
 }
 
+const SUN = new THREE.Color('#ffeccd');
+const SUN_LATE = new THREE.Color('#ffc890');
+const HEMI_SKY = new THREE.Color('#dbeeff');
+const HEMI_LATE = new THREE.Color('#ffd9c0');
+
 /** Renderer, studio lighting, sky and post. Knows nothing about what is on the stage. */
 export class Stage {
 	renderer: THREE.WebGLRenderer;
@@ -501,6 +506,8 @@ export class Stage {
 	camera: THREE.PerspectiveCamera;
 	sun: THREE.DirectionalLight;
 	private fill: THREE.DirectionalLight;
+	private hemi: THREE.HemisphereLight;
+	private warmth = 0;
 	composer: EffectComposer;
 	bloom: UnrealBloomPass;
 	ao: Occlusion;
@@ -529,10 +536,10 @@ export class Stage {
 		this.buildSky();
 		this.buildEnvironment();
 
-		const hemi = new THREE.HemisphereLight('#dbeeff', '#b9a78c', 0.1);
-		this.scene.add(hemi);
+		this.hemi = new THREE.HemisphereLight(HEMI_SKY, '#b9a78c', 0.1);
+		this.scene.add(this.hemi);
 
-		this.sun = new THREE.DirectionalLight('#ffeccd', 2.7);
+		this.sun = new THREE.DirectionalLight(SUN, 2.7);
 		this.sun.castShadow = true;
 		this.sun.shadow.mapSize.setScalar(isPhone ? 1024 : 2048);
 		this.sun.shadow.bias = -0.0002;
@@ -641,6 +648,15 @@ export class Stage {
 		this.fill.target.position.set(x, y, z);
 		this.fill.position.set(x + 6, y + 8, z + 30);
 		this.fill.target.updateMatrixWorld();
+	}
+
+	/** 0 is the day's light; 1 is late afternoon, low and warm, for the end of the trip. */
+	setWarmth(k: number) {
+		if (k === this.warmth) return;
+		this.warmth = k;
+		this.sun.color.copy(SUN).lerp(SUN_LATE, k);
+		this.sun.intensity = 2.7 + 0.25 * k;
+		this.hemi.color.copy(HEMI_SKY).lerp(HEMI_LATE, k);
 	}
 
 	setSky(top: THREE.Color, mid: THREE.Color, low: THREE.Color) {

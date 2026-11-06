@@ -138,6 +138,8 @@ const SHOTS: Shot[] = [
 const SKY_A = { top: new THREE.Color('#9fd0f8'), mid: new THREE.Color('#c6e5fd'), low: new THREE.Color('#ecf7ff') };
 const SKY_B = { top: new THREE.Color('#5da2ee'), mid: new THREE.Color('#93c7f7'), low: new THREE.Color('#cfe8fc') };
 const SKY_IN = { top: new THREE.Color('#060f26'), mid: new THREE.Color('#0a1a3c'), low: new THREE.Color('#0d2150') };
+/** The end of the day's work: blue still overhead, a warm glow rising from below. */
+const SKY_DUSK = { top: new THREE.Color('#9cc8f4'), mid: new THREE.Color('#f2e2dc'), low: new THREE.Color('#ffe6c8') };
 
 const FORM_FROM = [0, 2.68, 4.1, 6.16, 14.17, 14.56, 14.89, 15.78, 18.14, 19.34, 22.06, 25.04];
 const formAt = (T: number) => {
@@ -153,6 +155,8 @@ export interface WorldState {
 	/** 0..1 how far the screen has faded while passing through the machine's roof. */
 	dive: number;
 	inside: boolean;
+	/** 0..1 how far the light has gone over to late afternoon, at the very end. */
+	dusk: number;
 }
 
 export class World {
@@ -238,7 +242,7 @@ export class World {
 	private intro = 0;
 	private opened = 0;
 	/** T value of the last frame, for one-shot logic. */
-	state: WorldState = { form: 1, dive: 0, inside: false };
+	state: WorldState = { form: 1, dive: 0, inside: false, dusk: 0 };
 
 	static async create(canvas: HTMLCanvasElement) {
 		await loadFonts();
@@ -1096,6 +1100,8 @@ export class World {
 			this.cluster.group.visible = false;
 			this.state.inside = false;
 			this.state.dive = 0;
+			this.state.dusk = 0;
+			this.stage.setWarmth(0);
 			this.stage.holdShadows(false);
 			this.stage.setSky(ROOM_SKY.top, ROOM_SKY.mid, ROOM_SKY.low);
 			this.room.update(this.trackT, time);
@@ -1117,13 +1123,25 @@ export class World {
 		const sky = this.stage;
 		if (inside) {
 			sky.setSky(SKY_IN.top, SKY_IN.mid, SKY_IN.low);
+			sky.setWarmth(0);
+			this.state.dusk = 0;
 			this.cluster.update(T, time);
 		} else {
 			const k = T >= EXIT_T ? 0 : skyK;
 			const top = this.c1.copy(SKY_A.top).lerp(SKY_B.top, k);
 			const mid = this.c2.copy(SKY_A.mid).lerp(SKY_B.mid, k);
 			const low = this.c3.copy(SKY_A.low).lerp(SKY_B.low, k);
+			// As the camera pulls back to see the whole trip, the light goes over to late afternoon.
+			const dusk = T >= FINALE_T ? smooth(seg(T, 32.04, 32.4)) : 0;
+			this.state.dusk = dusk;
+			if (dusk > 0) {
+				top.lerp(SKY_DUSK.top, dusk);
+				mid.lerp(SKY_DUSK.mid, dusk);
+				low.lerp(SKY_DUSK.low, dusk);
+			}
 			sky.setSky(top, mid, low);
+			sky.setWarmth(dusk);
+			this.clouds.setWarmth(dusk);
 			this.clouds.update(time);
 
 			this.root.position.y = (1 - outCubic(seg(intro, 0, 0.8))) * -0.9;
