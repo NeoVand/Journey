@@ -3,13 +3,14 @@ import { Batch } from '../kit/batch';
 import { extrude, rbox, roundedRect, ring } from '../kit/geometry';
 import { color, Lamp, mats } from '../kit/materials';
 import { archBlock, arcPoint, Card, curve, hazard, islandAt, machine, panel, shadowOn, stripes, tube } from '../kit/machines';
-import { font, Surface } from '../kit/print';
+import { drawPageIcon, font, Surface, type IconData } from '../kit/print';
 import { FINALE_T } from './finale';
 import { gearShape } from '../props/brain';
 import { createSign, fitting, grown, standSign } from '../kit/parts';
 import { bell, bounceDown, clamp, hash, inOut, lerp, outBack, outCubic, seg, smooth, spring } from '../kit/math';
 import { createCastShadow } from '../props/island';
 import { TEN_AT, TEN_STEP, TEN_TURNS, CALLS, HARNESSES, type HarnessId } from '../content';
+import { GATE_ICON } from '../icons';
 import { EASEL_POS, EASEL_TILT, RETURN_POINTS } from '../layout';
 import type { Shot } from '../rig';
 
@@ -26,6 +27,13 @@ const TRACK_Z = 0.7;
 const CARTY = GY + 0.2;
 const DOCK_X = -60.6;
 const DOCK_H = 2.3;
+/** The dock's mouth: tall enough for a call card on its cart, even leaning as the cart sets off. */
+const DOCK_ARCH = 2.0;
+/** Where the carts run, from inside the dock to the end of the rail, and how far short of a gate they wait: far
+ * enough that the card's front edge stays clear of the arm in front of it. */
+const TRACK_FROM = -60.5;
+const TRACK_TO = -42.2;
+const CARD_CLEAR = 1.88;
 const WX = -24.5;
 /** The scanner over the repository shelf: its rail's height and depth, its posts and reach either side of the
  * shelf's centre, where the lens parks, and the lens's size. */
@@ -54,7 +62,7 @@ const F_POS: V3 = [-144, 18, -4];
 const rel = (o: V3, x: number, y: number, z: number): V3 => [o[0] + x, o[1] + y, o[2] + z];
 
 const S_HATCH = { az: 17, el: 12, target: [1.4, 3.2, 0] as V3, radius: 8.6, ry: 4.4, wide: box(0.01, 0.04, 0.58, 0.92), tall: TALL };
-const S_GATES = { az: -20, el: 17, target: [-52.8, GY + 2.2, 0.9] as V3, radius: 8.4, ry: 5.7, wide: box(0.47, 0.06, 0.52, 0.9), tall: TALL };
+const S_GATES = { az: -18, el: 15, target: [-56.6, GY + 2.5, 1.3] as V3, radius: 4.9, ry: 3, wide: box(0.47, 0.06, 0.52, 0.9), tall: TALL };
 const S_BOX = { az: 9, el: 12, target: [-15.4, WY + 3.2, 2.2] as V3, radius: 8.3, ry: 5, wide: box(0, 0.05, 0.6, 0.92), tall: TALL };
 const S_FIND = { az: -8, el: 13, target: [WX - 4, WY + 2.8, 0.8] as V3, radius: 7.2, ry: 4.3, wide: RIGHT, tall: TALL };
 const S_EDIT = { az: 4, el: 8, target: [WX - 1.3, WY + 2.4, 1.5] as V3, radius: 5.1, ry: 3.7, wide: LEFT, tall: TALL };
@@ -73,8 +81,15 @@ const S_END = { az: 29, el: 17, target: [1.9, 1.35, 0.4] as V3, radius: 6.25, ry
 export const BACK_SHOTS: Shot[] = [
 	{ T: 19, ...S_HATCH }, // already there when the fade from the tube lifts
 	{ T: 19.64, ...S_HATCH, az: 14 },
+	// Close enough to read every board: the first call's way to the gate that stops it, the refusal, then along
+	// with the second call, gate by gate.
 	{ T: 20.04, ...S_GATES },
-	{ T: 20.92, ...S_GATES, az: -22 },
+	{ T: 20.17, ...S_GATES, target: [-55.3, GY + 2.3, 1.7], radius: 3.9, ry: 2.9, az: -13, el: 18 },
+	{ T: 20.37, ...S_GATES, target: [-55.3, GY + 2.3, 1.7], radius: 3.9, ry: 2.9, az: -10, el: 18 },
+	// Face on, turning a little to the right as it goes: the posts and the hook wheel stand nearer the reader than
+	// the card does, and from here they never cover it, whichever side of them it waits.
+	{ T: 20.45, ...S_GATES, target: [-57.2, GY + 2.5, 1.3], radius: 4.4, az: -3 },
+	{ T: 20.92, ...S_GATES, target: [-47.2, GY + 2.5, 1.3], radius: 4.4, az: 5 },
 	{ T: 21.06, ...S_BOX },
 	{ T: 21.9, ...S_BOX, az: 6 },
 	{ T: 22.06, ...S_FIND },
@@ -138,45 +153,118 @@ function printCall(card: Card, title: string, call: string, accent: string, foot
 /** A gate arm flies up past where it stops, and shakes it off. */
 const raise = (k: number) => (k <= 0 ? 0 : spring(k, 2.8, 6));
 
+/** What a gate has decided about the call in front of it, if anything yet. */
+type Verdict = { pass: boolean; text: string } | null;
+
+/** The gate's posts and beam: taller than the cart and its card, with the beam's top this high. */
+const GATE_Z = 1.75;
+const BEAM_TOP = 3.58;
+/** Each gate's board: the card's own icon and name for it, big enough to read across the island. */
+const BOARD_W = 3.1;
+const BOARD_H = 1.2;
+const BOARD_LIFT = 0.14;
+const BOARD_Y = BEAM_TOP + BOARD_LIFT + BOARD_H / 2;
+const PASS_INK = '#14904a';
+const STOP_INK = '#d8382d';
+const TICK: IconData = [['path', { d: 'M5 12.5L9.5 17L19 7', stroke: 'currentColor' }]];
+const CROSS: IconData = [
+	['path', { d: 'M18 6L6 18', stroke: 'currentColor' }],
+	['path', { d: 'M6 6L18 18', stroke: 'currentColor' }]
+];
+
+/** What each gate says when it lets a call through, and what the second says to a request for your secrets. */
+const PASSED_BY = ['A real tool', 'Inside the project', 'No rule against it', 'No need to ask'];
+const DENIED = '.env is denied';
+
 class Gate {
 	group = new THREE.Group();
 	arm = new THREE.Group();
+	/** The beacon on top of the board: amber while it waits, green to let a call through, flashing red to refuse. */
 	lamp: Lamp;
 	private hook?: THREE.Object3D;
 	private hookSigns: THREE.Group[] = [];
+	private face: Surface;
+	private said: string | null = null;
 
-	constructor(name: string, private armMat: THREE.Material, base: THREE.Material) {
+	constructor(
+		private name: string,
+		private icon: IconData,
+		private armMat: THREE.Material,
+		base: THREE.Material
+	) {
 		const m = mats();
+		const Z = GATE_Z;
 		const b = new Batch();
-		const Z = 1.75;
-		for (const s of [-1, 1]) {
-			b.add(rbox(0.62, 2.7, 0.62, 0.12, 3), m.cream, { p: [0, 1.5, s * Z] });
-		}
-		b.add(rbox(0.72, 0.56, Z * 2 + 0.72, 0.14, 4), m.cream, { p: [0, 3, 0] });
+		const postH = BEAM_TOP - 0.42;
+		for (const s of [-1, 1]) b.add(rbox(0.62, postH, 0.62, 0.12, 3), m.cream, { p: [0, 0.15 + postH / 2, s * Z] });
+		b.add(rbox(0.72, 0.56, Z * 2 + 0.72, 0.14, 4), m.cream, { p: [0, BEAM_TOP - 0.28, 0] });
 		this.group.add(b.build('gate'));
 		const f = new Batch();
 		for (const s of [-1, 1]) f.add(rbox(0.86, 0.34, 0.86, 0.06, 2), base, { p: [0, 0.17, s * Z] });
 		this.group.add(f.build('gate-feet'));
 
 		const armB = new Batch();
-		// Hinged on the far post, so that raising it never sweeps through the sign on the near one.
+		// Hinged on the far post, so that rising it never sweeps up into the board on the near one.
 		armB.add(new THREE.BoxGeometry(0.14, 0.14, Z * 2 - 0.5), this.armMat, { p: [0, 0, (Z * 2 - 0.5) / 2] });
 		armB.add(rbox(0.2, 0.3, 0.3, 0.05, 2), m.steelSoft, { p: [0, 0, -0.02] });
 		this.arm.add(armB.build('arm'));
 		this.arm.position.set(-0.44, 1.14, -(Z - 0.1));
 		this.group.add(this.arm);
 
-		const sign = createSign(name, 0.21);
-		sign.position.set(0, 3.68, Z - 0.5);
-		sign.rotation.y = -0.42;
-		this.group.add(sign);
-		const stem = new Batch();
-		stem.add(rbox(0.1, 0.4, 0.1, 0.02, 1), m.steelSoft, { p: [0, 3.34, Z - 0.5] });
-		this.group.add(stem.build('stem'));
+		// The board stands on the near end of the beam, on two steel stubs, facing the reader.
+		const bz = Z + 0.06;
+		const board = new Batch();
+		board.add(extrude(roundedRect(BOARD_W + 0.16, BOARD_H + 0.16, 0.16), 0.12, 0.03, 3, 10), m.creamLight, { p: [0, BOARD_Y, bz - 0.06] });
+		for (const x of [-0.2, 0.2]) board.add(rbox(0.09, BOARD_LIFT + 0.12, 0.09, 0.02, 1), m.steelSoft, { p: [x, BEAM_TOP + (BOARD_LIFT + 0.12) / 2 - 0.06, bz] });
+		// The beacon's base, on the board's top edge.
+		board.add(new THREE.CylinderGeometry(0.15, 0.17, 0.1, 24), m.steel, { p: [0, BOARD_Y + BOARD_H / 2 + 0.08 + 0.05, bz] });
+		this.group.add(board.build('gate-board'));
+		this.face = new Surface(Math.round(BOARD_W * 360), Math.round(BOARD_H * 360));
+		const face = new THREE.Mesh(new THREE.PlaneGeometry(BOARD_W, BOARD_H), new THREE.MeshStandardMaterial({ map: this.face.texture, roughness: 0.55 }));
+		face.position.set(0, BOARD_Y, bz + 0.075);
+		this.group.add(face);
+		this.say(null);
 
-		this.lamp = new Lamp(rbox(0.04, 0.16, 0.16, 0.02, 2), color.amber, 0.3);
-		this.lamp.mesh.position.set(-0.33, 2.5, Z);
+		this.lamp = new Lamp(new THREE.SphereGeometry(0.19, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2), color.amber, 0.3);
+		this.lamp.mesh.position.set(0, BOARD_Y + BOARD_H / 2 + 0.08 + 0.1, bz);
 		this.group.add(this.lamp.mesh);
+	}
+
+	/** What the board says: its name alone while it waits, and under it, once it has decided, what and why. */
+	say(v: Verdict) {
+		const key = v ? `${v.pass} ${v.text}` : 'waiting';
+		if (key === this.said) return;
+		this.said = key;
+		const { name, icon } = this;
+		this.face.draw((c, w, h) => {
+			c.fillStyle = color.paper;
+			c.fillRect(0, 0, w, h);
+			// The disc carries the gate's own icon while it waits, and the answer once it has one.
+			const tone = v ? (v.pass ? PASS_INK : STOP_INK) : '#dfe7f2';
+			const r = h * 0.3;
+			const cx = h * 0.13 + r;
+			const cy = h / 2;
+			c.fillStyle = tone;
+			c.beginPath();
+			c.arc(cx, cy, r, 0, Math.PI * 2);
+			c.fill();
+			if (v) drawPageIcon(c, v.pass ? TICK : CROSS, cx - r * 0.56, cy - r * 0.56, r * 1.12, '#ffffff', 3.4);
+			else drawPageIcon(c, icon, cx - r * 0.62, cy - r * 0.62, r * 1.24, color.ink, 1.7);
+			const left = cx + r + h * 0.12;
+			const room = w - left - h * 0.1;
+			const fit = (text: string, size: number, weight: number, family: string) => {
+				c.font = `${weight} ${size}px ${family}`;
+				while (c.measureText(text).width > room && size > 12) c.font = `${weight} ${(size -= 2)}px ${family}`;
+			};
+			c.textBaseline = 'middle';
+			c.fillStyle = color.ink;
+			fit(name, h * 0.32, 700, font.display);
+			c.fillText(name, left, v ? cy - h * 0.15 : cy);
+			if (!v) return;
+			c.fillStyle = tone;
+			fit(v.text, h * 0.22, 650, font.sans);
+			c.fillText(v.text, left, cy + h * 0.2);
+		});
 	}
 
 	set(open: number) {
@@ -186,19 +274,28 @@ class Gate {
 	/** Your hooks live on the policy gate: a small wheel of your own on the near post, with a light of its own. */
 	addHook() {
 		const m = mats();
-		const Z = 1.75;
+		const Z = GATE_Z;
 		const wheel = new Batch();
-		const cog = extrude(gearShape(12, 0.62, 0), 0.05, 0.01, 2, 12);
-		cog.scale(0.42, 0.42, 1);
+		// A hole a little wider than the axle, so the cog turns on it without touching.
+		const shape = gearShape(12, 0.62, 0);
+		const hole = new THREE.Path();
+		hole.absarc(0, 0, 0.17, 0, Math.PI * 2, true);
+		shape.holes.push(hole);
+		const cog = extrude(shape, 0.05, 0.01, 2, 12);
+		cog.scale(0.5, 0.5, 1);
 		wheel.add(cog, m.cobalt);
-		wheel.add(new THREE.CylinderGeometry(0.06, 0.06, 0.09, 14), m.steel, { r: [Math.PI / 2, 0, 0] });
 		this.hook = wheel.build('hook-wheel');
-		this.hook.position.set(0, 1.7, Z + 0.34);
-		this.group.add(this.hook);
+		// High on the post, above the cards that wait beside it, so it never covers what they say. The cog turns on
+		// an axle that stays still in the post.
+		this.hook.position.set(0, 2.6, Z + 0.34);
+		const axle = new Batch();
+		axle.add(new THREE.CylinderGeometry(0.07, 0.07, 0.11, 14), m.steel, { p: [0, 2.6, Z + 0.345], r: [Math.PI / 2, 0, 0] });
+		axle.add(new THREE.CylinderGeometry(0.11, 0.11, 0.03, 18), m.steel, { p: [0, 2.6, Z + 0.415], r: [Math.PI / 2, 0, 0] });
+		this.group.add(this.hook, axle.build('hook-axle'));
 		this.hookSigns = ['Your hooks', 'Your rules'].map((text) => {
-			const sign = createSign(text, 0.15);
-			// Under the wheel: on a phone it grows downward, away from it.
-			sign.position.set(0, 1.26 - grown(0.15), Z + 0.33);
+			const sign = createSign(text, 0.17);
+			// Under the wheel, its back flat on the post's face: on a phone it grows downward, away from the wheel.
+			sign.position.set(0, 2.03 - grown(0.17), Z + 0.37);
 			this.group.add(sign);
 			return sign;
 		});
@@ -219,7 +316,7 @@ class Cart {
 	card: Card;
 	private cardX = 0;
 
-	constructor(public cw = 1.86, public ch = 1.16) {
+	constructor(public cw = 2.1, public ch = 1.3) {
 		const m = mats();
 		const b = new Batch();
 		b.add(rbox(1.44, 0.14, 0.9, 0.05, 2), m.steelSoft, { p: [0, 0.07, 0] });
@@ -273,7 +370,8 @@ export class Back {
 	private bad = new Cart();
 	private good = new Cart();
 	private binSign!: THREE.Group;
-	private bin = new THREE.Vector3(GATE_X[1] - 1.6, GY + 0.5, 3.45);
+	/** Right beside where the refused call waits, so it drops straight in. */
+	private bin = new THREE.Vector3(GATE_X[1] - CARD_CLEAR, GY + 0.5, 3.45);
 
 	private glass: THREE.Mesh[] = [];
 	private frame!: THREE.Group;
@@ -437,12 +535,12 @@ export class Back {
 		g.add(shade);
 
 		// Where the pipe lands: calls arrive through the roof and leave on carts through the open end.
-		const dock = archBlock({ w: 3, d: 3.2, h: DOCK_H, archZ: 0, archD: 1.5, archH: 1.86, closedLeft: true });
+		const dock = archBlock({ w: 3, d: 3.2, h: DOCK_H, archZ: 0, archD: 1.5, archH: DOCK_ARCH, closedLeft: true });
 		dock.position.set(DOCK_X, GY, TRACK_Z);
 		g.add(dock);
 		shadowOn(g, DOCK_X, GY, TRACK_Z, 3.2, 3.4, 0.34);
-		const dockSign = createSign('Parsed calls', 0.24);
-		dockSign.position.set(DOCK_X, GY + DOCK_H - 0.26, TRACK_Z + 1.63);
+		const dockSign = createSign('Parsed calls', 0.3);
+		dockSign.position.set(DOCK_X, GY + DOCK_H - 0.4, TRACK_Z + 1.63);
 		g.add(dockSign);
 		const socket = new Batch();
 		fitting(socket, [DOCK_X, GY + DOCK_H, TRACK_Z], [0, 1, 0], 0.09);
@@ -459,7 +557,7 @@ export class Back {
 		const armMat = stripes('#f0473c', '#fbfaf5', 3);
 		const base = hazard(1);
 		['Valid shape?', 'Allowed path?', 'Policy', 'You, if asked'].forEach((name, i) => {
-			const gate = new Gate(name, armMat, base);
+			const gate = new Gate(name, GATE_ICON[i], armMat, base);
 			gate.group.position.set(GATE_X[i], GY, TRACK_Z);
 			g.add(gate.group);
 			shadowOn(g, GATE_X[i], GY, TRACK_Z, 1, 4.2, 0.28);
@@ -477,8 +575,13 @@ export class Back {
 		}
 		g.add(bin.build('bin'));
 		// Stood on the front wall of the bin.
-		this.binSign = standSign(createSign('Refused: goes back as the tool result', 0.19), 0.19, 0.18);
-		this.binSign.position.set(bx, GY + 1.12, bz + 0.72);
+		// On one post in the middle of the front wall: two would land on the bin's corners, and past them on a phone.
+		const binSign = standSign(createSign('Refused: goes back as the tool result', 0.19), 0.19, 0.18, Infinity);
+		// It pops up from the foot of its post, which stays put on the wall.
+		binSign.position.y = 0.385;
+		this.binSign = new THREE.Group();
+		this.binSign.add(binSign);
+		this.binSign.position.set(bx, GY + 0.75, bz + 0.72);
 		this.binSign.visible = false;
 		g.add(this.binSign);
 
@@ -1582,8 +1685,8 @@ export class Back {
 		} else this.carrier.visible = false;
 
 		/* ---- gates ---- */
-		const trackX = (k: number) => lerp(-61, -42.2, k);
-		const stopAt = (i: number) => (GATE_X[i] + 61) / 18.8 - 0.08;
+		const trackX = (k: number) => lerp(TRACK_FROM, TRACK_TO, k);
+		const stopAt = (i: number) => (GATE_X[i] - CARD_CLEAR - TRACK_FROM) / (TRACK_TO - TRACK_FROM);
 		if (T > 19.5 && T < 21.3) {
 			// First call: Read(./.env) gets past the shape check and no further.
 			const badAt = (t: number) => lerp(0, stopAt(1), inOut(seg(t, 20.04, 20.2)));
@@ -1593,7 +1696,7 @@ export class Back {
 			bg.visible = T > 20.02 && fall < 1;
 			if (bg.visible) {
 				this.a.set(trackX(badK), CARTY, TRACK_Z);
-				arcPoint(this.a, this.bin, 0.8, inOut(fall), this.b);
+				arcPoint(this.a, this.bin, 1.3, inOut(fall), this.b);
 				bg.position.copy(fall > 0 ? this.b : this.a);
 				bg.rotation.z = fall * -0.6;
 				bg.scale.setScalar(1 - fall * 0.6);
@@ -1630,8 +1733,15 @@ export class Back {
 				// Just before policy decides, your own script gets its say.
 				if (i === 2) gate.turnHook(seg(T, hold - 0.06, hold + 0.01));
 				const refused = i === 1 && T > 20.2 && T < 20.42;
+				// The first call is judged by the first two gates; the second, after it, by each gate in turn.
+				const first = T < 20.4;
+				const passedFirst = i === 0 && first && T > 20.1;
 				if (refused) gate.lamp.set(color.red, 1 + Math.sin(time * 14) * 0.5);
+				else if (passedFirst) gate.lamp.mix(color.amber, color.green, smooth(seg(T, 20.1, 20.14)), 1.15);
 				else gate.lamp.mix(color.amber, color.green, smooth(opened), 0.25 + smooth(opened) * 0.9);
+				if (refused) gate.say({ pass: false, text: DENIED });
+				else if (passedFirst) gate.say({ pass: true, text: PASSED_BY[0] });
+				else gate.say(!first && T > hold + 0.01 ? { pass: true, text: PASSED_BY[i] } : null);
 			});
 		}
 

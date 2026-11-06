@@ -179,6 +179,37 @@ export function drawIcon(
 	c.restore();
 }
 
+/** A Hugeicons icon, as the page draws it: a list of SVG elements on a 24 unit grid. */
+export type IconData = readonly (readonly [string, { readonly [key: string]: string | number }])[];
+
+/** Draws one of the page's own icons onto a canvas, so a sign in the scene can say what the card beside it says. */
+export function drawPageIcon(c: CanvasRenderingContext2D, icon: IconData, x: number, y: number, size: number, stroke: string, weight = 1.6) {
+	c.save();
+	c.translate(x, y);
+	c.scale(size / 24, size / 24);
+	c.strokeStyle = stroke;
+	c.lineWidth = weight;
+	c.lineCap = 'round';
+	c.lineJoin = 'round';
+	const n = (v: string | number | undefined) => Number(v ?? 0);
+	for (const [tag, a] of icon) {
+		const p = new Path2D();
+		if (tag === 'path') p.addPath(new Path2D(String(a.d)));
+		else if (tag === 'circle') p.arc(n(a.cx), n(a.cy), n(a.r), 0, Math.PI * 2);
+		else if (tag === 'rect') p.roundRect(n(a.x), n(a.y), n(a.width), n(a.height), n(a.rx));
+		else if (tag === 'line') {
+			p.moveTo(n(a.x1), n(a.y1));
+			p.lineTo(n(a.x2), n(a.y2));
+		} else continue;
+		if (a.fill && a.fill !== 'none') {
+			c.fillStyle = stroke;
+			c.fill(p);
+		}
+		if (a.stroke && a.stroke !== 'none') c.stroke(p);
+	}
+	c.restore();
+}
+
 export function roundRectPath(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
 	c.beginPath();
 	c.roundRect(x, y, w, h, r);
