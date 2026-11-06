@@ -3,7 +3,7 @@ import { Batch } from '../kit/batch';
 import { extrude, rbox, roundedRect, ring } from '../kit/geometry';
 import { color, Lamp, mats } from '../kit/materials';
 import { archBlock, arcPoint, Card, curve, hazard, islandAt, machine, panel, shadowOn, stripes, tube } from '../kit/machines';
-import { drawPageIcon, font, Surface, type IconData } from '../kit/print';
+import { drawPageIcon, font, Label, Surface, type IconData } from '../kit/print';
 import { FINALE_T } from './finale';
 import { gearShape } from '../props/brain';
 import { createSign, fitting, grown, SIGN_PHONE, signWidth, standSign } from '../kit/parts';
@@ -71,6 +71,58 @@ const S_EDIT = { az: 4, el: 8, target: [WX - 1.3, WY + 2.4, 1.5] as V3, radius: 
 const S_TEST = { az: 10, el: 11, target: [WX + 7.6, WY + 2.5, 1.5] as V3, radius: 3.9, ry: 3.5, wide: RIGHT, tall: TALL };
 const S_HOME = { az: 24, el: 15, target: [1.2, 1.9, 0.6] as V3, radius: 6.1, ry: 4.15, wide: box(0, 0.12, 0.58, 0.82), tall: TALL };
 const S_COMPACT = { az: 14, el: 15, target: rel(C_POS, 0, 2.6, 0), radius: 5.9, ry: 3.8, wide: RIGHT, tall: TALL };
+
+/**
+ * What the compaction press holds is the request, message by message. Instructions and tools lie at the bottom and
+ * never change; on them your prompt, then turn after turn of call, result and the model's own words, creeping up
+ * towards the context window's limit. Each slip is as thick as roughly how much it holds: a file read is thick, a call
+ * is thin.
+ */
+type SlipKind = 'base' | 'prompt' | 'call' | 'result' | 'text';
+const SLIP_TINT: Record<SlipKind | 'summary', string> = {
+	base: color.cream,
+	prompt: '#cfe2ff',
+	call: '#ffd877',
+	result: '#bdeccf',
+	text: color.paper,
+	summary: color.amber
+};
+const SLIP_TURNS = 12;
+/** The latest turns, which go on as they are. */
+const SLIP_KEEP = 2;
+const SLIPS: { kind: SlipKind; t: number }[] = [
+	{ kind: 'base', t: 0.32 },
+	{ kind: 'prompt', t: 0.07 },
+	...Array.from({ length: SLIP_TURNS }, (_, n) => [
+		{ kind: 'call' as const, t: 0.05 },
+		{ kind: 'result' as const, t: 0.07 + hash(n * 3.7 + 1) * 0.13 },
+		{ kind: 'text' as const, t: 0.04 }
+	]).flat()
+];
+/** Everything from your prompt up to the latest turns: what the summary stands in for. */
+const SLIP_OLD = [1, SLIPS.length - SLIP_KEEP * 3];
+const SLIP_OLD_T = SLIPS.slice(SLIP_OLD[0], SLIP_OLD[1]).reduce((s, x) => s + x.t, 0);
+const SLIP_FULL = SLIPS.reduce((s, x) => s + x.t, 0);
+const SUMMARY_T = 0.3;
+/** Each message after your prompt lands at its own moment; the score's paper sounds land with them. */
+const SLIP_FROM = 26.08;
+const SLIP_STEP = (26.46 - SLIP_FROM) / (SLIPS.length - 2);
+/** The slips' footprint, and the height of the press's base they lie on. */
+const SLIP_W = 2.7;
+const SLIP_D = 3.3;
+const PRESS_FLOOR = 0.14;
+/** The press's telescoping ram: the sleeve under the beam reaches down to RAM_SLEEVE, and three stages, each narrower,
+ * share the rest of the way to the plate, overlapping one another wherever the plate is. Heights over the island. */
+const RAM_R = [0.27, 0.22, 0.18, 0.14];
+const RAM_TOP = 5.3;
+const RAM_SLEEVE = 4.37;
+const RAM_STAGE = 1.15;
+/** The summary card in its holder: its size, its lean, and where it stands when it's all the way up, its bottom edge
+ * a little way down the slot. */
+const SUMMARY_SCALE = 0.82;
+const SUMMARY_LEAN = 0.1;
+const SUMMARY_HALF = 1.3 * SUMMARY_SCALE;
+const SUMMARY_UP: V3 = [0, 0.19 + SUMMARY_HALF * Math.cos(SUMMARY_LEAN), -SUMMARY_HALF * Math.sin(SUMMARY_LEAN)];
 const S_MEM = { az: -12, el: 9, target: rel(M_POS, 0, 3.9, 0), radius: 5.6, ry: 4.3, wide: LEFT, tall: TALL };
 const S_UNK = { az: 10, el: 20, target: rel(U_POS, 0, 1.9, 0.7), radius: 7.6, ry: 4.3, wide: box(0.42, 0.06, 0.58, 0.9), tall: TALL };
 const S_TEN = { az: -10, el: 14, target: rel(R_POS, 0, 2.6, 0.6), radius: 9.2, ry: 4.2, wide: box(0.01, 0.42, 0.98, 0.56), tall: box(0, 0.06, 1, 0.3) };
@@ -424,6 +476,12 @@ export class Back {
 	private gaugeFill!: THREE.Mesh;
 	private gaugeMat!: THREE.MeshPhysicalMaterial;
 	private summary = new Card(3.4, 2.6, 280);
+	private summaryStand!: THREE.Object3D;
+	private ram: THREE.Mesh[] = [];
+	private summaryClip = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+	private summaryName = new Label('Summary', 0.15 * SIGN_PHONE, { weight: 800 });
+	private slipTint = SLIPS.map((s) => new THREE.Color(SLIP_TINT[s.kind]));
+	private slipAmber = new THREE.Color(SLIP_TINT.summary);
 
 	private memDrawers: { group: THREE.Group; lamp: Lamp; z: number }[] = [];
 
@@ -461,6 +519,8 @@ export class Back {
 	private a = new THREE.Vector3();
 	private b = new THREE.Vector3();
 	private d = new THREE.Object3D();
+	private c = new THREE.Color();
+	private v = new THREE.Vector3();
 	private zones: { g: THREE.Object3D; from: number; to: number; home: boolean; whole: boolean }[] = [];
 
 	constructor() {
@@ -892,22 +952,42 @@ export class Back {
 			b.add(rbox(0.34, 5.4, 0.34, 0.08, 3), m.cream, { p: [bx + s * 1.68, cy + 2.7, cz + 1.5] });
 		}
 		b.add(rbox(3.9, 0.46, 3.7, 0.1, 3), m.cream, { p: [bx, cy + 5.5, cz] });
+		// The ram's sleeve hangs under the beam; its stages slide out of it as far as the plate needs to go.
+		b.add(new THREE.CylinderGeometry(RAM_R[0], RAM_R[0], RAM_TOP - RAM_SLEEVE, 28), m.steelSoft, { p: [bx, cy + (RAM_TOP + RAM_SLEEVE) / 2, cz] });
 		g.add(b.build('press-frame'));
 		shadowOn(g, bx, cy, cz, 3.8, 4.3);
 		const pb = new Batch();
-		pb.add(rbox(3.1, 0.3, 3.5, 0.06, 3), m.cobalt, { p: [0, 0, 0] });
-		pb.add(new THREE.CylinderGeometry(0.22, 0.22, 2.4, 20), m.steel, { p: [0, 1.3, 0] });
+		// Just narrower than the gap between the posts, so it slides down between them.
+		pb.add(rbox(2.96, 0.3, 3.5, 0.06, 3), m.cobalt, { p: [0, 0, 0] });
 		this.press.add(pb.build('press'));
+		this.ram = RAM_R.slice(1).map((r) => {
+			const stage = new THREE.Mesh(new THREE.CylinderGeometry(r, r, RAM_STAGE, 24), m.steel);
+			stage.castShadow = true;
+			stage.position.set(bx, 0, cz);
+			g.add(stage);
+			return stage;
+		});
 		this.press.position.set(bx, cy + 4, cz);
 		g.add(this.press);
 		const name = createSign('Compaction', 0.3);
 		name.position.set(bx, cy + 5.5, cz + 1.9);
 		g.add(name);
 
-		this.sheets = new THREE.InstancedMesh(rbox(2.7, 0.1, 3.3, 0.02, 1), m.paper, 30);
+		// One slip per message, and one more for the summary that takes the older ones' place. Unit thick: each is
+		// scaled to its own thickness.
+		this.sheets = new THREE.InstancedMesh(rbox(SLIP_W, 1, SLIP_D, 0.02, 1), m.paper, SLIPS.length + 1);
 		this.sheets.castShadow = true;
+		this.sheets.receiveShadow = true;
 		this.sheets.frustumCulled = false;
+		SLIPS.forEach((_, i) => this.sheets.setColorAt(i, this.slipTint[i]));
+		this.sheets.setColorAt(SLIPS.length, this.slipAmber);
 		g.add(this.sheets);
+		// The two slips that matter most say what they are, on the edge that faces the reader.
+		const base = new Label('Instructions and tools', 0.13 * SIGN_PHONE, { weight: 700 });
+		base.mesh.position.set(bx, cy + PRESS_FLOOR + SLIPS[0].t / 2, cz + SLIP_D / 2 + 0.004);
+		g.add(base.mesh);
+		this.summaryName.mesh.position.set(bx, cy + PRESS_FLOOR + SLIPS[0].t + SUMMARY_T / 2, cz + SLIP_D / 2 + 0.004);
+		g.add(this.summaryName.mesh);
 
 		const gx = cx + 3.8;
 		const gb = new Batch();
@@ -949,7 +1029,19 @@ export class Back {
 				c.fillText(t, 44 + h * 0.07, h * 0.27 + i * h * 0.1);
 			});
 		});
-		g.add(this.summary.mesh);
+		// The summary comes up out of a slotted holder beside the press, like toast; below the slot it isn't drawn.
+		const st = new Batch();
+		st.add(rbox(3.08, 0.24, 0.5, 0.08, 3), m.steelSoft, { p: [0, 0.12, 0] });
+		st.add(rbox(2.86, 0.02, 0.07, 0.01, 1), m.recess, { p: [0, 0.235, 0] });
+		this.summaryStand = new THREE.Group();
+		this.summaryStand.add(st.build('summary-stand'), this.summary.mesh);
+		this.summaryStand.position.set(cx + 1.75, cy, cz + 2.2);
+		this.summaryStand.rotation.y = -0.12;
+		g.add(this.summaryStand);
+		this.summary.mesh.material.clippingPlanes = [this.summaryClip];
+		this.summary.mesh.material.clipShadows = true;
+		this.summary.mesh.rotation.x = -SUMMARY_LEAN;
+		this.summary.mesh.scale.setScalar(SUMMARY_SCALE);
 	}
 
 	/* ---- seven kinds of memory ---- */
@@ -1954,39 +2046,82 @@ export class Back {
 		if ((T > 25.6 && T < 27.4) || homeward) {
 			const [cx, cy, cz] = C_POS;
 			const bx = cx - 2.4;
-			const grow = seg(T, 26.08, 26.46);
-			const count = Math.floor(grow * 30);
-			const drop = inOut(seg(T, 26.48, 26.6));
+			// The plate comes down onto the pile, then squeezes only the older messages: your prompt and the early turns
+			// fold into one summary, while the latest turns ride down on top of them, as they were.
+			const reach = inOut(seg(T, 26.48, 26.53));
+			const q = inOut(seg(T, 26.53, 26.6));
 			const lift = inOut(seg(T, 26.64, 26.76));
-			const squash = seg(T, 26.56, 26.6);
-			const stackTop = 0.14 + Math.max(count, 1) * 0.1;
-			for (let i = 0; i < this.sheets.count; i++) {
-				const kept = i < 3;
-				const vis = i < count && (kept || squash < 1);
-				const yy = lerp(0.2 + i * 0.1, 0.2 + i * 0.06, squash);
-				const jitter = hash(i * 2.2) * 0.1 - 0.05;
-				d.position.set(bx + jitter, cy + yy, cz + hash(i * 4.1) * 0.08 - 0.04);
-				d.rotation.y = hash(i) * 0.05 - 0.025;
-				d.scale.setScalar(vis ? 1 : 0.0001);
+			const folded = q >= 1;
+			const oldK = lerp(1, SUMMARY_T / SLIP_OLD_T, q);
+			const tint = smooth(seg(q, 0.35, 1));
+			let y = cy + PRESS_FLOOR;
+			for (let i = 0; i < SLIPS.length; i++) {
+				const s = SLIPS[i];
+				const old = i >= SLIP_OLD[0] && i < SLIP_OLD[1];
+				// Your prompt and the instructions were there before the chapter began; the rest land one by one.
+				const at = i < 2 ? -1 : SLIP_FROM + (i - 1) * SLIP_STEP;
+				// One at a time: a slip starts down as the one before it lands, so two never meet in the air.
+				const fall = i < 2 ? 1 : seg(T, at - SLIP_STEP, at);
+				const shown = fall > 0 && !(old && folded);
+				const t = s.t * (old ? oldK : 1);
+				// They flutter down onto the pile, landing a touch askew; the press squares them up as it squeezes.
+				const loose = i === 0 ? 0 : 1 - q;
+				const k = outCubic(fall);
+				d.position.set(bx + (hash(i * 2.2) * 0.1 - 0.05) * loose, y + t / 2 + (1 - k) * 0.32, cz + (hash(i * 4.1) * 0.08 - 0.04) * loose);
+				d.rotation.set(0, (hash(i) * 0.05 - 0.025) * loose, (1 - k) * (hash(i * 7.3) - 0.5) * 0.18);
+				if (shown) d.scale.set(1, t, 1);
+				else d.scale.setScalar(0.0001);
 				d.updateMatrix();
 				this.sheets.setMatrixAt(i, d.matrix);
+				if (old) this.sheets.setColorAt(i, this.c.copy(this.slipTint[i]).lerp(this.slipAmber, tint));
+				// A slip still on its way down already has its place: the next one lands on top of it, never in it.
+				if (shown) y += t;
+				if (i === SLIP_OLD[1] - 1 && folded) {
+					// The summary takes the folded slips' place exactly, so the swap can't be seen.
+					d.position.set(bx, y + SUMMARY_T / 2, cz);
+					d.rotation.set(0, 0, 0);
+					d.scale.set(1, SUMMARY_T, 1);
+					d.updateMatrix();
+					this.sheets.setMatrixAt(SLIPS.length, d.matrix);
+					y += SUMMARY_T;
+				}
 			}
-			d.rotation.y = 0;
+			if (!folded) {
+				d.scale.setScalar(0.0001);
+				d.updateMatrix();
+				this.sheets.setMatrixAt(SLIPS.length, d.matrix);
+			}
+			d.rotation.set(0, 0, 0);
+			d.scale.setScalar(1);
 			this.sheets.instanceMatrix.needsUpdate = true;
-			const pressed = lerp(4, stackTop + 0.2, drop);
-			this.press.position.y = cy + lerp(pressed, 4, lift);
-			const level = lerp(0.3, 4.1, grow) * (1 - squash * 0.62);
+			if (this.sheets.instanceColor) this.sheets.instanceColor.needsUpdate = true;
+			const named = outBack(seg(T, 26.6, 26.65), 1.6);
+			this.summaryName.mesh.visible = named > 0;
+			this.summaryName.mesh.scale.setScalar(Math.max(0.001, named));
+
+			// The plate rests on whatever the pile has become, and goes home when it's done.
+			const top = y - cy;
+			const plate = lerp(4, top + 0.15, reach);
+			this.press.position.y = cy + lerp(plate, 4, lift);
+			const reachDown = RAM_SLEEVE - (lerp(plate, 4, lift) + 0.15);
+			this.ram.forEach((stage, i) => (stage.position.y = cy + RAM_SLEEVE - (reachDown * (i + 1)) / this.ram.length + RAM_STAGE / 2));
+
+			// The context window's gauge reads the pile: close to its limit before, about a third after.
+			const level = ((top - PRESS_FLOOR) / SLIP_FULL) * 3.92;
 			this.gaugeFill.scale.y = Math.max(0.01, level);
-			const danger = seg(level, 2.4, 4);
+			const danger = seg(level, 2.6, 3.7);
 			this.gaugeMat.color.set('#35d17f').lerp(new THREE.Color('#f0473c'), danger);
 			this.gaugeMat.emissive.set('#10c25a').lerp(new THREE.Color('#d6231a'), danger);
-			const out = outBack(seg(T, 26.68, 26.82), 1.4);
-			this.summary.mesh.visible = out > 0;
-			if (out > 0) {
-				this.summary.mesh.position.set(cx + 1.5, cy + lerp(0.8, 2.3, Math.min(1, out)), cz + 2.5);
-				this.summary.mesh.rotation.set(-0.08, -0.12, 0);
-				this.summary.mesh.scale.setScalar(Math.max(0.001, out * 0.88));
-			}
+
+			// The summary pops up from its holder with a little hop, and settles into the slot.
+			const up = seg(T, 26.66, 26.8);
+			const pop = outBack(up, 1.7);
+			this.summaryStand.visible = T > 26.62;
+			this.summaryStand.scale.set(Math.max(0.001, outBack(seg(T, 26.62, 26.66), 1.4)), 1, 1);
+			this.summary.mesh.visible = up > 0;
+			this.summary.mesh.position.set(SUMMARY_UP[0], SUMMARY_UP[1] - (1 - pop) * SUMMARY_HALF * 2.1, SUMMARY_UP[2]);
+			this.summaryStand.getWorldPosition(this.v);
+			this.summaryClip.constant = -(this.v.y + 0.235);
 		}
 
 		/* ---- memory ---- */

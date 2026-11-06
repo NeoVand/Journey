@@ -356,12 +356,18 @@ export function score(w: World): { cues: Cue[]; beds: Bed[] } {
 	at(25.5, 'paper-land', P.easel, { gain: 0.5 });
 	at(25.6, 'drawer-in', P.harness, { gain: 0.7 });
 
-	/* 26. When the context fills up: thirty sheets, the gauge rising, the press, and a summary. */
-	for (let i = 0; i < 30; i++) at(26.08 + 0.012667 * (i + 1), 'paper-land', P.compaction, { gain: 0.32, rate: 0.9 + i * 0.008, minor: i % 3 !== 0 });
+	/* 26. When the context fills up: messages piling up, the gauge rising, the press, and a summary popping up. */
+	// One for each of the 36 messages landing on the pile (`SLIP_FROM` and `SLIP_STEP` in back.ts): a call, its
+	// result and the model's words, turn after turn, the results a little heavier.
+	for (let i = 0; i < 36; i++) {
+		const result = i % 3 === 1;
+		at(26.08 + (0.38 / 36) * (i + 1), 'paper-land', P.compaction, { gain: result ? 0.36 : 0.26, rate: 0.9 + i * 0.007, minor: !result });
+	}
 	at(26.08, sweep(note(-5), note(5), 5.5), P.compaction, { gain: 0.5 });
 	at(26.48, 'servo', P.compaction, { gain: 0.45, rate: 0.85 });
-	at(26.58, 'press', P.compaction, { gain: 1, dip: 0.5 });
+	at(26.53, 'press', P.compaction, { gain: 1, dip: 0.5 });
 	at(26.64, 'servo', P.compaction, { gain: 0.4, rate: 1.05 });
+	at(26.68, 'pop', P.compaction, { gain: 0.55, rate: 0.9 });
 	at(26.72, chime([0, 2, 4]), P.compaction, { gain: 0.35 });
 
 	/* 27. Seven things called memory: seven drawers, six green, one red. */
