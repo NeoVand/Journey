@@ -26,12 +26,11 @@ for (const [id, name] of Object.entries(TRIPS)) {
 	await page.getByRole('button', { name }).first().click();
 	await page.waitForSelector('[data-trip]');
 	const cards = await page.locator('[data-trip] .pin').count();
-	// The way in: the flight, and for an inside trip the drop through the roof.
-	await page.waitForTimeout(6000);
 	for (let i = 0; i < cards; i++) {
 		// A step stops where the card in view has finished its scene, with its words still up. The last one plays to the end.
+		// The first card's scene plays by itself once the reader has arrived; each after it waits for a step.
 		const stop = i === cards - 1 ? cards : i + 0.848;
-		await page.keyboard.press('ArrowRight');
+		if (i > 0) await page.keyboard.press('ArrowRight');
 		await page.waitForFunction((s) => Math.abs(window.__world.trackT - s) < 0.01, stop, { timeout: 90000 }).catch(() => console.log(`${id} card ${i + 1}: did not settle`));
 		await page.waitForTimeout(400);
 		const title = await page.locator('[data-trip] .pin').nth(i).locator('h2, h3').first().textContent();

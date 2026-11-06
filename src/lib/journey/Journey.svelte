@@ -3137,18 +3137,14 @@
 		inset: 0;
 		z-index: -1;
 		border-radius: inherit;
-		background:
-			linear-gradient(#1f5fe0, #1f5fe0) bottom / 100% 2.5px no-repeat,
-			linear-gradient(90deg, rgb(31 95 224 / 0.07), rgb(31 95 224 / 0.3));
+		background: linear-gradient(90deg, rgb(31 95 224 / 0.07), rgb(31 95 224 / 0.3));
 		/* Revealed from the start, so the pill keeps its round ends instead of squashing. */
 		clip-path: inset(0 calc(100% - var(--done, 0) * 100%) 0 0);
 		opacity: 0;
 		transition: opacity 0.4s ease-out;
 	}
 	.stepper button[data-step='back']::before {
-		background:
-			linear-gradient(#1f5fe0, #1f5fe0) bottom / 100% 2.5px no-repeat,
-			linear-gradient(270deg, rgb(31 95 224 / 0.07), rgb(31 95 224 / 0.3));
+		background: linear-gradient(270deg, rgb(31 95 224 / 0.07), rgb(31 95 224 / 0.3));
 		clip-path: inset(0 0 0 calc(100% - var(--done, 0) * 100%));
 	}
 	.stepper button[data-step]:global(.playing) {
