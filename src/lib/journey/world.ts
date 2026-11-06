@@ -72,6 +72,16 @@ const STRIPS_PRINTED = 3.62;
 
 /* ---------- beat timeline. T counts sections; see Journey.svelte for the mapping ---------- */
 export const HOLD = { type: [1.02, 1.56], send: [1.56, 1.66] };
+/** What your screen says the agent is doing, from when it says it. Seen at the start, when the reply lands, and round the loop. */
+const LAPTOP_SAYS: [number, string][] = [
+	[0, 'Building the request'],
+	[3.6, 'Waiting for the reply'],
+	[19.0, 'Reading the reply'],
+	[19.62, 'Checking the tool call'],
+	[25.04, 'Sending the result back'],
+	[25.9, 'On to the next turn']
+];
+const laptopSays = (T: number) => LAPTOP_SAYS.findLast(([from]) => T >= from)![1];
 
 const box = (x: number, y: number, w: number, h: number) => ({ x, y, w, h });
 const hold = (from: number, to: number, shot: Omit<Shot, 'T'>, drift: Partial<Omit<Shot, 'T'>> = {}): Shot[] => [
@@ -1186,6 +1196,7 @@ export class World {
 				this.rest.visible = false;
 				this.bulges.forEach((b) => (b.visible = false));
 				this.laptop.finish(smooth(seg(T, 31.3, 31.46)));
+				this.laptop.say(laptopSays(T));
 				this.laptop.update(PROMPT.length, 1, time, 1, false);
 				this.mcp.update(1, time);
 				this.finale.update(T);
@@ -1288,6 +1299,7 @@ export class World {
 		// It types itself as the page opens. Anyone who scrolls on before it's finished only hurries it along.
 		const typedF = Math.max(seg(T, HOLD.type[0], HOLD.type[1]) * PROMPT.length, this.selfTyped());
 		const sent = seg(T, HOLD.send[0], HOLD.send[1]);
+		this.laptop.say(laptopSays(T));
 		this.laptop.update(typedF, sent, time, lid, typedF < PROMPT.length || (T > 0.9 && T < 1.8));
 	}
 

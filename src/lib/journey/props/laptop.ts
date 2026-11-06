@@ -43,6 +43,8 @@ export class Laptop {
 	private cursor = true;
 	private sent = 0;
 	private done = 0;
+	/** What the agent is doing, under the prompt once it's sent. */
+	private status = 'Building the request';
 
 	constructor() {
 		const m = mats();
@@ -204,6 +206,13 @@ export class Laptop {
 		}
 	}
 
+	/** Says what the agent is doing now, under the prompt. */
+	say(status: string) {
+		if (status === this.status) return;
+		this.status = status;
+		this.redraw();
+	}
+
 	/** The last frame of the story: the same screen, with the result on it. */
 	finish(k: number) {
 		const v = Math.round(k * 20) / 20;
@@ -290,7 +299,7 @@ export class Laptop {
 		if (this.sent > 0.5) {
 			c.font = `500 44px ${font.mono}`;
 			c.fillStyle = `rgba(255,197,61,${(this.sent - 0.5) * 2})`;
-			c.fillText('Building the request', x, y0 + lines.length * lh + 34);
+			c.fillText(this.status, x, y0 + lines.length * lh + 34);
 		}
 	}
 
@@ -377,7 +386,7 @@ export class Laptop {
 		if (this.sent > 0.5) {
 			c.font = `600 38px ${font.sans}`;
 			c.fillStyle = `rgba(31,95,224,${(this.sent - 0.5) * 2})`;
-			c.fillText('Building the request', bx + 6, by + bh + 58);
+			c.fillText(this.status, bx + 6, by + bh + 58);
 		}
 	}
 
