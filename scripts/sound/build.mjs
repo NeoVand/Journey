@@ -50,7 +50,8 @@ function standIn(cue) {
 let total = 0;
 for (const cue of cues) {
 	const chosen = picks[cue.id]?.pick;
-	const pick = chosen ?? standIn(cue);
+	// `prefer` in prompts.json: a take chosen by looking at it (a clean start, one hit) until one is picked by ear.
+	const pick = chosen ?? cue.prefer ?? standIn(cue);
 	if (!pick) continue;
 	let src = new URL(`${cue.id}-${pick}.mp3`, raw).pathname;
 	// An instrument is retuned to its note, so the story can play it at any pitch in the scale.

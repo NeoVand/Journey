@@ -177,10 +177,10 @@ export class Sound {
 			void this.buffer(name);
 			return;
 		}
-		const now = ctx.currentTime;
-		if (now - (this.last.get(name) ?? -1) < 0.04) return;
-		this.last.set(name, now);
-		const at = now + (o.delay ?? 0);
+		// By when it will sound, not when it was asked for: a second hit scheduled a moment later is meant.
+		const at = ctx.currentTime + (o.delay ?? 0);
+		if (Math.abs(at - (this.last.get(name) ?? -1)) < 0.04) return;
+		this.last.set(name, at);
 		const src = ctx.createBufferSource();
 		src.buffer = buffer;
 		src.playbackRate.value = o.rate ?? 1;

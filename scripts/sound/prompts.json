@@ -168,6 +168,16 @@
 		"count": 4
 	},
 	{
+		"id": "nogo",
+		"group": "Mechanisms",
+		"title": "No go",
+		"what": "A gate refuses a call and its red light comes on: a short alarm.",
+		"prompt": "Foley close-up: a short mechanical warning buzzer on a small factory gate, two quick low electric buzzes, bzzt bzzt, then silence, dry, no voice, no music",
+		"seconds": 1,
+		"count": 5,
+		"prefer": 1
+	},
+	{
 		"id": "scanner",
 		"group": "Mechanisms",
 		"title": "Safety scan",
@@ -312,6 +322,35 @@
 		"what": "Threads and branches growing through the transformer.",
 		"prompt": "A soft magical growing sound, a gentle rising shimmer of glassy harmonics like a vine sprouting in a cartoon, airy and delicate, no music",
 		"seconds": 2,
+		"count": 4
+	},
+	{
+		"id": "domino",
+		"group": "Clicks",
+		"title": "Domino set down",
+		"what": "A token tile landing on the embedding floor of the transformer.",
+		"prompt": "Foley close-up: a single heavy ivory domino tile set down flat onto a polished wooden table, one crisp hard clack, dry, nothing else",
+		"seconds": 0.5,
+		"count": 5,
+		"prefer": 1
+	},
+	{
+		"id": "harp",
+		"group": "Notes",
+		"title": "Harp string",
+		"what": "One line of attention: \"job\" reaching back to an earlier token. Thicker lines play lower.",
+		"prompt": "A single harp string plucked once, warm round nylon tone with a natural ringing decay, close-mic, dry, nothing else",
+		"seconds": 2,
+		"count": 4,
+		"tune": 392
+	},
+	{
+		"id": "strum",
+		"group": "Notes",
+		"title": "Harp sweep",
+		"what": "Attention everywhere at once: the webs of arcs between every token, on every layer.",
+		"prompt": "A quick gentle harp glissando sweeping upward across the strings, light and shimmering, close-mic, dry, nothing else",
+		"seconds": 1.5,
 		"count": 4
 	},
 	{

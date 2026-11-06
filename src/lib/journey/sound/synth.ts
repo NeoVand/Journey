@@ -195,7 +195,7 @@ export function useRecordings(get: (name: string) => AudioBuffer | undefined) {
 }
 
 /** Every recording the voices can use, to load as soon as sound is on. */
-export const VOICE_SOUNDS = ['kalimba', 'marimba', 'musicbox', 'peg', 'key', 'swoosh', 'clonk', 'fill'];
+export const VOICE_SOUNDS = ['kalimba', 'marimba', 'musicbox', 'harp', 'peg', 'key', 'swoosh', 'clonk', 'fill'];
 
 /** Plays a recording into `out`: at a speed, with a fade if it should stop early. Returns its end, or -1 if missing. */
 function recorded(ctx: AudioContext, out: AudioNode, at: number, name: string, rate: number, gain = 1, ring = 0) {
@@ -230,6 +230,14 @@ export const porcelain =
 		const [name, base] = instrument(freq);
 		const end = recorded(ctx, out, at, name, freq / base, 0.9, ring < 1 ? ring * 1.4 : 0);
 		return end >= 0 ? end : synthPorcelain(freq, ring)(ctx, out, at);
+	};
+
+/** A plucked harp string, for the lines of attention: the recording is tuned to G4. */
+export const harp =
+	(freq: number): Voice =>
+	(ctx, out, at) => {
+		const end = recorded(ctx, out, at, 'harp', freq / 392, 0.9);
+		return end >= 0 ? end : synthPorcelain(freq, 0.8)(ctx, out, at);
 	};
 
 /** A small tick: a peg flicked past, a little different every time. */

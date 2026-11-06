@@ -8,8 +8,9 @@
 import type { World } from '../world';
 import type { TrackId } from '../content';
 import type { Bed, Cue, Where } from './conductor';
-import { chime, key, low, note, porcelain, sweep, tick, whoosh } from './synth';
+import { chime, harp, key, low, note, porcelain, sweep, tick, whoosh } from './synth';
 import { PUCK_MOVES, puckPoint, roomPoint } from '../tracks/harness';
+import { TOKEN_PATHS } from '../chapters/transformer';
 
 /* ---------- the story ---------- */
 
@@ -213,18 +214,29 @@ export function score(w: World): { cues: Cue[]; beds: Bed[] } {
 
 	/* 14. The transformer. */
 	[14.055, 14.067, 14.079, 14.091, 14.103].forEach((T, i) => tone(T, i * 2, hall(168, 2), 0.3));
-	SENTENCE.forEach((n, i) => tone(14.1826 + 0.005673 * i, n, hall(168, 0), 0.35, 0.9));
-	// Wherever something grows through the stack, threads, tethers, webs, the branches of the feed-forward
-	// network, it grows audibly too: a soft rising shimmer, a little higher each time it climbs.
+	// The tiles hop off the belt onto the embedding floor one by one, and each lands like a domino set down, where
+	// it lands. The second "the" lands on the first, a little higher and harder, and slides off it onto the map.
+	TOKEN_PATHS[0].forEach(([x], i) => {
+		const onTop = i === 6;
+		at(14.1826 + 0.005673 * i, 'domino', hall(168 + x, 0), { gain: onTop ? 0.6 : 0.5, rate: onTop ? 1.18 : 0.94 + ((i * 0.37) % 1) * 0.14, minor: i > 0 });
+	});
+	at(14.268, 'domino', hall(168 + TOKEN_PATHS[1][6][0], 0), { gain: 0.3, rate: 0.9 });
+	// Wherever something grows through the stack, threads and the branches of the feed-forward network, it grows
+	// audibly too: a soft rising shimmer, a little higher each time it climbs.
 	at(14.278, 'grow', hall(168, 2), { gain: 0.5, rate: 0.9 });
 	at(14.33, porcelain(note(7), 1.4), hall(168, 2), { gain: 0.4 });
-	at(14.362, 'grow', hall(168, 2), { gain: 0.45, rate: 1.1 });
-	for (let i = 0; i <= 6; i++) at(14.362 + (0.014 * (6 - i)) / 7, 'pop', hall(168, 2), { gain: 0.18, rate: 1.4 + i * 0.05, minor: true });
+	// Attention is strings, not growth: each line from "job" back to an earlier token is plucked as it reaches it,
+	// the thick ones low and loud, the thin ones high and faint. Then the webs, every token at once, are a sweep
+	// across all the strings, one per layer.
+	[0.02, 0.11, 0.01, 0.32, 0.46, 0.05, 0.03].forEach((share, i) => {
+		const reach = 14.362 + ((6 - i) / 7) * 0.014 + 0.012;
+		at(reach, harp(note(Math.round(7 - 12 * Math.sqrt(share)))), hall(168 + TOKEN_PATHS[2][i][0], 2), { gain: 0.2 + share * 0.7, minor: share < 0.1 });
+	});
 	at(14.402, chime([0, 2, 4]), hall(168, 2), { gain: 0.25, minor: true });
 	at(14.432, whoosh(0.9, 2600), hall(168, 2), { gain: 0.15 });
 	at(14.495, porcelain(note(9), 1.2), hall(168, 2), { gain: 0.35 });
-	at(14.556, 'grow', hall(168, 2), { gain: 0.5, rate: 1.2 });
-	[14.752, 14.794, 14.848].forEach((T, i) => at(T, 'grow', hall(168, 4 + i * 2), { gain: 0.3, rate: 1.25 + i * 0.08, minor: true }));
+	at(14.556, 'strum', hall(168, 2), { gain: 0.55 });
+	[14.752, 14.794, 14.848].forEach((T, i) => at(T, 'strum', hall(168, 4 + i * 2), { gain: 0.35, rate: 1.06 + i * 0.06, minor: true }));
 	at(14.628, 'pop', hall(168, 2), { gain: 0.4 });
 	at(14.644, 'grow', hall(168, 2), { gain: 0.45, rate: 1.05 });
 	[14.648, 14.653, 14.658].forEach((T, i) => tone(T, 4 + i * 2, hall(168, 2), 0.3));
@@ -263,10 +275,13 @@ export function score(w: World): { cues: Cue[]; beds: Bed[] } {
 	at(17.72, chime([4, 7, 9]), hall(240, 1), { gain: 0.4 });
 	at(17.785, 'stamp', hall(240, 1), { gain: 1, dip: 0.5 });
 
-	/* 18. Text comes back: the tokens go in, slips flutter up the tube, and up and out. */
-	at(18.182, porcelain(note(4), 1.2), hall(260, 1), { gain: 0.35 });
-	at(18.3, 'tube', hall(260, 1), { gain: 0.45 });
-	[18.174, 18.205, 18.237, 18.268, 18.3, 18.331, 18.363, 18.394].forEach((T, i) => at(T, 'paper-slide', hall(260, 3), { gain: 0.25, rate: 1.1 + i * 0.03, minor: true }));
+	/*
+	 * 18. Text comes back: the tokens go in, and only then do the slips flutter up the tube, each as the tiles it's
+	 * made from have gone in. The times are Claude Code's row; the others' differ by less than a hundredth.
+	 */
+	at(18.31, porcelain(note(4), 1.2), hall(260, 1), { gain: 0.35 });
+	at(18.326, 'tube', hall(260, 1), { gain: 0.45 });
+	[18.33, 18.3414, 18.3553, 18.3666, 18.3793, 18.4002, 18.4318, 18.4613].forEach((T, i) => at(T, 'paper-slide', hall(260, 3), { gain: 0.25, rate: 1.1 + i * 0.03, minor: true }));
 	at(18.88, whoosh(1.4, 2000), hall(260, 6), { gain: 0.4, dip: 0.5 });
 
 	/* 19. The model has no hands: slips rain on the harness, the call card pops up and leaves along the pipe. */
@@ -277,7 +292,9 @@ export function score(w: World): { cues: Cue[]; beds: Bed[] } {
 	/* 20. Intent is not authority: the bad call is refused and binned; the good one passes four gates. */
 	at(20.04, 'servo', P.gates, { gain: 0.4, rate: 0.8 });
 	at(20.09, 'servo', P.gates, { gain: 0.5 });
-	at(20.2, low(note(-6), 0.6), P.gates, { gain: 0.45 });
+	// No: the red light comes on with a short double buzz, bzzt bzzt.
+	at(20.2, 'nogo', P.gates, { gain: 0.7, length: 0.16, dip: 0.4 });
+	at(20.2, 'nogo', P.gates, { gain: 0.7, length: 0.16, delay: 0.22 });
 	at(20.2, 'relay', P.gates, { gain: 0.45, rate: 0.8 });
 	at(20.24, 'latch', P.gates, { gain: 0.6, rate: 0.7 });
 	at(20.37, 'press', P.gates, { gain: 0.6, rate: 1.2 });
