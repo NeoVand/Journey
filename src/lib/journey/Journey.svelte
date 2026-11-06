@@ -1540,7 +1540,7 @@
 	</section>
 
 	<section data-beat class="beat" style:--h="300vh">
-		<article class="pin left" data-out="0.62">
+		<article class="pin left" data-out="0.565">
 			<h2>It starts as a sentence</h2>
 			<p>{@render rich(`You type one request. For now it’s just ${surfaceWords}. The model hasn’t seen a thing, and nothing here is a [[token]] yet.`)}</p>
 			<p>Your request will take twelve forms on this trip. The corner up there keeps count.</p>
@@ -1610,7 +1610,7 @@
 	</section>
 
 	<section data-beat class="beat" style:--h="640vh">
-		<article class="pin top-band" data-out="0.86">
+		<article class="pin top-band" data-out="0.815">
 			<h2>Now it is a token</h2>
 			<div class="cols">
 				<p>
@@ -1641,7 +1641,7 @@
 	</section>
 
 	<section data-beat class="beat" style:--h="480vh">
-		<article class="pin left" data-out="0.68">
+		<article class="pin left" data-out="0.672">
 			<h2>One model, many chips</h2>
 			<p>{@render rich('A frontier model is hundreds of billions to a few trillion learned numbers, its [[weights]]. Even compressed they won’t fit in one chip’s memory, so they’re split across many.')}</p>
 			<p>{@render rich('Chips in one server talk over [[NVLink]], at terabytes per second. Servers talk to each other more slowly, over [[InfiniBand or RoCE]], at hundreds of gigabits.')}</p>
@@ -1687,7 +1687,7 @@
 	</section>
 
 	<section data-beat class="beat" style:--h="560vh">
-		<article class="pin left" data-out="0.86">
+		<article class="pin left" data-out="0.905">
 			<h2>Sharing the chips</h2>
 			<p>{@render rich('A chip only earns its keep when it works on many requests at once. So at every step, the [[scheduler]] gathers a batch of requests that each need one more token.')}</p>
 			<p>When one finishes, a waiting one takes its lane right away. Nobody waits for a batch to fill. If memory runs short, someone gets paused and picked up again later.</p>
@@ -1766,7 +1766,7 @@
 			</p>
 			<Blueprint compact stage={part} />
 		</article>
-		<article class="pin left tight" data-in="0.705" data-out="0.862" data-fade="0.014">
+		<article class="pin left tight" data-in="0.705" data-out="0.858" data-fade="0.014">
 			<h2>Then again, eighty times</h2>
 			<p>That was one layer. The next has the same design but its own weights, and starts where the last one finished. Each thread is one token’s path up the stack. Watch them gather as they climb.</p>
 			<p>
@@ -1827,7 +1827,7 @@
 	</section>
 
 	<section data-beat class="beat" style:--h="600vh">
-		<article class="pin left tight" data-in="0.075" data-out="0.86">
+		<article class="pin left tight" data-in="0.075" data-out="0.912">
 			<h2>One at a time</h2>
 			<p>Now it repeats. The new token climbs the same stack, alone. On each layer it looks back at everything through the KV cache, and adds its own key and value to the row of lights. One step takes 10 to 40 milliseconds. That’s the typing speed you see.</p>
 			<p>In 2026 the model usually thinks first. Thinking tokens are ordinary tokens, billed as output.</p>
@@ -1847,7 +1847,7 @@
 	</section>
 
 	<section data-beat class="beat" style:--h="560vh">
-		<article class="pin left" data-out="0.74">
+		<article class="pin left" data-out="0.635">
 			<h2>Text comes back, not numbers</h2>
 			<p>Each number is looked up in the vocabulary. The detokenizer waits until it has a whole character, then sends a small chunk of text, or of a tool call’s JSON. Token numbers never leave the data center.</p>
 			<p>{@render rich('A second set of [[classifiers]] reads along. If the text crosses a line, generation stops mid-sentence.')}</p>
@@ -1864,7 +1864,7 @@
 	</section>
 
 	<section data-beat class="beat" style:--h="620vh">
-		<article class="pin left" data-out="0.88">
+		<article class="pin left" data-out="0.915">
 			<h2>Intent is not authority</h2>
 			<p>Every call passes the same gates. Here, one is refused: a request for your secrets, stopped by a deny list.</p>
 			<ol class="steps compact">
@@ -1909,7 +1909,7 @@
 	</section>
 
 	<section data-beat class="beat" style:--h="480vh">
-		<article class="pin left" data-out="0.84">
+		<article class="pin left" data-out="0.795">
 			<h2>Evidence, not opinion</h2>
 			<p>{@render rich(`${harness === 'copilot' ? 'The harness runs the tests in your terminal' : 'The harness runs the tests inside the [[sandbox]] with a time limit'}, and captures everything: [[stdout, stderr and the exit code]]. Here they failed: the new lock [[deadlocks]].`)}</p>
 			<p>That isn’t the tool going wrong. It’s a successful tool call whose text says failed, and it’s the most useful thing the model has read all session.</p>

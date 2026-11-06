@@ -143,7 +143,7 @@ export const BACK_SHOTS: Shot[] = [
 	// Face on, turning a little to the right as it goes: the posts and the hook wheel stand nearer the reader than
 	// the card does, and from here they never cover it, whichever side of them it waits.
 	{ T: 20.45, ...S_GATES, target: [-57.2, GY + 2.5, 1.3], radius: 4.4, az: -3 },
-	{ T: 20.92, ...S_GATES, target: [-47.2, GY + 2.5, 1.3], radius: 4.4, az: 5 },
+	{ T: 20.92, ...S_GATES, target: [-46.1, GY + 2.5, 1.3], radius: 4.4, az: 5 },
 	{ T: 21.06, ...S_BOX },
 	{ T: 21.9, ...S_BOX, az: 6 },
 	{ T: 22.06, ...S_FIND },
