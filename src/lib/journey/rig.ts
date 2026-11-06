@@ -92,6 +92,8 @@ export class Rig {
 		this.camera.lookAt(this.focus);
 		// From far away the depth buffer needs its precision out there, or decals start to fight the faces they sit on.
 		this.camera.near = Math.max(0.5, (dist - 60) * 0.2);
+		// And it has to reach past the subject: a tall phone backs a long way off to fit the whole world across.
+		this.camera.far = Math.max(500, dist + 160);
 
 		// Lens shift: slides the image without rotating the camera, so verticals stay true.
 		this.camera.aspect = aspect;
