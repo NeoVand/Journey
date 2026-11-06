@@ -207,12 +207,13 @@ function recorded(ctx: AudioContext, out: AudioNode, at: number, name: string, r
 	const g = ctx.createGain();
 	const length = buffer.duration / rate;
 	g.gain.setValueAtTime(gain, at);
+	src.connect(g).connect(out);
+	src.start(at);
+	// Cut short: it fades and then stops. A source can only be told when to stop once it has been started.
 	if (ring > 0 && ring < length) {
 		g.gain.setTargetAtTime(0, at + ring * 0.5, ring * 0.25);
 		src.stop(at + ring * 1.6);
 	}
-	src.connect(g).connect(out);
-	src.start(at);
 	return at + Math.min(length, ring > 0 ? ring * 1.6 : length);
 }
 
