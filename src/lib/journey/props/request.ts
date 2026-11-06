@@ -25,7 +25,7 @@ const ICONS = ['doc', 'cube', 'wrench', 'chat'];
 /** A slip of paper carrying one drawer's contents to its place in the request. */
 export class Strip {
 	mesh: THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
-	private surface = new Surface(920, 170);
+	private surface = Object.assign(new Surface(920, 170), { keep: true });
 	get canvas() {
 		return this.surface.canvas;
 	}
@@ -77,7 +77,8 @@ export class RequestDoc {
 	group = new THREE.Group();
 	sheet: THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
 	back: THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
-	private surface = new Surface(1104, 1488);
+	// Kept: the baked page is drawn from it.
+	private surface = Object.assign(new Surface(1104, 1488), { keep: true });
 	/** The same page with its strips printed in, which is what gets rolled up: strips cannot bend with it. */
 	private baked = new Surface(1104, 1488);
 	private filled = false;

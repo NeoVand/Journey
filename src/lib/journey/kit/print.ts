@@ -36,12 +36,25 @@ const PRINT = isPhone ? 0.6 : 1;
 const SURFACE_MAX = isPhone ? 1536 : Infinity;
 const LABEL_MAX = isPhone ? 160 : Infinity;
 
-/** A drawable surface: a canvas with its texture, redrawn when the reader changes something. Drawn in logical pixels at any print scale. */
+/**
+ * A drawable surface: a canvas with its texture, redrawn when the reader changes something. Drawn in logical pixels at
+ * any print scale.
+ *
+ * On a phone the canvas is let go once the GPU has its copy, because every printed thing would otherwise be held twice,
+ * and a phone's browser closes a page that holds too much. Drawing again brings the canvas back, and if the GPU loses
+ * its copies, `repaintAll` draws each surface again from how it was last drawn.
+ */
 export class Surface {
 	static all: Surface[] = [];
 	canvas: HTMLCanvasElement;
 	ctx: CanvasRenderingContext2D;
 	texture: THREE.CanvasTexture;
+	/** Keep the canvas: something else copies from it. */
+	keep = false;
+	/** How to draw this surface again, as it was last drawn. */
+	repaint?: () => void;
+	private size: [number, number];
+	private released = false;
 
 	constructor(
 		public w: number,
@@ -49,18 +62,44 @@ export class Surface {
 	) {
 		this.canvas = document.createElement('canvas');
 		const k = Math.min(PRINT, SURFACE_MAX / Math.max(w, h));
-		this.canvas.width = Math.ceil(w * k);
-		this.canvas.height = Math.ceil(h * k);
+		this.size = [Math.ceil(w * k), Math.ceil(h * k)];
+		[this.canvas.width, this.canvas.height] = this.size;
 		this.ctx = this.canvas.getContext('2d')!;
 		this.ctx.scale(this.canvas.width / w, this.canvas.height / h);
 		this.texture = canvasTexture(this.canvas);
+		if (isPhone) this.texture.onUpdate = () => this.release();
 		Surface.all.push(this);
 	}
 
+	/** Lets the canvas go once the GPU has what was drawn on it. */
+	private release() {
+		if (this.keep || !this.repaint) return;
+		this.canvas.width = this.canvas.height = 1;
+		this.released = true;
+	}
+
+	/** Gives a let-go canvas its size back, ready to draw on. Sizing a canvas resets how it was scaled. */
+	reclaim(width = this.size[0], height = this.size[1]) {
+		if (!this.released && this.canvas.width === width && this.canvas.height === height) return;
+		this.canvas.width = width;
+		this.canvas.height = height;
+		this.released = false;
+	}
+
 	draw(fn: (c: CanvasRenderingContext2D, w: number, h: number) => void) {
+		if (this.released) {
+			this.reclaim();
+			this.ctx.scale(this.canvas.width / this.w, this.canvas.height / this.h);
+		}
+		this.repaint = () => this.draw(fn);
 		this.ctx.clearRect(0, 0, this.w, this.h);
 		fn(this.ctx, this.w, this.h);
 		this.texture.needsUpdate = true;
+	}
+
+	/** After the GPU has lost every texture: draw each surface again, so nothing comes back blank. */
+	static repaintAll() {
+		for (const s of Surface.all) s.repaint?.();
 	}
 }
 
@@ -123,9 +162,12 @@ export class Label {
 		c.letterSpacing = `${style.tracking * px}px`;
 		const tw = Math.ceil(c.measureText(text).width) + 8;
 		const th = Math.ceil(px * 1.3);
-		surface.canvas.width = surface.w = tw;
-		surface.canvas.height = surface.h = th;
+		surface.reclaim(tw, th);
+		surface.w = tw;
+		surface.h = th;
+		surface.repaint = () => this.set(text);
 		surface.texture.dispose();
+		c.clearRect(0, 0, tw, th);
 		c.font = fontStr;
 		c.letterSpacing = `${style.tracking * px}px`;
 		c.textBaseline = 'middle';

@@ -573,6 +573,8 @@ export class Stage {
 		// Phones drop the context when backgrounded. Three restores its own state, but the environment was rendered once, into memory that is now gone.
 		canvas.addEventListener('webglcontextrestored', () => {
 			this.buildEnvironment();
+			// On a phone the printed surfaces let their canvases go once drawn, so they're drawn again for the new copies.
+			Surface.repaintAll();
 			renderer.shadowMap.needsUpdate = true;
 		});
 	}
