@@ -25,6 +25,8 @@ export function measure(file) {
 		peakDb: num(/Overall[\s\S]*?Peak level dB: (-?[\d.]+)/),
 		lufs: num(/I:\s+(-?[\d.]+) LUFS/),
 		startsAt: +(first / 8000).toFixed(3),
+		// Where the loudest moment is: the hit, in a sound that winds up to one.
+		peakAt: +(s.findIndex((v) => Math.abs(v) === peak) / 8000).toFixed(3),
 		endsAt: +(last / 8000).toFixed(3),
 		// Zero crossings per second: a rough brightness, low for rumbles and high for hiss.
 		brightness: Math.round(zc / (s.length / 8000))

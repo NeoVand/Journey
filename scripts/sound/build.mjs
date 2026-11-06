@@ -5,6 +5,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
 import { measure } from './measure.mjs';
+import { pitch } from './pitch.mjs';
 
 const root = new URL('../../', import.meta.url);
 const raw = new URL('sound-lab/raw/', root);
@@ -40,6 +41,8 @@ function standIn(cue) {
 	}
 	if (!takes.length) return null;
 	if (cue.loop) return takes.sort((a, b) => b.m.peakDb - a.m.peakDb)[0].n;
+	// An instrument note: the clearest single pitch.
+	if (cue.tune) return takes.map((t) => ({ ...t, p: pitch(new URL(`${cue.id}-${t.n}.mp3`, raw).pathname) })).sort((a, b) => b.p.clarity - a.p.clarity)[0].n;
 	const loud = takes.filter((t) => t.m.peakDb > -36);
 	return (loud.length ? loud : takes).sort((a, b) => a.m.startsAt - b.m.startsAt)[0].n;
 }
@@ -49,7 +52,14 @@ for (const cue of cues) {
 	const chosen = picks[cue.id]?.pick;
 	const pick = chosen ?? standIn(cue);
 	if (!pick) continue;
-	const src = new URL(`${cue.id}-${pick}.mp3`, raw).pathname;
+	let src = new URL(`${cue.id}-${pick}.mp3`, raw).pathname;
+	// An instrument is retuned to its note, so the story can play it at any pitch in the scale.
+	if (cue.tune) {
+		const { f0 } = pitch(src);
+		const tuned = new URL(`${cue.id}.tuned.wav`, out).pathname;
+		execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', src, '-af', `asetrate=${(44100 * (cue.tune / f0)).toFixed(1)},aresample=44100`, tuned]);
+		src = tuned;
+	}
 	const dst = new URL(`${cue.id}.mp3`, out).pathname;
 	const m = measure(src);
 	if (cue.loop) {
@@ -69,6 +79,7 @@ for (const cue of cues) {
 		execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', trimmed, '-af', `volume=${gain.toFixed(2)}dB`, '-c:a', 'libmp3lame', '-b:a', '96k', dst]);
 		execFileSync('rm', ['-f', trimmed]);
 	}
+	if (cue.tune) execFileSync('rm', ['-f', src]);
 	const size = statSync(dst).size;
 	total += size;
 	console.log(`${cue.id.padEnd(16)} take ${pick}${chosen ? ' (picked)' : ' (stand-in)'}  ${(size / 1024).toFixed(0).padStart(4)} KB`);

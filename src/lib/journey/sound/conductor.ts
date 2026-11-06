@@ -20,6 +20,10 @@ export interface Cue {
 	minor?: boolean;
 	/** Lets the ambiences make room. */
 	dip?: number;
+	/** Seconds after its moment; and which slice of a recording to play, in seconds. */
+	delay?: number;
+	offset?: number;
+	length?: number;
 }
 
 export interface Bed {
@@ -50,7 +54,8 @@ export class Conductor {
 
 	/** Every sound this part of the story uses, to load ahead. */
 	get names() {
-		return [...new Set([...this.cues.map((c) => c.sound).filter((s): s is string => typeof s === 'string'), ...this.beds.map((b) => b.sound)])];
+		// Pads are made on the spot, so they have no file to fetch.
+		return [...new Set([...this.cues.map((c) => c.sound).filter((s): s is string => typeof s === 'string'), ...this.beds.map((b) => b.sound)])].filter((n) => !n.startsWith('pad-'));
 	}
 
 	/** What each ambience should be at time T, 0 to 1. */
@@ -94,7 +99,7 @@ export class Conductor {
 		const gain = (c.gain ?? 1) * heard.gain * scale;
 		if (gain < 0.02) return;
 		if (c.dip) this.sound.dip(c.dip);
-		if (typeof c.sound === 'string') this.sound.play(c.sound, { gain, pan: heard.pan, rate: c.rate, wet: c.wet });
-		else this.sound.voice(c.sound, { gain, pan: heard.pan, wet: c.wet });
+		if (typeof c.sound === 'string') this.sound.play(c.sound, { gain, pan: heard.pan, rate: c.rate, wet: c.wet, delay: c.delay, offset: c.offset, length: c.length });
+		else this.sound.voice(c.sound, { gain, pan: heard.pan, wet: c.wet, delay: c.delay });
 	}
 }

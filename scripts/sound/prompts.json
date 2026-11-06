@@ -202,5 +202,135 @@
 		"prompt": "A deep slow mechanical rumble rising and settling, large machinery moving into place, smooth and grand, ending with a soft heavy thud",
 		"seconds": 3,
 		"count": 3
+	},
+	{
+		"id": "kalimba",
+		"group": "Notes",
+		"title": "Kalimba note",
+		"what": "One plucked note, retuned to play every tune in the story.",
+		"prompt": "A single kalimba note, one clean pluck of a metal tine, warm and bright with a natural ringing decay, close-mic, dry, nothing else",
+		"seconds": 2,
+		"count": 4,
+		"tune": 587.33
+	},
+	{
+		"id": "marimba",
+		"group": "Notes",
+		"title": "Marimba note",
+		"what": "One struck wooden note, retuned to play every tune in the story.",
+		"prompt": "A single marimba note, one rosewood bar struck once with a soft yarn mallet, warm round tone with natural decay, close-mic, dry, nothing else",
+		"seconds": 2,
+		"count": 4,
+		"tune": 293.66
+	},
+	{
+		"id": "musicbox",
+		"group": "Notes",
+		"title": "Music box note",
+		"what": "One delicate plucked comb tooth, retuned to play every tune.",
+		"prompt": "A single music box note, one steel comb tooth plucked once, clear and delicate with a natural ringing decay, close-mic, dry, nothing else",
+		"seconds": 2,
+		"count": 4,
+		"tune": 1174.66
+	},
+	{
+		"id": "peg",
+		"group": "Clicks",
+		"title": "Wheel peg",
+		"what": "The flapper hitting one peg on the sampling wheel.",
+		"prompt": "Foley close-up: a flexible plastic flapper flicking past one wooden peg on a spinning prize wheel, a single crisp tick",
+		"seconds": 0.5,
+		"count": 4
+	},
+	{
+		"id": "key",
+		"group": "Clicks",
+		"title": "Key press",
+		"what": "A key going down on the laptop, and the terminal typing.",
+		"prompt": "Foley close-up: a single laptop keyboard key pressed and released, crisp soft click",
+		"seconds": 0.5,
+		"count": 4
+	},
+	{
+		"id": "swoosh",
+		"group": "Clicks",
+		"title": "Swoosh",
+		"what": "Something flying past: the camera's flights, cards through the air.",
+		"prompt": "A soft smooth swoosh of air, like a stiff paper card swept quickly past the ear, gentle and clean",
+		"seconds": 1,
+		"count": 4
+	},
+	{
+		"id": "clonk",
+		"group": "Clicks",
+		"title": "Wooden clonk",
+		"what": "A no: something not recognised, refused or full.",
+		"prompt": "Foley close-up: a hollow wooden block knocked once on a wooden table, a muted low clonk",
+		"seconds": 0.6,
+		"count": 4
+	},
+	{
+		"id": "pop",
+		"group": "Clicks",
+		"title": "Little pop",
+		"what": "A small thing appearing: a cell in a lane, a block popping up.",
+		"prompt": "Foley close-up: a tiny soft plastic pop, like a small snap cap or a cork from a toy, cute and short",
+		"seconds": 0.5,
+		"count": 4
+	},
+	{
+		"id": "stomp",
+		"group": "Mechanisms",
+		"title": "Tokenizer bot stamp",
+		"what": "The cutter on its gantry stepping over and stamping down on the strip.",
+		"prompt": "Foley: a small toy robot arm stamping down once, a quick little servo whirr then a crisp satisfying mechanical ka-chunk",
+		"seconds": 0.9,
+		"count": 4
+	},
+	{
+		"id": "flap",
+		"group": "Mechanisms",
+		"title": "Board flips",
+		"what": "The scheduler board changing what it says, like a split-flap sign.",
+		"prompt": "Foley: a split-flap display board flipping to a new word, a quick flutter of small plastic flaps clicking into place",
+		"seconds": 1,
+		"count": 4
+	},
+	{
+		"id": "shuttle",
+		"group": "Mechanisms",
+		"title": "Shuttle sweeps",
+		"what": "The bridge sweeping across the lanes, once per step of the model.",
+		"prompt": "Foley: a small carriage sliding quickly along a metal rail from one end to the other, smooth rolling whir ending in a soft stop",
+		"seconds": 0.8,
+		"count": 4
+	},
+	{
+		"id": "grow",
+		"group": "Mechanisms",
+		"title": "Something grows",
+		"what": "Threads and branches growing through the transformer.",
+		"prompt": "A soft magical growing sound, a gentle rising shimmer of glassy harmonics like a vine sprouting in a cartoon, airy and delicate, no music",
+		"seconds": 2,
+		"count": 4
+	},
+	{
+		"id": "fill",
+		"group": "Mechanisms",
+		"title": "Filling up",
+		"what": "The context gauge rising toward its limit.",
+		"prompt": "Foley: water steadily filling a tall narrow glass tube, rising gurgle with rising pitch",
+		"seconds": 5,
+		"count": 3
+	},
+	{
+		"id": "thinking",
+		"group": "Places",
+		"title": "Around the brain",
+		"what": "Under the model while it's in view: a mind at work. Loops.",
+		"prompt": "Ambient loop: a dreamy warm hum with soft distant twinkling chimes and slow gentle swells, calm and magical, like a mind thinking, no beat, no voices",
+		"seconds": 20,
+		"loop": true,
+		"count": 3
 	}
 ]

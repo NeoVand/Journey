@@ -1,6 +1,8 @@
 /**
- * Sounds made on the spot, for what a recording can't do: notes that follow the tokens, ticks that keep time with
- * the picture, and taps that never sound the same twice. Each builds a few nodes into `out` and returns its end time.
+ * The voices the score plays: notes that follow the tokens, ticks that keep time with the picture, keys, air, a
+ * filling glass. Each plays a real recording when it's loaded (a kalimba, a marimba, a music box, a peg, a key...),
+ * retuned or sped up to fit, and only falls back to a synthesized stand-in when it isn't.
+ * Each builds a few nodes into `out` and returns its end time.
  */
 import type { Voice } from './engine';
 
@@ -36,7 +38,7 @@ function env(ctx: AudioContext, at: number, peak: number, attack: number, decay:
  * Struck porcelain: the inharmonic modes of a small bar or bowl, each dying at its own rate, over a tiny click.
  * Bright, round and short; the sound of the world's cream-and-porcelain machines.
  */
-export const porcelain =
+const synthPorcelain =
 	(freq: number, ring = 1): Voice =>
 	(ctx, out, at) => {
 		const modes = [
@@ -66,7 +68,7 @@ export const porcelain =
 	};
 
 /** A small wooden tick: a burst of filtered noise, pitched a little differently every time. */
-export const tick =
+const synthTick =
 	(bright = 1): Voice =>
 	(ctx, out, at) => {
 		const n = noise(ctx, 0.03);
@@ -81,7 +83,7 @@ export const tick =
 	};
 
 /** A key going down and coming back up: two clicks and a soft thump under them. */
-export const key =
+const synthKey =
 	(weight = 1): Voice =>
 	(ctx, out, at) => {
 		for (const [t, f, a] of [
@@ -108,7 +110,7 @@ export const key =
 	};
 
 /** Air moving past: noise through a filter that opens and closes, for the camera's flights and the cut of a jump. */
-export const whoosh =
+const synthWhoosh =
 	(seconds = 0.9, high = 1800): Voice =>
 	(ctx, out, at) => {
 		const n = noise(ctx, seconds + 0.1);
@@ -139,7 +141,7 @@ export const chime =
 	};
 
 /** A warm low tone that swells and fades: for refusals, failures and things that went wrong. Never harsh. */
-export const low =
+const synthLow =
 	(freq: number, seconds = 0.7): Voice =>
 	(ctx, out, at) => {
 		for (const [ratio, amp] of [
@@ -162,7 +164,7 @@ export const low =
 	};
 
 /** A tone gliding from one pitch to another: something filling up. */
-export const sweep =
+const synthSweep =
 	(from: number, to: number, seconds: number): Voice =>
 	(ctx, out, at) => {
 		const o = ctx.createOscillator();
@@ -181,4 +183,94 @@ export const sweep =
 		o.start(at);
 		o.stop(at + seconds + 0.05);
 		return at + seconds + 0.05;
+	};
+
+/* ---------- the recordings behind the voices ---------- */
+
+let recording: (name: string) => AudioBuffer | undefined = () => undefined;
+
+/** Where the voices find their recordings: the engine's loaded sounds. */
+export function useRecordings(get: (name: string) => AudioBuffer | undefined) {
+	recording = get;
+}
+
+/** Every recording the voices can use, to load as soon as sound is on. */
+export const VOICE_SOUNDS = ['kalimba', 'marimba', 'musicbox', 'peg', 'key', 'swoosh', 'clonk', 'fill'];
+
+/** Plays a recording into `out`: at a speed, with a fade if it should stop early. Returns its end, or -1 if missing. */
+function recorded(ctx: AudioContext, out: AudioNode, at: number, name: string, rate: number, gain = 1, ring = 0) {
+	const buffer = recording(name);
+	if (!buffer) return -1;
+	const src = ctx.createBufferSource();
+	src.buffer = buffer;
+	src.playbackRate.value = rate;
+	const g = ctx.createGain();
+	const length = buffer.duration / rate;
+	g.gain.setValueAtTime(gain, at);
+	if (ring > 0 && ring < length) {
+		g.gain.setTargetAtTime(0, at + ring * 0.5, ring * 0.25);
+		src.stop(at + ring * 1.6);
+	}
+	src.connect(g).connect(out);
+	src.start(at);
+	return at + Math.min(length, ring > 0 ? ring * 1.6 : length);
+}
+
+/** Which instrument plays a pitch, and the note it's tuned to: marimba down low, kalimba in the middle, music box on top. */
+function instrument(freq: number): [string, number] {
+	if (freq < 250) return ['marimba', 293.66];
+	if (freq < 1050) return ['kalimba', 587.33];
+	return ['musicbox', 1174.66];
+}
+
+/** A note: plucked, struck or chimed, depending on how high it is. ring shortens it below 1. */
+export const porcelain =
+	(freq: number, ring = 1): Voice =>
+	(ctx, out, at) => {
+		const [name, base] = instrument(freq);
+		const end = recorded(ctx, out, at, name, freq / base, 0.9, ring < 1 ? ring * 1.4 : 0);
+		return end >= 0 ? end : synthPorcelain(freq, ring)(ctx, out, at);
+	};
+
+/** A small tick: a peg flicked past, a little different every time. */
+export const tick =
+	(bright = 1): Voice =>
+	(ctx, out, at) => {
+		const end = recorded(ctx, out, at, 'peg', bright * (0.94 + Math.random() * 0.12), 0.9);
+		return end >= 0 ? end : synthTick(bright)(ctx, out, at);
+	};
+
+/** A key going down and up. */
+export const key =
+	(weight = 1): Voice =>
+	(ctx, out, at) => {
+		const end = recorded(ctx, out, at, 'key', 0.94 + Math.random() * 0.12 - (weight - 1) * 0.08, Math.min(1.2, weight));
+		return end >= 0 ? end : synthKey(weight)(ctx, out, at);
+	};
+
+/** Air moving past: slower and lower for a long flight, quicker for a short one. */
+export const whoosh =
+	(seconds = 0.9, high = 1800): Voice =>
+	(ctx, out, at) => {
+		const rate = Math.max(0.35, Math.min(1.6, (0.55 / seconds) * Math.pow(high / 1800, 0.35)));
+		const end = recorded(ctx, out, at, 'swoosh', rate, 0.9);
+		return end >= 0 ? end : synthWhoosh(seconds, high)(ctx, out, at);
+	};
+
+/** A no: a hollow wooden knock under a low marimba note. Never a buzzer. */
+export const low =
+	(freq: number, seconds = 0.7): Voice =>
+	(ctx, out, at) => {
+		const knock = recorded(ctx, out, at, 'clonk', Math.max(0.6, Math.min(1.3, Math.sqrt(freq / 147))), 0.8);
+		const tone = recorded(ctx, out, at + 0.015, 'marimba', freq / 293.66, 0.7);
+		return knock >= 0 || tone >= 0 ? Math.max(knock, tone) : synthLow(freq, seconds)(ctx, out, at);
+	};
+
+/** Something filling up: water rising in a glass tube, for as long as it takes. */
+export const sweep =
+	(from: number, to: number, seconds: number): Voice =>
+	(ctx, out, at) => {
+		const buffer = recording('fill');
+		const end = buffer ? recorded(ctx, out, at, 'fill', Math.max(0.6, Math.min(1.6, buffer.duration / seconds)), 0.8) : -1;
+		return end >= 0 ? end : synthSweep(from, to, seconds)(ctx, out, at);
 	};

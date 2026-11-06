@@ -4,6 +4,9 @@
  * It stays silent until the reader turns it on, which is also the click browsers need before they'll play anything.
  */
 
+import { useRecordings } from './synth';
+import { PADS } from './pads';
+
 const MASTER = 0.9;
 
 export interface Play {
@@ -37,6 +40,8 @@ interface Bed {
 	level: number;
 	loops: Loop[];
 	quietSince: number;
+	/** A synthesized pad instead of a recording: how to stop it. */
+	stopPad?: () => void;
 }
 
 /** A room for the echo: a couple of seconds of noise dying away, darker as it goes, a little different in each ear. */
@@ -71,7 +76,9 @@ export class Sound {
 	private last = new Map<string, number>();
 
 	/** url: where a named sound's file is. */
-	constructor(private url: (name: string) => string) {}
+	constructor(private url: (name: string) => string) {
+		useRecordings((name) => this.buffers.get(name));
+	}
 
 	/** Call from a click or a key press: browsers only let sound start from one. */
 	async start() {
@@ -232,6 +239,16 @@ export class Sound {
 				bed.gain.gain.setTargetAtTime(level, now, 0.6);
 			}
 			if (level > 0.001) bed.quietSince = now;
+			const pad = PADS[name];
+			if (pad) {
+				// A pad plays for as long as it's wanted, and is let go once it has been silent for a while.
+				if (level > 0.001 && !bed.stopPad) bed.stopPad = pad(ctx, bed.gain);
+				else if (bed.stopPad && now - bed.quietSince > 4) {
+					bed.stopPad();
+					bed.stopPad = undefined;
+				}
+				continue;
+			}
 			const buffer = this.buffers.get(name);
 			if (!buffer) {
 				if (level > 0) void this.buffer(name);

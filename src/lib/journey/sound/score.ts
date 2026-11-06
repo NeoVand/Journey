@@ -99,9 +99,14 @@ export function score(w: World): { cues: Cue[]; beds: Bed[] } {
 
 	/* 6. Now it is a token: the strip feeds out, the cutter comes down eleven times, each piece rings as it turns to a token. */
 	at(6.02, 'paper-slide', P.template, { gain: 0.6, rate: 0.9 });
+	// The little robot on its gantry: a whirr as it walks to the next cut, the ka-chunk as it stamps down,
+	// and the piece pops up as a token with its note.
 	SENTENCE.forEach((n, i) => {
-		at(6.16 + 0.036364 * (i + 0.71), 'snip', P.belt, { gain: 0.8, rate: 0.96 + (i % 3) * 0.03 });
-		tone(6.16 + 0.036364 * (i + 0.82), n, P.belt, 0.32, 0.8);
+		const step = 6.16 + 0.036364 * i;
+		at(step + 0.036364 * 0.05, 'stomp', P.belt, { gain: 0.45, length: 0.3, rate: 1.05 + (i % 2) * 0.05, minor: true });
+		at(step + 0.036364 * 0.71, 'stomp', P.belt, { gain: 0.85, offset: 0.62, length: 0.24, rate: 0.98 + (i % 3) * 0.03 });
+		at(step + 0.036364 * 0.8, 'pop', P.belt, { gain: 0.4, rate: 1 + n * 0.04, minor: true });
+		tone(step + 0.036364 * 0.82, n, P.belt, 0.38, 0.9);
 	});
 	at(6.56, 'servo', P.belt, { gain: 0.4 });
 	// The flip wave: the same tune again, quicker, as each one turns over to show its number.
@@ -144,17 +149,56 @@ export function score(w: World): { cues: Cue[]; beds: Bed[] } {
 	at(11.287, chime([2, 4]), hall(43.75, 1), { gain: 0.35 });
 	at(11.3, 'servo', hall(45, 1), { gain: 0.5, rate: 0.9 });
 	[11.4535, 11.5115, 11.5695, 11.6275].forEach((T, i) => tone(T, i + 2, hall(45, 1), 0.4));
-	at(11.6855, low(note(-3), 0.5), hall(45, 1), { gain: 0.35 });
-	at(11.742, 'tube', hall(46, 1), { gain: 0.4, rate: 1.2 });
-	at(11.75, 'relay', hall(46, 1), { gain: 0.5 });
+	// E isn't recognised: a hollow knock and two falling notes. Then it's computed, and pops out new.
+	at(11.6855, 'clonk', hall(45, 1), { gain: 0.6 });
+	at(11.6855, porcelain(note(2)), hall(45, 1), { gain: 0.3, delay: 0.04 });
+	at(11.6855, porcelain(note(0)), hall(45, 1), { gain: 0.3, delay: 0.2 });
+	at(11.7, 'servo', hall(46, 1), { gain: 0.35, rate: 1.2 });
+	at(11.745, 'tube', hall(46, 1), { gain: 0.45, rate: 1.2 });
+	at(11.75, 'relay', hall(46, 1), { gain: 0.45 });
+	at(11.806, 'pop', hall(46, 1), { gain: 0.6, rate: 1.1 });
+	at(11.806, porcelain(note(4)), hall(46, 1), { gain: 0.35, delay: 0.05 });
 	at(11.86, 'block', hall(60, 1), { gain: 0.6 });
+	at(11.86, porcelain(note(7)), hall(60, 1), { gain: 0.3, delay: 0.03 });
 
-	/* 12. Sharing the chips: one tick per step of the shuttle, joiners settle, leavers finish with a note. */
-	for (let k = 0; k < 14; k++) at(12.08 + 0.06 * k + 0.026, tick(0.9), hall(90, 1), { gain: 0.3, minor: true });
-	[12.3224, 12.3824, 12.5024, 12.7424, 12.8624].forEach((T) => at(T, 'block', hall(90, 1), { gain: 0.4, minor: true }));
-	[12.3185, 12.3785, 12.4985, 12.6785, 12.8585].forEach((T, i) => tone(T, 5 + (i % 3), hall(90, 1), 0.35));
-	at(12.518, low(note(-5), 0.6), hall(90, 2), { gain: 0.35 });
-	at(12.542, low(note(-3), 0.4), hall(90, 1), { gain: 0.25, minor: true });
+	/*
+	 * 12. Sharing the chips: the shuttle sweeps across the lanes once per step, left then right, and every request
+	 * it passes grows by one cell, a pop pitched to its lane. Newcomers roll in, finishers slide out with a note,
+	 * and the board flips to say what's happening.
+	 */
+	const running = [
+		(k: number) => k <= 5 || k >= 7,
+		(k: number) => k <= 2 || (k >= 4 && k <= 11) || k === 13,
+		() => true,
+		(k: number) => k <= 8 || k >= 11,
+		(k: number) => k <= 3 || (k >= 5 && k <= 7) || k >= 10
+	];
+	const lanePass = [0.0154, 0.0218, 0.0258, 0.0298, 0.0362];
+	for (let k = 0; k < 14; k++) {
+		const start = 12.08 + 0.06 * k;
+		const rightward = k % 2 === 0;
+		at(start + 0.004, 'shuttle', hall(90, 1), { gain: 0.35, rate: 1.05 + (k % 3) * 0.04, minor: k % 2 === 1 });
+		for (let lane = 0; lane < 5; lane++) {
+			if (!running[lane](k)) continue;
+			const pass = rightward ? lanePass[lane] : 0.0516 - lanePass[lane] + 0.0154;
+			at(start + pass, 'pop', hall(86 + lane * 2, 1), { gain: lane === 2 ? 0.5 : 0.3, rate: 0.85 + lane * 0.1, minor: lane !== 2 });
+		}
+	}
+	// Your own request's cell gets a note too, each one a step up: the reply growing.
+	for (let k = 0; k < 14; k++) tone(12.08 + 0.06 * k + (k % 2 === 0 ? 0.0258 : 0.0412), [0, 2, 4, 5, 4, 2, 4, 5, 7, 5, 4, 5, 7, 9][k], hall(90, 1), 0.22, 0.6);
+	[12.3224, 12.3824, 12.5024, 12.7424, 12.8624].forEach((T) => {
+		at(T - 0.05, 'servo', hall(90, 1), { gain: 0.3, rate: 1.15, minor: true });
+		at(T, 'block', hall(90, 1), { gain: 0.5 });
+	});
+	[12.3185, 12.3785, 12.4985, 12.6785, 12.8585].forEach((T, i) => {
+		at(T - 0.03, 'drawer-out', hall(92, 1), { gain: 0.35, rate: 1.35 });
+		at(T, chime(i % 2 ? [4, 7] : [2, 4]), hall(92, 1), { gain: 0.3 });
+	});
+	[12.08, 12.278, 12.338, 12.398, 12.458, 12.518, 12.578, 12.638, 12.698, 12.758, 12.818].forEach((T) => at(T, 'flap', hall(90, 3), { gain: 0.45, length: 0.5 }));
+	at(12.518, 'clonk', hall(90, 2), { gain: 0.5 });
+	at(12.518, porcelain(note(-2)), hall(90, 2), { gain: 0.3, delay: 0.05 });
+	at(12.542, 'clonk', hall(90, 1), { gain: 0.35, rate: 1.2, minor: true });
+	at(12.662, porcelain(note(5)), hall(90, 1), { gain: 0.3 });
 
 	/* 13. Reading and writing: the prompt goes in, every chip fires, the memory crosses, and the words come out one by one. */
 	at(13.19, 'tube', hall(120, 1), { gain: 0.5 });
@@ -170,17 +214,24 @@ export function score(w: World): { cues: Cue[]; beds: Bed[] } {
 	/* 14. The transformer. */
 	[14.055, 14.067, 14.079, 14.091, 14.103].forEach((T, i) => tone(T, i * 2, hall(168, 2), 0.3));
 	SENTENCE.forEach((n, i) => tone(14.1826 + 0.005673 * i, n, hall(168, 0), 0.35, 0.9));
+	// Wherever something grows through the stack, threads, tethers, webs, the branches of the feed-forward
+	// network, it grows audibly too: a soft rising shimmer, a little higher each time it climbs.
+	at(14.278, 'grow', hall(168, 2), { gain: 0.5, rate: 0.9 });
 	at(14.33, porcelain(note(7), 1.4), hall(168, 2), { gain: 0.4 });
-	for (let i = 0; i <= 6; i++) at(14.362 + (0.014 * (6 - i)) / 7, tick(1.4), hall(168, 2), { gain: 0.22, minor: true });
+	at(14.362, 'grow', hall(168, 2), { gain: 0.45, rate: 1.1 });
+	for (let i = 0; i <= 6; i++) at(14.362 + (0.014 * (6 - i)) / 7, 'pop', hall(168, 2), { gain: 0.18, rate: 1.4 + i * 0.05, minor: true });
 	at(14.402, chime([0, 2, 4]), hall(168, 2), { gain: 0.25, minor: true });
-	at(14.432, whoosh(0.9, 2600), hall(168, 2), { gain: 0.2 });
+	at(14.432, whoosh(0.9, 2600), hall(168, 2), { gain: 0.15 });
 	at(14.495, porcelain(note(9), 1.2), hall(168, 2), { gain: 0.35 });
-	at(14.556, whoosh(0.8, 3000), hall(168, 2), { gain: 0.22 });
+	at(14.556, 'grow', hall(168, 2), { gain: 0.5, rate: 1.2 });
+	[14.752, 14.794, 14.848].forEach((T, i) => at(T, 'grow', hall(168, 4 + i * 2), { gain: 0.3, rate: 1.25 + i * 0.08, minor: true }));
+	at(14.628, 'pop', hall(168, 2), { gain: 0.4 });
+	at(14.644, 'grow', hall(168, 2), { gain: 0.45, rate: 1.05 });
 	[14.648, 14.653, 14.658].forEach((T, i) => tone(T, 4 + i * 2, hall(168, 2), 0.3));
-	for (let i = 0; i < 10; i++) at(14.664 + 0.0022 * i, tick(1.3), hall(168, 2), { gain: 0.18, minor: true });
-	[14.716, 14.762, 14.802].forEach((T, i) => at(T, whoosh(1.1, 1600 + i * 500), hall(168, 4 + i * 2), { gain: 0.3 }));
+	for (let i = 0; i < 10; i++) at(14.664 + 0.0022 * i, 'pop', hall(168, 2), { gain: 0.16, rate: 1.2 + (i % 4) * 0.08, minor: true });
+	[14.716, 14.762, 14.802].forEach((T, i) => at(T, 'grow', hall(168, 4 + i * 2), { gain: 0.45, rate: 0.95 + i * 0.12 }));
 	at(14.874, porcelain(note(12), 1.6), hall(168, 6), { gain: 0.4 });
-	at(14.888, whoosh(1.2, 2200), hall(168, 6), { gain: 0.28 });
+	at(14.888, 'grow', hall(168, 6), { gain: 0.5, rate: 0.8 });
 	for (let i = 0; i < 7; i++) tone(14.94 + 0.003 * i, [7, 5, 4, 2, 4, 0, -1][i], hall(168, 6), 0.28, 0.8);
 	at(15.014, whoosh(1.0, 1500), hall(193, 2), { gain: 0.3 });
 
@@ -331,15 +382,22 @@ export function score(w: World): { cues: Cue[]; beds: Bed[] } {
 
 	return {
 		cues,
+		// Each place is a soft chord in the story's key, with a breath of its own air far underneath.
 		beds: [
-			{ sound: 'sky', from: 0, to: 7.93, level: 0.8, fade: 0.04 },
-			{ sound: 'belt', from: 6.02, to: 7.9, level: 0.45, fade: 0.04 },
-			{ sound: 'gears', from: 6.95, to: 7.95, level: 0.5, fade: 0.06 },
-			{ sound: 'cluster', from: 8.0, to: 18.9, level: 0.8, fade: 0.05 },
-			{ sound: 'belt', from: 8.5, to: 9.56, level: 0.35, fade: 0.04 },
-			{ sound: 'belt', from: 14.03, to: 14.12, level: 0.35, fade: 0.02 },
-			{ sound: 'belt', from: 18.06, to: 18.64, level: 0.35, fade: 0.04 },
-			{ sound: 'sky', from: 19.05, to: 34, level: 0.8, fade: 0.05 }
+			{ sound: 'pad-sky', from: 0, to: 6.95, level: 1, fade: 0.06 },
+			{ sound: 'sky', from: 0, to: 7.93, level: 0.12, fade: 0.04 },
+			{ sound: 'belt', from: 6.02, to: 7.9, level: 0.28, fade: 0.04 },
+			// The model: a dreamier chord with music-box glints, a thinking hum, and its gears.
+			{ sound: 'pad-brain', from: 6.9, to: 7.95, level: 1, fade: 0.06 },
+			{ sound: 'thinking', from: 6.95, to: 7.95, level: 0.4, fade: 0.06 },
+			{ sound: 'gears', from: 6.95, to: 7.95, level: 0.28, fade: 0.06 },
+			{ sound: 'pad-cluster', from: 8.0, to: 18.9, level: 1, fade: 0.05 },
+			{ sound: 'cluster', from: 8.0, to: 18.9, level: 0.14, fade: 0.05 },
+			{ sound: 'belt', from: 8.5, to: 9.56, level: 0.22, fade: 0.04 },
+			{ sound: 'belt', from: 14.03, to: 14.12, level: 0.22, fade: 0.02 },
+			{ sound: 'belt', from: 18.06, to: 18.64, level: 0.22, fade: 0.04 },
+			{ sound: 'pad-sky', from: 19.05, to: 34, level: 1, fade: 0.05 },
+			{ sound: 'sky', from: 19.05, to: 34, level: 0.12, fade: 0.05 }
 		]
 	};
 }
@@ -423,9 +481,10 @@ function insideHarness(): { cues: Cue[]; beds: Bed[] } {
 	return {
 		cues,
 		beds: [
-			{ sound: 'room', from: 0, to: 6.1, level: 0.7, fade: 0.05 },
+			{ sound: 'pad-room', from: 0, to: 6.1, level: 1, fade: 0.05 },
+			{ sound: 'room', from: 0, to: 6.1, level: 0.18, fade: 0.05 },
 			// The transcript winding onto its reel, for as long as it winds.
-			{ sound: 'reel', from: 4.3, to: 4.9, level: 0.5, fade: 0.04 }
+			{ sound: 'reel', from: 4.3, to: 4.9, level: 0.35, fade: 0.04 }
 		]
 	};
 }
