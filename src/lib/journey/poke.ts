@@ -6,6 +6,8 @@ interface Pokeable {
 	/** Only while the story is about it, so nothing out of frame can be pressed by accident. */
 	when: (T: number) => boolean;
 	press: (index: number) => void;
+	/** What it sounds like when pressed, by the name the sound score knows it by. */
+	sound?: string;
 }
 
 /** A simple shape to aim at, standing in for something too detailed to test every frame. */

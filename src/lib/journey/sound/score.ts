@@ -1,0 +1,497 @@
+/**
+ * The score: which sound plays when, and which ambience fills which stretch of the story. Times are story time T,
+ * or a side trip's own time, one unit per card.
+ *
+ * Recorded sounds (by name, files in static/sound) carry the physical world: drawers, paper, motors, rooms.
+ * Synthesized ones carry what has to follow the picture exactly: notes, ticks, the air of a flight.
+ */
+import type { World } from '../world';
+import type { TrackId } from '../content';
+import type { Bed, Cue, Where } from './conductor';
+import { chime, key, low, note, porcelain, sweep, tick, whoosh } from './synth';
+import { PUCK_MOVES, puckPoint, roomPoint } from '../tracks/harness';
+
+/* ---------- the story ---------- */
+
+/**
+ * The sentence's own tune: whenever its eleven tokens are cut, turned over or lifted into the model, they play these
+ * notes in order, so the ear knows them again. Thinking tokens get a lower phrase, and the tool call a brighter one.
+ */
+const SENTENCE = [0, 2, 4, 2, 5, 4, 7, 5, 4, 2, 0];
+const THINKING = [-3, -1, 0, -1, -3, -2, 0, 1, 0, -1, -3, -2];
+const CALL = [5, 7, 9, 7, 10, 9, 7, 9, 10, 12, 10, 9, 7, 9, 12];
+
+/** Places along the way, in the story's coordinates, for left and right and distance. */
+const P = {
+	laptop: [-3.3, 0.8, 0.5],
+	harness: [1.1, 1.6, -0.65],
+	server: [7.2, 0.8, -0.72],
+	easel: [5.75, 1.75, 0.9],
+	tunnel: [12, -6, 0.9],
+	gateway: [15.94, -8.4, 0.9],
+	template: [-3.4, -17, 0.9],
+	belt: [4, -16.5, 0.9],
+	arch: [11.45, -16.5, 0.9],
+	brain: [1.4, -31, 1.2],
+	gates: [-51, -13, 0],
+	sandbox: [-24.5, -15, 0],
+	compaction: [-20, 6, -4],
+	memory: [-48, 9, -4],
+	turns: [-110, 15, -4],
+	finish: [-144, 18, -4]
+} satisfies Record<string, Where>;
+/** Somewhere inside the cluster, by how far along its hall it is. */
+const hall = (x: number, y = 0): Where => [1.4 + x, -46 + y, 1.2];
+
+export function score(w: World): { cues: Cue[]; beds: Bed[] } {
+	void w;
+	const cues: Cue[] = [];
+	const at = (T: number, sound: Cue['sound'], where?: Where, more: Partial<Cue> = {}) => cues.push({ T, sound, at: where, ...more });
+	const tone = (T: number, i: number, where?: Where, gain = 0.4, ring = 1) => at(T, porcelain(note(i), ring), where, { gain, minor: true });
+
+	/* 1. It starts as a sentence: Return, the slip flies to the harness, which wakes up; the server connects. */
+	at(1.56, key(1.6), P.laptop, { gain: 0.8 });
+	at(1.585, low(note(-10), 0.35), P.laptop, { gain: 0.35 });
+	at(1.62, 'paper-slide', P.laptop, { gain: 0.6, rate: 1.1 });
+	at(1.64, whoosh(0.9, 1600), P.harness, { gain: 0.22 });
+	at(1.7, 'drawer-out', P.harness, { gain: 0.8 });
+	at(1.86, 'paper-land', P.harness, { gain: 0.6 });
+	[1.82, 1.85, 1.88, 1.91, 1.94].forEach((T, i) => tone(T, i, P.harness, 0.32));
+	at(1.9, 'drawer-in', P.harness, { gain: 0.7 });
+	at(1.97, 'paper-roll', P.easel, { gain: 0.5 });
+	at(2.0, chime([0, 4]), P.server, { gain: 0.3 });
+	at(2.02, 'servo', P.easel, { gain: 0.35, rate: 1.2 });
+
+	/* 2. The harness wakes up: four drawers, four slips onto the page. */
+	[2.04, 2.2, 2.36, 2.52].forEach((a, i) => {
+		at(a, 'drawer-out', P.harness, { gain: 0.85, rate: 1 + i * 0.02 });
+		at(a + 0.05, 'paper-slide', P.harness, { gain: 0.5, rate: 1.05 + i * 0.03 });
+		tone(a + 0.08, i + 2, P.harness, 0.35);
+		at(a + 0.11, 'drawer-in', P.harness, { gain: 0.65 });
+		at(a + 0.16, 'paper-land', P.easel, { gain: 0.55, rate: 0.95 + i * 0.03 });
+	});
+	at(2.41, 'paper-slide', [3.05, 0.5, 2.5], { gain: 0.3, rate: 1.3, minor: true });
+
+	/* 3. One JSON request: the tabs, the page rolls up and drops to the tunnel, which locks. */
+	at(3.04, 'paper-slide', P.easel, { gain: 0.35, rate: 1.2, minor: true });
+	at(3.105, 'paper-slide', P.easel, { gain: 0.35, rate: 1.3, minor: true });
+	at(3.6, 'paper-slide', P.easel, { gain: 0.3, rate: 0.9, minor: true });
+	at(3.66, 'paper-roll', P.easel, { gain: 0.6 });
+	at(3.72, whoosh(1.4, 1300), P.tunnel, { gain: 0.3 });
+	at(3.64, 'servo', P.easel, { gain: 0.3, rate: 1.1, minor: true });
+	at(3.985, 'latch', P.tunnel, { gain: 0.8, rate: 0.8 });
+
+	/* 4. Across the wire. */
+	at(4.0, 'tube', P.tunnel, { gain: 0.6 });
+	at(4.08, 'tunnel', P.tunnel, { gain: 0.8, dip: 0.3 });
+	at(4.47, 'tunnel', P.tunnel, { gain: 0.45, rate: 0.9 });
+
+	/* 5. The front door: five checks, each a blade out, a green lamp and back. Then down the pipe to the template. */
+	for (let i = 0; i < 5; i++) {
+		const a = 5.04 + 0.116 * i;
+		at(a, 'latch', P.gateway, { gain: 0.6, rate: 1.05 + i * 0.03 });
+		tone(a + 0.058, i + 1, P.gateway, 0.4);
+		at(a + 0.1, 'block', P.gateway, { gain: 0.35, rate: 1.2, minor: true });
+	}
+	at(5.62, chime([2, 4, 7]), P.gateway, { gain: 0.3 });
+	at(5.62, 'tube', P.gateway, { gain: 0.5 });
+	at(5.7, whoosh(1.6, 1100), P.template, { gain: 0.25 });
+
+	/* 6. Now it is a token: the strip feeds out, the cutter comes down eleven times, each piece rings as it turns to a token. */
+	at(6.02, 'paper-slide', P.template, { gain: 0.6, rate: 0.9 });
+	SENTENCE.forEach((n, i) => {
+		at(6.16 + 0.036364 * (i + 0.71), 'snip', P.belt, { gain: 0.8, rate: 0.96 + (i % 3) * 0.03 });
+		tone(6.16 + 0.036364 * (i + 0.82), n, P.belt, 0.32, 0.8);
+	});
+	at(6.56, 'servo', P.belt, { gain: 0.4 });
+	// The flip wave: the same tune again, quicker, as each one turns over to show its number.
+	SENTENCE.forEach((n, i) => tone(6.68 + 0.01 * i, n + 5, P.belt, 0.28, 0.6));
+	// The safety arch drops in and lands.
+	at(6.84, whoosh(0.5, 900), P.arch, { gain: 0.25 });
+	at(6.895, 'press', P.arch, { gain: 0.9, dip: 0.3 });
+
+	/* 7. Thousands more: the row departs, under the safety light, and pours into the model. */
+	at(6.94, 'scanner', P.arch, { gain: 0.7 });
+	at(7.32, whoosh(1.8, 800), P.brain, { gain: 0.3 });
+	at(7.93, whoosh(1.4, 600), P.brain, { gain: 0.45, dip: 0.6 });
+
+	/* 8. One model, many chips: the weights drop, split, and land on the chips. */
+	at(8.06, whoosh(1.0, 700), hall(0, 6), { gain: 0.35 });
+	at(8.21, 'press', hall(0, 2), { gain: 0.9, rate: 0.8, dip: 0.4 });
+	at(8.28, 'relay', hall(0, 2), { gain: 0.6 });
+	[8.573, 8.579, 8.585, 8.592, 8.6, 8.609, 8.62, 8.637].forEach((T, i) => at(T, 'block', hall(-4.8 + i * 1.37, 1), { gain: 0.45, rate: 0.9 + i * 0.03, minor: true }));
+	at(8.66, chime([0, 2, 4, 7]), hall(0, 1), { gain: 0.28 });
+
+	/* 9. Its working memory: a key and a value for each word slide into the cache, then a read sweeps them. */
+	[9.1598, 9.2242, 9.2886, 9.353, 9.4174, 9.4818].forEach((K, i) => {
+		at(K, 'block', hall(30, 1), { gain: 0.5, rate: 1.05, minor: true });
+		at(K + 0.0322, 'block', hall(30, 1), { gain: 0.5, rate: 0.95 });
+		tone(K + 0.034, SENTENCE[i], hall(30, 1), 0.25, 0.6);
+	});
+	[9.628, 9.665, 9.703, 9.74, 9.777, 9.815].forEach((T, i) => tone(T, SENTENCE[i] + 5, hall(30, 1), 0.22, 0.5));
+
+	/* 10. Blocks that can sit anywhere. */
+	[10.35, 10.435, 10.52, 10.605].forEach((T, i) => {
+		at(T - 0.23, 'servo', hall(60, 1), { gain: 0.25, rate: 1.3, minor: true });
+		at(T, 'block', hall(60, 1), { gain: 0.6, rate: 1 + i * 0.04 });
+	});
+	[10.245, 10.37, 10.495, 10.62].forEach((T) => at(T, tick(1.2), hall(60, 2), { gain: 0.3, minor: true }));
+
+	/* 11. Turn two starts ahead: the router asks the copies, the gate recognises four blocks, and computes one. */
+	at(11.12, 'scanner', hall(43.75, 2), { gain: 0.5, rate: 1.1 });
+	at(11.2003, low(note(-4), 0.5), hall(43.75, 1), { gain: 0.35 });
+	at(11.2437, low(note(-4), 0.5), hall(43.75, 1), { gain: 0.35 });
+	at(11.287, chime([2, 4]), hall(43.75, 1), { gain: 0.35 });
+	at(11.3, 'servo', hall(45, 1), { gain: 0.5, rate: 0.9 });
+	[11.4535, 11.5115, 11.5695, 11.6275].forEach((T, i) => tone(T, i + 2, hall(45, 1), 0.4));
+	at(11.6855, low(note(-3), 0.5), hall(45, 1), { gain: 0.35 });
+	at(11.742, 'tube', hall(46, 1), { gain: 0.4, rate: 1.2 });
+	at(11.75, 'relay', hall(46, 1), { gain: 0.5 });
+	at(11.86, 'block', hall(60, 1), { gain: 0.6 });
+
+	/* 12. Sharing the chips: one tick per step of the shuttle, joiners settle, leavers finish with a note. */
+	for (let k = 0; k < 14; k++) at(12.08 + 0.06 * k + 0.026, tick(0.9), hall(90, 1), { gain: 0.3, minor: true });
+	[12.3224, 12.3824, 12.5024, 12.7424, 12.8624].forEach((T) => at(T, 'block', hall(90, 1), { gain: 0.4, minor: true }));
+	[12.3185, 12.3785, 12.4985, 12.6785, 12.8585].forEach((T, i) => tone(T, 5 + (i % 3), hall(90, 1), 0.35));
+	at(12.518, low(note(-5), 0.6), hall(90, 2), { gain: 0.35 });
+	at(12.542, low(note(-3), 0.4), hall(90, 1), { gain: 0.25, minor: true });
+
+	/* 13. Reading and writing: the prompt goes in, every chip fires, the memory crosses, and the words come out one by one. */
+	at(13.19, 'tube', hall(120, 1), { gain: 0.5 });
+	at(13.22, 'relay', hall(120, 1), { gain: 0.8, dip: 0.3 });
+	at(13.25, whoosh(0.6, 2400), hall(120, 1), { gain: 0.3 });
+	[13.28, 13.315, 13.35].forEach((T) => at(T, 'servo', hall(124, 1), { gain: 0.3, minor: true }));
+	for (let i = 0; i < 8; i++) at(13.4 + 0.0425 * i, porcelain(note([0, 2, 4, 7, 4, 2, 4, 0][i] + 2), 0.8), hall(128, 1), { gain: 0.35 });
+	at(13.46, whoosh(1.0, 1400), hall(120, 1), { gain: 0.2, minor: true });
+	at(13.6, 'relay', hall(120, 1), { gain: 0.5, minor: true });
+	at(13.7, 'paper-slide', hall(120, 2), { gain: 0.35, minor: true });
+	at(13.9, whoosh(1.2, 700), hall(120, 0), { gain: 0.4, dip: 0.5 });
+
+	/* 14. The transformer. */
+	[14.055, 14.067, 14.079, 14.091, 14.103].forEach((T, i) => tone(T, i * 2, hall(168, 2), 0.3));
+	SENTENCE.forEach((n, i) => tone(14.1826 + 0.005673 * i, n, hall(168, 0), 0.35, 0.9));
+	at(14.33, porcelain(note(7), 1.4), hall(168, 2), { gain: 0.4 });
+	for (let i = 0; i <= 6; i++) at(14.362 + (0.014 * (6 - i)) / 7, tick(1.4), hall(168, 2), { gain: 0.22, minor: true });
+	at(14.402, chime([0, 2, 4]), hall(168, 2), { gain: 0.25, minor: true });
+	at(14.432, whoosh(0.9, 2600), hall(168, 2), { gain: 0.2 });
+	at(14.495, porcelain(note(9), 1.2), hall(168, 2), { gain: 0.35 });
+	at(14.556, whoosh(0.8, 3000), hall(168, 2), { gain: 0.22 });
+	[14.648, 14.653, 14.658].forEach((T, i) => tone(T, 4 + i * 2, hall(168, 2), 0.3));
+	for (let i = 0; i < 10; i++) at(14.664 + 0.0022 * i, tick(1.3), hall(168, 2), { gain: 0.18, minor: true });
+	[14.716, 14.762, 14.802].forEach((T, i) => at(T, whoosh(1.1, 1600 + i * 500), hall(168, 4 + i * 2), { gain: 0.3 }));
+	at(14.874, porcelain(note(12), 1.6), hall(168, 6), { gain: 0.4 });
+	at(14.888, whoosh(1.2, 2200), hall(168, 6), { gain: 0.28 });
+	for (let i = 0; i < 7; i++) tone(14.94 + 0.003 * i, [7, 5, 4, 2, 4, 0, -1][i], hall(168, 6), 0.28, 0.8);
+	at(15.014, whoosh(1.0, 1500), hall(193, 2), { gain: 0.3 });
+
+	/* 15. One token is chosen: two bars sink, the wheel spins and slows, peg by peg, and lands on "The". */
+	at(15.3, 'drawer-in', hall(193, 2), { gain: 0.4, rate: 0.8 });
+	for (let k = 1; k <= 120; k++) {
+		const f = 1 - Math.pow(1 - k / 120, 1 / 3);
+		// Loud while it whirls, fainter as it slows: the flapper hits each peg less hard.
+		const speed = Math.pow(1 - f, 2);
+		at(15.42 + 0.36 * f, tick(1.1 + speed * 0.4), hall(193, 1), { gain: 0.15 + 0.35 * speed, minor: k % 4 !== 0 });
+	}
+	at(15.78, chime([0, 2, 4, 7]), hall(193, 1), { gain: 0.45, dip: 0.3 });
+	at(15.81, 'latch', hall(193, 1), { gain: 0.5 });
+	at(15.897, 'block', hall(200, 0), { gain: 0.55 });
+
+	/* 16. One at a time: twelve thinking tokens, each a low note as it lands. */
+	THINKING.forEach((n, i) => {
+		const k = i + 1;
+		at(16.06 + 0.07 * (k - 0.45), whoosh(0.4, 1800), hall(233, 2), { gain: 0.1, minor: true });
+		tone(16.06 + 0.07 * (k - 0.015), n, hall(233, 0), 0.32, 0.9);
+	});
+	at(16.44, 'servo', hall(233, 1), { gain: 0.35, rate: 0.85 });
+
+	/* 17. A tool call is born: bright notes, the ticket prints, the lamp, and the red stamp. */
+	CALL.forEach((n, j) => {
+		tone(17.06 + 0.044 * (j + 0.985), n, hall(233, 0), 0.32, 0.8);
+		if (j > 0) at(17.06 + 0.044 * j + 0.02, tick(1.5), hall(240, 1), { gain: 0.18, minor: true });
+	});
+	at(17.72, chime([4, 7, 9]), hall(240, 1), { gain: 0.4 });
+	at(17.785, 'stamp', hall(240, 1), { gain: 1, dip: 0.5 });
+
+	/* 18. Text comes back: the tokens go in, slips flutter up the tube, and up and out. */
+	at(18.182, porcelain(note(4), 1.2), hall(260, 1), { gain: 0.35 });
+	at(18.3, 'tube', hall(260, 1), { gain: 0.45 });
+	[18.174, 18.205, 18.237, 18.268, 18.3, 18.331, 18.363, 18.394].forEach((T, i) => at(T, 'paper-slide', hall(260, 3), { gain: 0.25, rate: 1.1 + i * 0.03, minor: true }));
+	at(18.88, whoosh(1.4, 2000), hall(260, 6), { gain: 0.4, dip: 0.5 });
+
+	/* 19. The model has no hands: slips rain on the harness, the call card pops up and leaves along the pipe. */
+	for (let i = 0; i < 8; i++) at(19.26 + 0.03 * i, 'paper-land', P.harness, { gain: 0.4, rate: 0.95 + i * 0.03, minor: true });
+	at(19.3, 'paper-slide', P.harness, { gain: 0.5 });
+	at(19.68, whoosh(1.2, 1500), P.harness, { gain: 0.25 });
+
+	/* 20. Intent is not authority: the bad call is refused and binned; the good one passes four gates. */
+	at(20.04, 'servo', P.gates, { gain: 0.4, rate: 0.8 });
+	at(20.09, 'servo', P.gates, { gain: 0.5 });
+	at(20.2, low(note(-6), 0.6), P.gates, { gain: 0.45 });
+	at(20.2, 'relay', P.gates, { gain: 0.45, rate: 0.8 });
+	at(20.24, 'latch', P.gates, { gain: 0.6, rate: 0.7 });
+	at(20.37, 'press', P.gates, { gain: 0.6, rate: 1.2 });
+	at(20.4, 'servo', P.gates, { gain: 0.35, rate: 0.85, minor: true });
+	[20.516, 20.632, 20.748, 20.864].forEach((T, i) => {
+		at(T, 'servo', P.gates, { gain: 0.45, rate: 1 + i * 0.04 });
+		tone(T + 0.03, 2 + i, P.gates, 0.38);
+	});
+	at(20.688, 'latch', P.gates, { gain: 0.4, rate: 1.2 });
+	at(20.98, chime([2, 4, 7]), P.gates, { gain: 0.3 });
+
+	/* 21. When the page lies: the docs land, glow red, the process fires, and the fence holds. */
+	at(21.2, 'paper-land', P.sandbox, { gain: 0.6 });
+	at(21.3, low(note(-7), 1.1), P.sandbox, { gain: 0.4 });
+	at(21.34, 'paper-slide', P.sandbox, { gain: 0.5 });
+	at(21.52, 'block', P.sandbox, { gain: 0.5, rate: 0.7 });
+	at(21.53, 'relay', P.sandbox, { gain: 0.5, rate: 0.85 });
+	at(21.6, whoosh(0.5, 2800), P.sandbox, { gain: 0.35 });
+	at(21.72, 'stamp', P.sandbox, { gain: 0.8, rate: 1.1, dip: 0.4 });
+	at(21.72, porcelain(note(12), 1.8), P.sandbox, { gain: 0.3 });
+	at(21.88, 'paper-land', P.sandbox, { gain: 0.45 });
+
+	/* 22. Finding the code: the lens sweeps the shelf, three folders slide out, the file goes to the easel. */
+	at(22.0, 'servo', P.sandbox, { gain: 0.4, rate: 0.9 });
+	[22.12, 22.267, 22.413].forEach((T) => at(T, 'scanner', P.sandbox, { gain: 0.4, rate: 0.9 }));
+	for (let i = 0; i < 3; i++) at(22.2 + i * 0.03, 'drawer-out', P.sandbox, { gain: 0.5, rate: 1.3 });
+	at(22.53, 'servo', P.sandbox, { gain: 0.35, rate: 1.1, minor: true });
+	at(22.55, 'paper-slide', P.sandbox, { gain: 0.5 });
+	at(22.69, 'paper-land', P.sandbox, { gain: 0.55 });
+
+	/* 23. Three ways to edit. */
+	at(23.06, 'paper-slide', P.sandbox, { gain: 0.35, minor: true });
+	at(23.26, tick(1.3), P.sandbox, { gain: 0.3 });
+	at(23.46, 'paper-slide', P.sandbox, { gain: 0.45, rate: 1.1 });
+	at(23.7, chime([0, 4, 7]), P.sandbox, { gain: 0.35 });
+	at(23.92, 'paper-slide', P.sandbox, { gain: 0.4, rate: 0.9 });
+	at(24.0, 'servo', P.sandbox, { gain: 0.45 });
+	at(24.07, 'latch', P.sandbox, { gain: 0.5, rate: 0.85 });
+
+	/* 24. Evidence, not opinion: the terminal prints, the test fails, and the result goes back. */
+	[24.1766, 24.2331, 24.2897, 24.3463, 24.4029, 24.4594].forEach((T) => {
+		for (let k = 0; k < 3; k++) at(T - 0.012 + k * 0.006, key(0.5), P.sandbox, { gain: 0.3, minor: true });
+	});
+	at(24.4594, low(note(-5), 0.8), P.sandbox, { gain: 0.45 });
+	at(24.5, 'paper-slide', P.sandbox, { gain: 0.5 });
+	at(24.76, 'paper-slide', P.sandbox, { gain: 0.4, rate: 0.9 });
+	at(25.0, 'tube', P.sandbox, { gain: 0.5 });
+
+	/* 25. Around the loop: back up the green pipe and into the Conversation drawer. Turn two. */
+	at(25.04, whoosh(2.2, 1300), P.harness, { gain: 0.3 });
+	at(25.32, 'drawer-out', P.harness, { gain: 0.8 });
+	at(25.43, 'paper-land', P.harness, { gain: 0.5 });
+	at(25.38, 'servo', P.easel, { gain: 0.3, rate: 1.2, minor: true });
+	at(25.5, 'paper-land', P.easel, { gain: 0.5 });
+	at(25.6, 'drawer-in', P.harness, { gain: 0.7 });
+
+	/* 26. When the context fills up: thirty sheets, the gauge rising, the press, and a summary. */
+	for (let i = 0; i < 30; i++) at(26.08 + 0.012667 * (i + 1), 'paper-land', P.compaction, { gain: 0.32, rate: 0.9 + i * 0.008, minor: i % 3 !== 0 });
+	at(26.08, sweep(note(-5), note(5), 5.5), P.compaction, { gain: 0.5 });
+	at(26.48, 'servo', P.compaction, { gain: 0.45, rate: 0.85 });
+	at(26.58, 'press', P.compaction, { gain: 1, dip: 0.5 });
+	at(26.64, 'servo', P.compaction, { gain: 0.4, rate: 1.05 });
+	at(26.72, chime([0, 2, 4]), P.compaction, { gain: 0.35 });
+
+	/* 27. Seven things called memory: seven drawers, six green, one red. */
+	for (let i = 0; i < 7; i++) {
+		const a = 27.12 + 0.1 * i;
+		at(a, 'drawer-out', P.memory, { gain: i === 6 ? 0.35 : 0.75, rate: 1 + i * 0.02 });
+		if (i < 6) tone(a + 0.05, i, P.memory, 0.35);
+		else at(a + 0.05, low(note(-6), 0.7), P.memory, { gain: 0.4 });
+	}
+
+	/* 28. When the answer gets lost: the pipe breaks, the loupe looks, it heals, and four levers. */
+	at(28.14, porcelain(note(14), 0.7), P.turns, { gain: 0.3 });
+	at(28.14, 'block', P.turns, { gain: 0.35, rate: 1.4 });
+	at(28.3, 'servo', P.turns, { gain: 0.35 });
+	at(28.5, chime([0, 2, 4]), P.turns, { gain: 0.3 });
+	at(28.58, porcelain(note(9), 1.1), P.turns, { gain: 0.3 });
+	[28.62, 28.67, 28.72, 28.77].forEach((T, i) => at(T + 0.03, 'latch', P.turns, { gain: 0.6, rate: 0.85 + i * 0.05 }));
+
+	/* 29. The whole fix, in ten turns: a note per turn; the red one low, the last two bright. */
+	for (let i = 0; i < 10; i++) tone(29.1 + 0.066 * i + 0.05, [0, 2, 4, 2, 5, 4, -2, 5, 7, 9][i], P.turns, 0.35);
+	at(29.47, low(note(-5), 0.6), P.turns, { gain: 0.35 });
+	at(29.68, chime([4, 7, 9]), P.turns, { gain: 0.4 });
+
+	/* 30. What finished means: up two steps, a padlock opens, a flag. */
+	at(30.29, 'block', P.finish, { gain: 0.6 });
+	at(30.29, 'latch', P.finish, { gain: 0.6, rate: 0.9 });
+	at(30.54, 'block', P.finish, { gain: 0.6, rate: 1.1 });
+	at(30.6, 'paper-slide', P.finish, { gain: 0.4 });
+
+	/* 31. Home: a long flight back, and the laptop shows the result. */
+	at(30.86, whoosh(4.5, 1200), P.laptop, { gain: 0.3 });
+	at(31.36, chime([0, 2, 4, 7, 9]), P.laptop, { gain: 0.4 });
+
+	/* 32. The whole trip, in one look: everything rises, the glass tube draws itself, the lap plays its nine stops. */
+	at(31.99, 'rumble', P.brain, { gain: 0.9, dip: 0.6 });
+	[32.1902, 32.2041, 32.2155, 32.2258, 32.2355, 32.245, 32.2545, 32.2642, 32.2745, 32.2859, 32.2998].forEach((T, i) => tone(T, i, P.harness, 0.25, 0.7));
+	at(32.33, 'latch', P.brain, { gain: 0.5 });
+	[32.34, 32.378, 32.404, 32.488, 32.611, 32.656, 32.722, 32.83, 32.87].forEach((T, i) => tone(T, [0, 2, 4, 5, 7, 9, 7, 5, 4][i], undefined, 0.35, 1.2));
+	at(32.9, chime([0, 2, 4, 7, 9, 12]), undefined, { gain: 0.35 });
+
+	return {
+		cues,
+		beds: [
+			{ sound: 'sky', from: 0, to: 7.93, level: 0.8, fade: 0.04 },
+			{ sound: 'belt', from: 6.02, to: 7.9, level: 0.45, fade: 0.04 },
+			{ sound: 'gears', from: 6.95, to: 7.95, level: 0.5, fade: 0.06 },
+			{ sound: 'cluster', from: 8.0, to: 18.9, level: 0.8, fade: 0.05 },
+			{ sound: 'belt', from: 8.5, to: 9.56, level: 0.35, fade: 0.04 },
+			{ sound: 'belt', from: 14.03, to: 14.12, level: 0.35, fade: 0.02 },
+			{ sound: 'belt', from: 18.06, to: 18.64, level: 0.35, fade: 0.04 },
+			{ sound: 'sky', from: 19.05, to: 34, level: 0.8, fade: 0.05 }
+		]
+	};
+}
+
+/* ---------- inside the harness ---------- */
+
+/** One note per station, so a lap round the loop plays a little rising tune. */
+const STATION_NOTE = { pack: 0, send: 1, read: 2, check: 3, run: 4, write: 5 } as const;
+
+function insideHarness(): { cues: Cue[]; beds: Bed[] } {
+	const cues: Cue[] = [];
+	const at = (T: number, sound: Cue['sound'], where?: Where | (() => Where), more: Partial<Cue> = {}) => cues.push({ T, sound, at: where, ...more });
+
+	// The turn: a little motor each time it sets off, and a porcelain note as it arrives at each station.
+	const order = ['send', 'read', 'check', 'run', 'write', 'pack'] as const;
+	PUCK_MOVES.forEach(({ from, to }, i) => {
+		at(from, 'servo', () => puckPoint(from + 0.01), { gain: 0.5, rate: 1 + (i % 3) * 0.04, minor: true });
+		const station = to < 2 ? order[i % 6] : undefined;
+		if (station) at(to, porcelain(note(STATION_NOTE[station] + 2)), roomPoint(station), { gain: 0.5 });
+	});
+
+	// Out to the model and back: air down the orange pipe, then up the green one, on each turn the trip watches.
+	for (const card of [1, 3]) {
+		const out = card === 1 ? 0.14 : 0.12;
+		at(card + out, 'tube', roomPoint('send'), { gain: 0.7 });
+		at(card + out + 0.01, whoosh(0.7, 2200), roomPoint('send'), { gain: 0.35 });
+		at(card + out + 0.1, whoosh(0.7, 1400), roomPoint('read'), { gain: 0.35 });
+		// The reply types itself on Read's screen.
+		const typeFrom = card === 1 ? 1.3 : 3.28;
+		for (let k = 0; k < 10; k++) at(typeFrom + k * 0.008, tick(1.3), roomPoint('read'), { gain: 0.35, minor: true });
+	}
+
+	// The lap's tool: Read comes out of its slot, a pulse runs to your files, and the transcript winds on.
+	at(1.64, 'latch', roomPoint('run'), { gain: 0.7 });
+	at(1.65, whoosh(0.5, 1600), roomPoint('files'), { gain: 0.25 });
+	at(1.8, 'paper-roll', roomPoint('reel'), { gain: 0.5 });
+
+	// Packing: each hatch slides out, its sheet lands in Pack's row, the hatch goes back. Then the skill.
+	for (let i = 0; i < 4; i++) {
+		const a = 2 + 0.08 + i * 0.12;
+		at(a, 'drawer-out', roomPoint('pack', i + 1), { gain: 0.8 });
+		at(a + 0.115, 'paper-land', roomPoint('pack'), { gain: 0.7, rate: 1 + i * 0.03 });
+		at(a + 0.1, 'drawer-in', roomPoint('pack', i + 1), { gain: 0.6 });
+	}
+	at(2.6, 'paper-slide', roomPoint('shelf'), { gain: 0.6 });
+	at(2.775, 'paper-land', roomPoint('pack'), { gain: 0.8, rate: 1.08 });
+	at(2.8, chime([0, 2, 4]), roomPoint('pack'), { gain: 0.45, dip: 0.3 });
+
+	// The gate: the call stands up on the turn, a hook runs, Ask, then Allow, and the arm lifts.
+	at(3.31, 'paper-slide', () => puckPoint(3.31), { gain: 0.5, rate: 1.2 });
+	at(3.44, whoosh(0.6, 2600), roomPoint('hooks'), { gain: 0.3 });
+	at(3.52, porcelain(note(6), 0.6), roomPoint('hooks'), { gain: 0.45 });
+	at(3.53, porcelain(note(5), 1.2), roomPoint('check'), { gain: 0.5 });
+	at(3.58, porcelain(note(5), 1.2), roomPoint('check'), { gain: 0.4 });
+	at(3.63, chime([2, 4, 7]), roomPoint('check'), { gain: 0.5, dip: 0.35 });
+	at(3.645, 'servo', roomPoint('check'), { gain: 0.7, rate: 0.9 });
+	at(3.88, 'servo', roomPoint('check'), { gain: 0.5, rate: 0.95 });
+
+	// Run, then written down: the call goes in, Edit comes out, the tape winds, pages pile up and get pressed.
+	at(4.11, 'paper-slide', roomPoint('run'), { gain: 0.5, rate: 0.9 });
+	at(4.12, 'latch', roomPoint('run'), { gain: 0.8 });
+	at(4.14, whoosh(0.5, 1600), roomPoint('files'), { gain: 0.25 });
+	for (let i = 0; i < 5; i++) at(4.32 + i * 0.05 + 0.035, 'paper-land', roomPoint('write'), { gain: 0.5, rate: 0.96 + i * 0.03, minor: true });
+	at(4.6, 'press', roomPoint('write'), { gain: 0.9, dip: 0.4 });
+	at(4.69, chime([4, 2, 0]), roomPoint('write'), { gain: 0.35 });
+	at(4.72, 'servo', roomPoint('write'), { gain: 0.45, rate: 1.1 });
+
+	// The subagent: a quick next turn, the Agent tool, a brief down the line, its own laps, and a report back.
+	at(5.02, 'servo', () => puckPoint(5.05), { gain: 0.6, rate: 1.15 });
+	at(5.2, 'latch', roomPoint('run'), { gain: 0.8 });
+	at(5.24, whoosh(0.7, 2000), roomPoint('sub'), { gain: 0.3 });
+	at(5.33, 'paper-slide', roomPoint('sub'), { gain: 0.5 });
+	for (const k of [5.38, 5.5]) at(k, 'servo', roomPoint('sub'), { gain: 0.35, rate: 1.35 });
+	at(5.46, whoosh(0.6, 1500), roomPoint('files'), { gain: 0.22 });
+	at(5.63, 'paper-slide', roomPoint('sub'), { gain: 0.5, rate: 1.1 });
+	at(5.7, whoosh(0.7, 1500), roomPoint('run'), { gain: 0.3 });
+	at(5.79, 'paper-land', roomPoint('run'), { gain: 0.7 });
+	at(5.82, chime([0, 4, 7]), roomPoint('run'), { gain: 0.4 });
+	at(5.86, 'latch', roomPoint('run'), { gain: 0.6, rate: 0.95 });
+
+	return {
+		cues,
+		beds: [
+			{ sound: 'room', from: 0, to: 6.1, level: 0.7, fade: 0.05 },
+			// The transcript winding onto its reel, for as long as it winds.
+			{ sound: 'reel', from: 4.3, to: 4.9, level: 0.5, fade: 0.04 }
+		]
+	};
+}
+
+/* ---------- how MCP connects ---------- */
+
+/** The harness and the server on the first island, in the story's coordinates. */
+const HARNESS: Where = [1.1, 1.6, -0.65];
+const SERVER: Where = [7.2, 0.8, -0.72];
+
+function howMcpConnects(): { cues: Cue[]; beds: Bed[] } {
+	const cues: Cue[] = [];
+	const at = (T: number, sound: Cue['sound'], where?: Where, more: Partial<Cue> = {}) => cues.push({ T, sound, at: where, ...more });
+	const small = { rate: 1.3, gain: 0.6 };
+	// A message down the cable: air one way or the other.
+	const along = (T: number, toServer: boolean, high = 1800) => at(T, whoosh(0.8, high), toServer ? SERVER : HARNESS, { gain: 0.28 });
+
+	// Hello: the harness wakes, says hello, the server answers and its lamp goes green.
+	at(0.08, 'servo', HARNESS, { gain: 0.35, rate: 0.9 });
+	along(0.3, true);
+	at(0.47, 'block', SERVER, { gain: 0.5 });
+	at(0.54, chime([0, 4]), SERVER, { gain: 0.4 });
+	along(0.56, false);
+	at(0.73, 'block', HARNESS, { gain: 0.4, rate: 0.9 });
+
+	// What do you offer: the list comes out of the server's Tools drawer and goes into the harness's.
+	along(1.04, true);
+	at(1.2, 'drawer-out', SERVER, small);
+	at(1.29, 'paper-slide', SERVER, { gain: 0.5, rate: 1.2 });
+	at(1.46, 'tube', SERVER, { gain: 0.5, rate: 1.1 });
+	at(1.54, 'drawer-in', SERVER, small);
+	along(1.58, false, 2200);
+	at(1.7, 'drawer-out', HARNESS, { gain: 0.8 });
+	at(1.77, 'paper-land', HARNESS, { gain: 0.6 });
+	at(2.0, 'paper-slide', HARNESS, { gain: 0.4, rate: 0.9 });
+	at(2.06, 'drawer-in', HARNESS, { gain: 0.7 });
+
+	// A call: down the cable, into the server's drawer, and the server gets to work.
+	along(2.22, true, 2400);
+	at(2.4, 'drawer-out', SERVER, small);
+	at(2.49, 'paper-slide', SERVER, { gain: 0.5, rate: 1.2 });
+	for (const k of [2.64, 2.82, 3.0]) at(k, 'relay', SERVER, { gain: 0.35, minor: true });
+
+	// The answer: up it stands, back down the cable, into the harness's Conversation drawer.
+	at(3.04, 'paper-slide', SERVER, { gain: 0.35, rate: 0.85 });
+	at(3.13, 'paper-slide', SERVER, { gain: 0.5, rate: 1.2 });
+	at(3.16, chime([2, 4, 7]), SERVER, { gain: 0.4, dip: 0.3 });
+	at(3.3, 'tube', SERVER, { gain: 0.5, rate: 1.1 });
+	at(3.4, 'drawer-in', SERVER, small);
+	along(3.42, false, 1500);
+	at(3.58, 'drawer-out', HARNESS, { gain: 0.8 });
+	at(3.65, 'paper-land', HARNESS, { gain: 0.6 });
+	at(4.0, 'paper-slide', HARNESS, { gain: 0.4, rate: 0.9 });
+	at(4.06, 'drawer-in', HARNESS, { gain: 0.7 });
+
+	// Three drawers: tools, resources, prompts, one after another.
+	[0.12, 0.42, 0.7].forEach((a, i) => {
+		at(4 + a, 'drawer-out', SERVER, { ...small, rate: 1.3 - i * 0.06 });
+		at(4 + a + 0.07, porcelain(note(i * 2 + 2)), SERVER, { gain: 0.45 });
+		if (i < 2) at(4 + a + 0.26, 'drawer-in', SERVER, small);
+	});
+	return { cues, beds: [] };
+}
+
+export function tripScore(id: TrackId, w: World): { cues: Cue[]; beds: Bed[] } {
+	void w;
+	if (id === 'harness') return insideHarness();
+	return howMcpConnects();
+}

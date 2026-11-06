@@ -1,0 +1,206 @@
+[
+	{
+		"id": "sky",
+		"group": "Places",
+		"title": "Up in the sky",
+		"what": "Under everything on the floating islands: air, light and calm. Loops.",
+		"prompt": "Ambience loop: open air high above the clouds on a calm sunny day, a steady airy breeze with a faint soft whistle, spacious and peaceful, no birds, no voices, no music",
+		"seconds": 22,
+		"loop": true,
+		"count": 3
+	},
+	{
+		"id": "cluster",
+		"group": "Places",
+		"title": "Inside the cluster",
+		"what": "The dark machine hall where the model runs, chapters 8 to 19. Loops.",
+		"prompt": "Ambience loop: inside a quiet modern data center, a deep steady hum of server fans and cool air moving through racks, faint electrical whir, calm and huge, no beeps, no voices, no music",
+		"seconds": 22,
+		"loop": true,
+		"count": 3
+	},
+	{
+		"id": "room",
+		"group": "Places",
+		"title": "Inside the harness",
+		"what": "The warm cream room the side trip drops into. Loops.",
+		"prompt": "Ambience loop: a small warm wooden workshop room, a faint low mechanical hum and very distant clockwork ticking, cozy and close, no voices, no music",
+		"seconds": 20,
+		"loop": true,
+		"count": 3
+	},
+	{
+		"id": "drawer-out",
+		"group": "Mechanisms",
+		"title": "Drawer slides out",
+		"what": "A harness drawer (or a hatch inside it) comes out on its runners.",
+		"prompt": "Foley close-up: a small enamel cabinet drawer slides out smoothly on metal ball-bearing runners and stops with a soft click",
+		"seconds": 1.2,
+		"count": 4
+	},
+	{
+		"id": "drawer-in",
+		"group": "Mechanisms",
+		"title": "Drawer slides shut",
+		"what": "The same drawer going back in.",
+		"prompt": "Foley close-up: a small enamel cabinet drawer pushed shut on metal ball-bearing runners, closing with a solid soft thud",
+		"seconds": 1,
+		"count": 4
+	},
+	{
+		"id": "servo",
+		"group": "Mechanisms",
+		"title": "Little motor",
+		"what": "A small motor moving a part: the turn going round the loop, the gate arm lifting, the press rising.",
+		"prompt": "Foley close-up: a small precise servo motor whirring for a moment as a toy mechanism moves, clean, then stops",
+		"seconds": 0.8,
+		"count": 4
+	},
+	{
+		"id": "latch",
+		"group": "Mechanisms",
+		"title": "Cartridge pops out",
+		"what": "A tool cartridge springs out of its slot on Run, or clicks back in.",
+		"prompt": "Foley close-up: a plastic cartridge clicking out of a spring-loaded slot, crisp satisfying latch click",
+		"seconds": 0.6,
+		"count": 4
+	},
+	{
+		"id": "press",
+		"group": "Mechanisms",
+		"title": "The press comes down",
+		"what": "The press on Write down squeezes the pages of what's sent into one summary.",
+		"prompt": "Foley close-up: a small metal hand press comes down firmly on a stack of paper, a solid muffled thump with a little mechanical clank",
+		"seconds": 1,
+		"count": 4
+	},
+	{
+		"id": "tube",
+		"group": "Mechanisms",
+		"title": "Into the pipe",
+		"what": "A message leaves down a pipe to the model.",
+		"prompt": "Foley close-up: a small pneumatic tube system, a capsule sucked into the tube with a short whoosh and a soft thunk",
+		"seconds": 1.2,
+		"count": 4
+	},
+	{
+		"id": "reel",
+		"group": "Mechanisms",
+		"title": "Tape winding onto a reel",
+		"what": "The saved transcript winding onto its reel. Loops while it winds.",
+		"prompt": "Foley loop: a paper tape steadily winding onto a small reel, soft continuous rustle with a faint motor hum",
+		"seconds": 6,
+		"loop": true,
+		"count": 3
+	},
+	{
+		"id": "paper-land",
+		"group": "Paper",
+		"title": "A sheet lands",
+		"what": "A sheet arriving in its place: on Pack, on the pile, on top of Run.",
+		"prompt": "Foley close-up: a single stiff card sheet dropped flat onto a table, a crisp light paper slap",
+		"seconds": 0.6,
+		"count": 4
+	},
+	{
+		"id": "paper-slide",
+		"group": "Paper",
+		"title": "A sheet slides",
+		"what": "A sheet lifting out of a folder or standing up.",
+		"prompt": "Foley close-up: a stiff paper card slid quickly out of a folder, crisp short paper swish",
+		"seconds": 0.7,
+		"count": 4
+	},
+	{
+		"id": "paper-roll",
+		"group": "Paper",
+		"title": "Paper rolls up",
+		"what": "A page rolling up, or a strip winding on.",
+		"prompt": "Foley close-up: a sheet of thick paper rolled up quickly into a tube, crisp crinkle and rustle",
+		"seconds": 1,
+		"count": 4
+	},
+	{
+		"id": "belt",
+		"group": "Mechanisms",
+		"title": "Conveyor belt",
+		"what": "The little rubber belt that carries tokens along. Loops while it runs.",
+		"prompt": "Foley loop: a small rubber conveyor belt running steadily over metal rollers, soft rhythmic rolling and faint clicking, close",
+		"seconds": 8,
+		"loop": true,
+		"count": 3
+	},
+	{
+		"id": "gears",
+		"group": "Mechanisms",
+		"title": "Brass gears",
+		"what": "The gears turning behind the window in the model's brain. Loops.",
+		"prompt": "Foley loop: small brass clockwork gears meshing and turning steadily, fine ticking and soft metallic whir, close",
+		"seconds": 8,
+		"loop": true,
+		"count": 3
+	},
+	{
+		"id": "snip",
+		"group": "Mechanisms",
+		"title": "The cutter",
+		"what": "The tokenizer's blade coming down on a strip of text.",
+		"prompt": "Foley close-up: a small paper guillotine blade comes down and cuts a strip of card, one crisp clean snick",
+		"seconds": 0.7,
+		"count": 4
+	},
+	{
+		"id": "tunnel",
+		"group": "Mechanisms",
+		"title": "Down the wire",
+		"what": "The request shooting through the tunnel to the provider.",
+		"prompt": "Foley: a capsule shooting through a long pneumatic tube, a fast rushing whoosh that travels away into the distance",
+		"seconds": 2,
+		"count": 4
+	},
+	{
+		"id": "stamp",
+		"group": "Mechanisms",
+		"title": "A check passes",
+		"what": "A gate or checkpoint approving something: a firm stamp.",
+		"prompt": "Foley close-up: a rubber stamp pressed firmly onto paper on a wooden desk, one solid satisfying thunk",
+		"seconds": 0.6,
+		"count": 4
+	},
+	{
+		"id": "scanner",
+		"group": "Mechanisms",
+		"title": "Safety scan",
+		"what": "Tokens passing under the safety arch's light.",
+		"prompt": "Foley: a short electronic scanner sweep, a soft rising hum with a faint shimmer, clean, like a barcode scanner but smoother",
+		"seconds": 1.2,
+		"count": 4
+	},
+	{
+		"id": "block",
+		"group": "Mechanisms",
+		"title": "A block slots in",
+		"what": "A memory block sliding into its place in the cache.",
+		"prompt": "Foley close-up: a small plastic block slides into a snug slot and seats with a firm click",
+		"seconds": 0.7,
+		"count": 4
+	},
+	{
+		"id": "relay",
+		"group": "Mechanisms",
+		"title": "Chips switching",
+		"what": "Work moving between the chips inside the cluster.",
+		"prompt": "Foley close-up: a quick burst of small electrical relays clicking in sequence, crisp and precise",
+		"seconds": 0.8,
+		"count": 4
+	},
+	{
+		"id": "rumble",
+		"group": "Mechanisms",
+		"title": "The whole world rises",
+		"what": "The last chapter, when everything comes into view at once.",
+		"prompt": "A deep slow mechanical rumble rising and settling, large machinery moving into place, smooth and grand, ending with a soft heavy thud",
+		"seconds": 3,
+		"count": 3
+	}
+]

@@ -150,6 +150,41 @@ export const ROOM_SHOTS: Shot[] = [
 	{ T: 6, ...SUB, az: 2 }
 ];
 
+/** Where things in the room are, in the story's coordinates: for the sound score to place what it plays. */
+export function roomPoint(name: 'pack' | 'send' | 'read' | 'check' | 'run' | 'write' | 'hooks' | 'sub' | 'files' | 'reel' | 'shelf', hatch = 0): [number, number, number] {
+	const at = (v: THREE.Vector3, y: number): [number, number, number] => [v.x + ROOM_AT.x, y + ROOM_AT.y, v.z + ROOM_AT.z];
+	switch (name) {
+		case 'pack':
+			return hatch ? [ROOM_AT.x, ROOM_AT.y + HATCH_Y[hatch - 1], ROOM_AT.z + BACK_Z + 0.4] : at(placeOf('Pack'), 1.2);
+		case 'check':
+			return at(onLoop(90), 1.0);
+		case 'hooks':
+			return at(HOOKS_AT, 0.5);
+		case 'sub':
+			return at(SUB_AT, 0.6);
+		case 'files':
+			return at(FILES_AT, 0.8);
+		case 'reel':
+			return at(placeOf('Write down').add(new THREE.Vector3(-1.6, 0, 0)), 1.05);
+		case 'shelf':
+			return [ROOM_AT.x + 2.8, ROOM_AT.y + 0.8, ROOM_AT.z - 4.4];
+		default:
+			return at(placeOf({ send: 'Send', read: 'Read', run: 'Run', write: 'Write down' }[name]), 1.0);
+	}
+}
+
+/** Where the turn is on the loop, in story coordinates, at trip time t. */
+export function puckPoint(t: number): [number, number, number] {
+	const p = onLoop(keyed(PUCK, t));
+	return [p.x + ROOM_AT.x, ROOM_AT.y + 0.3, p.z + ROOM_AT.z];
+}
+
+/** The times the turn sets off from a station and arrives at the next, from its keyed path. */
+export const PUCK_MOVES = PUCK.slice(1)
+	.map(([t, deg], i) => ({ from: PUCK[i][0], to: t, moves: deg !== PUCK[i][1] }))
+	.filter((m) => m.moves)
+	.map(({ from, to }) => ({ from, to }));
+
 /** Looking straight down onto the harness's roof hatch, from outside: the way in. In the story's coordinates. */
 export const ROOF: Omit<Shot, 'T'> = {
 	az: 18,

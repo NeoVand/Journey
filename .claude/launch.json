@@ -4,8 +4,23 @@
 		{
 			"name": "journey",
 			"runtimeExecutable": "pnpm",
-			"runtimeArgs": ["exec", "vite", "dev", "--port", "5199", "--strictPort"],
+			"runtimeArgs": [
+				"exec",
+				"vite",
+				"dev",
+				"--port",
+				"5199",
+				"--strictPort"
+			],
 			"port": 5199
+		},
+		{
+			"name": "sound-board",
+			"runtimeExecutable": "node",
+			"runtimeArgs": [
+				"scripts/sound/lab.mjs"
+			],
+			"port": 5300
 		}
 	]
 }

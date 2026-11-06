@@ -14,7 +14,11 @@
 	import { SvelteSet } from 'svelte/reactivity';
 	import Blueprint, { type Stage } from './Blueprint.svelte';
 	import Icon from './Icon.svelte';
-	import { ArrowLeft01Icon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
+	import { ArrowLeft01Icon, ArrowRight01Icon, VolumeHighIcon, VolumeOffIcon } from '@hugeicons/core-free-icons';
+	import { Sound } from './sound/engine';
+	import { Conductor } from './sound/conductor';
+	import { score, tripScore } from './sound/score';
+	import { chime, key, note, porcelain, tick as tickSound, whoosh } from './sound/synth';
 	import { AGAIN, AGENT_MARK, CHECK_ICON, DRAWER_ICON, GATE_ICON, MAP, SPIN, SWAP, TRACK_ICON } from './icons';
 
 	const ids: HarnessId[] = ['claude', 'codex', 'copilot'];
@@ -156,6 +160,7 @@
 		if (!world || spinning) return;
 		spinning = true;
 		landed = -1;
+		cue('spin');
 		const pick = await world.spinWheel(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 		wins[pick]++;
 		landed = pick;
@@ -177,6 +182,11 @@
 	let trackCard = $state(0);
 	/** Set once the world is running. Before that, and without 3D, there's nowhere to go. */
 	let enterTrack: (id: TrackId) => void = () => {};
+	/** Sound: off until the reader turns it on, and remembered between visits. */
+	let soundOn = $state(false);
+	let toggleSound: () => void = () => {};
+	/** The sounds of the interface itself: a step, a flight, the map. Quiet until sound is on. */
+	let cue: (kind: 'step' | 'flight' | 'drop' | 'rise' | 'map' | 'enter' | 'spin') => void = () => {};
 	let leaveTrack: (atOnce?: boolean) => void = () => {};
 	const trip = $derived(track ? TRACKS[track] : null);
 
@@ -186,6 +196,7 @@
 	}
 
 	function openMap() {
+		cue('map');
 		mapHere = locate();
 		mapOpen = true;
 	}
@@ -212,6 +223,7 @@
 	);
 
 	function pressEnter() {
+		cue('enter');
 		world?.pressEnter(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 	}
 
@@ -572,6 +584,7 @@
 				px += (mx - px) * (1 - Math.exp(-dt * 3));
 				py += (my - py) * (1 - Math.exp(-dt * 3));
 				w.update(track && tripT !== null ? tripT : T, reduced ? 0 : time, dt, reduced ? 0 : px, reduced ? 0 : py, reduced);
+				if (soundOn) playSound(dt);
 				publish();
 
 				if (now - lastAim > 140) {
@@ -632,6 +645,7 @@
 				const ahead = stops.filter((s) => (dir === 1 ? s > head.T + 0.004 : s < head.T - 0.004));
 				const next = dir === 1 ? ahead[0] : ahead[ahead.length - 1];
 				if (next === undefined) return;
+				cue('step');
 				stepTo = next;
 				head.patient = dir === 1 && !reduced;
 				head.hurry = 1;
@@ -788,6 +802,7 @@
 				const inside = TRACK_AT[id].inside;
 				// Into the room, under a warm cover, then down from above it.
 				const goIn = () => {
+					cue('drop');
 					w.trackIn = true;
 					tripPins.forEach((el) => (el.dataset.tone = 'warm'));
 					if (reduced || still) {
@@ -804,6 +819,7 @@
 					tripT = null;
 					flying = true;
 					blendGoal = 1;
+					cue('flight');
 					afterFlight = inside ? () => swap(goIn, WARM) : () => (flying = false);
 				} else {
 					if (inside && !reduced && !still) flying = true;
@@ -852,10 +868,12 @@
 					flying = true;
 					tripEl?.classList.add('leaving');
 					arriveGoal = 0;
+					cue('rise');
 					afterArrive = () => swap(out, WARM);
 					return;
 				}
 				if (tripT === null && !reduced && !still) {
+					cue('flight');
 					// The world never left: the camera flies back to the story while the trip's words go.
 					flying = true;
 					tripEl?.classList.add('leaving');
@@ -864,6 +882,96 @@
 				} else swap(done);
 			};
 			w.onTrack = (id) => enterTrack(id);
+
+			/* ---- sound ---- */
+			// Under the site's own address, wherever it's hosted.
+			const sound = new Sound((name) => `${resolve('/')}sound/${name}.mp3`);
+			const hear = (x: number, y: number, z: number) => w.heard(x, y, z);
+			const story = score(w);
+			const main = new Conductor(sound, story.cues, story.beds, hear);
+			let tripSound: Conductor | null = null;
+			let tripSoundFor: TrackId | null = null;
+			const begin = () => {
+				main.reset();
+				void sound.start().then(() => sound.load(main.names));
+			};
+			toggleSound = () => {
+				soundOn = !soundOn;
+				try {
+					localStorage.setItem('journey-sound', soundOn ? 'on' : 'off');
+				} catch {
+					// Private browsing: it just isn't remembered.
+				}
+				if (soundOn) begin();
+				else sound.stop();
+			};
+			try {
+				// On last time: the first press anywhere picks it up again, since nothing can play before one.
+				if (localStorage.getItem('journey-sound') === 'on') {
+					soundOn = true;
+					const wake = () => {
+						window.removeEventListener('pointerdown', wake);
+						window.removeEventListener('keydown', wake);
+						if (soundOn && !sound.on) begin();
+					};
+					window.addEventListener('pointerdown', wake);
+					window.addEventListener('keydown', wake);
+				}
+			} catch {
+				// No storage: starts off.
+			}
+			cue = (kind) => {
+				if (!sound.on) return;
+				if (kind === 'step') sound.voice(tickSound(1.15), { gain: 0.3, wet: 0.1 });
+				else if (kind === 'flight') sound.voice(whoosh(1.4, 1500), { gain: 0.32, wet: 0.3 });
+				else if (kind === 'drop') sound.voice(whoosh(1.6, 900), { gain: 0.4, wet: 0.4 });
+				else if (kind === 'rise') sound.voice(whoosh(1.4, 2200), { gain: 0.36, wet: 0.4 });
+				else if (kind === 'map') sound.play('paper-slide', { gain: 0.5, rate: 0.9 });
+				else if (kind === 'enter') {
+					sound.voice(key(1.6), { gain: 0.8 });
+					if (reduced) return sound.voice(chime([0, 2, 4, 7]), { gain: 0.35, delay: 0.1 });
+					// The lap's nine stops, at the moments the token reaches each, and a chime as it gets home.
+					[0, 914, 1542, 3576, 6546, 7631, 9231, 11829, 12800].forEach((ms, i) =>
+						sound.voice(porcelain(note([0, 2, 4, 5, 7, 9, 7, 5, 4][i]), 1.2), { gain: 0.32, delay: ms / 1000 })
+					);
+					sound.voice(chime([0, 2, 4, 7, 9]), { gain: 0.35, delay: 14 });
+				} else if (kind === 'spin' && !reduced) {
+					// The wheel's own easing, peg by peg: quick and loud, then slower and fainter until it stops.
+					const pegs = 165;
+					for (let k = 1; k <= pegs; k++) {
+						const t = 1 - Math.pow(1 - k / pegs, 1 / 4);
+						sound.voice(tickSound(1.1 + (1 - t) * 0.4), { gain: 0.12 + 0.36 * Math.min(1, Math.pow(1 - t, 3) * 3), delay: 3.4 * t });
+					}
+					sound.voice(chime([0, 2, 4]), { gain: 0.35, delay: 3.45 });
+				}
+			};
+			// Pressing something in the scene: it answers where it is.
+			w.onPoked = (what, x, y, z) => {
+				if (!sound.on) return;
+				const heard = w.heard(x, y, z);
+				if (what === 'drawer') sound.play('drawer-out', { gain: heard.gain, pan: heard.pan });
+				else if (what === 'tile') sound.voice(porcelain(note(Math.round(x * 3))), { gain: 0.5 * heard.gain, pan: heard.pan });
+				else if (what === 'brain') {
+					sound.voice(chime([0, 4, 7, 9]), { gain: 0.45, pan: heard.pan, wet: 0.4 });
+					sound.dip(0.4, 1.2);
+				}
+			};
+			const playSound = (dt: number) => {
+				if (track !== tripSoundFor) {
+					tripSoundFor = track;
+					const s = track ? tripScore(track, w) : null;
+					tripSound = s ? new Conductor(sound, s.cues, s.beds, hear) : null;
+					if (tripSound) void sound.load(tripSound.names);
+					main.reset();
+				}
+				if (tripSound) tripSound.frame(w.trackT, dt);
+				else main.frame(T, dt);
+				// Inside a room, its own ambience replaces the story's. Out of one, it's wherever the world is posed.
+				const room = w.trackIn ? 1 : 0;
+				const levels = main.levels(track && tripT !== null ? tripT : T, 1 - room);
+				for (const [name, level] of Object.entries(tripSound?.levels(w.trackT, room) ?? {})) levels[name] = Math.max(levels[name] ?? 0, level);
+				sound.ambience(levels);
+			};
 
 			// A turn the story hasn't reached yet is one press away: the page scrolls on to it, unlocking the ones between.
 			reachTurn = (i) => {
@@ -1065,6 +1173,11 @@
 					<span>Form {form} of 12</span> <strong>{current.name}</strong>
 				</p>
 			{/if}
+		</div>
+		<div class={['stepper', 'sound', { show: driven }]} inert={!driven}>
+			<button type="button" aria-pressed={soundOn} aria-label="Sound" title={soundOn ? 'Sound is on' : 'Sound is off'} onclick={() => toggleSound()}>
+				<Icon icon={soundOn ? VolumeHighIcon : VolumeOffIcon} size={19} stroke={1.8} />
+			</button>
 		</div>
 		<div class={['stepper', { show: driven }]} role="group" aria-label="Step through the story" inert={!driven}>
 			<button type="button" aria-label="Previous step" aria-keyshortcuts="ArrowLeft" title="Previous step (←)" disabled={!canBack} onclick={() => step(-1)}>
@@ -2625,6 +2738,15 @@
 		border-radius: 3px;
 		background: var(--rail);
 		transition: background 0.3s;
+	}
+	/* On a narrower desktop the dots give up some width, so the name beside them stays on one line. */
+	@media (min-aspect-ratio: 9/10) and (max-width: 1240px) {
+		.spine li {
+			width: 10px;
+		}
+		.bar-end {
+			gap: 10px;
+		}
 	}
 	.spine li.on {
 		background: var(--ink);

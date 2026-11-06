@@ -151,6 +151,8 @@ export class World {
 	trackBlend = 0;
 	trackWords = 1;
 	onTrack: (id: TrackId) => void = () => {};
+	/** Something in the scene was pressed, and where it is: for its sound. */
+	onPoked: (what: string, x: number, y: number, z: number) => void = () => {};
 	private trackRigs!: Record<TrackId, Rig>;
 	private mcpTrack!: McpTrack;
 	private mcpLead!: THREE.Curve<THREE.Vector3>;
@@ -169,6 +171,9 @@ export class World {
 	private camFrom = new THREE.Vector3();
 	private focusFrom = new THREE.Vector3();
 	private focusTo = new THREE.Vector3();
+	/** What the camera is looking at this frame, and a scratch point: where sounds are heard from. */
+	private ear = new THREE.Vector3();
+	private hear = new THREE.Vector3();
 	root = new THREE.Group();
 
 	private laptop = new Laptop();
@@ -981,10 +986,11 @@ export class World {
 			press: (i) => {
 				this.harness.pull(i % 4);
 				this.pulledAtT = this.lastT;
-			}
+			},
+			sound: 'drawer'
 		});
-		this.poker.add({ targets: this.tiles.map((t) => t.body), when: (T) => T > 6.56 && T < 6.86, press: (i) => this.flipTile(i) });
-		this.poker.add({ targets: [this.brain.hit], when: (T) => (T > 7.2 && T < 7.8) || finale(T), press: () => this.brain.excite() });
+		this.poker.add({ targets: this.tiles.map((t) => t.body), when: (T) => T > 6.56 && T < 6.86, press: (i) => this.flipTile(i), sound: 'tile' });
+		this.poker.add({ targets: [this.brain.hit], when: (T) => (T > 7.2 && T < 7.8) || finale(T), press: () => this.brain.excite(), sound: 'brain' });
 		this.poker.add({ targets: [this.laptop.hit], when: finale, press: () => this.onPress('enter') });
 		this.poker.add({ targets: [this.cluster.wheelDisc], when: (T) => T > 15.1 && T < 15.86, press: () => this.onPress('wheel') });
 		// The server opens its own side trip, while the island it stands on is the story.
@@ -1003,13 +1009,37 @@ export class World {
 	pressAt(x: number, y: number) {
 		if (this.trackId) return false;
 		const hit = this.poker.pick(this.lastT, x, y, this.stage.camera);
-		if (hit) hit.p.press(hit.index);
+		if (hit) {
+			hit.p.press(hit.index);
+			if (hit.p.sound) {
+				const p = hit.p.targets[hit.index].getWorldPosition(this.hear);
+				this.onPoked(hit.p.sound, p.x, p.y, p.z);
+			}
+		}
 		return !!hit;
 	}
 
 	overAt(x: number, y: number) {
 		if (this.trackId) return false;
 		return !!this.poker.pick(this.lastT, x, y, this.stage.camera);
+	}
+
+	/**
+	 * How a sound made at a point is heard right now: from where it is on screen, left to right, and quieter the
+	 * further it is beyond what the camera is looking at, or once it's out of the picture.
+	 */
+	heard(x: number, y: number, z: number) {
+		const cam = this.stage.camera;
+		const p = this.hear.set(x, y, z);
+		const d = Math.max(0.1, p.distanceTo(cam.position));
+		const ref = Math.max(1, this.ear.distanceTo(cam.position));
+		p.project(cam);
+		const behind = p.z > 1;
+		const off = behind ? 1 : Math.max(0, Math.max(Math.abs(p.x), Math.abs(p.y)) - 1);
+		return {
+			pan: behind ? 0 : Math.max(-1, Math.min(1, p.x * 0.8)),
+			gain: Math.min(1.2, Math.pow(ref / d, 0.7)) * (1 - Math.min(0.7, off * 0.9))
+		};
 	}
 
 	get pulledDrawer() {
@@ -1182,6 +1212,7 @@ export class World {
 		const k = this.trackId ? this.trackBlend : 0;
 		if (k <= 0 || !this.trackId) {
 			this.stage.focusLight(this.rig.focus, this.rig.radius);
+			this.ear.copy(this.rig.focus);
 			return;
 		}
 		const cam = this.stage.camera;
@@ -1198,10 +1229,12 @@ export class World {
 		rig.update(this.trackT, width, height, px, py, time, this.trackWords);
 		if (k >= 1) {
 			this.stage.focusLight(rig.focus, rig.radius);
+			this.ear.copy(rig.focus);
 			return;
 		}
 		cam.position.lerpVectors(this.camFrom, cam.position, k);
 		this.focusTo.lerpVectors(this.focusFrom, rig.focus, k);
+		this.ear.copy(this.focusTo);
 		cam.lookAt(this.focusTo);
 		cam.near = Math.min(near, cam.near);
 		cam.setViewOffset(width, height, lerp(ox, cam.view?.offsetX ?? 0, k), lerp(oy, cam.view?.offsetY ?? 0, k), width, height);
@@ -1218,6 +1251,7 @@ export class World {
 		const k = this.trackArrive;
 		if (k >= 1) {
 			this.stage.focusLight(rig.focus, rig.radius);
+			this.ear.copy(rig.focus);
 			return;
 		}
 		const e = 1 - (1 - k) ** 3;
@@ -1225,6 +1259,7 @@ export class World {
 		this.above.set(ROOM_AT.x + 0.4, ROOM_AT.y + 22, ROOM_AT.z + 1.6);
 		cam.position.lerpVectors(this.above, cam.position, e);
 		this.focusTo.set(ROOM_AT.x, ROOM_AT.y, ROOM_AT.z).lerp(rig.focus, e);
+		this.ear.copy(this.focusTo);
 		cam.lookAt(this.focusTo);
 		cam.near = 0.5;
 		const ox = cam.view?.offsetX ?? 0;
