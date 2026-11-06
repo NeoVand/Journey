@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { GLOSSARY, RUN_WITH_CACHE, RUN_WITHOUT_CACHE, slug, STOPS, TEN_TURNS, wheelOdds } from './content';
+import { GLOSSARY, RUN_WITH_CACHE, RUN_WITHOUT_CACHE, slug, STOPS, TEN_TURNS, wheelOdds, wholePercents } from './content';
 
 const copy = ['./Journey.svelte', './content.ts'].map((file) => readFileSync(new URL(file, import.meta.url), 'utf8')).join('\n');
 const marked = [...copy.matchAll(/\[\[([^|\]^]+)(?:\|([^\]]+))?\]\]/g)]
@@ -59,5 +59,14 @@ describe('the wheel', () => {
 		expect(wheelOdds(0.2)[0]).toBeGreaterThan(0.99);
 		expect(wheelOdds(1)[0]).toBeCloseTo(0.61, 1);
 		expect(wheelOdds(2)[0]).toBeLessThan(0.45);
+	});
+
+	it('shows odds that add up to exactly 100 at every temperature on the dial', () => {
+		for (let t = 0.2; t <= 2.001; t += 0.1) {
+			const shown = wholePercents(wheelOdds(t));
+			expect(shown.reduce((a, b) => a + b, 0)).toBe(100);
+			// Never more than a point from the true share.
+			wheelOdds(t).forEach((p, i) => expect(Math.abs(shown[i] - p * 100)).toBeLessThan(1));
+		}
 	});
 });

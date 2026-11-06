@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { GLOSSARY, HARNESSES, FORMS, LOGITS, RUN_WITH_CACHE, RUN_WITHOUT_CACHE, slug, TEN_AT, TEN_STEP, TEN_TURNS, TOP_K, TRACK_AT, TRACKS, TRIP, wheelOdds, type HarnessId, type TrackId } from './content';
+	import { GLOSSARY, HARNESSES, FORMS, LOGITS, RUN_WITH_CACHE, RUN_WITHOUT_CACHE, slug, TEN_AT, TEN_STEP, TEN_TURNS, TOP_K, TRACK_AT, TRACKS, TRIP, wheelOdds, wholePercents, type HarnessId, type TrackId } from './content';
 	import { tick } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
@@ -155,6 +155,8 @@
 	let spinning = $state(false);
 	let landed = $state(-1);
 	const odds = $derived(wheelOdds(temperature));
+	/** As the reader sees them: whole numbers that always add up to 100. */
+	const percents = $derived(wholePercents(odds));
 
 	async function spinIt() {
 		if (!world || spinning) return;
@@ -1563,7 +1565,7 @@
 					{#each LOGITS.slice(0, TOP_K) as l, i (l.text)}
 						<li class={{ won: landed === i }}>
 							<b>{l.text}</b>
-							<span>{odds[i] < 0.005 ? '<1' : Math.round(odds[i] * 100)}%</span>
+							<span>{percents[i] === 0 ? '<1' : percents[i]}%</span>
 							{#if wins[i]}<em>×{wins[i]}</em>{/if}
 						</li>
 					{/each}

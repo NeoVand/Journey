@@ -186,6 +186,23 @@ export function wheelOdds(temperature: number) {
 	return weights.map((w) => w / sum);
 }
 
+/**
+ * Whole percentages that add up to exactly 100: each share is rounded down, and the points left over go to the shares
+ * that lost the most. Rounding each on its own can show 101%.
+ */
+export function wholePercents(shares: number[]) {
+	const raw = shares.map((p) => p * 100);
+	const out = raw.map(Math.floor);
+	let left = 100 - out.reduce((a, b) => a + b, 0);
+	const order = raw.map((r, i) => [r - Math.floor(r), i] as const).sort((a, b) => b[0] - a[0]);
+	for (const [, i] of order) {
+		if (left <= 0) break;
+		out[i]++;
+		left--;
+	}
+	return out;
+}
+
 export type PerAgent = Record<HarnessId, string>;
 const edited: PerAgent = { claude: 'Approved and written.', codex: 'Inside the workspace, so it’s written without asking.', copilot: 'Another diff opens for review.' };
 const runs = (args: string): PerAgent => ({ claude: `Bash(pytest${args})`, codex: `shell: pytest${args}`, copilot: `runTerminal(pytest${args})` });
