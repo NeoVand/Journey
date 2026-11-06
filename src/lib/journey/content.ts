@@ -117,7 +117,7 @@ export const CALLS: Record<HarnessId, { search: string; alongside?: string; edit
 /** Plain definitions for the words a reader may not know. Keys are lowercase; copy marks them with [[term]]. */
 export const GLOSSARY: Record<string, string> = {
 	turn: 'One round trip: the harness sends everything, the model replies, and the harness acts on the reply. A real fix takes many.',
-	'prefix cache': 'The part of the KV cache a request can reuse, because it starts with exactly the same bytes as an earlier one.',
+	'prefix cache': 'The part of the KV cache a request can reuse, because it starts with exactly the same bytes as an earlier one whose blocks are still kept, usually for a few minutes.',
 	token: 'A small piece of text, usually a word or part of a word. “scheduler” might be one token, “race condition” two.',
 	tui: 'Terminal user interface: a full app drawn inside your terminal window.',
 	mcp: 'Model Context Protocol: a standard way for outside programs to offer extra tools to an agent.',
@@ -318,7 +318,7 @@ export const STOPS: { name: string; what: string; parts: string[] }[] = [
 		what: 'The math runs, one token is chosen, and text streams back.',
 		parts: ['The transformer', 'A place for every word', 'Attention', 'All of them, at once', 'Then each token, by itself', 'Then again, eighty times', 'One score for every word', 'One token is chosen', 'One at a time', 'A tool call is born', 'Text comes back, not numbers']
 	},
-	{ name: 'Your laptop again', what: 'The reply is only text. The harness decides what it may do.', parts: ['The model has no hands', 'Intent is not authority', 'When the page lies'] },
+	{ name: 'Your laptop again', what: 'The reply is only words, even a tool call. The harness decides what runs.', parts: ['The model has no hands', 'Intent is not authority', 'When the page lies'] },
 	{ name: 'Your files and shell', what: 'Searching, editing, and running the tests.', parts: ['Finding the code', 'Three ways to edit', 'Evidence, not opinion'] },
 	{ name: 'Around the loop', what: 'Everything goes back, and the model goes again.', parts: ['Around the loop', 'When the context fills up', 'Seven things called memory', 'When the answer gets lost'] },
 	{ name: 'Done', what: 'The whole fix, what finished really means, and what it all adds up to.', parts: ['The whole fix, in ten turns', 'What finished means', 'Different bodies, one kind of mind', 'The whole trip, in one look'] }
@@ -423,7 +423,7 @@ export const TRACKS: Record<TrackId, Track> = {
 				title: 'Everything is written down',
 				body: [
 					'Each step goes into the [[transcript]], and the transcript is saved, so a session can be picked up again later.',
-					'When the conversation grows too long for the [[context window]], a summary takes the place of the old messages in what’s sent. The saved transcript keeps all of them.'
+					'When the conversation grows too long for the [[context window]], a summary takes the place of the older messages in what’s sent, and the latest turns stay as they were. The saved transcript keeps all of them.'
 				],
 				note: {
 					claude: 'Sessions are saved as files under ~/.claude/projects, and claude --resume picks one up again.',
@@ -434,7 +434,7 @@ export const TRACKS: Record<TrackId, Track> = {
 			{
 				title: 'A loop inside the loop',
 				body: [
-					'A big side quest can go to a [[subagent]]: a smaller loop with its own context and its own tools. It gets a brief, does the work, and hands back a summary.',
+					'A big side quest can go to a [[subagent]]: a smaller loop with its own context and its own tools. It gets a brief, does the work, and hands back a summary, and only the summary joins the parent’s context.',
 					'It works on the same files as everyone else, unless it’s given its own copy. And what it reports still needs checking before anything is built on it.'
 				],
 				note: {

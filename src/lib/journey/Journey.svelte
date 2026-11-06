@@ -1398,7 +1398,7 @@
 		<article class="pin right" data-out="0.8">
 			<h2>Turn two starts ahead</h2>
 			<p>
-				{@render rich('Jump ahead a moment. When the agent comes back for its second [[turn]], the request starts with exactly the same bytes, plus a little more. A [[router]] reads the start and sends it to the copy of the model most likely to still have those blocks, so only the new part runs. Remember the careful order on that JSON page? This is why.')}
+				{@render rich('Jump ahead a moment. When the agent comes back for its second [[turn]], the request starts with exactly the same bytes, plus a little more. A [[router]] reads the start and sends it to the copy of the model most likely to still have those blocks, so only the new part runs. Blocks are kept for minutes, not forever: after a long pause the whole prompt runs again, once. Remember the careful order on that JSON page? This is why.')}
 			</p>
 			<p>It saves computing. It isn’t the model remembering you. Unused blocks slide down to slower memory and get thrown out, usually within minutes, so coming back after an hour costs full price once.</p>
 			<p class="note short-note">{@render agent()} {@render rich(callouts.cache)}</p>
@@ -1643,7 +1643,7 @@
 	<section data-beat class="beat" style:--h="480vh">
 		<article class="pin left" data-out="0.86">
 			<h2>When the context fills up</h2>
-			<p>{@render rich('A long session reads many files, and the transcript creeps up on the [[context window]]. So a separate model call writes a summary, and the next request sends that instead of the old messages. The saved session keeps them all. The cache is lost once, then rebuilt.')}</p>
+			<p>{@render rich('A long session reads many files, and the transcript creeps up on the [[context window]]. So a separate model call writes a summary, and the next request sends it, with the latest turns, in place of the older messages. The saved session keeps them all. The cache is lost once, then rebuilt.')}</p>
 			<p>{@render rich('Big side quests can go to a [[subagent]] instead: a second conversation with its own fresh context. It reports back in a summary, but it works on the same files unless it’s given its own copy.')}</p>
 			<p class="note">{@render agent()} {@render rich(callouts.compact)}</p>
 		</article>
@@ -1671,7 +1671,7 @@
 			<h2>The whole fix, in ten turns</h2>
 			<div class="ten-grid">
 				<div class="ledger">
-					<p class="ten-intro">Each bar is one request. Green was already cached, amber is new. Only turn one pays for all of it. After that, more than nine tokens in ten are already there.</p>
+					<p class="ten-intro">Each bar is one request. Green was already cached, amber is new. Only turn one pays for all of it. After that, with each turn minutes after the last, more than nine tokens in ten are already there.</p>
 					<div class="cache-row">
 						<div class="picker compact" role="radiogroup" aria-label="Run the ten turns with the cache, or without it">
 							<button type="button" role="radio" aria-checked={cacheOn} class={{ on: cacheOn }} onclick={() => setCache(true)}>With the cache</button>
@@ -1710,7 +1710,7 @@
 		<article class="pin top-band" data-out="0.76">
 			<h2>What finished means</h2>
 			<div class="cols">
-				<p>There’s no “finished” signal. After green tests, the model writes a summary and an end-of-turn token instead of another tool call. Green tests are evidence, not proof.</p>
+				<p>There’s no “finished” signal. After green tests, the model writes a summary and an end-of-turn token instead of another tool call. That only means it stopped asking for tools: a stop hook can still send it back, and green tests are evidence, not proof.</p>
 				<p>The ending is five separate steps, each with its own permission. A typical fix costs tens of cents to a few dollars, mostly in cache reads.</p>
 			</div>
 		</article>
