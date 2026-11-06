@@ -1756,7 +1756,7 @@
 	<section data-beat class="beat" style:--h="440vh">
 		<article class="pin left" data-in="0.44" data-out="0.93">
 			<h2>Different bodies, one kind of mind</h2>
-			<p>The model is a function from tokens to a probability for the next token. Everything else, searching, editing, running code, remembering, asking permission, is the harness.</p>
+			<p>The model is a function from tokens to odds for every possible next token. Everything else, searching, editing, running code, remembering, asking permission, is the harness.</p>
 			<p>The model doesn’t know your codebase. It searches, one tool call at a time, and forgets everything when the session ends unless the harness writes it down.</p>
 		</article>
 	</section>
