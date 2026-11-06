@@ -5,7 +5,7 @@ import { mats } from './kit/materials';
 import { contactShadow } from './kit/print';
 import { createSign } from './kit/parts';
 import { inOut, lerp, seg, smooth } from './kit/math';
-import { createBoard, createPad, createRacks } from './props/board';
+import { boardClock, createBoard, createPad, createRacks } from './props/board';
 import { BlockTray } from './props/tray';
 import { KvCache } from './props/kv';
 import { BatchLanes, STEPS } from './props/lanes';
@@ -167,6 +167,7 @@ export class Cluster {
 	}
 
 	update(T: number, time: number) {
+		boardClock.value = time;
 		this.forward.update(T, time);
 		// Things leave the frame when the camera leaves them. The one exception is the dive, under the veil at its darkest.
 		this.before.visible = T < DARKEST;
