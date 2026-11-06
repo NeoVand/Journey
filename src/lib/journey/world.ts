@@ -9,6 +9,7 @@ import { Batch } from './kit/batch';
 import { fitting, leaving } from './kit/parts';
 import { curve } from './kit/machines';
 import { createCastShadow, createIsland } from './props/island';
+import { Cloudscape } from './props/sky';
 import { LAPTOP_PORT, Laptop } from './props/laptop';
 import { McpServer } from './props/mcp';
 import { Brain, BRAIN_FOOT, BRAIN_SEAT } from './props/brain';
@@ -218,7 +219,7 @@ export class World {
 	private routeOut!: THREE.Curve<THREE.Vector3>;
 	private routeUnder!: THREE.Curve<THREE.Vector3>;
 	private finale!: Finale;
-	private clouds: { sprite: THREE.Sprite; drift: number; base: THREE.Vector3 }[] = [];
+	private clouds = new Cloudscape();
 
 	private harnessId: HarnessId = 'claude';
 	private docClip = new THREE.Plane(new THREE.Vector3(-1, 0, 0), TUNNEL_X + 0.08);
@@ -247,6 +248,13 @@ export class World {
 	private constructor(canvas: HTMLCanvasElement) {
 		this.stage = new Stage(canvas);
 		this.rig = new Rig(this.stage.camera, SHOTS);
+		this.clouds.lay(
+			[
+				{ shots: SHOTS, sky: (T) => T < DIVE_T || T >= EXIT_T },
+				{ shots: MCP_SHOTS, sky: () => true }
+			],
+			this.stage.camera.fov
+		);
 		this.stage.scene.add(this.root, this.cluster.group);
 		this.assemble();
 		this.splitLower();
@@ -476,7 +484,7 @@ export class World {
 		this.buildFlow();
 		this.buildPipes();
 		this.buildModelTeaser();
-		this.buildClouds();
+		this.root.add(this.clouds.group);
 	}
 
 	/** The token path: straight along the belt, then a long curl down to the next chapter. */
@@ -930,48 +938,6 @@ export class World {
 		this.root.add(floor);
 	}
 
-	private buildClouds() {
-		const canvas = document.createElement('canvas');
-		canvas.width = canvas.height = 256;
-		const c = canvas.getContext('2d')!;
-		const puffs = [
-			[128, 150, 90],
-			[80, 165, 60],
-			[180, 165, 66],
-			[120, 110, 62],
-			[160, 124, 52]
-		];
-		c.filter = 'blur(14px)';
-		c.fillStyle = '#fff';
-		for (const [x, y, rad] of puffs) {
-			c.beginPath();
-			c.arc(x, y, rad * 0.8, 0, Math.PI * 2);
-			c.fill();
-		}
-		const tex = new THREE.CanvasTexture(canvas);
-		tex.colorSpace = THREE.SRGBColorSpace;
-		const spots: [number, number, number, number, number][] = [
-			[-12, 5, -30, 26, 0.3],
-			[14, 9, -34, 30, 0.26],
-			[-2, -7, -24, 24, 0.3],
-			[26, -3, -24, 24, 0.28],
-			[-12, -19, -20, 28, 0.32],
-			[20, -18, -22, 26, 0.3],
-			[-10, -32, -14, 30, 0.34],
-			[14, -34, -14, 26, 0.32]
-		];
-		spots.forEach(([x, y, z, s, o], i) => {
-			const sprite = new THREE.Sprite(
-				new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: o, depthWrite: false, fog: false })
-			);
-			sprite.scale.set(s, s * 0.58, 1);
-			sprite.position.set(x, y, z);
-			sprite.renderOrder = -50;
-			this.root.add(sprite);
-			this.clouds.push({ sprite, drift: 0.04 + i * 0.01, base: new THREE.Vector3(x, y, z) });
-		});
-	}
-
 	setTurn(turn: number) {
 		this.back.setTurn(turn);
 	}
@@ -1158,9 +1124,7 @@ export class World {
 			const mid = this.c2.copy(SKY_A.mid).lerp(SKY_B.mid, k);
 			const low = this.c3.copy(SKY_A.low).lerp(SKY_B.low, k);
 			sky.setSky(top, mid, low);
-			this.clouds.forEach((cl) => {
-				cl.sprite.position.x = cl.base.x + Math.sin(time * cl.drift) * 1.4;
-			});
+			this.clouds.update(time);
 
 			this.root.position.y = (1 - outCubic(seg(intro, 0, 0.8))) * -0.9;
 
