@@ -1430,7 +1430,7 @@
 		<article class="pin right" data-out="0.8">
 			<h2>Turn two starts ahead</h2>
 			<p>
-				{@render rich('Jump ahead a moment. When the agent comes back for its second [[turn]], the request starts with exactly the same bytes, plus a little more. A [[router]] reads the start and sends it to the copy of the model most likely to still have those blocks, so only the new part runs. Blocks are kept for minutes, not forever: after a long pause the whole prompt runs again, once. Remember the careful order on that JSON page? This is why.')}
+				{@render rich('Jump ahead a moment. When the agent comes back for its second [[turn]], the request starts with exactly the same bytes, plus a little more. A [[router]] reads the start and sends it to the copy of the model most likely to still have those blocks, so only the new part runs. Remember the careful order on that JSON page? This is why.')}
 			</p>
 			<p>It saves computing. It isn’t the model remembering you. Unused blocks slide down to slower memory and get thrown out, usually within minutes, so coming back after an hour costs full price once.</p>
 			<p class="note short-note">{@render agent()} {@render rich(callouts.cache)}</p>
