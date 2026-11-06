@@ -2,7 +2,7 @@
 // node scripts/collide.mjs [from] [to] [step] [harness]
 // SIGNS=1 instead tests every visible sign plate where it stands against everything except its own posts.
 // PHONE=1 runs the page as a touch phone, where signs are printed larger.
-// TRACK=mcp scans that side trip, with from and to in the trip's own time. TRACK=harness and TRACK=sandbox scan inside their own places.
+// TRACK=mcp scans that side trip, with from and to in the trip's own time. TRACK=harness, sandbox and memory scan inside their own places.
 //
 // At each moment it finds every mesh that moved relative to another, samples points on the mover's surface just
 // under its skin, and asks whether those points are inside the other mesh. Anything rigidly attached is ignored,
@@ -251,7 +251,7 @@ await page.evaluate(async ([harness, signsOnly, track, trackAt, room]) => {
 		return movers.length;
 	};
 	window.__report = () => [...hits.values()];
-}, [harness, !!process.env.SIGNS, process.env.TRACK ?? null, +(process.env.TRACK_AT ?? 1.5), process.env.TRACK === 'harness' || process.env.TRACK === 'sandbox']);
+}, [harness, !!process.env.SIGNS, process.env.TRACK ?? null, +(process.env.TRACK_AT ?? 1.5), ['harness', 'sandbox', 'memory'].includes(process.env.TRACK)]);
 
 const A = +from, B = +to, S = +step;
 let maxMovers = 0;

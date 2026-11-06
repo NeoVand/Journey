@@ -168,6 +168,7 @@ export const GLOSSARY: Record<string, string> = {
 	pty: 'A pretend terminal a program can run inside, so it keeps going as if someone were watching.',
 	stateless: 'The server keeps nothing between requests, so each request has to carry everything.',
 	transcript: 'The full record of this session: every message, tool call and result.',
+	worktree: 'A second working copy of your repository, on a branch of its own, in another folder. A session working there can’t touch your files.',
 	'json-rpc': 'A tiny message format one program uses to ask another to run something: a method name, some parameters, and an answer that comes back with the same number.',
 	'context window': 'The most a model can take in at once, measured in tokens. Think of it as the size of its desk.'
 };
@@ -370,7 +371,7 @@ export const TRIP: { name: string; what: string }[] = [
 /* ---------- side trips ---------- */
 
 /** A detour off the main road, read card by card, that brings the reader back to where they left. */
-export type TrackId = 'mcp' | 'harness' | 'sandbox';
+export type TrackId = 'mcp' | 'harness' | 'sandbox' | 'memory';
 export interface TrackCard {
 	title: string;
 	body: string[];
@@ -393,7 +394,9 @@ export const TRACK_AT: Record<TrackId, { T: number; nearFrom?: number; nearBefor
 	mcp: { T: 1.5, nearBefore: 2.02 },
 	harness: { T: 1.5, nearBefore: 2.8, inside: true },
 	// Into the glass on the sandbox island, from the gates and the lying page.
-	sandbox: { T: 21.62, nearFrom: 20.0, nearBefore: 22.06, inside: true }
+	sandbox: { T: 21.62, nearFrom: 20.0, nearBefore: 22.06, inside: true },
+	// Down into the memory cabinet, from the chapters on memory and on lost answers.
+	memory: { T: 27.5, nearFrom: 26.9, nearBefore: 29.0, inside: true }
 };
 
 export const TRACKS: Record<TrackId, Track> = {
@@ -599,7 +602,83 @@ export const TRACKS: Record<TrackId, Track> = {
 				}
 			}
 		]
+	},
+	memory: {
+		name: 'Memory, forks and rewinds',
+		what: 'What carries over between sessions, and what going back can undo.',
+		cards: [
+			{
+				title: 'Every session starts blank',
+				body: [
+					'The model keeps nothing between sessions. Yesterday’s conversation is saved on your disk, but none of it goes to the model today unless the harness puts it in the request.',
+					'So today starts with only what is always loaded: your rules.'
+				],
+				note: {
+					claude: 'Every CLAUDE.md from your folder upward is loaded whole at the start, as a message right after the system prompt.',
+					codex: 'The AGENTS.md files from the repository’s root down to your folder are joined, up to 32 KiB, once per run.',
+					copilot: '.github/copilot-instructions.md, or AGENTS.md, goes with every request.'
+				}
+			},
+			{
+				title: 'Notes that outlive a session',
+				body: [
+					'So agents keep notes. Before yesterday ended, a note of what it learned went onto a shelf on disk, and today’s request starts with the shelf’s index and the note today’s task needs.',
+					'A note never changes the model. It is more text in the request, like your rules, and the rest of the shelf waits until it’s needed.'
+				],
+				note: {
+					claude: 'Auto memory: Claude writes it, one folder per repository, and the first 200 lines of its MEMORY.md index load at the start. /memory opens it.',
+					codex: 'Memories are off by default. Turned on, Codex writes them itself from chats that have gone quiet, and brings them into later sessions.',
+					copilot: 'Copilot saves memories as it works, or when you ask. Facts about a repository stay with it, and are shared with your collaborators.'
+				}
+			},
+			{
+				title: 'A copy before the change',
+				body: [
+					'Today’s work begins. Before the agent changes your files, the harness can keep a copy of how they were: a checkpoint.',
+					'Then it edits, pushes a commit, and makes one more change that breaks a test.'
+				],
+				note: {
+					claude: 'A checkpoint is taken before each of your prompts, and covers the edits its file tools make. A file changed only by a shell command isn’t tracked.',
+					codex: 'Codex keeps no checkpoints today: its undo was removed in April 2026. Your way back is git, so commit before big changes.',
+					copilot: 'Before each request, VS Code keeps a copy of the files that request changes. Checkpoints are on by default.'
+				}
+			},
+			{
+				title: 'A fork copies the conversation',
+				body: [
+					'A fork starts a second session from a copy of this one, up to a point, and the two go their own ways. The original is left as it was.',
+					'Only the conversation is copied. Both still work on the same files, unless one is given a [[worktree]] of its own.'
+				],
+				note: {
+					claude: '/branch, or --fork-session when you resume, copies the conversation into a new session. Only a worktree gives it its own files.',
+					codex: '/fork clones the chat and leaves the original untouched, here or in a new worktree. Esc twice edits your last message and forks from there.',
+					copilot: '/fork copies the whole conversation, and Fork Conversation copies it up to a checkpoint. A fork doesn’t get files of its own.'
+				}
+			},
+			{
+				title: 'Going back',
+				body: [
+					'A rewind returns to an earlier point. The conversation after it is dropped, and the files are put back from the checkpoint.',
+					'You can often choose what goes back: the code, the conversation, or both.'
+				],
+				note: {
+					claude: '/rewind, or Esc twice, restores the code, the conversation or both, or summarizes from that point instead.',
+					codex: 'Esc twice takes the conversation back. For files there’s no checkpoint, so git is how you restore them.',
+					copilot: 'Restore Checkpoint puts the files back, and removes the later requests from the chat.'
+				}
+			},
+			{
+				title: 'What going back can’t reach',
+				body: [
+					'The commit is still on the git host. A rewind puts back files on your disk and nothing else: a push, a message sent, a database changed or a deploy started all happened out in the world.',
+					'That’s why anything that reaches outside goes through the permission gates first. Going back is never a reason to skip them.'
+				],
+				note: {
+					claude: 'Its documentation says it plainly: actions on remote systems, such as databases, APIs and deployments, can’t be checkpointed.',
+					codex: 'Its documentation says it plainly: changing an instruction doesn’t undo an action already completed.',
+					copilot: 'Its documentation says it plainly: restoring doesn’t reverse terminal commands, network requests, deployments or changes to outside services.'
+				}
+			}
+		]
 	}
 };
-
-

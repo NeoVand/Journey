@@ -24,6 +24,7 @@ import { HARNESSES, PROMPT, TOKENS, type HarnessId, type TrackId } from './conte
 import { McpTrack, MCP_SHOTS, type HarnessPose } from './tracks/mcp';
 import { HarnessRoom, ROOF, ROOM_AT, ROOM_SHOTS, ROOM_SKY } from './tracks/harness';
 import { GLASS_ROOF, SandboxStage, STAGE_AT, STAGE_SHOTS, STAGE_SKY } from './tracks/sandbox';
+import { CABINET_ROOF, MemoryStage, MEMORY_AT, MEMORY_SHOTS, MEMORY_SKY } from './tracks/memory';
 import { hitBox } from './poke';
 import { Cluster, CLUSTER_SHOTS, DIVE_T } from './cluster';
 import { RETURN_POINTS } from './layout';
@@ -183,8 +184,9 @@ export class World {
 	trackArrive = 1;
 	room!: HarnessRoom;
 	sandboxStage!: SandboxStage;
-	/** Where an inside trip's way in is, in the story: the harness's roof hatch, or the top of the glass. */
-	private roofRigs!: Record<'harness' | 'sandbox', Rig>;
+	memoryStage!: MemoryStage;
+	/** Where an inside trip's way in is, in the story: the harness's roof hatch, the top of the glass, the memory cabinet. */
+	private roofRigs!: Record<'harness' | 'sandbox' | 'memory', Rig>;
 	private above = new THREE.Vector3();
 	private harnessPose: HarnessPose = { opens: [0, 0, 0, 0], filled: [0, 0, 0, 0], wake: 0.1 };
 	private camFrom = new THREE.Vector3();
@@ -288,11 +290,13 @@ export class World {
 		this.root.add(this.mcpTrack.group);
 		this.room = new HarnessRoom();
 		this.sandboxStage = new SandboxStage();
-		this.stage.scene.add(this.room.group, this.sandboxStage.group);
+		this.memoryStage = new MemoryStage();
+		this.stage.scene.add(this.room.group, this.sandboxStage.group, this.memoryStage.group);
 		this.trackRigs = {
 			mcp: new Rig(this.stage.camera, MCP_SHOTS),
 			harness: new Rig(this.stage.camera, ROOM_SHOTS),
-			sandbox: new Rig(this.stage.camera, STAGE_SHOTS)
+			sandbox: new Rig(this.stage.camera, STAGE_SHOTS),
+			memory: new Rig(this.stage.camera, MEMORY_SHOTS)
 		};
 		this.roofRigs = {
 			harness: new Rig(this.stage.camera, [
@@ -302,6 +306,10 @@ export class World {
 			sandbox: new Rig(this.stage.camera, [
 				{ T: 0, ...GLASS_ROOF },
 				{ T: 1, ...GLASS_ROOF }
+			]),
+			memory: new Rig(this.stage.camera, [
+				{ T: 0, ...CABINET_ROOF },
+				{ T: 1, ...CABINET_ROOF }
 			])
 		};
 		this.mcpHit.position.set(7.2, 0.7, -0.72);
@@ -1075,6 +1083,7 @@ export class World {
 	setHarness(id: HarnessId) {
 		this.harnessId = id;
 		this.sandboxStage.setHarness(id);
+		this.memoryStage.setHarness(id);
 		this.cluster.setHarness(id);
 		this.back.setHarness(id);
 		const spec = HARNESSES[id];
@@ -1110,8 +1119,10 @@ export class World {
 		// Inside a trip's own place, nothing else exists.
 		const inRoom = this.trackIn && this.trackId === 'harness';
 		const onStage = this.trackIn && this.trackId === 'sandbox';
+		const onMemory = this.trackIn && this.trackId === 'memory';
 		this.room.group.visible = inRoom;
 		this.sandboxStage.group.visible = onStage;
+		this.memoryStage.group.visible = onMemory;
 		if (this.trackIn) {
 			this.root.visible = false;
 			this.cluster.group.visible = false;
@@ -1120,9 +1131,10 @@ export class World {
 			this.state.dusk = 0;
 			this.stage.setWarmth(0);
 			this.stage.holdShadows(false);
-			const sky = onStage ? STAGE_SKY : ROOM_SKY;
+			const sky = onStage ? STAGE_SKY : onMemory ? MEMORY_SKY : ROOM_SKY;
 			this.stage.setSky(sky.top, sky.mid, sky.low);
 			if (onStage) this.sandboxStage.update(this.trackT, time);
+			else if (onMemory) this.memoryStage.update(this.trackT, time);
 			else this.room.update(this.trackT, time);
 			this.stage.render();
 			return;
@@ -1260,9 +1272,9 @@ export class World {
 	private frameRoom(px: number, py: number, time: number) {
 		const cam = this.stage.camera;
 		const { width, height } = this.stage;
-		const id = this.trackId === 'sandbox' ? 'sandbox' : 'harness';
+		const id = this.trackId === 'sandbox' || this.trackId === 'memory' ? this.trackId : 'harness';
 		const rig = this.trackRigs[id];
-		const place = id === 'sandbox' ? STAGE_AT : ROOM_AT;
+		const place = id === 'sandbox' ? STAGE_AT : id === 'memory' ? MEMORY_AT : ROOM_AT;
 		rig.update(this.trackT, width, height, px, py, time);
 		const k = this.trackArrive;
 		if (k >= 1) {

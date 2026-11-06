@@ -11,6 +11,7 @@ import type { Bed, Cue, Where } from './conductor';
 import { chime, harp, key, low, note, porcelain, sweep, tick, whoosh } from './synth';
 import { PUCK_MOVES, puckPoint, roomPoint } from '../tracks/harness';
 import { STAGE_AT } from '../tracks/sandbox';
+import { MEMORY_AT } from '../tracks/memory';
 import { TOKEN_PATHS } from '../chapters/transformer';
 
 /* ---------- the story ---------- */
@@ -661,9 +662,85 @@ function permissionAndSandbox(): { cues: Cue[]; beds: Bed[] } {
 	};
 }
 
+/* ---------- memory, forks and rewinding ---------- */
+
+const onMemory = (x: number, y: number, z: number): Where => [MEMORY_AT.x + x, MEMORY_AT.y + y, MEMORY_AT.z + z];
+const MEM = {
+	yesterday: onMemory(-11.4, 0.5, -0.2),
+	today: onMemory(4.9, 0.5, -0.2),
+	fork: onMemory(4.9, 0.5, 1.9),
+	shelf: onMemory(-2.9, 0.6, -3.3),
+	files: onMemory(-0.8, 0.4, 3.2),
+	host: onMemory(11.8, 1.4, -3.2)
+} satisfies Record<string, Where>;
+
+function memoryAndRewinding(): { cues: Cue[]; beds: Bed[] } {
+	const cues: Cue[] = [];
+	const at = (T: number, sound: Cue['sound'], where?: Where, more: Partial<Cue> = {}) => cues.push({ T, sound, at: where, ...more });
+	/** A page standing up on a rail: a soft card sound and a note that climbs with the conversation. */
+	const pageUp = (T: number, i: number, where: Where) => {
+		at(T, 'paper-slide', where, { gain: 0.35, rate: 1.05 + i * 0.03, minor: true });
+		at(T + 0.004, porcelain(note(i)), where, { gain: 0.28 });
+	};
+
+	// Yesterday, one message at a time; then the session ends and its pages lie down.
+	for (let i = 0; i < 5; i++) pageUp(0.06 + i * 0.08 + 0.03, i, MEM.yesterday);
+	for (let i = 0; i < 4; i++) at(0.49 + i * 0.015, 'paper-land', MEM.yesterday, { gain: 0.3, rate: 0.9 + i * 0.05, minor: true });
+	at(0.5, low(note(-3), 0.9), MEM.yesterday, { gain: 0.25 });
+	// Today begins with only your rules.
+	pageUp(0.75, 0, MEM.today);
+
+	// A note leaves yesterday for the shelf; the index and one note go into today's request; today goes on.
+	at(1.08, whoosh(0.5, 2400), MEM.yesterday, { gain: 0.25 });
+	at(1.2, 'paper-land', MEM.shelf, { gain: 0.5 });
+	at(1.2, chime([4, 7]), MEM.shelf, { gain: 0.35 });
+	at(1.36, whoosh(0.45, 2600), MEM.shelf, { gain: 0.2, minor: true });
+	at(1.46, whoosh(0.45, 2600), MEM.shelf, { gain: 0.2, minor: true });
+	pageUp(1.69, 1, MEM.today);
+	pageUp(1.79, 2, MEM.today);
+
+	// Today's work: the file copied aside first, then the push flies to the host, then the change that breaks a test.
+	at(2.05, 'paper-slide', MEM.files, { gain: 0.45, rate: 0.9 });
+	at(2.14, 'paper-land', MEM.files, { gain: 0.4 });
+	pageUp(2.19, 3, MEM.today);
+	at(2.24, 'swoosh', MEM.today, { gain: 0.35 });
+	at(2.34, 'clonk', MEM.host, { gain: 0.5, rate: 1.2 });
+	at(2.35, chime([0, 4, 7]), MEM.host, { gain: 0.3 });
+	pageUp(2.35, 4, MEM.today);
+	at(2.41, 'flap', MEM.files, { gain: 0.45 });
+	pageUp(2.53, 5, MEM.today);
+	at(2.56, 'nogo', MEM.today, { gain: 0.3, length: 0.12 });
+
+	// The fork: a rail slides out, three pages copy down to it, and it goes its own way.
+	at(3.06, 'servo', MEM.fork, { gain: 0.45 });
+	for (let i = 0; i < 3; i++) at(3.2 + i * 0.06, 'paper-land', MEM.fork, { gain: 0.4, rate: 1 + i * 0.05 });
+	for (let i = 3; i < 6; i++) pageUp(3 + 0.5 + (i - 3) * 0.1 + 0.03, i + 2, MEM.fork);
+
+	// The rewind: today's later pages lie back down, the checkpoint slides home, the file flips back.
+	at(4.16, 'paper-roll', MEM.today, { gain: 0.45, rate: 1.3 });
+	for (let i = 0; i < 3; i++) at(4.2 + i * 0.03, 'paper-land', MEM.today, { gain: 0.3, rate: 1.2 - i * 0.06, minor: true });
+	at(4.32, 'paper-slide', MEM.files, { gain: 0.45 });
+	at(4.42, 'flap', MEM.files, { gain: 0.45 });
+	at(4.44, chime([7, 4, 0]), MEM.files, { gain: 0.3 });
+
+	// What it can't reach: the host lights red, twice, and keeps the commit.
+	at(5.12, 'pop', MEM.host, { gain: 0.35 });
+	at(5.3, 'nogo', MEM.host, { gain: 0.4, length: 0.12 });
+	at(5.34, low(note(-5), 0.8), MEM.host, { gain: 0.25 });
+
+	return {
+		cues,
+		beds: [
+			{ sound: 'pad-sky', from: 0, to: 6.1, level: 1, fade: 0.05 },
+			{ sound: 'sky', from: 0, to: 6.1, level: 0.12, fade: 0.05 }
+		]
+	};
+}
+
 export function tripScore(id: TrackId, w: World): { cues: Cue[]; beds: Bed[] } {
 	void w;
 	if (id === 'harness') return insideHarness();
 	if (id === 'sandbox') return permissionAndSandbox();
+	if (id === 'memory') return memoryAndRewinding();
 	return howMcpConnects();
 }

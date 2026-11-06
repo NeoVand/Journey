@@ -743,9 +743,10 @@
 			/** What each place you drop into is made of: the colour to pass through on the way in, and the cards' own tone. */
 			const PLACES = {
 				harness: { cover: '#f4e2bd', tone: 'warm' },
-				sandbox: { cover: '#d6eafb', tone: 'sky' }
+				sandbox: { cover: '#d6eafb', tone: 'sky' },
+				memory: { cover: '#d6eafb', tone: 'sky' }
 			} as const;
-			const placeOf = (id: TrackId | null) => PLACES[id === 'sandbox' ? 'sandbox' : 'harness'];
+			const placeOf = (id: TrackId | null) => PLACES[id === 'sandbox' || id === 'memory' ? id : 'harness'];
 			let comeBackTo: HTMLElement | null = null;
 			/** Set once the reader has gone past the last card, so the way home starts only once. */
 			let homeward = false;
@@ -1350,6 +1351,7 @@
 					{@render tripButton('harness')}
 					{@render tripButton('mcp')}
 					{@render tripButton('sandbox')}
+					{@render tripButton('memory')}
 				</p>
 			{/if}
 		</div>
@@ -1756,6 +1758,7 @@
 			<h2>Seven things called memory</h2>
 			<p>A lot of confusion comes from using one word for seven different things. Each has its own owner and its own lifetime.</p>
 			<p>The last one answers a common question: using an agent doesn’t change the model. Learning happens only in a separate training process, so when your session ends, the model hasn’t learned a thing from you.</p>
+			<p class="trips">{@render tripButton('memory')}</p>
 		</article>
 	</section>
 
@@ -1765,6 +1768,7 @@
 			<p>A tool can succeed while its result gets lost. The honest state is “I don’t know whether that happened,” and the next step is to look, not to retry.</p>
 			<p>Exact-string edits help here: a second attempt fails harmlessly, because the old string is already gone.</p>
 			<p>And four controls do four different things. Steering changes the plan. Cancelling stops the stream. Terminating kills the process. Only rolling back undoes a file change.</p>
+			<p class="trips">{@render tripButton('memory')}</p>
 		</article>
 	</section>
 

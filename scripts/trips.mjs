@@ -1,4 +1,4 @@
-// One frame of every card of a side trip, at the end of its scene: node scripts/trips.mjs <outDir> [WxH] [mcp|harness|sandbox] [harness]
+// One frame of every card of a side trip, at the end of its scene: node scripts/trips.mjs <outDir> [WxH] [mcp|harness|sandbox|memory] [harness]
 // Side trips only play in real time, so this opens one from its card the way a reader does and steps it with the arrow
 // key, waiting for each card's scene to finish. A width under 768 runs as a touch phone.
 import { chromium } from 'playwright';
@@ -14,9 +14,9 @@ const page = await ctx.newPage();
 page.on('pageerror', (e) => console.log('pageerror', e.message));
 page.on('console', (m) => m.type() === 'error' && console.log('console', m.text()));
 
-const TRIPS = { mcp: 'How MCP connects', harness: 'Inside the harness', sandbox: 'Permission and the sandbox' };
+const TRIPS = { mcp: 'How MCP connects', harness: 'Inside the harness', sandbox: 'Permission and the sandbox', memory: 'Memory, forks and rewinds' };
 /** Where each trip is set off from: the chapter that offers it. */
-const FROM = { mcp: 'the-harness-wakes-up', harness: 'the-harness-wakes-up', sandbox: 'intent-is-not-authority' };
+const FROM = { mcp: 'the-harness-wakes-up', harness: 'the-harness-wakes-up', sandbox: 'intent-is-not-authority', memory: 'seven-things-called-memory' };
 for (const [id, name] of Object.entries(TRIPS)) {
 	if (only && only !== id) continue;
 	// A query of its own, so a second trip loads a fresh page rather than only changing the hash.
