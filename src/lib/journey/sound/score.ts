@@ -21,6 +21,8 @@ import { TOKEN_PATHS } from '../chapters/transformer';
 const SENTENCE = [0, 2, 4, 2, 5, 4, 7, 5, 4, 2, 0];
 const THINKING = [-3, -1, 0, -1, -3, -2, 0, 1, 0, -1, -3, -2];
 const CALL = [5, 7, 9, 7, 10, 9, 7, 9, 10, 12, 10, 9, 7, 9, 12];
+/** One note per turn of the whole fix: the red one, turn seven, low; the last two bright. Its buttons play them too. */
+export const TURN_NOTES = [0, 2, 4, 2, 5, 4, -2, 5, 7, 9];
 
 /** Places along the way, in the story's coordinates, for left and right and distance. */
 const P = {
@@ -377,7 +379,7 @@ export function score(w: World): { cues: Cue[]; beds: Bed[] } {
 	[28.62, 28.67, 28.72, 28.77].forEach((T, i) => at(T + 0.03, 'latch', P.turns, { gain: 0.6, rate: 0.85 + i * 0.05 }));
 
 	/* 29. The whole fix, in ten turns: a note per turn; the red one low, the last two bright. */
-	for (let i = 0; i < 10; i++) tone(29.1 + 0.066 * i + 0.05, [0, 2, 4, 2, 5, 4, -2, 5, 7, 9][i], P.turns, 0.35);
+	for (let i = 0; i < 10; i++) tone(29.1 + 0.066 * i + 0.05, TURN_NOTES[i], P.turns, 0.35);
 	at(29.47, low(note(-5), 0.6), P.turns, { gain: 0.35 });
 	at(29.68, chime([4, 7, 9]), P.turns, { gain: 0.4 });
 

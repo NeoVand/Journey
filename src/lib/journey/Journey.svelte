@@ -17,8 +17,8 @@
 	import { ArrowLeft01Icon, ArrowRight01Icon, VolumeHighIcon, VolumeOffIcon } from '@hugeicons/core-free-icons';
 	import { Sound } from './sound/engine';
 	import { Conductor } from './sound/conductor';
-	import { score, tripScore } from './sound/score';
-	import { chime, key, note, porcelain, tick as tickSound, VOICE_SOUNDS, whoosh } from './sound/synth';
+	import { score, tripScore, TURN_NOTES } from './sound/score';
+	import { chime, key, low, note, porcelain, tick as tickSound, VOICE_SOUNDS, whoosh } from './sound/synth';
 	import { AGAIN, AGENT_MARK, CHECK_ICON, DRAWER_ICON, GATE_ICON, MAP, SPIN, SWAP, TRACK_ICON } from './icons';
 
 	const ids: HarnessId[] = ['claude', 'codex', 'copilot'];
@@ -186,7 +186,9 @@
 	let soundOn = $state(false);
 	let toggleSound: () => void = () => {};
 	/** The sounds of the interface itself: a step, a flight, the map. Quiet until sound is on. */
-	let cue: (kind: 'step' | 'flight' | 'drop' | 'rise' | 'map' | 'enter' | 'spin') => void = () => {};
+	/** The page's own sounds: the reader's steps and flights, and the controls they press. `n` and `m` say which, or how many. */
+	type CueKind = 'step' | 'flight' | 'drop' | 'rise' | 'map' | 'enter' | 'spin' | 'harness' | 'cache' | 'temperature' | 'turn' | 'tokens';
+	let cue: (kind: CueKind, n?: number, m?: number) => void = () => {};
 	let leaveTrack: (atOnce?: boolean) => void = () => {};
 	const trip = $derived(track ? TRACKS[track] : null);
 
@@ -257,6 +259,7 @@
 	const ticket = $derived(TEN_TURNS[turn]);
 
 	function pinTurn(i: number) {
+		if (i !== turn) cue('turn', i);
 		turnPinned = i;
 		world?.setTurn(i);
 	}
@@ -265,6 +268,7 @@
 	const ran = new Tween(RUN_WITH_CACHE, { duration: 900, easing: cubicOut });
 
 	function setCache(on: boolean) {
+		if (on !== cacheOn) cue('cache', on ? 1 : 0);
 		cacheOn = on;
 		world?.setCache(on);
 		const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -340,6 +344,7 @@
 	}
 
 	function choose(id: HarnessId) {
+		if (id !== harness) cue('harness', ids.indexOf(id));
 		tried.add(`${section}/${harness}`);
 		tried.add(`${section}/${id}`);
 		harness = id;
@@ -904,9 +909,15 @@
 			const main = new Conductor(sound, story.cues, story.beds, hear);
 			let tripSound: Conductor | null = null;
 			let tripSoundFor: TrackId | null = null;
-			const begin = () => {
+			/** hello: the reader just turned it on, so it says so, softly, once everything has loaded. */
+			const begin = (hello = false) => {
 				main.reset();
-				void sound.start().then(() => sound.load([...VOICE_SOUNDS, ...main.names]));
+				void sound
+					.start()
+					.then(() => sound.load([...VOICE_SOUNDS, ...main.names]))
+					.then(() => {
+						if (hello && sound.on) sound.voice(chime([0, 4, 7], 0.09), { gain: 0.28, wet: 0.3 });
+					});
 			};
 			toggleSound = () => {
 				soundOn = !soundOn;
@@ -915,7 +926,7 @@
 				} catch {
 					// Private browsing: it just isn't remembered.
 				}
-				if (soundOn) begin();
+				if (soundOn) begin(true);
 				else sound.stop();
 			};
 			try {
@@ -933,7 +944,7 @@
 			} catch {
 				// No storage: starts off.
 			}
-			cue = (kind) => {
+			cue = (kind, n = 0, m = 0) => {
 				if (!sound.on) return;
 				if (kind === 'step') sound.voice(tickSound(1.15), { gain: 0.3, wet: 0.1 });
 				else if (kind === 'flight') sound.voice(whoosh(1.4, 1500), { gain: 0.32, wet: 0.3 });
@@ -956,6 +967,27 @@
 						sound.voice(tickSound(1.1 + (1 - t) * 0.4), { gain: 0.12 + 0.36 * Math.min(1, Math.pow(1 - t, 3) * 3), delay: 3.4 * t });
 					}
 					sound.voice(chime([0, 2, 4]), { gain: 0.35, delay: 3.45 });
+				} else if (kind === 'harness') {
+					// A selector clicks over, and each agent has a note of its own.
+					sound.play('latch', { gain: 0.32, rate: 1.25, wet: 0.08 });
+					sound.voice(porcelain(note([4, 7, 9][n] ?? 4), 0.8), { gain: 0.18, delay: 0.04 });
+				} else if (kind === 'cache') {
+					// A lever, the tally fluttering over as it rolls, and how it lands: bright with the cache, low without.
+					sound.play('latch', { gain: 0.42, rate: n ? 1 : 0.8 });
+					sound.play('flap', { gain: 0.26, rate: n ? 1.08 : 0.9, delay: 0.08, length: 0.7 });
+					if (n) sound.voice(chime([2, 4], 0.08), { gain: 0.22, delay: 0.85 });
+					else sound.voice(low(note(-5), 0.6), { gain: 0.24, delay: 0.85 });
+				} else if (kind === 'temperature') {
+					// A ratchet, one tick per step, higher as it runs hotter.
+					sound.voice(tickSound(0.8 + ((n - 0.2) / 1.8) * 0.6), { gain: 0.2, wet: 0.05 });
+				} else if (kind === 'turn') {
+					sound.voice(key(0.7), { gain: 0.22 });
+					sound.voice(porcelain(note(TURN_NOTES[n] ?? 0), 0.9), { gain: 0.26, delay: 0.03 });
+				} else if (kind === 'tokens') {
+					// A tiny pop for each new token, a run of them for a whole new sentence, and a softer one when one goes.
+					if (n > m) {
+						for (let j = 0; j < Math.min(n - m, 6); j++) sound.play('pop', { gain: 0.2, rate: 0.95 + ((m + j + 1) % 7) * 0.07, delay: j * 0.045, wet: 0.08 });
+					} else if (n < m) sound.play('pop', { gain: 0.14, rate: 0.75 });
 				}
 			};
 			// Pressing something in the scene: it answers where it is.
@@ -1522,7 +1554,10 @@
 					max="2"
 					step="0.1"
 					bind:value={temperature}
-					oninput={() => world?.setTemperature(temperature)}
+					oninput={() => {
+						world?.setTemperature(temperature);
+						cue('temperature', temperature);
+					}}
 				/>
 				<ol class="odds">
 					{#each LOGITS.slice(0, TOP_K) as l, i (l.text)}
@@ -1758,7 +1793,7 @@
 {/if}
 </div>
 
-<Tokenizer bind:open={tryOpen} />
+<Tokenizer bind:open={tryOpen} oncut={(now, before) => cue('tokens', now, before)} />
 
 <TripMap bind:open={mapOpen} here={mapHere} onjump={jump} ontrip={takeTrip}>
 	{#snippet agents()}

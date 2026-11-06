@@ -6,7 +6,8 @@
 	import { PROMPT } from './content';
 	import { cut, loadTokenizer } from './tokenize';
 
-	let { open = $bindable(false) }: { open?: boolean } = $props();
+	/** oncut: the reader changed the text, and it now cuts into `now` tokens where it was `before`. */
+	let { open = $bindable(false), oncut }: { open?: boolean; oncut?: (now: number, before: number) => void } = $props();
 
 	/** Each of these surprises someone. The file name and the Persian word are the book's own examples. */
 	const TRIES = [
@@ -40,8 +41,10 @@
 	}
 
 	function write(next: string) {
+		const before = pieces.length;
 		text = next;
 		turned.clear();
+		if (tokenizer) oncut?.(pieces.length, before);
 	}
 
 	function showAs(asNumbers: boolean) {
