@@ -23,6 +23,7 @@ import { createBelt, createChatTemplate, Gantry, GANTRY_REAR, SafetyArch, Tile, 
 import { HARNESSES, PROMPT, TOKENS, type HarnessId, type TrackId } from './content';
 import { McpTrack, MCP_SHOTS, type HarnessPose } from './tracks/mcp';
 import { HarnessRoom, ROOF, ROOM_AT, ROOM_SHOTS, ROOM_SKY } from './tracks/harness';
+import { GLASS_ROOF, SandboxStage, STAGE_AT, STAGE_SHOTS, STAGE_SKY } from './tracks/sandbox';
 import { hitBox } from './poke';
 import { Cluster, CLUSTER_SHOTS, DIVE_T } from './cluster';
 import { RETURN_POINTS } from './layout';
@@ -175,13 +176,15 @@ export class World {
 	private mcpHit = hitBox(1.5, 1.5, 1.3);
 	private harnessHit = hitBox(2.9, 3.9, 2.4);
 	/**
-	 * Inside the harness: once the reader has dived in through its roof, the world shows the room instead of
-	 * everything else. arrive is the drop from above into the room, 0 to 1, which the page plays.
+	 * Inside a trip's own place: once the reader has dropped in, through the harness's roof or into the sandbox's glass,
+	 * the world shows that place instead of everything else. arrive is the drop from above, 0 to 1, which the page plays.
 	 */
 	trackIn = false;
 	trackArrive = 1;
 	room!: HarnessRoom;
-	private roofRig!: Rig;
+	sandboxStage!: SandboxStage;
+	/** Where an inside trip's way in is, in the story: the harness's roof hatch, or the top of the glass. */
+	private roofRigs!: Record<'harness' | 'sandbox', Rig>;
 	private above = new THREE.Vector3();
 	private harnessPose: HarnessPose = { opens: [0, 0, 0, 0], filled: [0, 0, 0, 0], wake: 0.1 };
 	private camFrom = new THREE.Vector3();
@@ -284,12 +287,23 @@ export class World {
 		this.mcpTrack = new McpTrack(this.harness, this.mcp, this.mcpLead);
 		this.root.add(this.mcpTrack.group);
 		this.room = new HarnessRoom();
-		this.stage.scene.add(this.room.group);
-		this.trackRigs = { mcp: new Rig(this.stage.camera, MCP_SHOTS), harness: new Rig(this.stage.camera, ROOM_SHOTS) };
-		this.roofRig = new Rig(this.stage.camera, [
-			{ T: 0, ...ROOF },
-			{ T: 1, ...ROOF }
-		]);
+		this.sandboxStage = new SandboxStage();
+		this.stage.scene.add(this.room.group, this.sandboxStage.group);
+		this.trackRigs = {
+			mcp: new Rig(this.stage.camera, MCP_SHOTS),
+			harness: new Rig(this.stage.camera, ROOM_SHOTS),
+			sandbox: new Rig(this.stage.camera, STAGE_SHOTS)
+		};
+		this.roofRigs = {
+			harness: new Rig(this.stage.camera, [
+				{ T: 0, ...ROOF },
+				{ T: 1, ...ROOF }
+			]),
+			sandbox: new Rig(this.stage.camera, [
+				{ T: 0, ...GLASS_ROOF },
+				{ T: 1, ...GLASS_ROOF }
+			])
+		};
 		this.mcpHit.position.set(7.2, 0.7, -0.72);
 		this.harnessHit.position.set(HARNESS_POS.x, 2.0, HARNESS_POS.z);
 		this.root.add(this.mcpHit, this.harnessHit);
@@ -1060,6 +1074,7 @@ export class World {
 
 	setHarness(id: HarnessId) {
 		this.harnessId = id;
+		this.sandboxStage.setHarness(id);
 		this.cluster.setHarness(id);
 		this.back.setHarness(id);
 		const spec = HARNESSES[id];
@@ -1092,8 +1107,11 @@ export class World {
 		this.rig.update(T, this.stage.width, this.stage.height, px, py, time, this.roomAt?.(T));
 		this.frameTrack(px, py, time);
 
-		// Inside the harness, nothing else exists.
-		this.room.group.visible = this.trackIn;
+		// Inside a trip's own place, nothing else exists.
+		const inRoom = this.trackIn && this.trackId === 'harness';
+		const onStage = this.trackIn && this.trackId === 'sandbox';
+		this.room.group.visible = inRoom;
+		this.sandboxStage.group.visible = onStage;
 		if (this.trackIn) {
 			this.root.visible = false;
 			this.cluster.group.visible = false;
@@ -1102,8 +1120,10 @@ export class World {
 			this.state.dusk = 0;
 			this.stage.setWarmth(0);
 			this.stage.holdShadows(false);
-			this.stage.setSky(ROOM_SKY.top, ROOM_SKY.mid, ROOM_SKY.low);
-			this.room.update(this.trackT, time);
+			const sky = onStage ? STAGE_SKY : ROOM_SKY;
+			this.stage.setSky(sky.top, sky.mid, sky.low);
+			if (onStage) this.sandboxStage.update(this.trackT, time);
+			else this.room.update(this.trackT, time);
 			this.stage.render();
 			return;
 		}
@@ -1218,8 +1238,8 @@ export class World {
 		const near = cam.near;
 		const radius = this.rig.radius;
 		if (this.trackIn) return this.frameRoom(px, py, time);
-		// A trip inside the harness first goes to its roof, where the way in is.
-		const rig = this.trackId === 'harness' ? this.roofRig : this.trackRigs[this.trackId];
+		// A trip into a place of its own first goes to where the way in is.
+		const rig = this.trackId === 'mcp' ? this.trackRigs.mcp : this.roofRigs[this.trackId];
 		rig.update(this.trackT, width, height, px, py, time);
 		if (k >= 1) {
 			this.stage.focusLight(rig.focus, rig.radius);
@@ -1240,7 +1260,9 @@ export class World {
 	private frameRoom(px: number, py: number, time: number) {
 		const cam = this.stage.camera;
 		const { width, height } = this.stage;
-		const rig = this.trackRigs.harness;
+		const id = this.trackId === 'sandbox' ? 'sandbox' : 'harness';
+		const rig = this.trackRigs[id];
+		const place = id === 'sandbox' ? STAGE_AT : ROOM_AT;
 		rig.update(this.trackT, width, height, px, py, time);
 		const k = this.trackArrive;
 		if (k >= 1) {
@@ -1250,9 +1272,9 @@ export class World {
 		}
 		const e = 1 - (1 - k) ** 3;
 		// Straight down from over the middle of the room, turning to the trip's own view as it comes down.
-		this.above.set(ROOM_AT.x + 0.4, ROOM_AT.y + 22, ROOM_AT.z + 1.6);
+		this.above.set(place.x + 0.4, place.y + 22, place.z + 1.6);
 		cam.position.lerpVectors(this.above, cam.position, e);
-		this.focusTo.set(ROOM_AT.x, ROOM_AT.y, ROOM_AT.z).lerp(rig.focus, e);
+		this.focusTo.copy(place).lerp(rig.focus, e);
 		this.ear.copy(this.focusTo);
 		cam.lookAt(this.focusTo);
 		cam.near = 0.5;

@@ -370,7 +370,7 @@ export const TRIP: { name: string; what: string }[] = [
 /* ---------- side trips ---------- */
 
 /** A detour off the main road, read card by card, that brings the reader back to where they left. */
-export type TrackId = 'mcp' | 'harness';
+export type TrackId = 'mcp' | 'harness' | 'sandbox';
 export interface TrackCard {
 	title: string;
 	body: string[];
@@ -389,9 +389,11 @@ export interface Track {
  * from anywhere else cuts over to the story at T, and back. A trip that goes inside something has a room of its own,
  * which the reader drops into through the roof.
  */
-export const TRACK_AT: Record<TrackId, { T: number; nearBefore: number; inside?: boolean }> = {
+export const TRACK_AT: Record<TrackId, { T: number; nearFrom?: number; nearBefore: number; inside?: boolean }> = {
 	mcp: { T: 1.5, nearBefore: 2.02 },
-	harness: { T: 1.5, nearBefore: 2.8, inside: true }
+	harness: { T: 1.5, nearBefore: 2.8, inside: true },
+	// Into the glass on the sandbox island, from the gates and the lying page.
+	sandbox: { T: 21.62, nearFrom: 20.0, nearBefore: 22.06, inside: true }
 };
 
 export const TRACKS: Record<TrackId, Track> = {
@@ -519,6 +521,85 @@ export const TRACKS: Record<TrackId, Track> = {
 				]
 			}
 		]
+	},
+	sandbox: {
+		name: 'Permission and the sandbox',
+		what: 'Who says a call may run, and what it can reach once it does.',
+		cards: [
+			{
+				title: 'Two different questions',
+				body: [
+					'Before a call runs, the harness asks whether it may. Once it’s running, something else decides what it can reach. The first is permission, the second is containment, and mixing them up is how people get surprised.',
+					'On the left, the rules. On the right, the glass: an operating-system [[sandbox]] around the commands the agent runs.'
+				],
+				note: {
+					claude: 'Permission is modes plus allow, ask and deny rules. The glass is Seatbelt on macOS, and bubblewrap on Linux and WSL2.',
+					codex: 'Permission is an approval policy, which says when to ask. The glass is a sandbox mode: read-only, workspace-write or full access.',
+					copilot: 'Permission is confirmation cards and auto-approve lists. The glass, a terminal sandbox, is off unless you turn it on.'
+				}
+			},
+			{
+				title: 'Deny, then ask, then allow',
+				body: [
+					'Every call is checked against your rules in that order, and the first match decides. However specific an allow rule is, a matching deny wins.',
+					'Reading .env matches a deny, so it goes back as a refusal. A git push matches an ask, so it waits for you. Running the tests matches an allow, and goes ahead without a word.'
+				],
+				note: {
+					claude: 'Rules like Bash(pytest:*) or Read(./.env) live in settings, from your organization, you and the project. A hook that says allow can’t override a deny or an ask.',
+					codex: 'Rule files allow, prompt for or forbid commands by how they start. Anything else follows the approval policy.',
+					copilot: 'Terminal commands are checked against allow and deny lists. Anything not on them gets a confirmation card.'
+				}
+			},
+			{
+				title: 'How much it may do alone',
+				body: [
+					'Above the rules sits a mode: how much the agent may do without asking. A strict one asks about almost everything. A loose one asks about nothing, and leans on the glass.',
+					'In between, edits can go through freely while commands still ask, or a second model can review each call and only bring the risky ones to you.'
+				],
+				note: {
+					claude: 'Shift+Tab cycles the modes: ask first, accept edits, plan, and auto, where a classifier reviews each call. bypassPermissions skips the checks, for isolated machines.',
+					codex: 'Two dials: the approval policy says when to ask, on request or never, and the sandbox mode says what commands can touch.',
+					copilot: 'Tools can be approved per tool, per session or per workspace, and assisted approvals let a model judge the risky ones.'
+				}
+			},
+			{
+				title: 'Inside the glass',
+				body: [
+					'An allowed command runs inside the glass, and so does every process it starts: pytest starts Python, Python starts a worker. None of them can climb out.',
+					'In here they can write to your project and nowhere else. To reach the network they go through a proxy, which only lets approved domains through.'
+				],
+				note: {
+					claude: 'The list of allowed domains starts empty, and the first time a command needs a new one, you’re asked.',
+					codex: 'In workspace-write, commands write to the workspace, with .git kept read-only, and the network is off unless you turn it on.',
+					copilot: 'Once chat.agent.sandbox.enabled is on, terminal commands run inside it on macOS and Linux. The network stays open unless you list domains.'
+				}
+			},
+			{
+				title: 'Outside the glass',
+				body: [
+					'The glass wraps the commands, and only them. The harness’s own tools for reading and editing files, the MCP servers it starts and your [[hooks]] all run outside it, with your full access.',
+					'They’re kept in check by the rules on the left, not by the glass. So an allow rule for an MCP tool deserves as much thought as one for a command.'
+				],
+				note: {
+					claude: 'That’s the documented line: the sandbox covers shell commands only. File tools are held to your working directory by the permission rules.',
+					codex: 'Codex is stricter here: its file edits are checked against the same writable folders as its commands. MCP servers still run on their own.',
+					copilot: 'With the Copilot harness the sandbox can wrap MCP servers too, and does once it’s on. File edits go through VS Code’s own permissions.'
+				}
+			},
+			{
+				title: 'When the glass says no',
+				body: [
+					'Sometimes a command needs more than the glass allows: a package from a domain that isn’t on the list, a file outside the project. It fails against the wall, and the agent can ask to run it outside.',
+					'That request goes through the rules like any other call, and usually lands with you, as a question you can say no to.'
+				],
+				note: {
+					claude: 'It can retry a blocked command outside the sandbox, which asks you first. Setting allowUnsandboxedCommands to false rules that out.',
+					codex: 'The model asks again with a reason, as an escalation request, and you can save a rule so that command never asks again.',
+					copilot: 'VS Code asks whether to allow the command outside the sandbox.'
+				}
+			}
+		]
 	}
 };
+
 

@@ -10,6 +10,7 @@ import type { TrackId } from '../content';
 import type { Bed, Cue, Where } from './conductor';
 import { chime, harp, key, low, note, porcelain, sweep, tick, whoosh } from './synth';
 import { PUCK_MOVES, puckPoint, roomPoint } from '../tracks/harness';
+import { STAGE_AT } from '../tracks/sandbox';
 import { TOKEN_PATHS } from '../chapters/transformer';
 
 /* ---------- the story ---------- */
@@ -571,8 +572,98 @@ function howMcpConnects(): { cues: Cue[]; beds: Bed[] } {
 	return { cues, beds: [] };
 }
 
+/* ---------- permission and the sandbox ---------- */
+
+/** A point on the trip's stage, in its own coordinates. */
+const onStage = (x: number, y: number, z: number): Where => [STAGE_AT.x + x, STAGE_AT.y + y, STAGE_AT.z + z];
+const STAGE = {
+	harness: onStage(-10, 1.4, -1.8),
+	deny: onStage(-7.8, 1.6, 1.5),
+	ask: onStage(-5.6, 1.6, 1.5),
+	allow: onStage(-3.4, 1.6, 1.5),
+	you: onStage(-4.5, 1.0, 3.0),
+	dial: onStage(-11.2, 1.5, 3.2),
+	slot: onStage(-0.6, 0.8, 1.5),
+	procs: onStage(4.3, 0.8, 0.8),
+	project: onStage(2.8, 0.4, -2.0),
+	wall: onStage(9.6, 1.4, 0),
+	proxy: onStage(7.4, 1.4, -3.6),
+	outside: onStage(-6.3, 0.8, 4.6)
+} satisfies Record<string, Where>;
+
+function permissionAndSandbox(): { cues: Cue[]; beds: Bed[] } {
+	const cues: Cue[] = [];
+	const at = (T: number, sound: Cue['sound'], where?: Where, more: Partial<Cue> = {}) => cues.push({ T, sound, at: where, ...more });
+
+	// Three calls down the rail, one at a time. The first stops at Deny with a buzz and is sent back. The second is let
+	// past Deny, a soft tick as it's read, stops at Ask, and hops onto your desk, which chimes. The third is read twice and
+	// matched at Allow, and slides on into the glass.
+	at(1.06, 'servo', STAGE.harness, { gain: 0.5 });
+	at(1.18, 'nogo', STAGE.deny, { gain: 0.6, length: 0.16, dip: 0.3 });
+	at(1.19, 'relay', STAGE.deny, { gain: 0.4, rate: 0.85 });
+	at(1.21, 'pop', STAGE.deny, { gain: 0.35, rate: 1.1 });
+	at(1.26, 'servo', STAGE.deny, { gain: 0.4, rate: 0.9 });
+	at(1.36, 'drawer-in', STAGE.harness, { gain: 0.5 });
+	at(1.4, 'servo', STAGE.harness, { gain: 0.45, rate: 1.05 });
+	at(1.45, tick(1.1), STAGE.deny, { gain: 0.45 });
+	at(1.5, 'relay', STAGE.ask, { gain: 0.35, rate: 1.1 });
+	at(1.53, whoosh(0.35, 2600), STAGE.ask, { gain: 0.2, minor: true });
+	at(1.61, 'paper-land', STAGE.you, { gain: 0.5 });
+	at(1.61, chime([4, 7]), STAGE.you, { gain: 0.4, dip: 0.25 });
+	at(1.62, 'servo', STAGE.harness, { gain: 0.45, rate: 1.1 });
+	at(1.68, tick(1.1), STAGE.deny, { gain: 0.4 });
+	at(1.73, tick(1.25), STAGE.ask, { gain: 0.4 });
+	at(1.78, chime([0, 4, 7]), STAGE.allow, { gain: 0.4 });
+	at(1.82, whoosh(0.5, 2400), STAGE.slot, { gain: 0.3 });
+
+	// The dial clicks round, notch by notch, and back.
+	[2.32, 2.52, 2.74].forEach((T, i) => {
+		at(T, 'peg', STAGE.dial, { gain: 0.6, rate: 1 + i * 0.06 });
+		at(T + 0.01, porcelain(note(4 + i * 2), 0.8), STAGE.dial, { gain: 0.3 });
+	});
+	at(3.0, 'servo', STAGE.dial, { gain: 0.35, rate: 1.2, minor: true });
+
+	// Inside the glass: three processes pop into being, one after another, rising in pitch.
+	[3.09, 3.21, 3.33].forEach((T, i) => {
+		at(T, 'pop', STAGE.procs, { gain: 0.5, rate: 0.9 + i * 0.12 });
+		at(T + 0.005, porcelain(note(5 + i * 2)), STAGE.procs, { gain: 0.35 });
+	});
+	// A note lands in the project, fine. Another flies at the glass and knocks against it.
+	at(3.47, whoosh(0.4, 2600), STAGE.procs, { gain: 0.22, minor: true });
+	at(3.575, 'paper-land', STAGE.project, { gain: 0.5 });
+	at(3.58, porcelain(note(9)), STAGE.project, { gain: 0.3 });
+	at(3.61, whoosh(0.35, 3000), STAGE.procs, { gain: 0.22, minor: true });
+	at(3.7, 'clonk', STAGE.wall, { gain: 0.6, rate: 1.35, dip: 0.3 });
+	at(3.7, low(note(-5), 0.9), STAGE.wall, { gain: 0.3 });
+	// The network: one packet through the proxy, one turned back with a short buzz.
+	at(3.81, whoosh(0.4, 1800), STAGE.proxy, { gain: 0.22, minor: true });
+	at(3.86, chime([7, 9]), STAGE.proxy, { gain: 0.3 });
+	at(3.91, whoosh(0.35, 1800), STAGE.proxy, { gain: 0.22, minor: true });
+	at(3.95, 'nogo', STAGE.proxy, { gain: 0.45, length: 0.12 });
+
+	// What stands outside the glass rises up, thing by thing.
+	[4.17, 4.27, 4.37].forEach((T, i) => at(T, 'stomp', STAGE.outside, { gain: 0.45, rate: 1 + i * 0.05 }));
+	at(4.47, 'pop', STAGE.outside, { gain: 0.35 });
+
+	// The glass says no, and the question flies over the wall to you.
+	at(5.07, whoosh(0.4, 1800), STAGE.proxy, { gain: 0.22, minor: true });
+	at(5.15, 'nogo', STAGE.proxy, { gain: 0.5, length: 0.14 });
+	at(5.27, 'swoosh', STAGE.procs, { gain: 0.35 });
+	at(5.5, 'paper-land', STAGE.you, { gain: 0.55 });
+	at(5.51, chime([4, 7, 9]), STAGE.you, { gain: 0.4, dip: 0.3 });
+
+	return {
+		cues,
+		beds: [
+			{ sound: 'pad-sky', from: 0, to: 6.1, level: 1, fade: 0.05 },
+			{ sound: 'sky', from: 0, to: 6.1, level: 0.12, fade: 0.05 }
+		]
+	};
+}
+
 export function tripScore(id: TrackId, w: World): { cues: Cue[]; beds: Bed[] } {
 	void w;
 	if (id === 'harness') return insideHarness();
+	if (id === 'sandbox') return permissionAndSandbox();
 	return howMcpConnects();
 }

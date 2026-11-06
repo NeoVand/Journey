@@ -583,7 +583,7 @@
 					// On a phone the map covers the whole screen, so the edges take its paper's colour while it's open.
 					// At the very end the light goes over to late afternoon, and the edges warm with it.
 					const dusk = Math.round(w.state.dusk * 16);
-					const shade = mapOpen && innerWidth <= MAP_WIDTH ? -3 : w.trackIn ? -2 : dusk > 0 ? 100 + dusk : Math.round((w.state.inside ? 1 : w.state.dive) * 32);
+					const shade = mapOpen && innerWidth <= MAP_WIDTH ? -3 : w.trackIn && w.trackId === 'harness' ? -2 : w.trackIn ? 0 : dusk > 0 ? 100 + dusk : Math.round((w.state.inside ? 1 : w.state.dive) * 32);
 					if (shade !== edgeShade) {
 						edgeShade = shade;
 						const tone = shade === -3 ? MAP_PAPER : shade === -2 ? ROOM_EDGE : shade > 100 ? mixLate((shade - 100) / 16) : mixSky(shade / 32);
@@ -740,8 +740,12 @@
 			let arrive = 1;
 			let arriveGoal = 1;
 			let afterArrive: (() => void) | null = null;
-			/** The cream of the inside of the harness, to pass through its roof under. */
-			const WARM = '#f4e2bd';
+			/** What each place you drop into is made of: the colour to pass through on the way in, and the cards' own tone. */
+			const PLACES = {
+				harness: { cover: '#f4e2bd', tone: 'warm' },
+				sandbox: { cover: '#d6eafb', tone: 'sky' }
+			} as const;
+			const placeOf = (id: TrackId | null) => PLACES[id === 'sandbox' ? 'sandbox' : 'harness'];
 			let comeBackTo: HTMLElement | null = null;
 			/** Set once the reader has gone past the last card, so the way home starts only once. */
 			let homeward = false;
@@ -861,7 +865,7 @@
 				if (track || flying) return;
 				homeward = false;
 				comeBackTo = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-				const near = T < TRACK_AT[id].nearBefore && !reduced && !still;
+				const near = T >= (TRACK_AT[id].nearFrom ?? -Infinity) && T < TRACK_AT[id].nearBefore && !reduced && !still;
 				track = id;
 				trackCard = 0;
 				await tick();
@@ -881,7 +885,7 @@
 				const goIn = () => {
 					cue('drop');
 					w.trackIn = true;
-					tripPins.forEach((el) => (el.dataset.tone = 'warm'));
+					tripPins.forEach((el) => (el.dataset.tone = placeOf(id).tone));
 					if (reduced || still) {
 						arrive = arriveGoal = 1;
 						flying = false;
@@ -897,7 +901,7 @@
 					flying = true;
 					blendGoal = 1;
 					cue('flight');
-					afterFlight = inside ? () => swap(goIn, WARM) : () => (flying = false);
+					afterFlight = inside ? () => swap(goIn, placeOf(id).cover) : () => (flying = false);
 				} else {
 					if (inside && !reduced && !still) flying = true;
 					swap(
@@ -906,7 +910,7 @@
 							blend = blendGoal = 1;
 							if (inside) goIn();
 						},
-						inside ? WARM : undefined
+						inside ? placeOf(id).cover : undefined
 					);
 				}
 				tripEl.focus({ preventScroll: true });
@@ -941,12 +945,13 @@
 							afterFlight = done;
 						} else done();
 					};
-					if (reduced || still) return swap(out, WARM);
+					const cover = placeOf(track).cover;
+					if (reduced || still) return swap(out, cover);
 					flying = true;
 					tripEl?.classList.add('leaving');
 					arriveGoal = 0;
 					cue('rise');
-					afterArrive = () => swap(out, WARM);
+					afterArrive = () => swap(out, cover);
 					return;
 				}
 				if (tripT === null && !reduced && !still) {
@@ -1344,6 +1349,7 @@
 					<span>Or take a side trip:</span>
 					{@render tripButton('harness')}
 					{@render tripButton('mcp')}
+					{@render tripButton('sandbox')}
 				</p>
 			{/if}
 		</div>
@@ -1686,6 +1692,7 @@
 				{/each}
 			</ol>
 			<p class="note">{@render agent()} {@render rich(callouts.policy)}</p>
+			<p class="trips">{@render tripButton('sandbox')}</p>
 		</article>
 	</section>
 
@@ -1695,6 +1702,7 @@
 			<p>{@render rich('Our agent also fetched a library’s docs. Now that page sits in the same context as your instructions, and it can say anything. This is [[prompt injection]], the main unsolved security problem of agents.')}</p>
 			<p>So the defenses come in layers. The strongest doesn’t have to be convinced of anything: an operating-system fence around the commands it runs, which every child process inherits.</p>
 			<p class="note">{@render agent()} {@render rich(callouts.sandbox)}</p>
+			<p class="trips">{@render tripButton('sandbox')}</p>
 		</article>
 	</section>
 
