@@ -64,15 +64,19 @@ const shot = (az: number, el: number, target: [number, number, number], radius: 
 	ry,
 	wide: WIDE,
 	tall: TALL,
-	...extra
+	...extra,
+	// A phone's own subject is given in the stage's coordinates too.
+	...(extra.tallTarget && {
+		tallTarget: [extra.tallTarget[0] + MEMORY_AT.x, extra.tallTarget[1] + MEMORY_AT.y, extra.tallTarget[2] + MEMORY_AT.z] as [number, number, number]
+	})
 });
 const YESTERDAY = shot(10, 20, [-11.4, 1.0, 0.0], 3.7, 2.0, { tallRadius: 3.8 });
-const TODAY = shot(-8, 18, [4.2, 1.0, -0.2], 3.6, 1.9, { tallRadius: 3.8 });
-const HANDOVER = shot(4, 24, [-3.0, 1.0, -1.4], 6.4, 2.8, { tallRadius: 6.8 });
-const WORK = shot(0, 24, [5.2, 1.0, 0.4], 7.4, 3.2, { tallRadius: 7.6 });
-const FORKED = shot(6, 30, [4.9, 0.9, 1.0], 4.8, 2.6, { tallRadius: 5.0 });
-const REWIND = shot(0, 28, [3.0, 0.9, 1.4], 5.8, 2.8, { tallRadius: 6.0 });
-const BEYOND = shot(-8, 22, [7.4, 1.4, -1.2], 5.6, 2.8, { tallRadius: 5.8 });
+const TODAY = shot(-8, 18, [4.2, 1.0, -0.2], 3.6, 1.9, { tallTarget: [3.2, 1.0, -0.2], tallRadius: 2.6 });
+const HANDOVER = shot(4, 24, [-3.0, 1.0, -1.4], 6.4, 2.8, { tallTarget: [-0.6, 1.0, -1.6], tallRadius: 4.3 });
+const WORK = shot(0, 24, [5.2, 1.0, 0.4], 7.4, 3.2, { tallTarget: [2.6, 1.0, 1.4], tallRadius: 5.4, tallRy: 3.6 });
+const FORKED = shot(6, 30, [4.9, 0.9, 1.0], 4.8, 2.6, { tallTarget: [4.6, 0.9, 1.0], tallRadius: 4.3 });
+const REWIND = shot(0, 28, [3.0, 0.9, 1.4], 5.8, 2.8, { tallTarget: [1.6, 0.9, 1.4], tallRadius: 4.0 });
+const BEYOND = shot(-8, 22, [7.4, 1.4, -1.2], 5.6, 2.8, { tallTarget: [9.4, 1.4, -1.6], tallRadius: 3.6 });
 
 export const MEMORY_SHOTS: Shot[] = [
 	{ T: 0, ...YESTERDAY },

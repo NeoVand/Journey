@@ -77,14 +77,18 @@ const shot = (az: number, el: number, target: [number, number, number], radius: 
 	ry,
 	wide: WIDE,
 	tall: TALL,
-	...extra
+	...extra,
+	// A phone's own subject is given in the stage's coordinates too.
+	...(extra.tallTarget && {
+		tallTarget: [extra.tallTarget[0] + STAGE_AT.x, extra.tallTarget[1] + STAGE_AT.y, extra.tallTarget[2] + STAGE_AT.z] as [number, number, number]
+	})
 });
 const OVERVIEW = shot(8, 24, [-0.8, 1.3, 1.0], 10.4, 4.4, { tallRadius: 10.6, tallRy: 5.4 });
 const RULES = shot(4, 16, [-6.2, 1.15, 2.1], 4.0, 1.9, { tallRadius: 4.1 });
 const DIAL = shot(4, 10, [DIAL_AT.x, 1.35, DIAL_AT.z], 1.55, 1.15);
-const GLASS = shot(6, 22, [4.4, 1.5, 0.3], 5.6, 2.9, { tallRadius: 5.7 });
+const GLASS = shot(6, 22, [4.4, 1.5, 0.3], 5.6, 2.9, { tallRadius: 4.9 });
 const TREE = shot(10, 26, [4.4, 1.0, 0.6], 3.4, 1.9);
-const OUTSIDE_SHOT = shot(10, 24, [-4.4, 1.0, 2.6], 7.2, 3.2, { tallRadius: 7.4 });
+const OUTSIDE_SHOT = shot(10, 24, [-4.4, 1.0, 2.6], 7.2, 3.2, { tallTarget: [-5.8, 1.0, 3.0], tallRadius: 4.7 });
 const ASKING = shot(4, 20, [1.6, 1.3, 1.0], 8.2, 3.4, { tallRadius: 8.4 });
 const DESK = shot(-10, 16, [YOU.x + 0.1, 1.0, YOU.z], 1.9, 1.1);
 

@@ -971,6 +971,8 @@ export class World {
 	onPress: (what: 'wheel' | 'enter') => void = () => {};
 	/** On a phone, how far down the screen the words begin at this point in the story. The page measures it. */
 	roomAt: ((T: number) => number) | null = null;
+	/** The same, for the side trip the reader is on, by the trip's own time. */
+	tripRoomAt: ((t: number) => number) | null = null;
 	private poker = new Poker();
 	private lastT = 0;
 	/** Which way up each tile has been turned by hand, and how far along that is. */
@@ -1252,7 +1254,7 @@ export class World {
 		if (this.trackIn) return this.frameRoom(px, py, time);
 		// A trip into a place of its own first goes to where the way in is.
 		const rig = this.trackId === 'mcp' ? this.trackRigs.mcp : this.roofRigs[this.trackId];
-		rig.update(this.trackT, width, height, px, py, time);
+		rig.update(this.trackT, width, height, px, py, time, this.tripRoomAt?.(this.trackT));
 		if (k >= 1) {
 			this.stage.focusLight(rig.focus, rig.radius);
 			this.ear.copy(rig.focus);
@@ -1275,7 +1277,7 @@ export class World {
 		const id = this.trackId === 'sandbox' || this.trackId === 'memory' ? this.trackId : 'harness';
 		const rig = this.trackRigs[id];
 		const place = id === 'sandbox' ? STAGE_AT : id === 'memory' ? MEMORY_AT : ROOM_AT;
-		rig.update(this.trackT, width, height, px, py, time);
+		rig.update(this.trackT, width, height, px, py, time, this.tripRoomAt?.(this.trackT));
 		const k = this.trackArrive;
 		if (k >= 1) {
 			this.stage.focusLight(rig.focus, rig.radius);

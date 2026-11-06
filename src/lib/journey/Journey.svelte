@@ -762,6 +762,25 @@
 				tripTops = secs.map((s) => s.offsetTop);
 				tripHeights = secs.map((s) => s.offsetHeight);
 				tripHeights[tripHeights.length - 1] = Math.max(1, tripHeights[tripHeights.length - 1] - tripEl.clientHeight);
+				// On a phone a trip's picture, like the story's, takes all the room above each card's words, and eases to the
+				// next card's room only in the moment between them.
+				if (canvas.clientWidth >= canvas.clientHeight * 0.9) {
+					w.tripRoomAt = null;
+					return;
+				}
+				const screen = smallest.offsetHeight;
+				const picture = canvas.clientHeight;
+				const rooms = tripPins.map((el) => {
+					const first = el.firstElementChild as HTMLElement | null;
+					return first ? (screen - (el.offsetHeight - first.offsetTop + 14)) / picture : 1;
+				});
+				w.tripRoomAt = (t) => {
+					const n = Math.max(0, Math.min(rooms.length - 1, Math.floor(t)));
+					const into = t - n;
+					if (n < rooms.length - 1 && into > 0.93) return ease(rooms[n], rooms[n + 1], within(into, 0.93, 1.01));
+					if (n > 0 && into < 0.01) return ease(rooms[n - 1], rooms[n], within(into + 1, 0.93, 1.01));
+					return rooms[n];
+				};
 			};
 			remeasureTrip = measureTrip;
 			const toTripT = (y: number) => {
