@@ -317,7 +317,8 @@ const WEBS: Span[] = [
 const NET_IN: Span = [14.628, 14.642];
 const NET_RUN: Span = [14.644, 14.664];
 const NET_VISIT: Span = [14.664, 14.686];
-const NET_OUT: Span = [14.686, 14.697];
+// It stays on its last token while the reader rests on the card, and leaves as the next one comes.
+const NET_OUT: Span = [14.695, 14.705];
 /** It works on "job" first, then visits every other token: the same network, one vector at a time. */
 const NET_TOUR = [7, 8, 10, 0, 5, 6, 2, 9, 1, 3, 4];
 const UP: Span[] = [
@@ -344,6 +345,11 @@ const S_TOWER: Omit<Shot, 'T'> = { az: 32, el: 8, target: at(0, 19.6, CZ), radiu
 const S_FLOOR0: Omit<Shot, 'T'> = { ...MAP_SHOT, az: 9, el: 33, target: at(0, FLOORS[0] + 0.1, CZ + 1.2), ry: 5.6 };
 const S_FLOOR1: Omit<Shot, 'T'> = { ...MAP_SHOT, az: 5, target: at(0, FLOORS[1] + 0.5, CZ) };
 const S_NET: Omit<Shot, 'T'> = { ...MAP_SHOT, az: 8, el: 26, target: at(0, FLOORS[1] + 1.1, CZ), ry: 5.3 };
+/** Over a token, at the height of the small network floating above it. */
+const overToken = (i: number): [number, number, number] => at(P[3][i][0], FLOORS[1] + 1.9, CZ + P[3][i][1]);
+/** Close on the network as it first fires over "job", and close again where it ends its tour: it's what the card is about. */
+const S_NET_CLOSE: Omit<Shot, 'T'> = { ...MAP_SHOT, az: 10, el: 21, target: overToken(JOB), radius: 4.3, ry: 3.3 };
+const S_NET_END: Omit<Shot, 'T'> = { ...MAP_SHOT, az: 6, el: 24, target: overToken(NET_TOUR[NET_TOUR.length - 1]), radius: 5.4, ry: 3.8 };
 const S_TOP: Omit<Shot, 'T'> = { ...MAP_SHOT, az: 11, el: 36, target: at(0, FLOORS[4] + 0.9, CZ), ry: 5, wide: box(0.41, 0.1, 0.59, 0.8) };
 
 export const TRANSFORMER_SHOTS: Shot[] = [
@@ -353,8 +359,12 @@ export const TRANSFORMER_SHOTS: Shot[] = [
 	{ T: 14.272, ...S_FLOOR0, az: 6 },
 	{ T: 14.32, ...S_FLOOR1 },
 	{ T: 14.62, ...S_FLOOR1, az: 2 },
-	{ T: 14.645, ...S_NET },
-	{ T: 14.694, ...S_NET, az: 5 },
+	{ T: 14.641, ...S_NET_CLOSE },
+	{ T: 14.662, ...S_NET_CLOSE, az: 6 },
+	// Back out to the map while it visits every token, then in on it where it stops.
+	{ T: 14.672, ...S_NET },
+	{ T: 14.684, ...S_NET, az: 5 },
+	{ T: 14.693, ...S_NET_END },
 	{ T: 14.738, ...S_TOWER, az: 34 },
 	{ T: 14.856, ...S_TOWER, az: 24 },
 	{ T: 14.892, ...S_TOP },
@@ -955,7 +965,7 @@ export class Transformer {
 			const hop = Math.min(NET_TOUR.length - 2, Math.floor(visit));
 			const f = inOut(Math.min(1, visit - hop));
 			arcPoint(this.netStops[hop], this.netStops[hop + 1], 0.5, f, this.net.position);
-			this.net.scale.setScalar(Math.max(0.0001, netK * lerp(1, 0.62, smooth(Math.min(1, visit)))));
+			this.net.scale.setScalar(Math.max(0.0001, netK * lerp(1, 0.78, smooth(Math.min(1, visit)))));
 			// A pulse runs up through it: one long one for "job", then one per token it visits.
 			const run = visit > 0 ? visit % 1 : seg(T, NET_RUN[0], NET_RUN[1]);
 			const amber = this.mapTint.set('#ffae1a');
