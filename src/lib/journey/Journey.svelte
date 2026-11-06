@@ -1664,7 +1664,7 @@
 	<section data-beat class="beat" style:--h="480vh">
 		<article class="pin left" data-out="0.84">
 			<h2>Evidence, not opinion</h2>
-			<p>{@render rich('The harness runs the tests inside the [[sandbox]] with a time limit, and captures everything: [[stdout, stderr and the exit code]]. Here they failed: the new lock [[deadlocks]].')}</p>
+			<p>{@render rich(`${harness === 'copilot' ? 'The harness runs the tests in your terminal' : 'The harness runs the tests inside the [[sandbox]] with a time limit'}, and captures everything: [[stdout, stderr and the exit code]]. Here they failed: the new lock [[deadlocks]].`)}</p>
 			<p>That isn’t the tool going wrong. It’s a successful tool call whose text says failed, and it’s the most useful thing the model has read all session.</p>
 			<p class="note">{@render agent()} {@render rich(callouts.test)}</p>
 		</article>

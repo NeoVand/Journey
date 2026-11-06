@@ -1558,8 +1558,9 @@ export class Back {
 	}
 
 	private drawTerm(n: number) {
-		if (n === this.termKey) return;
-		this.termKey = n;
+		const key = n * 10 + ['claude', 'codex', 'copilot'].indexOf(this.spec);
+		if (key === this.termKey) return;
+		this.termKey = key;
 		this.term.draw((c, w, h) => {
 			c.fillStyle = '#0d1d3f';
 			c.fillRect(0, 0, w, h);
@@ -1568,7 +1569,8 @@ export class Back {
 			c.fillStyle = '#9db6df';
 			c.font = `500 28px ${font.mono}`;
 			c.textBaseline = 'middle';
-			c.fillText('inside the sandbox, 2 minute timeout', 28, 32);
+			// Where the command ran: only Claude Code's two minutes is a known default, and Copilot has no sandbox of its own.
+			c.fillText({ claude: 'inside the sandbox, 2 minute timeout', codex: 'inside the sandbox, with a time limit', copilot: 'in your integrated terminal' }[this.spec], 28, 32);
 			// By the last look the fix is in, and the whole suite has run.
 			const rows: [string, string][] = n === PASSED
 				? [
