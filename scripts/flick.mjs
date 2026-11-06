@@ -1,4 +1,4 @@
-// The trackpad test: a real wheel flick, then how long the scene takes to play what it asked for.
+// The trackpad test: a real wheel flick, then how long the scene takes to play what it asked for. One flick is one beat.
 import { chromium } from 'playwright';
 const browser = await chromium.launch({ headless: true, channel: 'chromium', args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
@@ -28,6 +28,6 @@ await page.evaluate(() => scrollTo(0, 0));
 await page.waitForTimeout(100);
 await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
 const t0 = Date.now();
-await page.waitForFunction(() => window.__head.T > 33.95, null, { timeout: 40000 });
+await page.waitForFunction(() => window.__head.T >= 32.999, null, { timeout: 40000 });
 console.log(`jump to the very end took ${((Date.now() - t0) / 1000).toFixed(1)}s`);
 await browser.close();

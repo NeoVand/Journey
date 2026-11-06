@@ -9,7 +9,9 @@
 	import { cubicOut } from 'svelte/easing';
 	import type { Attachment } from 'svelte/attachments';
 	import type { World } from './world';
-	import { PACE, Playhead, trackPace } from './playhead';
+	import { Pace, PACE, Playhead, trackPace } from './playhead';
+	import { DESK, Director, PHONE } from './beats';
+	import { Gestures } from './gestures';
 	import { Sharpness } from './sharpness';
 	import { SvelteSet } from 'svelte/reactivity';
 	import Blueprint, { type Stage } from './Blueprint.svelte';
@@ -258,7 +260,7 @@
 	}
 
 	/** Moves the story one step on or back. Set once the page has measured itself. */
-	let step: (dir: 1 | -1) => void = () => {};
+	let step: (dir: 1 | -1, how?: 'button' | 'key' | 'wheel' | 'touch') => void = () => {};
 	let canBack = $state(false);
 	let canOn = $state(true);
 
@@ -269,7 +271,7 @@
 		const target = event.target as HTMLElement | null;
 		if (target?.closest('input, textarea, select, [contenteditable], [role="slider"], dialog') || document.querySelector('dialog[open]')) return;
 		event.preventDefault();
-		step(event.key === 'ArrowRight' ? 1 : -1);
+		step(event.key === 'ArrowRight' ? 1 : -1, 'key');
 	}
 
 	let tryOpen = $state(false);
@@ -381,8 +383,6 @@
 	const stage: Attachment<HTMLCanvasElement> = (canvas) => {
 		let disposed = false;
 		let raf = 0;
-		/** Where a step is taking the story, while it's on its way there. */
-		let stepTo = -1;
 		let cleanup = () => {};
 		const params = new URLSearchParams(location.search);
 		const still = params.has('still');
@@ -427,23 +427,63 @@
 			let noted = 0;
 
 			const sections = [...document.querySelectorAll<HTMLElement>('[data-beat]')];
-			let tops: number[] = [];
-			let heights: number[] = [];
-			const measure = () => {
-				tops = sections.map((s) => s.offsetTop);
-				heights = sections.map((s) => s.offsetHeight);
-				// The scroll bar stops one viewport before the page ends, and the story must end exactly there.
-				heights[heights.length - 1] = Math.max(1, heights[heights.length - 1] - window.innerHeight);
-			};
-			const toT = (y: number) => {
+			const pins = sections.flatMap((s, i) =>
+				[...s.querySelectorAll<HTMLElement>('.pin')].map((el) => {
+					// A card belongs to one world for its whole life, so its colours can never flip while it is showing.
+					el.dataset.tone = i >= 8 && i < 19 ? 'inside' : 'sky';
+					return {
+						el,
+						i,
+						from: Number(el.dataset.in ?? 0.03),
+						end: Number(el.dataset.out ?? 0.92),
+						fade: Number(el.dataset.fade ?? 0.07)
+					};
+				})
+			);
+			const lastPin = pins.length - 1;
+			// The smallest the screen gets: steady while a phone's toolbars come and go.
+			const smallest = document.createElement('div');
+			smallest.style.cssText = 'position:fixed;top:0;left:0;width:0;height:100svh;visibility:hidden;pointer-events:none';
+			document.body.append(smallest);
+
+			/*
+			 * The story is a run of beats, one per card: from where the last card's scene finished to where this one's has.
+			 * Card n's beat ends at stop n, just before its words go. The title page is stop 0, and the very end the last.
+			 */
+			const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+			const touch = window.matchMedia('(pointer: coarse)').matches;
+			const pace = new Pace(PACE);
+			// The sentence types itself on the title page. If it already has, the stretch that types it has nothing to show.
+			pace.quicker = (span) => (span.key === 'typing' ? 1 / (1 - 0.85 * w.typedAhead) : 1);
+			// A breath before the words go, the same by the clock everywhere: pressing on, something moves at once.
+			const stops = [
+				0,
+				...pins.slice(1, -1).map((p) => {
+					const end = p.i + p.end;
+					return end - Math.min(0.012, pace.rate(end - 0.0005) * 0.08);
+				}),
+				sections.length
+			];
+			const director = new Director(stops, pace, touch ? PHONE : DESK);
+
+			// Where the reader was before the world existed, in the plain page that simply scrolled: the nearest card.
+			const before = (() => {
+				const y = window.scrollY;
 				let i = 0;
-				while (i < sections.length - 1 && y >= tops[i + 1]) i++;
-				return i + Math.min(1, Math.max(0, (y - tops[i]) / heights[i]));
+				while (i < sections.length - 1 && y >= sections[i + 1].offsetTop) i++;
+				const into = Math.min(1, Math.max(0, (y - sections[i].offsetTop) / Math.max(1, sections[i].offsetHeight - (i === sections.length - 1 ? window.innerHeight : 0))));
+				return director.behind(i + into);
+			})();
+			director.go(before);
+
+			/** The scroll bar just keeps count: a screen of it per beat, so it shows how far along the story is. */
+			const runway = document.querySelector<HTMLElement>('[data-runway]')!;
+			let beat = 1;
+			const measure = () => {
+				beat = Math.max(360, smallest.offsetHeight);
+				runway.style.height = `${(stops.length - 1) * beat + window.innerHeight}px`;
 			};
-			const toY = (T: number) => {
-				const i = Math.min(sections.length - 1, Math.floor(T));
-				return tops[i] + (T - i) * heights[i];
-			};
+			const yOf = (k: number) => k * beat;
 
 			/** Set once the trip code below exists; a trip measures its own sections. */
 			let remeasureTrip = () => {};
@@ -453,22 +493,14 @@
 			// the picture nor costs a rebuild of every render target in the middle of the reader's first scroll.
 			let drawnW = 0;
 			let drawnH = 0;
+			/** Set once the reader's gestures are being followed: puts the scroll bar where the story is. */
+			let align = () => {};
 			const resize = () => {
-				// Turning a phone changes every section's height, and the reader should stay where they are in the story.
-				const turned = drawnW > 0 && canvas.clientWidth !== drawnW;
-				if (turned) holdSteps();
-				const was = turned ? T : 0;
 				measure();
 				remeasureTrip();
 				measureRooms();
-				if (turned) {
-					window.scrollTo(0, toY(was));
-					// Safari settles its own scroll position a moment later.
-					requestAnimationFrame(() => {
-						measure();
-						window.scrollTo(0, toY(was));
-					});
-				}
+				// However the screen changed, the reader stays where they are in the story.
+				align();
 				if (canvas.clientWidth === drawnW && canvas.clientHeight === drawnH) return;
 				drawnW = canvas.clientWidth;
 				drawnH = canvas.clientHeight;
@@ -480,10 +512,7 @@
 			resize();
 			window.addEventListener('resize', resize);
 
-			const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-			const head = new Playhead(PACE, toT(window.scrollY), reduced);
-			const touch = window.matchMedia('(pointer: coarse)').matches;
-			head.calm = touch;
+			const head = new Playhead(pace, director.target, reduced);
 			let T = head.T;
 			let px = 0;
 			let py = 0;
@@ -524,20 +553,6 @@
 			let time = 0;
 			const sharpness = new Sharpness(dpr, w.stage.ao.enabled);
 
-			const pins = sections.flatMap((s, i) =>
-					[...s.querySelectorAll<HTMLElement>('.pin')].map((el) => {
-						// A card belongs to one world for its whole life, so its colours can never flip while it is showing.
-						el.dataset.tone = i >= 8 && i < 19 ? 'inside' : 'sky';
-						return {
-							el,
-							i,
-							from: Number(el.dataset.in ?? 0.03),
-							end: Number(el.dataset.out ?? 0.92),
-							fade: Number(el.dataset.fade ?? 0.07)
-						};
-					})
-				);
-				const lastPin = pins.length - 1;
 
 				/*
 				 * On a phone the words sit on the bottom of the screen and the picture has everything above them. Each card leaves
@@ -546,9 +561,6 @@
 				 * holds still through them. Measured against the screen with Safari's toolbar showing, so the words can only ever
 				 * sit lower than the picture allows for, never over it.
 				 */
-				const smallest = document.createElement('div');
-				smallest.style.cssText = 'position:fixed;top:0;left:0;width:0;height:100svh;visibility:hidden;pointer-events:none';
-				document.body.append(smallest);
 				const ease = (a: number, b: number, k: number) => a + (b - a) * k * k * (3 - 2 * k);
 				const within = (v: number, a: number, b: number) => Math.min(1, Math.max(0, (v - a) / (b - a)));
 				let rooms: number[] = [];
@@ -691,13 +703,12 @@
 				const dt = Math.max(0, Math.min(0.05, (now - last) / 1000));
 				last = now;
 				time += dt;
-				const target = toT(window.scrollY);
-				// The reader took over with the scroll wheel or a finger: back to following it the usual way.
-				if (stepTo >= 0 && Math.abs(target - stepTo) > 0.001) settle();
-				T = head.step(target, dt);
-				if (stepTo >= 0 && T === target) settle();
+				// Once the reader's hands are still, the scroll bar goes to where the story is.
+				if (gestures.still(now)) (track ? alignTrip : align)();
+				play(dt);
 				steppable();
 				playTrip(dt);
+				showGauge();
 				px += (mx - px) * (1 - Math.exp(-dt * 3));
 				py += (my - py) * (1 - Math.exp(-dt * 3));
 				w.update(track && tripT !== null ? tripT : T, reduced ? 0 : time, dt, reduced ? 0 : px, reduced ? 0 : py, reduced);
@@ -729,71 +740,115 @@
 				}
 			};
 
-			// A cut, not a flight: the long way round would be minutes of scenery the reader didn't ask for.
-			const pinOf = (title: string) => pins.find((p) => p.el.querySelector('h1, h2')?.textContent === title);
-			const startOf = (p: (typeof pins)[number]) => (p.i === 0 ? 0 : p.i + p.from + p.fade * 0.8);
 			const cutEl = document.querySelector<HTMLElement>('[data-cut]')!;
 			let cutTimer = 0;
+			/** Under a quick cover, the colour of the world on the other side of it. */
+			const cover = (to: number, fn: () => void, colour = to >= 7.96 && to < 19.02 ? '#060f26' : '#d6eafb') => {
+				if (reduced || still) return fn();
+				cutEl.style.background = colour;
+				cutEl.classList.add('on');
+				clearTimeout(cutTimer);
+				cutTimer = window.setTimeout(() => {
+					fn();
+					requestAnimationFrame(() => requestAnimationFrame(() => cutEl.classList.remove('on')));
+				}, 150);
+			};
+
+			/*
+			 * Every frame, the playhead does what the director asks: plays the beat under way at its authored pace,
+			 * finishes one on the way briskly, or, where even briskly would take too long, cuts.
+			 */
+			let cutting = false;
+			const play = (dt: number) => {
+				if (cutting) return;
+				const m = director.move(head.T);
+				if (m.cut === undefined) {
+					T = head.step(director.target, dt, m.speed);
+					return;
+				}
+				const to = m.cut;
+				cutting = true;
+				cover(to, () => {
+					head.jump(to);
+					T = to;
+					cutting = false;
+				});
+			};
+
+			// A cut, not a flight: the long way round would be minutes of scenery the reader didn't ask for. It lands where
+			// the card's words have arrived, and its scene plays from there.
+			const pinOf = (title: string) => pins.find((p) => p.el.querySelector('h1, h2')?.textContent === title);
+			const startOf = (p: (typeof pins)[number]) => (p.i === 0 ? 0 : p.i + p.from + p.fade * 0.8);
 			cutTo = (title, at) => {
 				const pin = pinOf(title);
 				if (!pin) return;
 				const nextT = startOf(pin);
 				const land = () => {
-					window.scrollTo({ top: toY(nextT), behavior: 'instant' });
+					head.jump(nextT);
 					T = nextT;
-					head.T = nextT;
-					head.v = 0;
+					director.go(pins.indexOf(pin));
+					align();
 				};
 				if (reduced || still || at) return land();
-				cutEl.style.background = nextT >= 7.96 && nextT < 19.02 ? '#060f26' : '#d6eafb';
-				cutEl.classList.add('on');
-				clearTimeout(cutTimer);
-				cutTimer = window.setTimeout(() => {
-					land();
-					requestAnimationFrame(() => requestAnimationFrame(() => cutEl.classList.remove('on')));
-				}, 150);
+				cover(nextT, land);
 			};
-			// Step by step, one card at a time. A step ends where its card's scene has finished, just before the words go.
-			// Forward plays everything between at its authored pace, so nothing slips past; pressing again on the way
-			// hurries it along instead of skipping ahead. Back rewinds to the last finished card.
-			const stops = [0, ...pins.slice(1, -1).map((p) => p.i + p.end - 0.012), sections.length];
-			const settle = () => {
-				stepTo = -1;
-				head.patient = false;
-				head.hurry = 1;
-			};
-			step = (dir) => {
+
+			// One card at a time, from the buttons, the keys, a flick of the wheel or a swipe: see Director.
+			step = (dir, how = 'button') => {
 				if (track) return stepTrip(dir);
-				const target = toT(window.scrollY);
-				const lag = target - head.T;
-				if (Math.sign(lag) === dir && Math.abs(lag) > 0.002) {
-					stepTo = target;
-					head.hurry = 6;
-					return;
-				}
-				const ahead = stops.filter((s) => (dir === 1 ? s > head.T + 0.004 : s < head.T - 0.004));
-				const next = dir === 1 ? ahead[0] : ahead[ahead.length - 1];
-				if (next === undefined) return;
-				cue('step');
-				stepTo = next;
-				head.patient = dir === 1 && !reduced;
-				head.hurry = 1;
-				window.scrollTo({ top: toY(next), behavior: 'instant' });
+				const moved = dir === 1 ? director.next(head.T) : director.back(head.T);
+				if (!moved) return;
+				if (how === 'button' || how === 'key') cue('step');
+				align();
+			};
+			const seekStory = (to: 'first' | 'last' | number) => {
+				director.go(to === 'first' ? 0 : to === 'last' ? director.last : Math.round(to / beat));
+				align();
 			};
 			const steppable = () => {
 				if (track) return;
-				canBack = T > stops[0] + 0.004;
-				canOn = T < stops[stops.length - 1] - 0.004;
+				canBack = director.goal > 0 || T > stops[0] + 0.004;
+				canOn = director.goal < director.last;
+			};
+
+			/*
+			 * The step buttons show the beat under way: the way it's going fills up as it plays, by the clock, so the reader
+			 * can see how long is left. When it's done, the next button gives a small nudge: your turn.
+			 */
+			const nextEl = document.querySelector<HTMLElement>('[data-step="next"]')!;
+			const backEl = document.querySelector<HTMLElement>('[data-step="back"]')!;
+			let gaugeKey = '';
+			let wasPlaying = false;
+			const showGauge = () => {
+				const g = track ? (tripDirector && tripHead ? tripDirector.gauge(tripHead.T) : { dir: 0 as const, done: 1 }) : director.gauge(T);
+				const shown = reduced ? { dir: 0 as const, done: 1 } : g;
+				const key = `${shown.dir}:${Math.round(shown.done * 500)}`;
+				if (key === gaugeKey) return;
+				gaugeKey = key;
+				// At rest the fill keeps its last length while it fades.
+				if (shown.dir === 1) nextEl.style.setProperty('--done', shown.done.toFixed(4));
+				if (shown.dir === -1) backEl.style.setProperty('--done', shown.done.toFixed(4));
+				nextEl.classList.toggle('playing', shown.dir === 1);
+				backEl.classList.toggle('playing', shown.dir === -1);
+				if (wasPlaying && shown.dir === 0) {
+					nextEl.classList.remove('ready');
+					// Starts the nudge over, even if the last one is still going.
+					void nextEl.offsetWidth;
+					nextEl.classList.add('ready');
+				}
+				wasPlaying = shown.dir === 1;
 			};
 
 			/* ---- side trips ---- */
 			// A trip has its own scroller over the page, so the page itself, and the reader's place in it, stay where they were.
 			let tripEl: HTMLElement | null = null;
 			let tripPins: HTMLElement[] = [];
-			let tripTops: number[] = [];
-			let tripHeights: number[] = [];
 			let tripHead: Playhead | null = null;
-			let tripTo = -1;
+			let tripDirector: Director | null = null;
+			/** A trip's scroll bar keeps count the same way: a screen of it per beat. */
+			let tripBeat = 1;
+			/** Whether the trip's first scene has been set going, once the reader has arrived. */
+			let tripStarted = false;
 			/** How far the trip has taken over the picture, 0 to 1, and where it's heading. */
 			let blend = 0;
 			let blendGoal = 0;
@@ -818,10 +873,10 @@
 			const cards = () => tripPins.length;
 			const measureTrip = () => {
 				if (!tripEl) return;
-				const secs = [...tripEl.querySelectorAll<HTMLElement>(':scope > section')];
-				tripTops = secs.map((s) => s.offsetTop);
-				tripHeights = secs.map((s) => s.offsetHeight);
-				tripHeights[tripHeights.length - 1] = Math.max(1, tripHeights[tripHeights.length - 1] - tripEl.clientHeight);
+				tripBeat = Math.max(360, tripEl.clientHeight);
+				const runway = tripEl.querySelector<HTMLElement>('[data-runway]');
+				// With a little room past the last card: scrolling on into it is the way home.
+				if (runway) runway.style.height = `${(cards() + 0.6) * tripBeat + tripEl.clientHeight}px`;
 				// On a phone a trip's picture, like the story's, takes all the room above each card's words, and eases to the
 				// next card's room only in the moment between them.
 				if (canvas.clientWidth >= canvas.clientHeight * 0.9) {
@@ -846,15 +901,6 @@
 				};
 			};
 			remeasureTrip = measureTrip;
-			const toTripT = (y: number) => {
-				let i = 0;
-				while (i < tripTops.length - 1 && y >= tripTops[i + 1]) i++;
-				return i + Math.min(1, Math.max(0, (y - tripTops[i]) / tripHeights[i]));
-			};
-			const toTripY = (t: number) => {
-				const i = Math.min(tripTops.length - 1, Math.floor(t));
-				return tripTops[i] + (t - i) * tripHeights[i];
-			};
 			// Like the story's own cards: on from a little way in, off just before the next.
 			const cardIn = (n: number, t: number) => (n === 0 ? 1 : seg(t - n, 0.01, 0.08));
 			const cardOut = (n: number, t: number) => (n === cards() - 1 ? 0 : seg(t - n, 0.86, 0.93));
@@ -870,33 +916,32 @@
 					requestAnimationFrame(() => requestAnimationFrame(() => cutEl.classList.remove('on')));
 				}, 150);
 			};
-			const settleTrip = () => {
-				tripTo = -1;
-				if (tripHead) {
-					tripHead.patient = false;
-					tripHead.hurry = 1;
-				}
+			const alignTrip = () => {
+				if (tripDirector) gestures.align(tripDirector.goal * tripBeat);
 			};
+			// Past the last card, a step on is the way home.
 			const stepTrip = (dir: 1 | -1) => {
-				if (!tripEl || !tripHead) return;
-				const target = toTripT(tripEl.scrollTop);
-				const lag = target - tripHead.T;
-				if (Math.sign(lag) === dir && Math.abs(lag) > 0.002) {
-					tripTo = target;
-					tripHead.hurry = 6;
-					return;
-				}
-				const ahead = tripStops().filter((s) => (dir === 1 ? s > tripHead!.T + 0.004 : s < tripHead!.T - 0.004));
-				const next = dir === 1 ? ahead[0] : ahead[ahead.length - 1];
-				if (next === undefined) {
+				if (!tripEl || !tripHead || !tripDirector) return;
+				const moved = dir === 1 ? tripDirector.next(tripHead.T) : tripDirector.back(tripHead.T);
+				if (!moved) {
 					if (dir === 1) leaveTrack();
 					return;
 				}
-				tripTo = next;
-				tripHead.patient = dir === 1 && !reduced;
-				tripHead.hurry = 1;
-				tripEl.scrollTo({ top: toTripY(next), behavior: 'instant' });
+				alignTrip();
 			};
+			const seekTrip = (to: 'first' | 'last' | number) => {
+				if (!tripDirector) return;
+				if (typeof to === 'number' && to > (tripDirector.last + 0.25) * tripBeat) {
+					if (!homeward && !flying) {
+						homeward = true;
+						leaveTrack();
+					}
+					return;
+				}
+				tripDirector.go(to === 'first' ? 0 : to === 'last' ? tripDirector.last : Math.round(to / tripBeat));
+				alignTrip();
+			};
+			let tripCutting = false;
 			const playTrip = (dt: number) => {
 				if (blend !== blendGoal) {
 					blend = Math.min(1, Math.max(0, blend + Math.sign(blendGoal - blend) * (dt / 1.4)));
@@ -916,17 +961,27 @@
 					}
 				}
 				w.trackArrive = arrive;
-				if (!track || !tripEl || !tripHead) return;
-				const scrolled = toTripT(tripEl.scrollTop);
-				// Scrolled on past the last card: the trip is over, and it takes the reader home.
-				if (scrolled > cards() + 0.25 && !homeward && !flying) {
-					homeward = true;
-					leaveTrack();
+				if (!track || !tripEl || !tripHead || !tripDirector) return;
+				// Once the reader has arrived, the first card's scene plays by itself.
+				if (!tripStarted && !flying) {
+					tripStarted = true;
+					if (tripDirector.goal === 0) tripDirector.go(1);
+					alignTrip();
 				}
-				const target = Math.min(cards(), scrolled);
-				if (tripTo >= 0 && Math.abs(target - tripTo) > 0.001) settleTrip();
-				const t = tripHead.step(target, dt);
-				if (tripTo >= 0 && t === target) settleTrip();
+				if (!tripCutting) {
+					const m = tripDirector.move(tripHead.T);
+					if (m.cut === undefined) tripHead.step(tripDirector.target, dt, m.speed);
+					else {
+						const to = m.cut;
+						const head = tripHead;
+						tripCutting = true;
+						swap(() => {
+							head.jump(to);
+							tripCutting = false;
+						}, placeOf(track).cover);
+					}
+				}
+				const t = tripHead.T;
 				w.trackT = t;
 				let most = 0;
 				let at = 0;
@@ -944,7 +999,7 @@
 					el.inert = k < 0.1;
 				});
 				if (at !== trackCard && most > 0.5) trackCard = at;
-				canBack = t > 0.004;
+				canBack = tripDirector.goal > 0 || t > 0.004;
 				// At the end, a step forward is the way home.
 				canOn = true;
 			};
@@ -963,9 +1018,10 @@
 				tripPins.forEach((el) => (el.dataset.tone = 'sky'));
 				measureTrip();
 				tripEl.scrollTop = 0;
-				tripHead = new Playhead(trackPace(cards()), 0, reduced);
-				tripHead.calm = touch;
-				tripTo = -1;
+				const tripPace = new Pace(trackPace(cards()));
+				tripDirector = new Director(tripStops(), tripPace, touch ? PHONE : DESK);
+				tripHead = new Playhead(tripPace, 0, reduced);
+				tripStarted = false;
 				w.trackT = 0;
 				w.setTrack(id);
 				const inside = TRACK_AT[id].inside;
@@ -1018,6 +1074,7 @@
 					tripEl = null;
 					tripPins = [];
 					tripHead = null;
+					tripDirector = null;
 					flying = false;
 					afterFlight = null;
 					// The story's own header again, once it has drawn.
@@ -1054,6 +1111,16 @@
 				} else swap(done);
 			};
 			w.onTrack = (id) => enterTrack(id);
+
+			// The reader's wheel, fingers and keys: one gesture, one step. See gestures.ts.
+			const gestures = new Gestures({
+				step: (dir, how) => step(dir, how),
+				seek: (to) => (track ? seekTrip(to) : seekStory(to)),
+				scroller: () => (track && tripEl ? tripEl : window)
+			});
+			align = () => {
+				if (!track) gestures.align(yOf(director.goal));
+			};
 
 			/* ---- sound ---- */
 			// Under the site's own address, wherever it's hosted.
@@ -1172,9 +1239,10 @@
 				sound.ambience(levels);
 			};
 
-			// A turn the story hasn't reached yet is one press away: the page scrolls on to it, unlocking the ones between.
+			// A turn the story hasn't reached yet is one press away: the story plays on to it briskly, and rests there.
 			reachTurn = (i) => {
-				window.scrollTo({ top: toY(TEN_AT + i * TEN_STEP + TEN_STEP * 0.5), behavior: reduced || still ? 'instant' : 'smooth' });
+				director.reach(head.T, TEN_AT + i * TEN_STEP + TEN_STEP * 0.5);
+				align();
 			};
 			locate = () => {
 				let at = pins[0];
@@ -1192,14 +1260,14 @@
 				const api = {
 					seek(nextT: number, t = 0, hash?: HarnessId) {
 						if (hash) choose(hash);
-						window.scrollTo(0, toY(nextT));
+						director.go(director.nearest(nextT));
+						window.scrollTo(0, yOf(director.goal));
 						T = nextT;
-						head.T = nextT;
-						head.v = 0;
+						head.jump(nextT);
 						w.update(nextT, t, 1, 0, 0, true);
 						publish();
 					},
-					maxT: () => toT(document.documentElement.scrollHeight - window.innerHeight)
+					maxT: () => stops[stops.length - 1]
 				};
 				(window as unknown as { __journey: unknown }).__journey = api;
 				api.seek(0);
@@ -1216,6 +1284,7 @@
 				window.removeEventListener('pointerup', up);
 				document.documentElement.style.cursor = '';
 				window.removeEventListener('hashchange', onHash);
+				gestures.dispose();
 				clearTimeout(cutTimer);
 				w.dispose();
 			};
@@ -1402,10 +1471,10 @@
 			</button>
 		</div>
 		<div class={['stepper', { show: driven }]} role="group" aria-label="Step through the story" inert={!driven}>
-			<button type="button" aria-label="Previous step" aria-keyshortcuts="ArrowLeft" title="Previous step (←)" disabled={!canBack} onclick={() => step(-1)}>
+			<button type="button" data-step="back" aria-label="Previous step" aria-keyshortcuts="ArrowLeft" title="Previous step (←)" disabled={!canBack} onclick={() => step(-1)}>
 				<Icon icon={ArrowLeft01Icon} size={20} stroke={2} />
 			</button>
-			<button type="button" aria-label="Next step" aria-keyshortcuts="ArrowRight" title="Next step (→)" disabled={!canOn} onclick={() => step(1)}>
+			<button type="button" data-step="next" aria-label="Next step" aria-keyshortcuts="ArrowRight" title="Next step (→)" disabled={!canOn} onclick={() => step(1)}>
 				<Icon icon={ArrowRight01Icon} size={20} stroke={2} />
 			</button>
 		</div>
@@ -1437,6 +1506,7 @@
 		{/each}
 		<!-- Room to scroll on past the last card: doing so ends the trip. -->
 		<section class="beat" style:--h="160vh" aria-hidden="true"></section>
+		<div class="runway" data-runway aria-hidden="true"></div>
 	</div>
 {/if}
 
@@ -1910,7 +1980,7 @@
 					<div class="turns" role="group" aria-label="Choose a turn">
 						{#each TEN_TURNS as t, i (i)}
 							{@const ahead = driven && i > turnReached}
-							<button type="button" class={{ on: turn === i, ahead }} aria-label="Turn {i + 1}: {t.label}{ahead ? ', ahead. Scrolls on to it' : ''}" title={ahead ? 'Scroll on to this turn' : undefined} aria-current={turn === i} onclick={() => (ahead ? reachTurn(i) : pinTurn(i))}>{i + 1}</button>
+							<button type="button" class={{ on: turn === i, ahead }} aria-label="Turn {i + 1}: {t.label}{ahead ? ', ahead. Plays on to it' : ''}" title={ahead ? 'Play on to this turn' : undefined} aria-current={turn === i} onclick={() => (ahead ? reachTurn(i) : pinTurn(i))}>{i + 1}</button>
 						{/each}
 					</div>
 					<dl>
@@ -1970,6 +2040,8 @@
 			</div>
 		</article>
 	</section>
+	<!-- Once the story is driven, the cards hang over the picture and the page is just this: a screen of scrolling per beat. -->
+	<div class="runway" data-runway aria-hidden="true"></div>
 </main>
 {#if tip}
 	<div class={['tip', { below: tip.below }]} aria-hidden="true" style:left="{tip.x}px" style:top="{tip.y}px">{tip.text}</div>
@@ -3049,6 +3121,77 @@
 		outline: 2px solid #1f5fe0;
 		outline-offset: 1px;
 	}
+	/*
+	 * The beat under way: the way it's going fills up as it plays, steadily by the clock, so the reader can see how long
+	 * is left. It stays light under the pointer, where a reader who just pressed it leaves it. Then the fill goes, a soft
+	 * ring opens round the button and the arrow gives one small nudge: your turn.
+	 */
+	.stepper button[data-step] {
+		position: relative;
+		isolation: isolate;
+		overflow: hidden;
+	}
+	.stepper button[data-step]::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		z-index: -1;
+		border-radius: inherit;
+		background:
+			linear-gradient(#1f5fe0, #1f5fe0) bottom / 100% 2.5px no-repeat,
+			linear-gradient(90deg, rgb(31 95 224 / 0.07), rgb(31 95 224 / 0.3));
+		/* Revealed from the start, so the pill keeps its round ends instead of squashing. */
+		clip-path: inset(0 calc(100% - var(--done, 0) * 100%) 0 0);
+		opacity: 0;
+		transition: opacity 0.4s ease-out;
+	}
+	.stepper button[data-step='back']::before {
+		background:
+			linear-gradient(#1f5fe0, #1f5fe0) bottom / 100% 2.5px no-repeat,
+			linear-gradient(270deg, rgb(31 95 224 / 0.07), rgb(31 95 224 / 0.3));
+		clip-path: inset(0 0 0 calc(100% - var(--done, 0) * 100%));
+	}
+	.stepper button[data-step]:global(.playing) {
+		background: rgb(31 95 224 / 0.07);
+		color: #1f5fe0;
+	}
+	.stepper button[data-step]:global(.playing)::before {
+		opacity: 1;
+		transition: none;
+	}
+	.stepper button[data-step='next']:global(.ready) {
+		animation: ready 0.9s ease-out;
+	}
+	.stepper button[data-step='next']:global(.ready) :global(svg) {
+		animation: nudge 0.62s cubic-bezier(0.3, 0, 0.2, 1);
+	}
+	@keyframes ready {
+		0% {
+			box-shadow: 0 0 0 0 rgb(31 95 224 / 0.42);
+		}
+		100% {
+			box-shadow: 0 0 0 9px rgb(31 95 224 / 0);
+		}
+	}
+	@keyframes nudge {
+		0%,
+		100% {
+			transform: none;
+		}
+		38% {
+			transform: translateX(3.5px);
+		}
+		64% {
+			transform: translateX(-1px);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.stepper button[data-step='next']:global(.ready),
+		.stepper button[data-step='next']:global(.ready) :global(svg) {
+			animation: none;
+		}
+	}
+
 	.spine ol {
 		display: flex;
 		gap: 5px;
@@ -3193,6 +3336,13 @@
 	.beat {
 		position: relative;
 		height: var(--h);
+		pointer-events: none;
+	}
+	/* Driven, the cards are fixed over the picture and the story keeps time by beats, so the sections take no room. */
+	.driven > .beat {
+		height: 0;
+	}
+	.runway {
 		pointer-events: none;
 	}
 

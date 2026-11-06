@@ -13,56 +13,72 @@ const TRANSFORMER_PACE = [
 	{ from: 15.014, to: 15.092, seconds: 3.6 } // and travel to the board
 ];
 
-/**
- * Scroll is the reader's intent, not the animation clock. A trackpad flick can cover a whole beat
- * in 100ms, so the scene follows a playhead that chases the scroll position at a bounded speed.
- * A flick starts a beat and the beat plays out at its authored pace. Big jumps still get there.
- */
 export interface Span {
 	from: number;
 	to: number;
-	/** The shortest time this stretch of the timeline may take. */
+	/** How long this stretch of the timeline takes to play. */
 	seconds: number;
+	/** Names a stretch whose pace can change with what the reader has already seen. */
+	key?: 'typing';
 }
 
-const RESPONSE = 7; // how eagerly the playhead closes the gap, per second
-const EASE = 7; // how quickly its speed changes, per second
-const REWIND = 1.8; // scrubbing backwards may run faster
-const CATCH_UP_AFTER = 0.35; // lag, in beats, before the limit starts to lift
-const CATCH_UP = 8;
-const CATCH_UP_MAX = 40; // long jumps travel quickly but stay readable as travel
-// A phone held close fills the eyes: a fling there catches up more gently, so the camera glides rather than whips.
-const CALM_CATCH_UP = 3;
-const CALM_CATCH_UP_MAX = 12;
 const FREE_RATE = 0.5;
 
+/** How fast each stretch of the story plays, and so how long any part of it takes. */
+export class Pace {
+	/** By how much a stretch can go quicker for now, when what it shows has already happened. */
+	quicker: (span: Span) => number = () => 1;
+
+	constructor(public spans: Span[]) {}
+
+	private spanAt(T: number) {
+		for (const s of this.spans) if (T >= s.from && T < s.to) return s;
+		return undefined;
+	}
+
+	/** Story time per second, here. */
+	rate(T: number) {
+		const s = this.spanAt(T);
+		return s ? ((s.to - s.from) / s.seconds) * this.quicker(s) : FREE_RATE;
+	}
+
+	/** How long it takes to play from a to b, in seconds, whichever way round they are. */
+	seconds(a: number, b: number) {
+		const lo = Math.min(a, b);
+		const hi = Math.max(a, b);
+		let total = 0;
+		let at = lo;
+		for (const s of this.spans) {
+			if (s.to <= at || s.from >= hi) continue;
+			if (s.from > at) total += (s.from - at) / FREE_RATE;
+			const end = Math.min(hi, s.to);
+			total += (end - Math.max(at, s.from)) / (((s.to - s.from) / s.seconds) * this.quicker(s));
+			at = end;
+		}
+		if (at < hi) total += (hi - at) / FREE_RATE;
+		return total;
+	}
+}
+
+const RESPONSE = 7; // how eagerly the playhead closes the last of the gap, per second
+const EASE = 7; // how quickly its speed changes, per second
+
+/**
+ * Where the story is. It moves towards a target at the authored pace, times whatever speed it's asked for, easing into
+ * and out of motion, and never passes the target.
+ */
 export class Playhead {
 	v = 0;
-	/** Stepping forward: play every stretch at its authored pace, however far the target is. */
-	patient = false;
-	/** How much faster than that to go, when the reader asks it to get on with it. */
-	hurry = 1;
-	/** On a phone: catch up after a fling more gently. */
-	calm = false;
 
 	constructor(
-		private pace: Span[],
+		public pace: Pace,
 		public T = 0,
 		private unlimited = false
 	) {}
 
-	rateAt(T: number) {
-		for (const s of this.pace) {
-			if (T >= s.from && T < s.to) return (s.to - s.from) / s.seconds;
-		}
-		return FREE_RATE;
-	}
-
-	step(target: number, dt: number) {
+	step(target: number, dt: number, speed = 1) {
 		const lag = target - this.T;
-		const far = Math.max(0, Math.abs(lag) - CATCH_UP_AFTER);
-		const catchUp = this.patient ? 1 : this.calm ? Math.min(CALM_CATCH_UP_MAX, 1 + far * far * CALM_CATCH_UP) : Math.min(CATCH_UP_MAX, 1 + far * far * CATCH_UP);
-		const limit = this.unlimited ? Infinity : this.rateAt(this.T) * (lag < 0 ? REWIND : 1) * catchUp * this.hurry;
+		const limit = this.unlimited ? Infinity : this.pace.rate(this.T) * speed;
 		const want = Math.max(-limit, Math.min(limit, lag * RESPONSE));
 		this.v += (want - this.v) * (1 - Math.exp(-dt * EASE));
 		const next = this.T + this.v * dt;
@@ -75,12 +91,20 @@ export class Playhead {
 		}
 		return this.T;
 	}
+
+	/** Straight there, without playing what's between: a cut. */
+	jump(T: number) {
+		this.T = T;
+		this.v = 0;
+	}
 }
 
-/** Minimum durations for each stretch of the story, in reading and watching time. */
+/** How long each stretch of the story takes, in reading and watching time. */
 export const PACE: Span[] = [
-	{ from: 0, to: 1.02, seconds: 3.8 }, // from the title to the laptop
-	{ from: 1.02, to: 1.56, seconds: 3.4 }, // typing 44 characters
+	// The title stays put until its words begin to go: nothing to wait for.
+	{ from: 0, to: 0.5, seconds: 0.3 },
+	{ from: 0.5, to: 1.02, seconds: 3.2 }, // from the title to the laptop
+	{ from: 1.02, to: 1.56, seconds: 3.4, key: 'typing' }, // typing 44 characters, unless it has typed itself already
 	{ from: 1.56, to: 2.04, seconds: 2.4 }, // the prompt reaches the drawer
 	{ from: 2.04, to: 2.7, seconds: 4.4 }, // four drawers
 	{ from: 2.7, to: 3.58, seconds: 3.2 },
@@ -132,5 +156,5 @@ export const PACE: Span[] = [
 	{ from: 32.92, to: 33, seconds: 1 }
 ];
 
-/** A side trip's pace: each card's scene takes about this long to play, however fast it's scrolled. */
+/** A side trip's pace: each card's scene takes about this long to play. */
 export const trackPace = (cards: number): Span[] => Array.from({ length: cards }, (_, i) => ({ from: i, to: i + 1, seconds: 8.5 }));

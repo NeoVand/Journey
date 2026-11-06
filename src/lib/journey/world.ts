@@ -1352,6 +1352,11 @@ export class World {
 	private c2 = new THREE.Color();
 	private c3 = new THREE.Color();
 
+	/** How much of the sentence has typed itself on the title page, 0 to 1: that much of the typing beat has nothing new to show. */
+	get typedAhead() {
+		return this.selfTyped() / PROMPT.length;
+	}
+
 	/** How far the sentence has typed itself since the page opened, in letters. The fraction is the key on its way down. */
 	private selfTyped() {
 		const i = LETTER_AT.findLastIndex((at) => at <= this.opened);

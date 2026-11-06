@@ -49,18 +49,16 @@ test('a drawer in the scene can be pulled out', async ({ page }) => {
 	await expect(page.locator('.steps li.on strong').first()).toHaveText('Tools');
 });
 
-test('a turn the story has not reached yet scrolls the page on to it', async ({ page }) => {
+test('a turn the story has not reached yet is one press away', async ({ page }) => {
 	test.setTimeout(150_000);
 	await page.goto('/#the-whole-fix-in-ten-turns');
 	const sixth = page.getByRole('button', { name: /^Turn 6:/ });
 	// The page cuts to the chapter once the world is built, and the later turns wait ahead.
 	await expect(sixth).toHaveAttribute('aria-label', /ahead/, { timeout: 90_000 });
-	await page.waitForFunction(() => scrollY > innerHeight * 10, null, { timeout: 30_000 });
-	const before = await page.evaluate(() => scrollY);
 	await sixth.click();
-	// Five turns on, at about two thirds of a screen each. The story then plays them on its way there, which
-	// takes seconds with a GPU and minutes without, so this checks the scroll it asked for.
-	await page.waitForFunction((before) => scrollY > before + innerHeight * 3, before, { timeout: 30_000 });
+	// The story plays briskly on to it and rests there. That takes a second with a GPU and longer without.
+	await expect(sixth).toHaveAttribute('aria-current', 'true', { timeout: 60_000 });
+	await expect(sixth).not.toHaveAttribute('aria-label', /ahead/);
 });
 
 test('the arrow keys step through the story a card at a time', async ({ page }) => {
@@ -70,14 +68,35 @@ test('the arrow keys step through the story a card at a time', async ({ page }) 
 	const back = page.getByRole('button', { name: 'Previous step' });
 	await expect(back).toBeDisabled();
 	await page.keyboard.press('ArrowRight');
-	// One step on: the page moves to where the first card's scene has finished.
+	// One step on: the scroll bar keeps count, a screen per card.
 	await page.waitForFunction(() => scrollY > innerHeight * 0.5, null, { timeout: 10_000 });
 	const one = await page.evaluate(() => scrollY);
-	// Pressed again on the way, it hurries this step along rather than skipping the next.
+	// Pressed again on the way, it lines up one more card, and however often it's pressed, no further than that.
+	await page.keyboard.press('ArrowRight');
+	await page.keyboard.press('ArrowRight');
 	await page.keyboard.press('ArrowRight');
 	await page.waitForTimeout(300);
-	expect(await page.evaluate(() => scrollY)).toBe(one);
+	expect(await page.evaluate(() => scrollY)).toBe(one * 2);
 	await expect(back).toBeEnabled({ timeout: 60_000 });
+});
+
+test('one flick of the wheel is one step, however far it would have scrolled', async ({ page }) => {
+	test.setTimeout(150_000);
+	await page.goto('/');
+	await page.waitForFunction(() => document.querySelector('main.driven'), null, { timeout: 90_000 });
+	// Fifteen notches, 30 ms apart by their own clocks, however long the page takes to handle them.
+	await page.evaluate(() => {
+		const at = performance.now();
+		for (let i = 0; i < 15; i++) {
+			const e = new WheelEvent('wheel', { deltaY: 100, bubbles: true, cancelable: true });
+			Object.defineProperty(e, 'timeStamp', { value: at + i * 30 });
+			document.body.dispatchEvent(e);
+		}
+	});
+	await page.waitForTimeout(400);
+	const one = await page.evaluate(() => scrollY);
+	expect(one).toBeGreaterThan(0);
+	expect(one).toBeLessThan(await page.evaluate(() => innerHeight * 1.5));
 });
 
 test('a side trip opens over the story and brings the reader back to the same place', async ({ page }) => {
