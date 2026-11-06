@@ -47,10 +47,14 @@ export class Rig {
 	 * room: on a phone, how far down the screen the words begin, as a share of its height. A shot framed above the words
 	 * then takes all the room there is, down to the words and no further, however long the chapter's card is.
 	 */
-	private solve(shot: Shot, aspect: number, room?: number, top?: number) {
+	private solve(shot: Shot, aspect: number, room?: number, top?: number, ceiling = 0) {
 		let region = aspect < 0.9 ? shot.tall : shot.wide;
 		const above = aspect < 0.9 && room !== undefined && region.y < 0.2 && region.y + region.h < 0.9;
-		if (above) region = { ...region, h: Math.max(0.24, room - region.y) };
+		// From just under the header down to where the words start: nothing of the picture hides beneath either.
+		if (above) {
+			const y = Math.max(region.y, ceiling);
+			region = { ...region, y, h: Math.max(0.24, room - y) };
+		}
 		// The title page is the other way up: its words are at the top, and the picture has the screen below them.
 		const below = aspect < 0.9 && top !== undefined && region.y >= 0.3;
 		if (below) region = { ...region, y: top, h: Math.max(0.24, 0.98 - top) };
@@ -67,7 +71,11 @@ export class Rig {
 		};
 	}
 
-	update(T: number, width: number, height: number, parallaxX = 0, parallaxY = 0, time = 0, room?: number, top?: number) {
+	/**
+	 * On a phone: room is where the words start, top where the title page's words end, and ceiling where the header
+	 * ends, each as a share of the screen's height.
+	 */
+	update(T: number, width: number, height: number, parallaxX = 0, parallaxY = 0, time = 0, room?: number, top?: number, ceiling?: number) {
 		const aspect = width / height;
 		const { shots } = this;
 		let i = 0;
@@ -75,8 +83,8 @@ export class Rig {
 		const a = shots[i];
 		const b = shots[i + 1];
 		const k = smoother(Math.min(1, Math.max(0, (T - a.T) / (b.T - a.T))));
-		const A = this.solve(a, aspect, room, top);
-		const B = this.solve(b, aspect, room, top);
+		const A = this.solve(a, aspect, room, top, ceiling);
+		const B = this.solve(b, aspect, room, top, ceiling);
 
 		// The camera never quite stops: a slow drift keeps depth alive while the reader is reading.
 		const az = lerp(a.az, b.az, k) * DEG + parallaxX * 0.018 + Math.sin(time * 0.31) * 0.0045;

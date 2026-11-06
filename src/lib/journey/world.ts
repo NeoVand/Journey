@@ -970,6 +970,8 @@ export class World {
 	onPress: (what: 'wheel' | 'enter') => void = () => {};
 	/** On a phone, how far down the screen the words begin at this point in the story. The page measures it. */
 	roomAt: ((T: number) => number) | null = null;
+	/** On a phone, where the header ends, as a share of the screen: no picture is framed under it. */
+	ceiling = 0;
 	/** On a phone, where the title page's words end, as a share of the screen: its picture has the room below. */
 	titleFloor: number | null = null;
 	/** The same, for the side trip the reader is on, by the trip's own time. */
@@ -1164,7 +1166,7 @@ export class World {
 		const intro = this.intro;
 
 		// The picture makes room before the words arrive, and only takes it back once they've gone.
-		this.rig.update(T, this.stage.width, this.stage.height, px, py, time, this.roomAt?.(T), this.titleFloor ?? undefined);
+		this.rig.update(T, this.stage.width, this.stage.height, px, py, time, this.roomAt?.(T), this.titleFloor ?? undefined, this.ceiling);
 		this.frameTrack(px, py, time);
 
 		// Inside a trip's own place, nothing else exists.
@@ -1301,7 +1303,7 @@ export class World {
 		if (this.trackIn) return this.frameRoom(px, py, time);
 		// A trip into a place of its own first goes to where the way in is.
 		const rig = this.trackId === 'mcp' ? this.trackRigs.mcp : this.roofRigs[this.trackId];
-		rig.update(this.trackT, width, height, px, py, time, this.tripRoomAt?.(this.trackT));
+		rig.update(this.trackT, width, height, px, py, time, this.tripRoomAt?.(this.trackT), undefined, this.ceiling);
 		if (k >= 1) {
 			this.stage.focusLight(rig.focus, rig.radius);
 			this.ear.copy(rig.focus);
@@ -1324,7 +1326,7 @@ export class World {
 		const id = this.trackId === 'sandbox' || this.trackId === 'memory' ? this.trackId : 'harness';
 		const rig = this.trackRigs[id];
 		const place = id === 'sandbox' ? STAGE_AT : id === 'memory' ? MEMORY_AT : ROOM_AT;
-		rig.update(this.trackT, width, height, px, py, time, this.tripRoomAt?.(this.trackT));
+		rig.update(this.trackT, width, height, px, py, time, this.tripRoomAt?.(this.trackT), undefined, this.ceiling);
 		const k = this.trackArrive;
 		if (k >= 1) {
 			this.stage.focusLight(rig.focus, rig.radius);

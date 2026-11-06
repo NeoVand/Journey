@@ -556,6 +556,7 @@
 					if (canvas.clientWidth >= canvas.clientHeight * 0.9) {
 						w.roomAt = null;
 						w.titleFloor = null;
+						w.ceiling = 0;
 						return;
 					}
 					const screen = smallest.offsetHeight;
@@ -564,6 +565,8 @@
 					const title = [...pins[0].el.children].filter((k) => (k as HTMLElement).offsetParent) as HTMLElement[];
 					const titleEnd = Math.max(...title.map((k) => k.offsetTop + k.offsetHeight));
 					w.titleFloor = Math.min(0.62, (titleEnd + 18) / picture);
+					const bar = document.querySelector<HTMLElement>('header.bar');
+					w.ceiling = bar ? (bar.offsetTop + bar.offsetHeight + 4) / picture : 0;
 					rooms = pins.map((p) => {
 						const first = p.el.firstElementChild as HTMLElement | null;
 						// From the top of the words' ground to the bottom of the card, which sits on the bottom of the screen.
@@ -827,6 +830,9 @@
 				}
 				const screen = smallest.offsetHeight;
 				const picture = canvas.clientHeight;
+				// A trip's header carries its name, which can take two lines.
+				const bar = document.querySelector<HTMLElement>('header.bar');
+				w.ceiling = bar ? (bar.offsetTop + bar.offsetHeight + 4) / picture : 0;
 				const rooms = tripPins.map((el) => {
 					const first = el.firstElementChild as HTMLElement | null;
 					return first ? (screen - (el.offsetHeight - first.offsetTop + 14)) / picture : 1;
@@ -1014,6 +1020,8 @@
 					tripHead = null;
 					flying = false;
 					afterFlight = null;
+					// The story's own header again, once it has drawn.
+					tick().then(measureRooms);
 					comeBackTo?.focus({ preventScroll: true });
 				};
 				if (atOnce) return done();
