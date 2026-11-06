@@ -47,16 +47,19 @@ export class Rig {
 	 * room: on a phone, how far down the screen the words begin, as a share of its height. A shot framed above the words
 	 * then takes all the room there is, down to the words and no further, however long the chapter's card is.
 	 */
-	private solve(shot: Shot, aspect: number, room?: number) {
+	private solve(shot: Shot, aspect: number, room?: number, top?: number) {
 		let region = aspect < 0.9 ? shot.tall : shot.wide;
 		const above = aspect < 0.9 && room !== undefined && region.y < 0.2 && region.y + region.h < 0.9;
 		if (above) region = { ...region, h: Math.max(0.24, room - region.y) };
+		// The title page is the other way up: its words are at the top, and the picture has the screen below them.
+		const below = aspect < 0.9 && top !== undefined && region.y >= 0.3;
+		if (below) region = { ...region, y: top, h: Math.max(0.24, 0.98 - top) };
 		const halfV = Math.tan((this.camera.fov * DEG) / 2);
 		const radius = aspect < 0.9 && shot.tallRadius ? shot.tallRadius : shot.radius;
 		const ry = aspect < 0.9 && shot.tallRadius ? (shot.tallRy ?? shot.tallRadius) : (shot.ry ?? shot.radius);
 		const dist = Math.max(ry / (region.h * halfV), radius / (region.w * aspect * halfV));
 		// On the shortest phones the words take more of the screen, so the subject sits a little higher.
-		const lift = aspect < 0.9 && !above ? Math.max(0, Math.min(1, (aspect - 0.47) / 0.09)) * 0.035 : 0;
+		const lift = aspect < 0.9 && !above && !below ? Math.max(0, Math.min(1, (aspect - 0.47) / 0.09)) * 0.035 : 0;
 		return {
 			dist,
 			shiftX: region.x + region.w / 2 - 0.5,
@@ -64,7 +67,7 @@ export class Rig {
 		};
 	}
 
-	update(T: number, width: number, height: number, parallaxX = 0, parallaxY = 0, time = 0, room?: number) {
+	update(T: number, width: number, height: number, parallaxX = 0, parallaxY = 0, time = 0, room?: number, top?: number) {
 		const aspect = width / height;
 		const { shots } = this;
 		let i = 0;
@@ -72,8 +75,8 @@ export class Rig {
 		const a = shots[i];
 		const b = shots[i + 1];
 		const k = smoother(Math.min(1, Math.max(0, (T - a.T) / (b.T - a.T))));
-		const A = this.solve(a, aspect, room);
-		const B = this.solve(b, aspect, room);
+		const A = this.solve(a, aspect, room, top);
+		const B = this.solve(b, aspect, room, top);
 
 		// The camera never quite stops: a slow drift keeps depth alive while the reader is reading.
 		const az = lerp(a.az, b.az, k) * DEG + parallaxX * 0.018 + Math.sin(time * 0.31) * 0.0045;

@@ -3,6 +3,10 @@ import { Batch } from '../kit/batch';
 import { extrude, rbox, roundedRect } from '../kit/geometry';
 import { mats } from '../kit/materials';
 import { hash } from '../kit/math';
+import { isPhone } from '../kit/print';
+
+/** How finely the board is printed. */
+const BOARD_RES = isPhone ? 0.5 : 1;
 
 /** The clock the board's light runs on: the cluster sets it every frame. */
 export const boardClock = { value: 0 };
@@ -38,8 +42,10 @@ function routeTraces(S: number) {
 /** The board's print: dim traces and pads on navy. */
 function traces(routes: Trace[], S: number) {
 	const canvas = document.createElement('canvas');
-	canvas.width = canvas.height = S;
+	// A phone prints the board at half the size: the traces are faint, and its memory is tight.
+	canvas.width = canvas.height = S * BOARD_RES;
 	const c = canvas.getContext('2d')!;
+	c.scale(BOARD_RES, BOARD_RES);
 	c.fillStyle = '#0f2149';
 	c.fillRect(0, 0, S, S);
 	c.lineCap = 'round';
@@ -66,8 +72,10 @@ function traces(routes: Trace[], S: number) {
 /** Where light can run: the traces alone, white on black. */
 function glowMask(routes: Trace[], S: number) {
 	const canvas = document.createElement('canvas');
-	canvas.width = canvas.height = S;
+	// A phone prints the board at half the size: the traces are faint, and its memory is tight.
+	canvas.width = canvas.height = S * BOARD_RES;
 	const c = canvas.getContext('2d')!;
+	c.scale(BOARD_RES, BOARD_RES);
 	c.fillStyle = '#000';
 	c.fillRect(0, 0, S, S);
 	c.lineCap = 'round';

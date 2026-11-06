@@ -182,9 +182,11 @@ export class World {
 	 */
 	trackIn = false;
 	trackArrive = 1;
-	room!: HarnessRoom;
-	sandboxStage!: SandboxStage;
-	memoryStage!: MemoryStage;
+	/**
+	 * The places side trips drop into. Each is built the first time a reader goes there, not before: together they cost
+	 * tens of megabytes of textures and geometry, and a phone's browser closes a page that holds too much.
+	 */
+	private places: { harness?: HarnessRoom; sandbox?: SandboxStage; memory?: MemoryStage } = {};
 	/** Where an inside trip's way in is, in the story: the harness's roof hatch, the top of the glass, the memory cabinet. */
 	private roofRigs!: Record<'harness' | 'sandbox' | 'memory', Rig>;
 	private above = new THREE.Vector3();
@@ -288,10 +290,7 @@ export class World {
 		this.root.add(this.finale.group);
 		this.mcpTrack = new McpTrack(this.harness, this.mcp, this.mcpLead);
 		this.root.add(this.mcpTrack.group);
-		this.room = new HarnessRoom();
-		this.sandboxStage = new SandboxStage();
-		this.memoryStage = new MemoryStage();
-		this.stage.scene.add(this.room.group, this.sandboxStage.group, this.memoryStage.group);
+
 		this.trackRigs = {
 			mcp: new Rig(this.stage.camera, MCP_SHOTS),
 			harness: new Rig(this.stage.camera, ROOM_SHOTS),
@@ -971,6 +970,8 @@ export class World {
 	onPress: (what: 'wheel' | 'enter') => void = () => {};
 	/** On a phone, how far down the screen the words begin at this point in the story. The page measures it. */
 	roomAt: ((T: number) => number) | null = null;
+	/** On a phone, where the title page's words end, as a share of the screen: its picture has the room below. */
+	titleFloor: number | null = null;
 	/** The same, for the side trip the reader is on, by the trip's own time. */
 	tripRoomAt: ((t: number) => number) | null = null;
 	private poker = new Poker();
@@ -1008,6 +1009,23 @@ export class World {
 	setTrack(id: TrackId | null) {
 		if (id) this.harness.pulled = -1;
 		this.trackId = id;
+		// Build its place now, while the camera is still on its way there, rather than in the middle of the drop.
+		if (id && id !== 'mcp') this.place(id);
+	}
+
+	/** A side trip's place, built on first use, with its materials compiled before it is first seen. */
+	private place<K extends 'harness' | 'sandbox' | 'memory'>(id: K) {
+		let made = this.places[id];
+		if (!made) {
+			const built = id === 'harness' ? new HarnessRoom() : id === 'sandbox' ? new SandboxStage() : new MemoryStage();
+			if (!(built instanceof HarnessRoom)) built.setHarness(this.harnessId);
+			built.group.visible = false;
+			this.stage.scene.add(built.group);
+			this.stage.renderer.compile(built.group, this.stage.camera);
+			this.places[id] = built as never;
+			made = built as never;
+		}
+		return made as NonNullable<(typeof this.places)[K]>;
 	}
 
 	/** Returns whether anything answered. */
@@ -1084,8 +1102,8 @@ export class World {
 
 	setHarness(id: HarnessId) {
 		this.harnessId = id;
-		this.sandboxStage.setHarness(id);
-		this.memoryStage.setHarness(id);
+		this.places.sandbox?.setHarness(id);
+		this.places.memory?.setHarness(id);
 		this.cluster.setHarness(id);
 		this.back.setHarness(id);
 		const spec = HARNESSES[id];
@@ -1115,16 +1133,14 @@ export class World {
 		const intro = this.intro;
 
 		// The picture makes room before the words arrive, and only takes it back once they've gone.
-		this.rig.update(T, this.stage.width, this.stage.height, px, py, time, this.roomAt?.(T));
+		this.rig.update(T, this.stage.width, this.stage.height, px, py, time, this.roomAt?.(T), this.titleFloor ?? undefined);
 		this.frameTrack(px, py, time);
 
 		// Inside a trip's own place, nothing else exists.
 		const inRoom = this.trackIn && this.trackId === 'harness';
 		const onStage = this.trackIn && this.trackId === 'sandbox';
 		const onMemory = this.trackIn && this.trackId === 'memory';
-		this.room.group.visible = inRoom;
-		this.sandboxStage.group.visible = onStage;
-		this.memoryStage.group.visible = onMemory;
+		for (const [id, place] of Object.entries(this.places)) place.group.visible = this.trackIn && this.trackId === id;
 		if (this.trackIn) {
 			this.root.visible = false;
 			this.cluster.group.visible = false;
@@ -1135,9 +1151,9 @@ export class World {
 			this.stage.holdShadows(false);
 			const sky = onStage ? STAGE_SKY : onMemory ? MEMORY_SKY : ROOM_SKY;
 			this.stage.setSky(sky.top, sky.mid, sky.low);
-			if (onStage) this.sandboxStage.update(this.trackT, time);
-			else if (onMemory) this.memoryStage.update(this.trackT, time);
-			else this.room.update(this.trackT, time);
+			if (onStage) this.place('sandbox').update(this.trackT, time);
+			else if (onMemory) this.place('memory').update(this.trackT, time);
+			else if (inRoom) this.place('harness').update(this.trackT, time);
 			this.stage.render();
 			return;
 		}

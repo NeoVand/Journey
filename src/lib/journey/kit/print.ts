@@ -31,6 +31,10 @@ export function canvasTexture(canvas: HTMLCanvasElement) {
 /** A phone: a small screen and a tight memory budget, so printed surfaces and the frame itself get lighter. */
 export const isPhone = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches && Math.min(screen.width, screen.height) < 600;
 const PRINT = isPhone ? 0.6 : 1;
+/** On a phone no printed surface is wider or taller than this, and no line of text taller than LABEL_MAX: the biggest
+ * are seen from far away, and every one is held twice, once to draw and once on the GPU. */
+const SURFACE_MAX = isPhone ? 1536 : Infinity;
+const LABEL_MAX = isPhone ? 160 : Infinity;
 
 /** A drawable surface: a canvas with its texture, redrawn when the reader changes something. Drawn in logical pixels at any print scale. */
 export class Surface {
@@ -44,8 +48,9 @@ export class Surface {
 		public h: number
 	) {
 		this.canvas = document.createElement('canvas');
-		this.canvas.width = Math.ceil(w * PRINT);
-		this.canvas.height = Math.ceil(h * PRINT);
+		const k = Math.min(PRINT, SURFACE_MAX / Math.max(w, h));
+		this.canvas.width = Math.ceil(w * k);
+		this.canvas.height = Math.ceil(h * k);
 		this.ctx = this.canvas.getContext('2d')!;
 		this.ctx.scale(this.canvas.width / w, this.canvas.height / h);
 		this.texture = canvasTexture(this.canvas);
@@ -94,7 +99,7 @@ export class Label {
 			align: 'center',
 			...style
 		};
-		this.px = Math.max(32, Math.round(height * this.style.density * PRINT));
+		this.px = Math.max(32, Math.min(LABEL_MAX, Math.round(height * this.style.density * PRINT)));
 		this.surface = new Surface(4, 4);
 		const material = new THREE.MeshStandardMaterial({
 			map: this.surface.texture,

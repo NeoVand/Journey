@@ -32,9 +32,12 @@ const H = 256;
 function paintCloud(seed: number, tall: number) {
 	const rand = seeded(seed);
 	const canvas = document.createElement('canvas');
-	canvas.width = W;
-	canvas.height = H;
+	// A phone paints them at half the size: they're soft anyway, and its memory is tight.
+	const res = isPhone ? 0.5 : 1;
+	canvas.width = W * res;
+	canvas.height = H * res;
 	const c = canvas.getContext('2d')!;
+	c.scale(res, res);
 	const base = H * 0.78;
 	const puffs: [number, number, number][] = [];
 	const n = 9 + Math.floor(rand() * 5);
@@ -68,7 +71,7 @@ function paintCloud(seed: number, tall: number) {
 
 	// The shape, soft at the edges, cut flat underneath.
 	c.save();
-	c.filter = 'blur(7px)';
+	c.filter = `blur(${7 * res}px)`;
 	c.fillStyle = '#fff';
 	for (const [x, y, r] of puffs) {
 		c.beginPath();
@@ -123,6 +126,8 @@ interface Cloud {
 	opacity: number;
 }
 
+let shared: THREE.Texture[] | null = null;
+
 export class Cloudscape {
 	group = new THREE.Group();
 	private clouds: Cloud[] = [];
@@ -131,7 +136,9 @@ export class Cloudscape {
 
 	constructor() {
 		this.group.name = 'cloudscape';
-		for (let i = 0; i < 6; i++) this.textures.push(paintCloud(1000 + i * 77, i / 5));
+		// Every sky shares the same six clouds.
+		shared ??= Array.from({ length: 6 }, (_, i) => paintCloud(1000 + i * 77, i / 5));
+		this.textures = shared;
 	}
 
 	/**

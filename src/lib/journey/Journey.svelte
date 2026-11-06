@@ -20,6 +20,7 @@
 	import { score, tripScore, TURN_NOTES } from './sound/score';
 	import { chime, key, low, note, porcelain, tick as tickSound, VOICE_SOUNDS, whoosh } from './sound/synth';
 	import { AGAIN, AGENT_MARK, CHECK_ICON, DRAWER_ICON, GATE_ICON, MAP, SPIN, SWAP, TRACK_ICON } from './icons';
+	import { describe, takeLastStop, Watch, type Note } from './report';
 
 	const ids: HarnessId[] = ['claude', 'codex', 'copilot'];
 	const labels: Record<HarnessId, string> = { claude: 'Claude Code', codex: 'Codex', copilot: 'Copilot' };
@@ -184,6 +185,25 @@
 	let trackCard = $state(0);
 	/** Set once the world is running. Before that, and without 3D, there's nowhere to go. */
 	let enterTrack: (id: TrackId) => void = () => {};
+	/** What to tell the reader if the page stopped last time, or something went wrong just now. */
+	let report = $state<{ note: Note; why: 'stopped' | 'error' | 'asked' } | null>(null);
+	let copied = $state(false);
+	async function copyReport() {
+		if (!report) return;
+		const text = describe(report.note);
+		try {
+			await navigator.clipboard.writeText(text);
+		} catch {
+			// Older browsers: through a text box, the old way.
+			const box = document.createElement('textarea');
+			box.value = text;
+			document.body.append(box);
+			box.select();
+			document.execCommand('copy');
+			box.remove();
+		}
+		copied = true;
+	}
 	/** Sound: off until the reader turns it on, and remembered between visits. */
 	let soundOn = $state(false);
 	let toggleSound: () => void = () => {};
@@ -367,6 +387,20 @@
 		const params = new URLSearchParams(location.search);
 		const still = params.has('still');
 
+		// If the last visit ended without the page being closed, a phone's browser most likely ran out of memory.
+		const before = takeLastStop();
+		if (before && !still) report = { note: before, why: 'stopped' };
+		// The page's own date says which version this is: each deploy publishes it afresh.
+		const watch = new Watch({ version: `published ${document.lastModified}`, gpu: 'not started', ua: navigator.userAgent });
+		const onError = (e: ErrorEvent | PromiseRejectionEvent) => {
+			const message = 'reason' in e ? String(e.reason?.stack ?? e.reason) : `${e.message} at ${e.filename?.split('/').pop()}:${e.lineno}`;
+			watch.error(message);
+			if (!report) report = { note: watch.note, why: 'error' };
+		};
+		addEventListener('error', onError);
+		addEventListener('unhandledrejection', onError);
+		canvas.addEventListener('webglcontextlost', () => watch.error('WebGL context lost'));
+
 		(async () => {
 			const { World } = await import('./world');
 			if (disposed) return;
@@ -385,6 +419,12 @@
 			}
 			world = w;
 			w.setHarness(harness);
+			{
+				const gl = w.stage.renderer.getContext();
+				const info = gl.getExtension('WEBGL_debug_renderer_info');
+				watch.note.gpu = info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL)) : String(gl.getParameter(gl.RENDERER));
+			}
+			let noted = 0;
 
 			const sections = [...document.querySelectorAll<HTMLElement>('[data-beat]')];
 			let tops: number[] = [];
@@ -515,10 +555,15 @@
 				measureRooms = () => {
 					if (canvas.clientWidth >= canvas.clientHeight * 0.9) {
 						w.roomAt = null;
+						w.titleFloor = null;
 						return;
 					}
 					const screen = smallest.offsetHeight;
 					const picture = canvas.clientHeight;
+					// The title page's words sit at the top: its picture starts a little below the last of them.
+					const title = [...pins[0].el.children].filter((k) => (k as HTMLElement).offsetParent) as HTMLElement[];
+					const titleEnd = Math.max(...title.map((k) => k.offsetTop + k.offsetHeight));
+					w.titleFloor = Math.min(0.62, (titleEnd + 18) / picture);
 					rooms = pins.map((p) => {
 						const first = p.el.firstElementChild as HTMLElement | null;
 						// From the top of the words' ground to the bottom of the card, which sits on the bottom of the screen.
@@ -655,6 +700,18 @@
 				w.update(track && tripT !== null ? tripT : T, reduced ? 0 : time, dt, reduced ? 0 : px, reduced ? 0 : py, reduced);
 				if (soundOn) playSound(dt);
 				publish();
+				if (now - noted > 1500) {
+					noted = now;
+					const mem = w.stage.renderer.info.memory;
+					watch.beat({
+						where: locate(),
+						T,
+						trip: track,
+						agent: harness,
+						screen: `${innerWidth}x${innerHeight} at ${devicePixelRatio}x, drawing at ${dpr}x`,
+						memory: `${mem.textures} textures, ${mem.geometries} geometries`
+					});
+				}
 
 				if (now - lastAim > 140) {
 					lastAim = now;
@@ -1161,10 +1218,14 @@
 			// Behind the loader nobody sees it happen, so there's no need for the cut to hide it.
 			followAddress('at-once');
 			canvas.dataset.ready = 'true';
+			// ?report shows what the page notes about this device, to send on when something looks wrong.
+			if (params.has('report')) setTimeout(() => (report = { note: watch.note, why: 'asked' }), 2500);
 		})();
 
 		return () => {
 			disposed = true;
+			removeEventListener('error', onError);
+			removeEventListener('unhandledrejection', onError);
 			cleanup();
 		};
 	};
@@ -1249,6 +1310,25 @@
 />
 
 <canvas class="stage" {@attach stage} aria-hidden="true"></canvas>
+{#if report}
+	<aside class="report" role="status">
+		<p>
+			{#if report.why === 'stopped'}
+				Last time, the page stopped unexpectedly at <b>{report.note.where || 'the start'}</b>. A phone can close a page that
+				uses too much memory.
+			{:else if report.why === 'error'}
+				Something went wrong on this page.
+			{:else}
+				What the page notes about this device.
+			{/if}
+			Copy the details to report it.
+		</p>
+		<div class="report-row">
+			<button type="button" class="report-copy" onclick={copyReport}>{copied ? 'Copied' : 'Copy details'}</button>
+			<button type="button" class="report-close" onclick={() => (report = null)}>Dismiss</button>
+		</div>
+	</aside>
+{/if}
 {#if !driven && !failed}
 	<div class="loader" aria-hidden="true">
 		<div class="hops">
@@ -2387,6 +2467,43 @@
 		}
 	}
 
+	.report {
+		position: fixed;
+		z-index: 40;
+		left: 50%;
+		bottom: max(16px, env(safe-area-inset-bottom));
+		width: min(420px, calc(100vw - 24px));
+		padding: 14px 16px 12px;
+		border-radius: 16px;
+		background: #fffdf7;
+		color: #16243d;
+		font: 450 14.5px/1.42 var(--sans);
+		box-shadow: 0 12px 34px rgb(6 15 38 / 0.24);
+		transform: translateX(-50%);
+	}
+	.report p {
+		margin: 0 0 10px;
+	}
+	.report-row {
+		display: flex;
+		gap: 8px;
+	}
+	.report-copy,
+	.report-close {
+		padding: 8px 14px;
+		border: 0;
+		border-radius: 999px;
+		font: 650 14px/1 var(--sans);
+		cursor: pointer;
+	}
+	.report-copy {
+		background: #101a30;
+		color: #fff;
+	}
+	.report-close {
+		background: rgb(16 26 48 / 0.08);
+		color: #16243d;
+	}
 	.loader {
 		position: fixed;
 		z-index: 2;
@@ -2441,7 +2558,44 @@
 	}
 	@media (max-aspect-ratio: 9/10) {
 		/* Someone arriving at a chapter's address sees its words while the world builds, so it brings its own ground. */
-		.loader {
+		.report {
+		position: fixed;
+		z-index: 40;
+		left: 50%;
+		bottom: max(16px, env(safe-area-inset-bottom));
+		width: min(420px, calc(100vw - 24px));
+		padding: 14px 16px 12px;
+		border-radius: 16px;
+		background: #fffdf7;
+		color: #16243d;
+		font: 450 14.5px/1.42 var(--sans);
+		box-shadow: 0 12px 34px rgb(6 15 38 / 0.24);
+		transform: translateX(-50%);
+	}
+	.report p {
+		margin: 0 0 10px;
+	}
+	.report-row {
+		display: flex;
+		gap: 8px;
+	}
+	.report-copy,
+	.report-close {
+		padding: 8px 14px;
+		border: 0;
+		border-radius: 999px;
+		font: 650 14px/1 var(--sans);
+		cursor: pointer;
+	}
+	.report-copy {
+		background: #101a30;
+		color: #fff;
+	}
+	.report-close {
+		background: rgb(16 26 48 / 0.08);
+		color: #16243d;
+	}
+	.loader {
 			left: 50%;
 			top: auto;
 			bottom: 24px;
@@ -3194,6 +3348,48 @@
 	.trip-go:disabled {
 		opacity: 0.45;
 		cursor: default;
+	}
+	/* A phone's title page: everything a size down, so the words take the top of the screen and the world has the rest,
+	   even with a browser's bars at both ends. */
+	@media (max-aspect-ratio: 9/10) {
+		.hero h1 {
+			font-size: clamp(32px, 9.4vw, 44px);
+			margin-bottom: 12px;
+		}
+		.hero .lede {
+			font-size: 15.5px;
+			line-height: 1.42;
+			margin-bottom: 14px;
+		}
+		.hero .picker {
+			padding: 3px;
+		}
+		.hero .picker button {
+			font-size: 13.5px;
+			padding: 9px 12px;
+			gap: 6px;
+		}
+		.hero .scroll-hint {
+			margin-top: 14px;
+			font-size: 14px;
+		}
+		.hero .trips {
+			margin-top: 10px;
+			font-size: 13px;
+		}
+		.hero .trip-go {
+			font-size: 13px;
+			padding: 6px 11px 6px 8px;
+		}
+	}
+	/* On a short phone screen, such as Chrome's on an iPhone with its two bars, the step-through hint gives way. */
+	@media (max-aspect-ratio: 9/10) and (max-height: 720px) {
+		.hero .scroll-hint {
+			display: flex;
+		}
+		.hero .scroll-hint small {
+			display: none;
+		}
 	}
 	/* On a phone the title page's trips run in one row you can swipe, so the picture below keeps its room. The row
 	   reaches the screen's edge and fades there, which says there's more to see. */
