@@ -3171,6 +3171,30 @@
 		opacity: 0.45;
 		cursor: default;
 	}
+	/* On a phone the title page's trips run in one row you can swipe, so the picture below keeps its room. The row
+	   reaches the screen's edge and fades there, which says there's more to see. */
+	@media (max-aspect-ratio: 9/10) {
+		.hero .trips {
+			/* Its own width counts for nothing, so the long row can't widen the card around it. */
+			contain: inline-size;
+			flex-wrap: nowrap;
+			overflow-x: auto;
+			margin-right: -20px;
+			padding: 2px 20px 2px 0;
+			scrollbar-width: none;
+			overscroll-behavior-x: contain;
+			scroll-snap-type: x proximity;
+			-webkit-mask-image: linear-gradient(to right, black calc(100% - 36px), transparent);
+			mask-image: linear-gradient(to right, black calc(100% - 36px), transparent);
+		}
+		.hero .trips::-webkit-scrollbar {
+			display: none;
+		}
+		.hero .trips > * {
+			flex: none;
+			scroll-snap-align: start;
+		}
+	}
 	/* The story steps aside while a trip has the screen, and comes back as it ends. */
 	main {
 		transition: opacity 0.35s;
