@@ -535,10 +535,15 @@
 					const starts = pins.map((p) => p.i + p.from - p.fade * 0.3);
 					const ends = pins.map((p) => p.i + p.end + p.fade);
 					w.roomAt = (at) => {
-						let n = 0;
-						while (n < pins.length - 1 && at >= starts[n + 1]) n++;
-						if (n < pins.length - 1 && at > ends[n]) return ease(rooms[n], rooms[n + 1], within(at, ends[n], starts[n + 1]));
-						return rooms[n];
+						// From one card's room to the next across the moment they hand over: the gap between them, or, where the
+						// next arrives before the last has gone, the time they share.
+						for (let n = 0; n < pins.length - 1; n++) {
+							const a = Math.min(ends[n], starts[n + 1]);
+							const b = Math.max(ends[n], starts[n + 1], a + 0.01);
+							if (at < a) return rooms[n];
+							if (at < b) return ease(rooms[n], rooms[n + 1], within(at, a, b));
+						}
+						return rooms[rooms.length - 1];
 					};
 				};
 				measureRooms();

@@ -79,11 +79,11 @@ export class Playhead {
 
 /** Minimum durations for each stretch of the story, in reading and watching time. */
 export const PACE: Span[] = [
-	{ from: 0, to: 1.02, seconds: 3 }, // from the title to the laptop
+	{ from: 0, to: 1.02, seconds: 3.8 }, // from the title to the laptop
 	{ from: 1.02, to: 1.56, seconds: 3.4 }, // typing 44 characters
 	{ from: 1.56, to: 2.04, seconds: 2.4 }, // the prompt reaches the drawer
 	{ from: 2.04, to: 2.7, seconds: 4.4 }, // four drawers
-	{ from: 2.7, to: 3.58, seconds: 2.6 },
+	{ from: 2.7, to: 3.58, seconds: 3.2 },
 	{ from: 3.58, to: 4.08, seconds: 2.6 }, // the page falls to the tunnel
 	{ from: 4.08, to: 4.86, seconds: 3.2 }, // ciphertext
 	{ from: 4.86, to: 5.04, seconds: 1.1 },
@@ -92,14 +92,14 @@ export const PACE: Span[] = [
 	{ from: 6.16, to: 6.56, seconds: 5.5 }, // eleven cuts
 	{ from: 6.56, to: 6.86, seconds: 2 }, // the wave of flips
 	{ from: 6.86, to: 7.72, seconds: 6.4 }, // long enough to read before the camera moves in
-	{ from: 7.72, to: 8.1, seconds: 3.2 }, // pouring in, then the dive
+	{ from: 7.72, to: 8.1, seconds: 3.9 }, // pouring in, then the dive
 	{ from: 8.1, to: 8.7, seconds: 3.8 }, // weights split across chips
-	{ from: 8.7, to: 9.06, seconds: 2.2 },
+	{ from: 8.7, to: 9.06, seconds: 2.8 },
 	{ from: 9.06, to: 9.56, seconds: 4.2 }, // keys and values, one token at a time
 	{ from: 9.56, to: 9.9, seconds: 2.4 }, // attention looks back
-	{ from: 9.9, to: 10.1, seconds: 1.4 },
+	{ from: 9.9, to: 10.1, seconds: 2 },
 	{ from: 10.1, to: 10.62, seconds: 3.4 }, // blocks scatter into memory
-	{ from: 10.62, to: 11, seconds: 1.5 },
+	{ from: 10.62, to: 11, seconds: 2.4 },
 	{ from: 11, to: 11.86, seconds: 11.5 }, // turn two: the router asks around, then five blocks through the gate
 	{ from: 11.86, to: 12.06, seconds: 1.4 },
 	{ from: 12.06, to: 12.92, seconds: 11.5 }, // fourteen scheduler steps, and five comings and goings to follow
@@ -110,17 +110,23 @@ export const PACE: Span[] = [
 	{ from: 15.42, to: 15.88, seconds: 3.8 }, // the wheel
 	{ from: 15.88, to: 16.06, seconds: 1.4 },
 	{ from: 16.06, to: 16.9, seconds: 7.4 }, // thirteen thinking tokens
-	{ from: 16.9, to: 17.06, seconds: 1.2 },
+	{ from: 16.9, to: 17.06, seconds: 2 },
 	{ from: 17.06, to: 17.8, seconds: 5.6 }, // the call
 	{ from: 17.8, to: 17.95, seconds: 2.4 }, // the stamp, and the reason it stopped
-	{ from: 17.95, to: 18.1, seconds: 1 },
+	{ from: 17.95, to: 18.1, seconds: 2.8 }, // the long pan along the row to the detokenizer
 	{ from: 18.1, to: 19.04, seconds: 5.2 }, // only text leaves
 	{ from: 19.04, to: 20.04, seconds: 5.4 },
 	{ from: 20.04, to: 21.04, seconds: 8 }, // the gates
 	{ from: 21.04, to: 25.04, seconds: 22 }, // sandbox and tools
-	{ from: 25.04, to: 29.04, seconds: 21 }, // round the loop
-	{ from: 29.04, to: 29.84, seconds: 14 }, // ten turns, each with something to read
-	{ from: 29.84, to: 32, seconds: 11 }, // the end
+	{ from: 25.04, to: 26.9, seconds: 9.8 }, // round the loop, and the press
+	{ from: 26.9, to: 27.06, seconds: 1.7 }, // across to the memory shelf
+	{ from: 27.06, to: 27.92, seconds: 4.5 },
+	{ from: 27.92, to: 28.06, seconds: 1.7 }, // across to the lost answer
+	{ from: 28.06, to: 28.9, seconds: 4.4 },
+	{ from: 28.9, to: 29.06, seconds: 1.8 }, // across to the ten turns
+	{ from: 29.06, to: 29.84, seconds: 13.6 }, // ten turns, each with something to read
+	{ from: 29.84, to: 30.1, seconds: 3 }, // the long move from the ten turns to the steps
+	{ from: 30.1, to: 32, seconds: 9.5 }, // the end
 	{ from: 32, to: 32.32, seconds: 5.5 }, // the camera lets go of the laptop
 	{ from: 32.32, to: 32.92, seconds: 11 }, // one last lap, with the whole world in view
 	{ from: 32.92, to: 33, seconds: 1 }
