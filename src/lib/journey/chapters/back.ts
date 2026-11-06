@@ -6,7 +6,7 @@ import { archBlock, arcPoint, Card, curve, hazard, islandAt, machine, panel, sha
 import { drawPageIcon, font, Surface, type IconData } from '../kit/print';
 import { FINALE_T } from './finale';
 import { gearShape } from '../props/brain';
-import { createSign, fitting, grown, standSign } from '../kit/parts';
+import { createSign, fitting, grown, SIGN_PHONE, signWidth, standSign } from '../kit/parts';
 import { bell, bounceDown, clamp, hash, inOut, lerp, outBack, outCubic, seg, smooth, spring } from '../kit/math';
 import { createCastShadow } from '../props/island';
 import { TEN_AT, TEN_STEP, TEN_TURNS, CALLS, HARNESSES, type HarnessId } from '../content';
@@ -495,7 +495,8 @@ export class Back {
 		this.gatePipe = tube(this.gatePath, 0.09, m.orangeGlow, 200);
 		g.add(this.gatePipe);
 		const fromSky = createSign('From the provider', 0.24);
-		fromSky.position.set(3.3, 6.7, -0.75);
+		// Its left end stays on its arm: a phone's bigger sign grows to the right, away from the tube.
+		fromSky.position.set(3.3 + grown(signWidth(fromSky) / SIGN_PHONE / 2), 6.7, -0.75);
 		g.add(fromSky);
 		const fromArm = new Batch();
 		fromArm.add(rbox(0.5, 0.05, 0.05, 0.02, 1), m.steelSoft, { p: [1.86, 6.7, -0.75] });
