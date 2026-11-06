@@ -1563,7 +1563,7 @@
 	</section>
 
 	<section data-beat class="beat" style:--h="560vh">
-		<article class="pin right" data-out="0.74">
+		<article class="pin left" data-out="0.74">
 			<h2>Text comes back, not numbers</h2>
 			<p>Each number is looked up in the vocabulary. The detokenizer waits until it has a whole character, then sends a small chunk of text, or of a tool call’s JSON. Token numbers never leave the data center.</p>
 			<p>{@render rich('A second set of [[classifiers]] reads along. If the text crosses a line, generation stops mid-sentence.')}</p>

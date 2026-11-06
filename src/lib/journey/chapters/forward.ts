@@ -16,7 +16,9 @@ import { KvRow, MAP_D, MAP_W, MapPlate, LOGITS_FLY, LOGITS_LINE, LOGITS_ROW, PIC
 
 const WHEEL = 193;
 const DEC = 233;
-const DET = DEC + 27;
+/** The detokenizer stands at the row's left end, in the gap between the sampler and the stack. The belt runs the row
+ * left into it, so the oldest token goes in first and the text streams out in the order it was written. */
+const DET = DEC - 21.5;
 const ROW0 = DEC - 13;
 const BACK_Z = -2.4;
 /* The decode step is the same stack as the forward pass, at half the size, with one token climbing it. */
@@ -40,7 +42,8 @@ const S_DEC: Omit<Shot, 'T'> = { az: 10, el: 17, target: at(DEC - 9, 4, 0.8), ra
 const S_CALL: Omit<Shot, 'T'> = { az: -6, el: 56, target: at(DEC + 6.7, 0.8, 4.4), radius: 7.7, ry: 3.2, wide: box(0.02, 0.4, 0.96, 0.56), tall: box(0, 0.08, 1, 0.42), tallTarget: at(DEC + 3.8, 0.8, 4.2), tallRadius: 4.9 };
 // On a phone the ticket and the board don't fit side by side at a size you can read, so the camera goes to the ticket first and takes in both for the verdict.
 const S_CALL_WHY: Omit<Shot, 'T'> = { ...S_CALL, az: -5, tallTarget: at(DEC + 8.4, 0.9, 4.2), tallRadius: 5.6 };
-const S_DET: Omit<Shot, 'T'> = { az: -14, el: 13, target: at(DET, 3.2, 3.5), radius: 7, ry: 4.3, wide: box(0.01, 0.07, 0.6, 0.88), tall: TALL };
+// From the right, where the row comes in from, with the words on the left.
+const S_DET: Omit<Shot, 'T'> = { az: 14, el: 13, target: at(DET, 3.2, 3.5), radius: 7, ry: 4.3, wide: box(0.4, 0.07, 0.59, 0.88), tall: TALL };
 
 /* The logits chart, on its way from the top of the stack to the board. Its path is shared with the camera that follows it. */
 const BOARD_X = -4.8;
@@ -88,8 +91,8 @@ export const FORWARD_SHOTS: Shot[] = [
 	{ T: 17.87, ...S_CALL_WHY },
 	{ T: 17.95, ...S_CALL_WHY },
 	{ T: 18.06, ...S_DET },
-	{ T: 18.62, ...S_DET, az: -9 },
-	{ T: 18.97, ...S_DET, az: -6, el: 40, target: at(DET, 13, 1.9), radius: 2.6, ry: 2.6 }
+	{ T: 18.62, ...S_DET, az: 9 },
+	{ T: 18.97, ...S_DET, az: 6, el: 40, target: at(DET, 13, 1.9), radius: 2.6, ry: 2.6 }
 ];
 
 /* ------------------------------------------------------------------ sampler ---- */
@@ -759,7 +762,8 @@ class Decoder {
 		this.row.forEach((tile, i) => {
 			const appear = i === 0 ? (T >= 16 ? 1 : 0) : n - i - 0.55;
 			const x = this.xs[i] + shift;
-			const past = x > gate;
+			// Into the detokenizer at the row's left end, and gone.
+			const past = x < gate;
 			tile.group.visible = appear > 0 && !past;
 			if (!tile.group.visible) return;
 			const k = Math.min(1, appear * 2.3);
@@ -882,18 +886,19 @@ class Decoder {
 
 const DET_H = 3.7;
 const DET_Z = RAIL_Z - 1.26; // the block's centre, and its tube's
-const SLIP_TEXT = ['Grep', '("lock', '|schedule', '", src', '/")', 'The user', ' wants', ' the race'];
-/** The first five slips are the tool call's text, the rest the thinking's. */
-const CALL_SLIPS = 5;
+/** In the order they stream: the thinking first, then the tool call's JSON. */
+const SLIP_TEXT = ['The user', ' wants', ' the race', 'Grep', '("lock', '|schedule', '", src', '/")'];
+/** The first three slips are the thinking's text, the rest the tool call's. */
+const THINK_SLIPS = 3;
 /** How long a tile takes to become paper at the top, and how many trips up the tube a slip makes per unit of T. */
 const DETOK_DELAY = 0.012;
 const SLIP_RATE = 4.3;
 /** The row rides the belt into the detokenizer: how far, and when. */
 const BELT_RUN: [number, number] = [18.06, 18.64];
-const BELT_SHIFT = 46;
+const BELT_SHIFT = -35;
 const beltShift = (T: number) => inOut(seg(T, BELT_RUN[0], BELT_RUN[1])) * BELT_SHIFT;
 /** The tiles go in at its mouth, and are gone. */
-const DET_GATE = DET - 0.2;
+const DET_GATE = DET + 0.2;
 /** After this the tube holds still, as the camera rises up it. */
 const DETOK_END = 18.98;
 
@@ -917,8 +922,9 @@ class Detokenizer {
 		// One block across the belt: tiles run into its mouth, and nothing but paper comes out of the top.
 		const W = 3.6;
 		const H = DET_H;
-		const D = 4.6;
-		const block = archBlock({ w: W, d: D, h: H, archZ: RAIL_Z - DET_Z, archD: 1.6, archH: 1.4 });
+		// A tunnel wide enough for the broadest tile, special tokens included, with the same wall in front of it.
+		const D = 4.8;
+		const block = archBlock({ w: W, d: D, h: H, archZ: RAIL_Z - DET_Z, archD: 1.8, archH: 1.4 });
 		block.position.set(0, PAD_Y, DET_Z);
 		block.castShadow = true;
 		this.group.add(block);
@@ -928,10 +934,11 @@ class Detokenizer {
 		sign.position.set(0, PAD_Y + H - 0.55, DET_Z + D / 2 + 0.03);
 		this.group.add(sign);
 		const stay = createSign('Token IDs stay here', 0.24, '#ffffff', m.red);
-		// A phone's bigger sign moves out along with its pole, so its near end stays clear of the block's own sign.
-		const stayX = -W / 2 - 1.9 - grown(signWidth(stay) / SIGN_PHONE / 2);
+		// On the side the row comes in from. A phone's bigger sign moves out along with its pole, so its near end stays
+		// clear of the block's own sign.
+		const stayX = W / 2 + 1.9 + grown(signWidth(stay) / SIGN_PHONE / 2);
 		stay.position.set(stayX, PAD_Y + 2.2, RAIL_Z - 1.5);
-		stay.rotation.y = 0.2;
+		stay.rotation.y = -0.2;
 		const pole = new Batch();
 		pole.add(rbox(0.1, 2.2, 0.1, 0.03, 2), m.steelSoft, { p: [stayX, PAD_Y + 1.1, RAIL_Z - 1.56] });
 		this.group.add(stay, pole.build('pole'));
@@ -998,13 +1005,13 @@ class Detokenizer {
 	}
 
 	/**
-	 * The times the tiles go into the block, in the order they go, and how many of the first ones are the call.
-	 * The call's text goes up as the call's tiles go in, then the thinking's as the thinking's do.
+	 * The times the tiles go into the block, in the order they go, and how many of the first ones are the thinking.
+	 * The thinking's text goes up as the thinking's tiles go in, then the call's as the call's do.
 	 */
-	feed(entries: number[], calls: number) {
-		const thinks = entries.length - calls;
+	feed(entries: number[], thinks: number) {
+		const calls = entries.length - thinks;
 		this.launch = SLIP_TEXT.map((_, i) => {
-			const last = i < CALL_SLIPS ? Math.round(((i + 1) / CALL_SLIPS) * calls) - 1 : calls + Math.round(((i - CALL_SLIPS + 1) / (SLIP_TEXT.length - CALL_SLIPS)) * thinks) - 1;
+			const last = i < THINK_SLIPS ? Math.round(((i + 1) / THINK_SLIPS) * thinks) - 1 : thinks + Math.round(((i - THINK_SLIPS + 1) / (SLIP_TEXT.length - THINK_SLIPS)) * calls) - 1;
 			const at = entries[Math.max(0, Math.min(entries.length - 1, last))];
 			return at === undefined ? Infinity : at + DETOK_DELAY;
 		});
@@ -1046,18 +1053,18 @@ export class Forward {
 		// When each tile reaches the detokenizer's mouth. The belt only ever moves forward, so a search by halves finds it.
 		const entries = this.decoder.places
 			.map((x) => {
-				if (x + BELT_SHIFT <= DET_GATE) return Infinity;
+				if (x + BELT_SHIFT >= DET_GATE) return Infinity;
 				let [a, b] = BELT_RUN;
 				for (let k = 0; k < 30; k++) {
 					const mid = (a + b) / 2;
-					if (x + beltShift(mid) > DET_GATE) b = mid;
+					if (x + beltShift(mid) < DET_GATE) b = mid;
 					else a = mid;
 				}
 				return b;
 			})
 			.filter((t) => t < Infinity)
 			.sort((a, b) => a - b);
-		this.detok.feed(entries, this.decoder.callLength);
+		this.detok.feed(entries, this.decoder.places.length - this.decoder.callLength);
 	}
 
 	setTemperature(temperature: number) {

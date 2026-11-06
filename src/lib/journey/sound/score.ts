@@ -276,13 +276,14 @@ export function score(w: World): { cues: Cue[]; beds: Bed[] } {
 	at(17.785, 'stamp', hall(240, 1), { gain: 1, dip: 0.5 });
 
 	/*
-	 * 18. Text comes back: the tokens go in, and only then do the slips flutter up the tube, each as the tiles it's
-	 * made from have gone in. The times are Claude Code's row; the others' differ by less than a hundredth.
+	 * 18. Text comes back: the row rides left into the detokenizer, oldest first, and only then do the slips flutter
+	 * up the tube, each as the tiles it's made from have gone in: the thinking, then the tool call. The times are
+	 * Claude Code's row; the thinking's are the same for all three, and the call's differ by a few hundredths.
 	 */
-	at(18.31, porcelain(note(4), 1.2), hall(260, 1), { gain: 0.35 });
-	at(18.326, 'tube', hall(260, 1), { gain: 0.45 });
-	[18.33, 18.3414, 18.3553, 18.3666, 18.3793, 18.4002, 18.4318, 18.4613].forEach((T, i) => at(T, 'paper-slide', hall(260, 3), { gain: 0.25, rate: 1.1 + i * 0.03, minor: true }));
-	at(18.88, whoosh(1.4, 2000), hall(260, 6), { gain: 0.4, dip: 0.5 });
+	at(18.289, porcelain(note(4), 1.2), hall(210, 1), { gain: 0.35 });
+	at(18.31, 'tube', hall(210, 1), { gain: 0.45 });
+	[18.323, 18.3549, 18.3785, 18.3966, 18.4188, 18.4473, 18.4784, 18.5209].forEach((T, i) => at(T, 'paper-slide', hall(210, 3), { gain: 0.25, rate: 1.1 + i * 0.03, minor: true }));
+	at(18.88, whoosh(1.4, 2000), hall(210, 6), { gain: 0.4, dip: 0.5 });
 
 	/* 19. The model has no hands: slips rain on the harness, the call card pops up and leaves along the pipe. */
 	for (let i = 0; i < 8; i++) at(19.26 + 0.03 * i, 'paper-land', P.harness, { gain: 0.4, rate: 0.95 + i * 0.03, minor: true });
