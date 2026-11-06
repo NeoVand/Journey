@@ -59,6 +59,34 @@ export const CLUSTER_SHOTS: Shot[] = [
 	...FORWARD_SHOTS
 ];
 
+let poolTexture: THREE.Texture | null = null;
+
+/**
+ * Light falling on the board round a machine's pad, the way a lamp overhead lights a stage and leaves the hall dark.
+ * Drawn as a soft glow lying on the board, so it costs one quad and never lights anything it shouldn't.
+ */
+function lightPool(w: number, d: number) {
+	if (!poolTexture) {
+		const canvas = document.createElement('canvas');
+		canvas.width = canvas.height = 128;
+		const c = canvas.getContext('2d')!;
+		const g = c.createRadialGradient(64, 64, 0, 64, 64, 64);
+		g.addColorStop(0, 'rgba(255,255,255,1)');
+		g.addColorStop(0.45, 'rgba(255,255,255,0.55)');
+		g.addColorStop(1, 'rgba(255,255,255,0)');
+		c.fillStyle = g;
+		c.fillRect(0, 0, 128, 128);
+		poolTexture = new THREE.CanvasTexture(canvas);
+	}
+	const mesh = new THREE.Mesh(
+		new THREE.PlaneGeometry(w * 1.7, d * 1.9),
+		new THREE.MeshBasicMaterial({ map: poolTexture, color: '#3f6fe0', transparent: true, opacity: 0.32, blending: THREE.AdditiveBlending, depthWrite: false })
+	);
+	mesh.rotation.x = -Math.PI / 2;
+	mesh.renderOrder = -1;
+	return mesh;
+}
+
 /** The inside of the machine. All coordinates are local to `group`. */
 export class Cluster {
 	group = new THREE.Group();
@@ -88,6 +116,9 @@ export class Cluster {
 			const pad = createPad(w, d);
 			pad.position.set(x, PAD_Y, z);
 			before.add(pad);
+			const pool = lightPool(w, d);
+			pool.position.set(x, 0.006, z);
+			before.add(pool);
 			what.position.set(x + wx, PAD_Y, z + wz);
 			before.add(what);
 		};

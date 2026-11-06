@@ -416,7 +416,9 @@ export function score(w: World): { cues: Cue[]; beds: Bed[] } {
 			{ sound: 'belt', from: 8.5, to: 9.56, level: 0.22, fade: 0.04 },
 			{ sound: 'belt', from: 14.03, to: 14.12, level: 0.22, fade: 0.02 },
 			{ sound: 'belt', from: 18.06, to: 18.64, level: 0.22, fade: 0.04 },
-			{ sound: 'pad-sky', from: 19.05, to: 34, level: 1, fade: 0.05 },
+			{ sound: 'pad-sky', from: 19.05, to: 32.1, level: 1, fade: 0.05 },
+			// The light goes gold as the camera pulls back to the whole trip, and the chord warms with it.
+			{ sound: 'pad-dusk', from: 32.12, to: 34, level: 1, fade: 0.2 },
 			{ sound: 'sky', from: 19.05, to: 34, level: 0.12, fade: 0.05 }
 		]
 	};
