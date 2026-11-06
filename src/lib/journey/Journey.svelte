@@ -498,6 +498,9 @@
 				let edgeShade = -1;
 				let edgeNudge = 0;
 				const ROOM_EDGE = '#fdf6e8';
+				/** The map's paper, and the widest it opens. Kept in step with TripMap.svelte. */
+				const MAP_PAPER = '#fdf7e9';
+				const MAP_WIDTH = 452;
 				const mixSky = (k: number) => `rgb(${[198, 229, 253].map((sky, i) => Math.round(sky + ([6, 15, 38][i] - sky) * k)).join(' ')})`;
 				const seg = (v: number, a: number, b: number) => Math.min(1, Math.max(0, (v - a) / (b - a)));
 				const shownKey: number[] = [];
@@ -532,10 +535,11 @@
 					diveEl.style.visibility = w.state.dive > 0 ? '' : 'hidden';
 					// A phone browser paints the page's own colour around the page, so it has to go dark with the world.
 					// Inside the harness it's the cream of the room instead.
-					const shade = w.trackIn ? -2 : Math.round((w.state.inside ? 1 : w.state.dive) * 32);
+					// On a phone the map covers the whole screen, so the edges take its paper's colour while it's open.
+					const shade = mapOpen && innerWidth <= MAP_WIDTH ? -3 : w.trackIn ? -2 : Math.round((w.state.inside ? 1 : w.state.dive) * 32);
 					if (shade !== edgeShade) {
 						edgeShade = shade;
-						const tone = shade === -2 ? ROOM_EDGE : mixSky(shade / 32);
+						const tone = shade === -3 ? MAP_PAPER : shade === -2 ? ROOM_EDGE : mixSky(shade / 32);
 						document.documentElement.style.backgroundColor = tone;
 						edgeEl.style.setProperty('--tone', tone);
 						// The top strip comes from the header's own colour on a phone, so it gets the same tone.
