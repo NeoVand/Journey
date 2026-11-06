@@ -493,6 +493,7 @@
 				const lastPin = pins.length - 1;
 				const diveEl = document.querySelector<HTMLElement>('[data-dive]')!;
 				const edgeEl = document.querySelector<HTMLElement>('[data-edge]')!;
+				const barEl = document.querySelector<HTMLElement>('header.bar')!;
 				const themeEl = document.querySelector('meta[name="theme-color"]');
 				let edgeShade = -1;
 				let edgeNudge = 0;
@@ -537,11 +538,14 @@
 						const tone = shade === -2 ? ROOM_EDGE : mixSky(shade / 32);
 						document.documentElement.style.backgroundColor = tone;
 						edgeEl.style.setProperty('--tone', tone);
+						// The top strip comes from the header's own colour on a phone, so it gets the same tone.
+						barEl.style.setProperty('--tone', tone);
 						// The ground a side trip's header stands on: the room's cream inside the harness, the sky outside.
 						document.documentElement.style.setProperty('--ground', shade === -2 ? '251 241 221' : '214 234 251');
-						// Safari only reads that colour again after a layout, so give it one.
+						// Safari only reads those colours again after a layout, so give each one.
 						edgeNudge = 1 - edgeNudge;
 						edgeEl.style.paddingBottom = `${edgeNudge}px`;
+						barEl.style.borderBottom = `${edgeNudge}px solid transparent`;
 						themeEl?.setAttribute('content', tone);
 					}
 				};
@@ -3440,17 +3444,20 @@
 			background: none;
 			font-size: 14px;
 		}
-		/* On a phone the scene runs up under the header, so the header brings its own ground. */
-		.bar::before {
+		/* On a phone the scene runs up under the header, so the header brings its own ground. It's a flat colour, the
+		   world's own tone, because iOS Safari tints the strip around the clock from a fixed header's background colour
+		   and can't read a gradient. Below it, a short fade in the same tone. */
+		.bar {
+			background-color: var(--tone, rgb(198 229 253));
+		}
+		.bar::before,
+		.tripping .bar::before {
 			content: '';
 			position: absolute;
-			inset: 0 0 -18px;
+			inset: 100% 0 -48px;
 			z-index: -1;
 			pointer-events: none;
-			background: linear-gradient(to bottom, rgb(214 234 251 / 0.9) 60%, rgb(214 234 251 / 0));
-		}
-		.dark .bar::before {
-			background: linear-gradient(to bottom, rgb(6 15 38 / 0.92) 60%, rgb(6 15 38 / 0));
+			background: linear-gradient(to bottom, var(--tone, rgb(198 229 253)), transparent);
 		}
 		/* Small enough that the dots stop short of the sound button, with the map beside the steps. */
 		.bar .spine ol {
