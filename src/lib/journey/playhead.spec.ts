@@ -35,6 +35,15 @@ describe('Playhead', () => {
 		expect(peak).toBeLessThanOrEqual(5.1);
 	});
 
+	it('on a phone, catches up after a fling more gently, and still gets there', () => {
+		const brisk = run(new Playhead(PACE, 20), 23);
+		const calm = new Playhead(PACE, 20);
+		calm.calm = true;
+		const gentle = run(calm, 23);
+		expect(gentle).toBeGreaterThan(brisk * 1.5);
+		expect(gentle).toBeLessThan(8);
+	});
+
 	it('does not limit readers who asked for reduced motion', () => {
 		const p = new Playhead(PACE, 0, true);
 		expect(run(p, 33.9)).toBeLessThan(1.5);

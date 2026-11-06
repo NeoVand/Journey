@@ -166,7 +166,6 @@ export class World {
 	trackId: TrackId | null = null;
 	trackT = 0;
 	trackBlend = 0;
-	trackWords = 1;
 	onTrack: (id: TrackId) => void = () => {};
 	/** Something in the scene was pressed, and where it is: for its sound. */
 	onPoked: (what: string, x: number, y: number, z: number) => void = () => {};
@@ -947,9 +946,9 @@ export class World {
 	}
 
 	/** What the reader can press, and when. Tell the page about anything that belongs to it. */
-	/** How much of a chapter's words are up at this point in the story, 0 to 1. The page knows, and tells the camera. */
-	wordsAt: (T: number) => number = () => 1;
 	onPress: (what: 'wheel' | 'enter') => void = () => {};
+	/** On a phone, how far down the screen the words begin at this point in the story. The page measures it. */
+	roomAt: ((T: number) => number) | null = null;
 	private poker = new Poker();
 	private lastT = 0;
 	/** Which way up each tile has been turned by hand, and how far along that is. */
@@ -1090,7 +1089,7 @@ export class World {
 		const intro = this.intro;
 
 		// The picture makes room before the words arrive, and only takes it back once they've gone.
-		this.rig.update(T, this.stage.width, this.stage.height, px, py, time, Math.max(this.wordsAt(T - 0.06), this.wordsAt(T), this.wordsAt(T + 0.06)));
+		this.rig.update(T, this.stage.width, this.stage.height, px, py, time, this.roomAt?.(T));
 		this.frameTrack(px, py, time);
 
 		// Inside the harness, nothing else exists.
@@ -1221,7 +1220,7 @@ export class World {
 		if (this.trackIn) return this.frameRoom(px, py, time);
 		// A trip inside the harness first goes to its roof, where the way in is.
 		const rig = this.trackId === 'harness' ? this.roofRig : this.trackRigs[this.trackId];
-		rig.update(this.trackT, width, height, px, py, time, this.trackWords);
+		rig.update(this.trackT, width, height, px, py, time);
 		if (k >= 1) {
 			this.stage.focusLight(rig.focus, rig.radius);
 			this.ear.copy(rig.focus);
@@ -1242,7 +1241,7 @@ export class World {
 		const cam = this.stage.camera;
 		const { width, height } = this.stage;
 		const rig = this.trackRigs.harness;
-		rig.update(this.trackT, width, height, px, py, time, this.trackWords);
+		rig.update(this.trackT, width, height, px, py, time);
 		const k = this.trackArrive;
 		if (k >= 1) {
 			this.stage.focusLight(rig.focus, rig.radius);

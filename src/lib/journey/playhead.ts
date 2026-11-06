@@ -31,6 +31,9 @@ const REWIND = 1.8; // scrubbing backwards may run faster
 const CATCH_UP_AFTER = 0.35; // lag, in beats, before the limit starts to lift
 const CATCH_UP = 8;
 const CATCH_UP_MAX = 40; // long jumps travel quickly but stay readable as travel
+// A phone held close fills the eyes: a fling there catches up more gently, so the camera glides rather than whips.
+const CALM_CATCH_UP = 3;
+const CALM_CATCH_UP_MAX = 12;
 const FREE_RATE = 0.5;
 
 export class Playhead {
@@ -39,6 +42,8 @@ export class Playhead {
 	patient = false;
 	/** How much faster than that to go, when the reader asks it to get on with it. */
 	hurry = 1;
+	/** On a phone: catch up after a fling more gently. */
+	calm = false;
 
 	constructor(
 		private pace: Span[],
@@ -56,7 +61,7 @@ export class Playhead {
 	step(target: number, dt: number) {
 		const lag = target - this.T;
 		const far = Math.max(0, Math.abs(lag) - CATCH_UP_AFTER);
-		const catchUp = this.patient ? 1 : Math.min(CATCH_UP_MAX, 1 + far * far * CATCH_UP);
+		const catchUp = this.patient ? 1 : this.calm ? Math.min(CALM_CATCH_UP_MAX, 1 + far * far * CALM_CATCH_UP) : Math.min(CATCH_UP_MAX, 1 + far * far * CATCH_UP);
 		const limit = this.unlimited ? Infinity : this.rateAt(this.T) * (lag < 0 ? REWIND : 1) * catchUp * this.hurry;
 		const want = Math.max(-limit, Math.min(limit, lag * RESPONSE));
 		this.v += (want - this.v) * (1 - Math.exp(-dt * EASE));
@@ -74,7 +79,7 @@ export class Playhead {
 
 /** Minimum durations for each stretch of the story, in reading and watching time. */
 export const PACE: Span[] = [
-	{ from: 0, to: 1.02, seconds: 2.2 },
+	{ from: 0, to: 1.02, seconds: 3 }, // from the title to the laptop
 	{ from: 1.02, to: 1.56, seconds: 3.4 }, // typing 44 characters
 	{ from: 1.56, to: 2.04, seconds: 2.4 }, // the prompt reaches the drawer
 	{ from: 2.04, to: 2.7, seconds: 4.4 }, // four drawers

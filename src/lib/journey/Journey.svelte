@@ -328,6 +328,9 @@
 	 * On a phone only the lit row of a list shows its words. Each list keeps the height of its tallest state,
 	 * or everything above it would jump every time a row of a different length lit up.
 	 */
+	/** Set once the world exists: measures, on a phone, how much of the screen each chapter's words take. */
+	let measureRooms = () => {};
+
 	function holdSteps() {
 		document.querySelectorAll<HTMLElement>('.steps').forEach((list) => {
 			list.style.minHeight = '';
@@ -343,6 +346,7 @@
 			lit.forEach((row) => row.classList.add('on'));
 			list.style.minHeight = `${most}px`;
 		});
+		measureRooms();
 	}
 
 	function choose(id: HarnessId) {
@@ -416,6 +420,7 @@
 				const was = turned ? T : 0;
 				measure();
 				remeasureTrip();
+				measureRooms();
 				if (turned) {
 					window.scrollTo(0, toY(was));
 					// Safari settles its own scroll position a moment later.
@@ -437,6 +442,8 @@
 
 			const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 			const head = new Playhead(PACE, toT(window.scrollY), reduced);
+			const touch = window.matchMedia('(pointer: coarse)').matches;
+			head.calm = touch;
 			let T = head.T;
 			let px = 0;
 			let py = 0;
@@ -491,6 +498,50 @@
 					})
 				);
 				const lastPin = pins.length - 1;
+
+				/*
+				 * On a phone the words sit on the bottom of the screen and the picture has everything above them. Each card leaves
+				 * its own room, and the camera eases from one card's room to the next only in the moment between them, while the
+				 * words are away. Cards in one chapter that are nearly the same height share the shortest room, so the picture
+				 * holds still through them. Measured against the screen with Safari's toolbar showing, so the words can only ever
+				 * sit lower than the picture allows for, never over it.
+				 */
+				const smallest = document.createElement('div');
+				smallest.style.cssText = 'position:fixed;top:0;left:0;width:0;height:100svh;visibility:hidden;pointer-events:none';
+				document.body.append(smallest);
+				const ease = (a: number, b: number, k: number) => a + (b - a) * k * k * (3 - 2 * k);
+				const within = (v: number, a: number, b: number) => Math.min(1, Math.max(0, (v - a) / (b - a)));
+				let rooms: number[] = [];
+				measureRooms = () => {
+					if (canvas.clientWidth >= canvas.clientHeight * 0.9) {
+						w.roomAt = null;
+						return;
+					}
+					const screen = smallest.offsetHeight;
+					const picture = canvas.clientHeight;
+					rooms = pins.map((p) => {
+						const first = p.el.firstElementChild as HTMLElement | null;
+						// From the top of the words' ground to the bottom of the card, which sits on the bottom of the screen.
+						return first ? (screen - (p.el.offsetHeight - first.offsetTop + 14)) / picture : 1;
+					});
+					// The title page keeps its words at the top and frames its picture for itself.
+					rooms[0] = rooms[1];
+					for (let n = 1; n < rooms.length; n++) {
+						if (pins[n].i !== pins[n - 1].i || Math.abs(rooms[n] - rooms[n - 1]) > 0.06) continue;
+						const low = Math.min(rooms[n], rooms[n - 1]);
+						for (let m = n; m >= 0 && pins[m].i === pins[n].i && Math.abs(rooms[m] - low) <= 0.06; m--) rooms[m] = low;
+						rooms[n] = low;
+					}
+					const starts = pins.map((p) => p.i + p.from - p.fade * 0.3);
+					const ends = pins.map((p) => p.i + p.end + p.fade);
+					w.roomAt = (at) => {
+						let n = 0;
+						while (n < pins.length - 1 && at >= starts[n + 1]) n++;
+						if (n < pins.length - 1 && at > ends[n]) return ease(rooms[n], rooms[n + 1], within(at, ends[n], starts[n + 1]));
+						return rooms[n];
+					};
+				};
+				measureRooms();
 				const diveEl = document.querySelector<HTMLElement>('[data-dive]')!;
 				const edgeEl = document.querySelector<HTMLElement>('[data-edge]')!;
 				const barEl = document.querySelector<HTMLElement>('header.bar')!;
@@ -508,14 +559,6 @@
 				const shownKey: number[] = [];
 				const inAt = (n: number, at: number) => (n === 0 ? 1 : seg(at - pins[n].i, pins[n].from - pins[n].fade * 0.3, pins[n].from + pins[n].fade * 0.7));
 				const outAt = (n: number, at: number) => (n === lastPin ? 0 : seg(at - pins[n].i, pins[n].end, pins[n].end + pins[n].fade));
-				w.wordsAt = (at) => {
-					let most = 0;
-					// A card can still be going as the next section starts, so this looks at the last two sections' cards.
-					pins.forEach((pin, n) => {
-						if (pin.i <= at && pin.i > at - 2) most = Math.max(most, Math.min(inAt(n, at), 1 - outAt(n, at)));
-					});
-					return most;
-				};
 				const fade = () => {
 					// Cards belong to the playhead, not the scroll bar, so text and scene can never drift apart.
 					pins.forEach(({ el }, n) => {
@@ -808,7 +851,6 @@
 					el.style.transform = k > 0 && k < 1 ? `translateY(${(1 - inK) * 14 - outK * 10}px)` : 'none';
 					el.inert = k < 0.1;
 				});
-				w.trackWords = most;
 				if (at !== trackCard && most > 0.5) trackCard = at;
 				canBack = t > 0.004;
 				// At the end, a step forward is the way home.
@@ -830,6 +872,7 @@
 				measureTrip();
 				tripEl.scrollTop = 0;
 				tripHead = new Playhead(trackPace(cards()), 0, reduced);
+				tripHead.calm = touch;
 				tripTo = -1;
 				w.trackT = 0;
 				w.setTrack(id);
@@ -3484,6 +3527,14 @@
 			min-height: 100vh;
 			min-height: 100svh;
 			font-size: 16px;
+		}
+		/* The words sit on the bottom of the screen, wherever Safari's toolbar leaves it, and the picture has the rest.
+		   Sized to the smallest screen, they used to leave an empty strip under them while the toolbar was away. */
+		.driven .beat:not(.hero) .pin {
+			top: auto;
+			bottom: 0;
+			height: auto;
+			min-height: 0;
 		}
 		.pin > :global(*) {
 			position: relative;
