@@ -125,7 +125,8 @@ const shot = (az: number, el: number, target: [number, number, number], radius: 
 });
 const OVERVIEW = shot(16, 38, [0, 1.0, -0.4], 7.4, 4.6, { tallRadius: 7.6, tallRy: 5.6 });
 const PACK = shot(6, 16, [0.8, 3.5, -5.0], 2.6, 2.4);
-const PACK_ROW = shot(4, 22, [0.4, 1.55, -4.4], 1.7, 0.9);
+// The whole row, Instructions to Skill, centred: it reaches 1.62 either side of the middle slot.
+const PACK_ROW = shot(4, 22, [0, 1.55, -4.4], 1.85, 0.95);
 const GATE = shot(38, 24, [0.4, 1.0, 3.0], 2.0, 1.3);
 const RUN = shot(20, 28, [-3.75, 0.95, 2.3], 1.5, 1.0);
 const WRITE = shot(12, 36, [-4.3, 1.2, -2.15], 1.9, 1.2);

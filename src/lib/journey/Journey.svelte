@@ -537,6 +537,8 @@
 						const tone = shade === -2 ? ROOM_EDGE : mixSky(shade / 32);
 						document.documentElement.style.backgroundColor = tone;
 						edgeEl.style.setProperty('--tone', tone);
+						// The ground a side trip's header stands on: the room's cream inside the harness, the sky outside.
+						document.documentElement.style.setProperty('--ground', shade === -2 ? '251 241 221' : '214 234 251');
 						// Safari only reads that colour again after a layout, so give it one.
 						edgeNudge = 1 - edgeNudge;
 						edgeEl.style.paddingBottom = `${edgeNudge}px`;
@@ -2574,6 +2576,17 @@
 		--rule: rgb(243 247 255 / 0.22);
 		--veil: 6 15 38;
 		--veil-a: 0.97;
+	}
+
+	/* A side trip flies in close, so its props reach up behind the header: the header brings a ground of its own, in the
+	   colour of the place the trip is in. Phones have one all the time. */
+	.tripping .bar::before {
+		content: '';
+		position: absolute;
+		inset: 0 0 -28px;
+		z-index: -1;
+		pointer-events: none;
+		background: linear-gradient(to bottom, rgb(var(--ground, 214 234 251) / 0.9) 52%, rgb(var(--ground, 214 234 251) / 0));
 	}
 
 	.bar {
