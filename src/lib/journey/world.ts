@@ -85,7 +85,9 @@ const ASSEMBLY = { az: 27, el: 17, target: [3.1, 1.9, 0.6] as [number, number, n
 const REQUEST = { az: 7, el: 7, target: [5.75, 1.78, 0.95] as [number, number, number], radius: 2.05, wide: box(0.12, 0.08, 0.46, 0.86), tall: box(0.05, 0.07, 0.9, 0.5) };
 const WIRE = { az: -24, el: 11, target: [11.9, -5.7, 0.9] as [number, number, number], radius: 3.9, wide: box(0.38, 0.12, 0.62, 0.8), tall: box(0, 0.1, 1, 0.44) };
 const DOOR = { az: 22, el: 9, target: [GATEWAY_X, -6.7, 1.0] as [number, number, number], radius: 3.1, wide: box(0.03, 0.1, 0.5, 0.88), tall: box(0.02, 0.06, 0.96, 0.5) };
-const TOKENS_SHOT = { tallTarget: [8.2, -16.42, 0.9] as [number, number, number], tallRadius: 2.7, az: 3, el: 38, target: [3.2, -16.42, 0.9] as [number, number, number], radius: 7.95, ry: 1.8, wide: box(0.03, 0.44, 0.94, 0.5), tall: box(0, 0.1, 1, 0.42) };
+// A phone can't hold the whole row at a size you can read, so it comes back from the cutter to the middle, where both "the"
+// tiles turn into the same number side by side.
+const TOKENS_SHOT = { tallTarget: [3.4, -16.42, 0.9] as [number, number, number], tallRadius: 2.7, az: 3, el: 38, target: [3.2, -16.42, 0.9] as [number, number, number], radius: 7.95, ry: 1.8, wide: box(0.03, 0.44, 0.94, 0.5), tall: box(0, 0.1, 1, 0.42) };
 const CUT = {
 	az: 11,
 	el: 36,
