@@ -46,6 +46,8 @@ const LABEL_MAX = isPhone ? 160 : Infinity;
  */
 export class Surface {
 	static all: Surface[] = [];
+	/** Which surface a texture belongs to: its canvas may have been let go, but its size still counts. */
+	static of = new WeakMap<THREE.Texture, Surface>();
 	canvas: HTMLCanvasElement;
 	ctx: CanvasRenderingContext2D;
 	texture: THREE.CanvasTexture;
@@ -69,6 +71,7 @@ export class Surface {
 		this.texture = canvasTexture(this.canvas);
 		if (isPhone) this.texture.onUpdate = () => this.release();
 		Surface.all.push(this);
+		Surface.of.set(this.texture, this);
 	}
 
 	/** Lets the canvas go once the GPU has what was drawn on it. */
@@ -80,6 +83,7 @@ export class Surface {
 
 	/** Gives a let-go canvas its size back, ready to draw on. Sizing a canvas resets how it was scaled. */
 	reclaim(width = this.size[0], height = this.size[1]) {
+		this.size = [width, height];
 		if (!this.released && this.canvas.width === width && this.canvas.height === height) return;
 		this.canvas.width = width;
 		this.canvas.height = height;
@@ -95,6 +99,11 @@ export class Surface {
 		this.ctx.clearRect(0, 0, this.w, this.h);
 		fn(this.ctx, this.w, this.h);
 		this.texture.needsUpdate = true;
+	}
+
+	/** How many pixels it prints, whether or not its canvas is held right now. */
+	get pixels() {
+		return this.size[0] * this.size[1];
 	}
 
 	/** After the GPU has lost every texture: draw each surface again, so nothing comes back blank. */

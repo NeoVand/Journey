@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { Stage } from './stage';
 import { Rig, type Shot } from './rig';
 import { bell, inOut, lerp, outBack, outCubic, seg, smooth, smoother, spring, inCubic } from './kit/math';
-import { contactShadow, Label, loadFonts } from './kit/print';
+import { contactShadow, Label, loadFonts, Surface } from './kit/print';
 import { extrude, frameAt, rbox, roundedRect, sweep } from './kit/geometry';
 import { mats, color } from './kit/materials';
 import { Batch } from './kit/batch';
@@ -1003,6 +1003,37 @@ export class World {
 		this.poker.add({ targets: [this.mcpHit], when: (T) => T < 2.76, press: () => this.onTrack('mcp') });
 		// So does the harness, until its drawers are the thing to press.
 		this.poker.add({ targets: [this.harnessHit], when: (T) => T < 2.02, press: () => this.onTrack('harness') });
+	}
+
+	/**
+	 * What the scene holds on the GPU, in megabytes: every texture at its printed size, and every geometry. A phone's
+	 * browser closes a page that holds too much, so a test keeps these inside a budget.
+	 */
+	memory() {
+		const textures = new Set<THREE.Texture>();
+		const geometries = new Set<THREE.BufferGeometry>();
+		this.stage.scene.traverse((o) => {
+			const mesh = o as THREE.Mesh;
+			const list = Array.isArray(mesh.material) ? mesh.material : mesh.material ? [mesh.material] : [];
+			for (const m of list as (THREE.Material & Record<string, unknown>)[])
+				for (const key of ['map', 'emissiveMap', 'alphaMap']) {
+					const t = m[key] as THREE.Texture | null | undefined;
+					if (t?.image) textures.add(t);
+				}
+			if (mesh.geometry) geometries.add(mesh.geometry);
+		});
+		let texture = 0;
+		for (const t of textures) {
+			const image = t.image as { width: number; height: number };
+			const pixels = Surface.of.get(t)?.pixels ?? image.width * image.height;
+			texture += pixels * 4 * (t.generateMipmaps ? 4 / 3 : 1);
+		}
+		let geometry = 0;
+		for (const g of geometries) {
+			for (const a of Object.values(g.attributes)) geometry += (a as THREE.BufferAttribute).array.byteLength;
+			if (g.index) geometry += g.index.array.byteLength;
+		}
+		return { textureMB: Math.round(texture / 1e6), geometryMB: Math.round(geometry / 1e6) };
 	}
 
 	/** Starts or ends a side trip. The page moves trackT and trackBlend; this only says which trip. */

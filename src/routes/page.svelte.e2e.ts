@@ -144,3 +144,19 @@ test('the last chapter leaves nothing behind when the reader jumps back', async 
 	expect(await shownAt(32.9)).toBe(true);
 	expect(await shownAt(3.5)).toBe(false);
 });
+
+test.describe('on a phone', () => {
+	test.use({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
+
+	test('the page stays inside a phone memory budget', async ({ page }) => {
+		// A phone's browser closes a page that holds too much memory and loads it again, which looks like a crash. On
+		// 2026-11-06 the page held about 360 MB of textures and crashed on an iPhone; this keeps it well below that.
+		test.setTimeout(180_000);
+		type Debug = { __world: { memory(): { textureMB: number; geometryMB: number } } };
+		await page.goto('/?debug');
+		await page.waitForFunction(() => document.querySelector('canvas')?.dataset.ready === 'true' && '__world' in window, null, { timeout: 150_000 });
+		const memory = await page.evaluate(() => (window as unknown as Debug).__world.memory());
+		expect(memory.textureMB).toBeLessThan(280);
+		expect(memory.geometryMB).toBeLessThan(100);
+	});
+});
