@@ -448,6 +448,14 @@ class Decoder {
 	private rows: Record<HarnessId, OutTile[]>;
 	private row: OutTile[] = [];
 	private xs: number[] = [];
+	/** Where each tile sits on the rail before the belt carries the row away, in reading order. */
+	get places(): readonly number[] {
+		return this.xs;
+	}
+	/** How many of the tiles are the tool call, after the thinking. */
+	get callLength() {
+		return this.row.length - THINKING.length;
+	}
 	private rider: THREE.Mesh;
 	private bead: THREE.Mesh;
 	private plates: MapPlate[] = [];
@@ -875,10 +883,27 @@ class Decoder {
 const DET_H = 3.7;
 const DET_Z = RAIL_Z - 1.26; // the block's centre, and its tube's
 const SLIP_TEXT = ['Grep', '("lock', '|schedule', '", src', '/")', 'The user', ' wants', ' the race'];
+/** The first five slips are the tool call's text, the rest the thinking's. */
+const CALL_SLIPS = 5;
+/** How long a tile takes to become paper at the top, and how many trips up the tube a slip makes per unit of T. */
+const DETOK_DELAY = 0.012;
+const SLIP_RATE = 4.3;
+/** The row rides the belt into the detokenizer: how far, and when. */
+const BELT_RUN: [number, number] = [18.06, 18.64];
+const BELT_SHIFT = 46;
+const beltShift = (T: number) => inOut(seg(T, BELT_RUN[0], BELT_RUN[1])) * BELT_SHIFT;
+/** The tiles go in at its mouth, and are gone. */
+const DET_GATE = DET - 0.2;
+/** After this the tube holds still, as the camera rises up it. */
+const DETOK_END = 18.98;
 
 class Detokenizer {
 	group = new THREE.Group();
 	private slips: THREE.Mesh[] = [];
+	/** When each slip sets off up the tube: only once the tiles it is made from have gone in. */
+	private launch: number[] = SLIP_TEXT.map(() => Infinity);
+	/** When the first tile goes in, and the lamp turns green. */
+	private firstIn = Infinity;
 	private lamp: Lamp;
 	private TOP = PAD_Y + DET_H + 0.3;
 
@@ -972,14 +997,30 @@ class Detokenizer {
 		});
 	}
 
-	update(k: number, time: number) {
-		const on = k > 0.05;
+	/**
+	 * The times the tiles go into the block, in the order they go, and how many of the first ones are the call.
+	 * The call's text goes up as the call's tiles go in, then the thinking's as the thinking's do.
+	 */
+	feed(entries: number[], calls: number) {
+		const thinks = entries.length - calls;
+		this.launch = SLIP_TEXT.map((_, i) => {
+			const last = i < CALL_SLIPS ? Math.round(((i + 1) / CALL_SLIPS) * calls) - 1 : calls + Math.round(((i - CALL_SLIPS + 1) / (SLIP_TEXT.length - CALL_SLIPS)) * thinks) - 1;
+			const at = entries[Math.max(0, Math.min(entries.length - 1, last))];
+			return at === undefined ? Infinity : at + DETOK_DELAY;
+		});
+		this.firstIn = entries[0] ?? Infinity;
+	}
+
+	update(T: number, time: number) {
+		const t = Math.min(T, DETOK_END);
+		const on = t >= this.firstIn;
 		this.lamp.mix(color.amber, color.green, on ? 1 : 0, on ? 1.1 : 0.3);
 		this.slips.forEach((slip, i) => {
-			const run = (k * 3.6 - (i / this.slips.length) * 1.1) % 1;
-			const live = k > 0.04 + (i / this.slips.length) * 0.3 && run > 0;
+			const since = t - this.launch[i];
+			const live = since > 0;
 			slip.visible = live;
 			if (!live) return;
+			const run = (since * SLIP_RATE) % 1;
 			slip.position.set(Math.sin(i * 2.3 + time) * 0.14, this.TOP - 0.55 + run * 22, DET_Z + Math.cos(i * 1.7) * 0.14);
 			// It flutters, but it never turns its back: the text stays readable.
 			slip.rotation.set(Math.sin(run * 8 + i) * 0.3, Math.sin(run * 6 + i * 2) * 0.55, Math.sin(run * 5 + i) * 0.16);
@@ -1002,6 +1043,21 @@ export class Forward {
 
 	setHarness(id: HarnessId) {
 		this.decoder.setHarness(id);
+		// When each tile reaches the detokenizer's mouth. The belt only ever moves forward, so a search by halves finds it.
+		const entries = this.decoder.places
+			.map((x) => {
+				if (x + BELT_SHIFT <= DET_GATE) return Infinity;
+				let [a, b] = BELT_RUN;
+				for (let k = 0; k < 30; k++) {
+					const mid = (a + b) / 2;
+					if (x + beltShift(mid) > DET_GATE) b = mid;
+					else a = mid;
+				}
+				return b;
+			})
+			.filter((t) => t < Infinity)
+			.sort((a, b) => a - b);
+		this.detok.feed(entries, this.decoder.callLength);
 	}
 
 	setTemperature(temperature: number) {
@@ -1023,9 +1079,9 @@ export class Forward {
 			this.sampler.update(T, seg(T, 15.3, 15.42), seg(T, 15.42, 15.78), seg(T, 15.78, 15.88), seg(T, 15.88, 16), time);
 		}
 		if (near(this.decoder.group, 15.7, 18.8)) {
-			this.decoder.update(T, inOut(seg(T, 18.06, 18.64)) * 46, DET - 0.2, time);
+			this.decoder.update(T, beltShift(T), DET_GATE, time);
 		}
-		if (near(this.detok.group, 17.6, 19.2)) this.detok.update(seg(T, 18.14, 18.98), time);
+		if (near(this.detok.group, 17.6, 19.2)) this.detok.update(T, time);
 	}
 }
 
