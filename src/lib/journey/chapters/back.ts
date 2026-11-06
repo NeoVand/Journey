@@ -9,7 +9,7 @@ import { gearShape } from '../props/brain';
 import { createSign, fitting, grown, SIGN_PHONE, signWidth, standSign } from '../kit/parts';
 import { bell, bounceDown, clamp, hash, inOut, lerp, outBack, outCubic, seg, smooth, spring } from '../kit/math';
 import { createCastShadow } from '../props/island';
-import { TEN_AT, TEN_STEP, TEN_TURNS, CALLS, HARNESSES, type HarnessId } from '../content';
+import { TEN_AT, TEN_STEP, TEN_TURNS, CALL_IDS, CALLS, HARNESSES, type HarnessId } from '../content';
 import { GATE_ICON } from '../icons';
 import { EASEL_POS, EASEL_TILT, RETURN_POINTS } from '../layout';
 import type { Shot } from '../rig';
@@ -122,7 +122,7 @@ const up = new THREE.Vector3(0, 1, 0);
 /* --------------------------------------------------------- printed call card ---- */
 
 /** `alongside` is a card standing next to this one: both come out the same size, as one pair. */
-function printCall(card: Card, title: string, call: string, accent: string, foot = 'call_id: c7', alongside = '') {
+function printCall(card: Card, title: string, call: string, accent: string, foot: string, alongside = '') {
 	card.draw((c, w, h) => {
 		c.fillStyle = accent;
 		c.fillRect(0, 0, 22, h);
@@ -1396,13 +1396,14 @@ export class Back {
 		const calls = CALLS[id];
 		const idName = { claude: 'tool_use_id', codex: 'call_id', copilot: 'call id' }[id];
 		const refused = { claude: 'Read(./.env)', codex: 'shell(cat .env)', copilot: 'readFile(.env)' }[id];
-		printCall(this.bad.card, 'Tool call', refused, color.red, `${idName}: c1`);
-		printCall(this.topCard, 'Tool call', calls.search, color.amber, `${idName}: c7`);
-		printCall(this.good.card, 'Tool call', calls.search, color.amber, `${idName}: c7`);
-		printCall(this.callSearch, 'Tool call, turn 1', calls.search, color.amber, `${idName}: c7`, calls.alongside);
-		if (calls.alongside) printCall(this.callFetch, 'Tool call, turn 1', calls.alongside, color.amber, `${idName}: c8`, calls.search);
-		printCall(this.callEdit, 'Tool call, turn 4', calls.edit, color.amber, `${idName}: c4`);
-		printCall(this.callTest, 'Tool call, turn 6', calls.test, color.amber, `${idName}: c6`);
+		const callId = (which: keyof typeof CALL_IDS) => `${idName}: ${CALL_IDS[which]}`;
+		printCall(this.bad.card, 'Tool call', refused, color.red, callId('refused'));
+		printCall(this.topCard, 'Tool call', calls.search, color.amber, callId('search'));
+		printCall(this.good.card, 'Tool call', calls.search, color.amber, callId('search'));
+		printCall(this.callSearch, 'Tool call, turn 1', calls.search, color.amber, callId('search'), calls.alongside);
+		if (calls.alongside) printCall(this.callFetch, 'Tool call, turn 1', calls.alongside, color.amber, callId('fetch'), calls.search);
+		printCall(this.callEdit, 'Tool call, turn 4', calls.edit, color.amber, callId('edit'));
+		printCall(this.callTest, 'Tool call, turn 6', calls.test, color.amber, callId('test'));
 		this.result.draw((c, w, h) => {
 			c.fillStyle = color.green;
 			c.fillRect(0, 0, 22, h);
@@ -1412,7 +1413,7 @@ export class Back {
 			c.fillText('Tool result', 56, h * 0.18);
 			c.fillStyle = color.ink;
 			c.font = `700 ${h * 0.12}px ${font.mono}`;
-			c.fillText(`${idName}: c6`, 56, h * 0.4);
+			c.fillText(`${idName}: ${CALL_IDS.test}`, 56, h * 0.4);
 			c.fillStyle = '#c9261c';
 			c.fillText('1 failed: deadlock', 56, h * 0.62);
 			c.fillStyle = '#0f8a4a';
@@ -1623,6 +1624,8 @@ export class Back {
 			for (const x of onTrack) open = Math.max(open, 1 - smooth(seg(Math.abs(x - GATE_X[i]), 1.4, 3.4)));
 			gate.set(open > 0 ? outBack(open, 1.2) : 0);
 			gate.lamp.mix(color.amber, color.green, open, 0.25 + open * 0.9);
+			// Each board says what its gate is doing now, however the reader got here: waiting, or letting a token through.
+			gate.say(open > 0.5 ? { pass: true, text: PASSED_BY[i] } : null);
 		});
 		this.drawTerm(PASSED);
 		// The failed run's card has served its purpose: the suite is green now.

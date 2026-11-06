@@ -9,7 +9,7 @@ import { createSign, grown, SIGN_PHONE, signWidth, standSign } from '../kit/part
 import { bell, hash, inCubic, inOut, lerp, outBack, outCubic, seg, smooth } from '../kit/math';
 import { createPad } from '../props/board';
 import { Tile, TILE_D, TILE_H } from '../props/tokenizer';
-import { CALLS, LOGITS, TOP_K, wheelOdds, type HarnessId } from '../content';
+import { CALL_IDS, CALLS, LOGITS, TOP_K, wheelOdds, type HarnessId } from '../content';
 import { ORIGIN, PAD_Y, RAIL_Y, RAIL_Z } from '../layout';
 import type { Shot } from '../rig';
 import { KvRow, MAP_D, MAP_W, MapPlate, LOGITS_FLY, LOGITS_LINE, LOGITS_ROW, PICK_STARTS, PICK_W, TOKEN_PATHS, Transformer, TRANSFORMER_SHOTS } from './transformer';
@@ -728,7 +728,7 @@ class Decoder {
 			if (written > pieces.length) {
 				c.fillStyle = '#5a6b85';
 				c.font = `500 ${h * 0.07}px ${font.mono}`;
-				c.fillText(`${idName}: c7`, 58, h * 0.95);
+				c.fillText(`${idName}: ${CALL_IDS.search}`, 58, h * 0.95);
 			}
 		});
 	}

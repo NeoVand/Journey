@@ -91,6 +91,12 @@ export const FORMS = [
 
 /** How the same three calls look in each harness's own catalog. */
 /** `alongside` is the other call in turn one, when the agent makes two. */
+/**
+ * Each call's id, as printed on its card and on the result that answers it. Real ids are opaque strings, not counters,
+ * so these are short opaque ones: what matters is that a result carries the id of the call it answers.
+ */
+export const CALL_IDS = { refused: 'e21c', search: '7f3a', fetch: 'b05d', edit: '41c9', test: 'c6e2' } as const;
+
 export const CALLS: Record<HarnessId, { search: string; alongside?: string; edit: string; test: string; pieces: string[] }> = {
 	claude: {
 		search: 'Grep("lock|schedule", src/)',
@@ -235,7 +241,7 @@ export const TEN_TURNS: { label: string; cached: number; fresh: number; sees: st
 		after: { claude: 'Returns 100 numbered lines.', codex: 'There’s no read tool either. Same shell.', copilot: 'The language server finds every caller, no grep needed.' }
 	},
 	{
-		label: 'Tests',
+		label: 'Test file',
 		cached: 22500,
 		fresh: 2000,
 		sees: '100 lines of code.',
