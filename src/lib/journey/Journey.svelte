@@ -665,6 +665,8 @@
 			/** The cream of the inside of the harness, to pass through its roof under. */
 			const WARM = '#f4e2bd';
 			let comeBackTo: HTMLElement | null = null;
+			/** Set once the reader has gone past the last card, so the way home starts only once. */
+			let homeward = false;
 			const cards = () => tripPins.length;
 			const measureTrip = () => {
 				if (!tripEl) return;
@@ -716,7 +718,10 @@
 				}
 				const ahead = tripStops().filter((s) => (dir === 1 ? s > tripHead!.T + 0.004 : s < tripHead!.T - 0.004));
 				const next = dir === 1 ? ahead[0] : ahead[ahead.length - 1];
-				if (next === undefined) return;
+				if (next === undefined) {
+					if (dir === 1) leaveTrack();
+					return;
+				}
 				tripTo = next;
 				tripHead.patient = dir === 1 && !reduced;
 				tripHead.hurry = 1;
@@ -742,7 +747,13 @@
 				}
 				w.trackArrive = arrive;
 				if (!track || !tripEl || !tripHead) return;
-				const target = toTripT(tripEl.scrollTop);
+				const scrolled = toTripT(tripEl.scrollTop);
+				// Scrolled on past the last card: the trip is over, and it takes the reader home.
+				if (scrolled > cards() + 0.25 && !homeward && !flying) {
+					homeward = true;
+					leaveTrack();
+				}
+				const target = Math.min(cards(), scrolled);
 				if (tripTo >= 0 && Math.abs(target - tripTo) > 0.001) settleTrip();
 				const t = tripHead.step(target, dt);
 				if (tripTo >= 0 && t === target) settleTrip();
@@ -765,11 +776,13 @@
 				w.trackWords = most;
 				if (at !== trackCard && most > 0.5) trackCard = at;
 				canBack = t > 0.004;
-				canOn = t < cards() - 0.004;
+				// At the end, a step forward is the way home.
+				canOn = true;
 			};
 
 			enterTrack = async (id) => {
 				if (track || flying) return;
+				homeward = false;
 				comeBackTo = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 				const near = T < TRACK_AT[id].nearBefore && !reduced && !still;
 				track = id;
@@ -1094,11 +1107,14 @@
 					{#if n === trip.cards.length - 1}
 						<p class="ends">
 							<button type="button" class="again" onclick={() => leaveTrack()}><Icon icon={ArrowLeft01Icon} size={17} stroke={2} />Back to the journey</button>
+							<span class="ends-hint">or keep scrolling</span>
 						</p>
 					{/if}
 				</article>
 			</section>
 		{/each}
+		<!-- Room to scroll on past the last card: doing so ends the trip. -->
+		<section class="beat" style:--h="160vh" aria-hidden="true"></section>
 	</div>
 {/if}
 
@@ -1786,8 +1802,13 @@
 	.ends {
 		display: flex;
 		flex-wrap: wrap;
+		align-items: center;
 		gap: 8px;
 		margin: 0;
+	}
+	.ends-hint {
+		font-size: 13.5px;
+		color: var(--ink-soft);
 	}
 	.again.quiet {
 		border: 0;

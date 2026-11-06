@@ -96,6 +96,21 @@ test('a side trip opens over the story and brings the reader back to the same pl
 	await expect(page.locator('.spine p')).toContainText('Form');
 });
 
+test('a side trip ends by itself when the reader scrolls on past its last card', async ({ page }) => {
+	test.setTimeout(150_000);
+	await page.goto('/#the-harness-wakes-up');
+	await page.waitForFunction(() => document.querySelector('main.driven') && scrollY > innerHeight, null, { timeout: 90_000 });
+	const before = await page.evaluate(() => scrollY);
+	await page.getByRole('button', { name: 'How MCP connects' }).first().click();
+	await expect(page.getByRole('region', { name: 'Side trip: How MCP connects' })).toBeVisible();
+	await page.evaluate(() => {
+		const trip = document.querySelector('[data-trip]')!;
+		trip.scrollTop = trip.scrollHeight;
+	});
+	await expect(page.locator('[data-trip]')).toHaveCount(0, { timeout: 60_000 });
+	expect(await page.evaluate(() => scrollY)).toBe(before);
+});
+
 test('the trip inside the harness goes in through the roof and comes back out', async ({ page }) => {
 	test.setTimeout(180_000);
 	type Debug = { __world: { trackIn: boolean } };
