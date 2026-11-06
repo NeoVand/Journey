@@ -141,6 +141,27 @@ function mapColorAt(x: number, z: number, out: THREE.Color) {
 	return out.setRGB(p[i * 4] / 255, p[i * 4 + 1] / 255, p[i * 4 + 2] / 255, THREE.SRGBColorSpace);
 }
 
+/** The colour of the light the layers' edges catch in the dark. */
+const RIM = new THREE.Color('#4f8fff');
+
+/**
+ * Makes a material's edges glow where they turn away from the camera, the way the rim of a glass shelf catches light.
+ * A dark layer seen nearly edge-on becomes a line of light; a face turned to the reader stays as it is.
+ */
+function catchLight(material: THREE.Material, rim: { value: THREE.Color }) {
+	material.onBeforeCompile = (shader) => {
+		shader.uniforms.uRim = rim;
+		shader.fragmentShader = shader.fragmentShader
+			.replace('#include <common>', '#include <common>\nuniform vec3 uRim;')
+			.replace(
+				'#include <emissivemap_fragment>',
+				`#include <emissivemap_fragment>
+				float facing = abs(dot(normalize(normal), normalize(vViewPosition)));
+				totalEmissiveRadiance += uRim * pow(1.0 - facing, 3.0);`
+			);
+	};
+}
+
 const DAY_BODY = new THREE.Color('#f3f6fb');
 const NIGHT_BODY = new THREE.Color('#0d1a3e');
 const DAY_PRINT = new THREE.Color('#ffffff');
@@ -156,6 +177,8 @@ export class MapPlate {
 	private body: THREE.MeshPhysicalMaterial;
 	private print: THREE.MeshStandardMaterial;
 	private lit = -1;
+	/** How much light this layer's edges catch: the stack's slow wave sets it. */
+	rim = { value: new THREE.Color() };
 
 	constructor(w: number, d: number, thick = 0.34, labelled = true) {
 		const m = mats();
@@ -165,6 +188,7 @@ export class MapPlate {
 		shell.rotateX(-Math.PI / 2);
 		shell.translate(0, -thick / 2, 0);
 		this.body = (m.porcelain as THREE.MeshPhysicalMaterial).clone();
+		catchLight(this.body, this.rim);
 		this.group.add(new THREE.Mesh(shell, this.body));
 
 		const inset = bevel + 0.02;
@@ -508,6 +532,7 @@ export class Transformer {
 	private signs: THREE.Group[] = [];
 	private kvSign!: THREE.Group;
 	private moreSign!: THREE.Group;
+	private finRim = { value: new THREE.Color() };
 	private rows: KvRow[] = [];
 	private tethers: Tether[] = [];
 	private chips: { group: THREE.Group; share: THREE.Group }[] = [];
@@ -564,7 +589,9 @@ export class Transformer {
 		// The layers nobody could draw: the same plates, thin and dark, with the threads running through them.
 		const fin = extrude(roundedRect(W, D, Math.min(W, D) * 0.1), 0.05, 0.015, 2, 14);
 		fin.rotateX(-Math.PI / 2);
-		const fins = new THREE.InstancedMesh(fin, new THREE.MeshStandardMaterial({ color: '#1a2d63', roughness: 0.7, envMapIntensity: 0.3, transparent: true, opacity: 0.42, depthWrite: false }), 14);
+		const finMat = new THREE.MeshStandardMaterial({ color: '#1a2d63', roughness: 0.7, envMapIntensity: 0.3, transparent: true, opacity: 0.42, depthWrite: false });
+		catchLight(finMat, this.finRim);
+		const fins = new THREE.InstancedMesh(fin, finMat, 14);
 		fins.frustumCulled = false;
 		fins.renderOrder = 3;
 		for (let i = 0; i < fins.count; i++) {
@@ -971,6 +998,11 @@ export class Transformer {
 			p.sign.position.set(0, h + 0.46, 0.3);
 		});
 		this.headSign.scale.setScalar(Math.max(0.0001, outBack(seg(T, BARS[0], BARS[0] + 0.016), 1.4)));
-		void time;
+
+		/* ---- the light the layers catch: a slow wave climbs the stack, the way the work goes, bottom to top ---- */
+		const bottom = FLOORS[0] - 6;
+		const crest = bottom + ((time * 0.09) % 1) * (FLOORS[4] + 8 - bottom);
+		this.plates.forEach((plate, i) => plate.rim.value.copy(RIM).multiplyScalar(0.9 + 2.6 * Math.exp(-(((FLOORS[i] - crest) / 2.2) ** 2))));
+		this.finRim.value.copy(RIM).multiplyScalar(1.1 + 1.6 * Math.exp(-((((FLOORS[3] + FLOORS[4]) / 2 - crest) / 5) ** 2)));
 	}
 }
