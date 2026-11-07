@@ -356,6 +356,34 @@
 
 	const nextAgent = $derived(ids[(ids.indexOf(harness) + 1) % ids.length]);
 
+	/**
+	 * The agent tray's cream key slides across to the agent just chosen. It is measured from the buttons themselves, again
+	 * whenever the tray changes size (fonts arriving, the map opening), and it jumps rather than slides when that happens.
+	 */
+	const slide: Attachment<HTMLElement> = (tray) => {
+		const at = ids.indexOf(harness);
+		const place = (still: boolean) => {
+			const key = tray.querySelectorAll<HTMLElement>('button')[at];
+			if (!key || !key.offsetWidth) return;
+			if (still) tray.classList.add('snap');
+			tray.style.setProperty('--x', `${key.offsetLeft}px`);
+			tray.style.setProperty('--w', `${key.offsetWidth}px`);
+			tray.classList.add('sliding');
+			if (still) requestAnimationFrame(() => tray.classList.remove('snap'));
+		};
+		const size = () => `${tray.offsetWidth}x${tray.offsetHeight}`;
+		place(!tray.classList.contains('sliding'));
+		tray.dataset.size = size();
+		// Only a real change of size moves it without a slide: the watcher also reports once as soon as it starts.
+		const watch = new ResizeObserver(() => {
+			if (size() === tray.dataset.size) return;
+			tray.dataset.size = size();
+			place(true);
+		});
+		watch.observe(tray);
+		return () => watch.disconnect();
+	};
+
 	/** A new agent's name turns over into place on its key, like a label being flipped. Only where it can be seen. */
 	const flipIn = (node: Element) => ({
 		duration: matchMedia('(prefers-reduced-motion: reduce)').matches || getComputedStyle(node).visibility !== 'visible' ? 0 : 280,
@@ -1347,7 +1375,7 @@
 </script>
 
 {#snippet picker()}
-	<div class="picker" role="radiogroup" aria-label="Which coding agent do you use?">
+	<div class="picker" role="radiogroup" aria-label="Which coding agent do you use?" {@attach slide}>
 		{#each ids as id (id)}
 			<button
 				type="button"
@@ -3462,7 +3490,10 @@
 	 * Which agent the notes are told for: a small tray of three, with the chosen one standing up out of it as a cream key.
 	 * It's a preference, not a gate, so it stays a size below everything that tells the story.
 	 */
+	/* Positioned, so the sliding key below measures from the tray itself. */
 	.picker {
+		position: relative;
+		isolation: isolate;
 		display: inline-flex;
 		align-self: flex-start;
 		padding: 3px;
@@ -3503,6 +3534,38 @@
 			inset 0 1px 0 #fff,
 			inset 0 -2px 0 #e2cb9f,
 			0 1px 3px rgb(60 40 10 / 0.18);
+	}
+	/* Once measured, the key is one piece that slides under the names, with a little overshoot as it arrives. */
+	.picker:global(.sliding)::before {
+		content: '';
+		position: absolute;
+		z-index: -1;
+		top: 3px;
+		bottom: 3px;
+		left: 0;
+		width: var(--w);
+		border-radius: 9px;
+		background: linear-gradient(#fffaf0, #fbefd6);
+		box-shadow:
+			inset 0 1px 0 #fff,
+			inset 0 -2px 0 #e2cb9f,
+			0 1px 3px rgb(60 40 10 / 0.18);
+		transform: translateX(var(--x));
+		transition:
+			transform 0.38s cubic-bezier(0.3, 1.18, 0.5, 1),
+			width 0.3s cubic-bezier(0.2, 0.8, 0.3, 1);
+	}
+	.picker:global(.sliding.snap)::before {
+		transition: none;
+	}
+	.picker:global(.sliding) button.on {
+		background: transparent;
+		box-shadow: none;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.picker:global(.sliding)::before {
+			transition: none;
+		}
 	}
 	/* The narrowest phones: the three names still fit on one line, with the marks giving way first. */
 	@media (max-width: 360px) {
