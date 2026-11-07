@@ -1538,7 +1538,7 @@
 				<p class="fallback">This browser can’t draw the 3D scenes right now, so here’s the whole story in words.</p>
 			{:else}
 				<div class="begin-row">
-					<button type="button" class="begin" disabled={!driven} aria-keyshortcuts="ArrowRight" onclick={() => step(1, 'button')}>
+					<button type="button" class={['begin', { live: driven }]} disabled={!driven} aria-keyshortcuts="ArrowRight" onclick={() => step(1, 'button')}>
 						Begin
 						<Icon icon={ArrowRight01Icon} size={21} stroke={2.4} />
 					</button>
@@ -3275,7 +3275,9 @@
 	}
 	@media (prefers-reduced-motion: reduce) {
 		.stepper button[data-step='next']:global(.ready),
-		.stepper button[data-step='next']:global(.ready) :global(svg) {
+		.stepper button[data-step='next']:global(.ready) :global(svg),
+		.spine li.now,
+		.begin.live {
 			animation: none;
 		}
 	}
@@ -3307,6 +3309,22 @@
 		border-radius: 3px;
 		background: #ffb921;
 		box-shadow: inset 0 -2px 0 rgb(176 104 0 / 0.45);
+		animation: hop-in 0.5s cubic-bezier(0.3, 0.7, 0.4, 1);
+	}
+	/* The request takes a new form: its token hops into the next place, the way the loader's tokens hop. */
+	@keyframes hop-in {
+		0% {
+			transform: none;
+		}
+		35% {
+			transform: translateY(-7px) scale(0.9, 1.15);
+		}
+		70% {
+			transform: scale(1.12, 0.82);
+		}
+		100% {
+			transform: none;
+		}
 	}
 	/* On a narrower desktop the dots give up some width, so the name beside them stays on one line. */
 	@media (min-aspect-ratio: 9/10) and (max-width: 1240px) {
@@ -3586,6 +3604,19 @@
 		filter: saturate(0.5);
 		opacity: 0.7;
 	}
+	/* The world is ready: the key drops into place like the token on the map, squashes, and settles. */
+	.begin.live {
+		animation: land 0.62s 0.1s cubic-bezier(0.2, 1.5, 0.4, 1) backwards;
+	}
+	@keyframes land {
+		from {
+			opacity: 0;
+			transform: translateY(-30px) scale(0.8, 1.12);
+		}
+		40% {
+			opacity: 1;
+		}
+	}
 	.begin :global(svg) {
 		transition: transform 0.2s cubic-bezier(0.2, 1.6, 0.4, 1);
 	}
@@ -3821,6 +3852,36 @@
 		}
 		.trip-words b {
 			font-size: 13.5px;
+		}
+	}
+	/* On a big screen the title grows, and the way in grows with it. */
+	@media (min-aspect-ratio: 9/10) {
+		.begin {
+			font-size: clamp(22px, 1.35vw, 27px);
+			padding: 0.64em 0.8em 0.7em 1.08em;
+		}
+		.begin-or,
+		.told {
+			font-size: clamp(14.5px, 0.88vw, 17px);
+		}
+		.hero .picker button {
+			font-size: clamp(13.5px, 0.8vw, 15.5px);
+		}
+		.trip-set {
+			max-width: clamp(540px, 34vw, 680px);
+		}
+		.trip-set-head {
+			font-size: clamp(16px, 1vw, 19px);
+		}
+		.trip-set-head span {
+			font-size: clamp(14px, 0.85vw, 16px);
+		}
+		.trip-set .trip-words b {
+			font-size: clamp(14.5px, 0.88vw, 17px);
+		}
+		.trip-set .badge {
+			width: clamp(32px, 2vw, 38px);
+			height: clamp(32px, 2vw, 38px);
 		}
 	}
 	/* A short phone screen, such as Chrome's on an iPhone with its two bars: the line under the heading gives way. */
