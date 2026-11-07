@@ -340,6 +340,21 @@
 		outline-offset: 2px;
 	}
 
+	/* A big monitor at its own size: the sheet grows with the page's words, as the story's cards do. */
+	@media (min-aspect-ratio: 9/10) and (min-width: 2000px) and (min-height: 1000px) {
+		.map {
+			--ui: 1.18;
+			width: calc(452px * var(--ui));
+		}
+		.sheet > :global(*) {
+			zoom: var(--ui);
+		}
+	}
+	@media (min-aspect-ratio: 9/10) and (min-width: 2400px) and (min-height: 1000px) {
+		.map {
+			--ui: 1.32;
+		}
+	}
 	@media (prefers-reduced-motion: reduce) {
 		.map,
 		.map::backdrop {
