@@ -2126,7 +2126,8 @@
 		font-weight: 600;
 		transition:
 			background 0.2s,
-			color 0.2s;
+			color 0.2s,
+			box-shadow 0.2s;
 	}
 	.trip b {
 		display: grid;
@@ -2143,10 +2144,33 @@
 		background: #ffb921;
 		color: #101a30;
 	}
+	/* The stop the token is at lights up in the token's amber, its number dark, and gives a small hop as the token arrives. */
 	.trip li.now,
 	.trip li.model {
+		background: linear-gradient(#ffd45f, #ffb921);
+		color: #101a30;
+		box-shadow:
+			inset 0 1px 0 rgb(255 255 255 / 0.55),
+			inset 0 -2px 0 rgb(176 104 0 / 0.42),
+			0 2px 6px rgb(150 90 0 / 0.22);
+	}
+	.trip li.now b,
+	.trip li.model b {
 		background: #101a30;
-		color: #fff;
+		color: #ffc94a;
+	}
+	.trip li.now {
+		animation: arrive 0.45s cubic-bezier(0.3, 0.7, 0.4, 1);
+	}
+	@keyframes arrive {
+		40% {
+			transform: translateY(-5px);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.trip li.now {
+			animation: none;
+		}
 	}
 	p.trip-what {
 		margin: 0;
