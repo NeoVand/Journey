@@ -2611,18 +2611,21 @@
 	}
 	.report-copy,
 	.report-close {
-		padding: 8px 14px;
+		padding: 8px 14px 9px;
 		border: 0;
-		border-radius: 999px;
+		border-radius: 11px;
 		font: 650 14px/1 var(--sans);
 		cursor: pointer;
 	}
 	.report-copy {
-		background: #101a30;
-		color: #fff;
+		background: linear-gradient(#ffd45f, #ffb921);
+		color: #101a30;
+		box-shadow:
+			inset 0 1px 0 rgb(255 255 255 / 0.55),
+			inset 0 -3px 0 rgb(176 104 0 / 0.42);
 	}
 	.report-close {
-		background: rgb(16 26 48 / 0.08);
+		background: rgb(16 26 48 / 0.07);
 		color: #16243d;
 	}
 	.loader {
@@ -2702,18 +2705,21 @@
 	}
 	.report-copy,
 	.report-close {
-		padding: 8px 14px;
+		padding: 8px 14px 9px;
 		border: 0;
-		border-radius: 999px;
+		border-radius: 11px;
 		font: 650 14px/1 var(--sans);
 		cursor: pointer;
 	}
 	.report-copy {
-		background: #101a30;
-		color: #fff;
+		background: linear-gradient(#ffd45f, #ffb921);
+		color: #101a30;
+		box-shadow:
+			inset 0 1px 0 rgb(255 255 255 / 0.55),
+			inset 0 -3px 0 rgb(176 104 0 / 0.42);
 	}
 	.report-close {
-		background: rgb(16 26 48 / 0.08);
+		background: rgb(16 26 48 / 0.07);
 		color: #16243d;
 	}
 	.loader {
