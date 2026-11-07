@@ -437,6 +437,8 @@ export class Back {
 	private sandboxSigns: Record<HarnessId, THREE.Group> = {} as Record<HarnessId, THREE.Group>;
 	private docsCard = new Card(3.2, 3.9, 280);
 	private packet!: THREE.Group;
+	/** The bad call's plate, half its width and height at full size, for standing it against the glass. */
+	private packetHalf = new THREE.Vector2();
 	private gland!: THREE.Group;
 	private evil!: THREE.Group;
 	private saidBlocked = new THREE.Group();
@@ -770,12 +772,15 @@ export class Back {
 		bt.add(pole.build('evil-pole'));
 
 		this.packet = createSign('curl evil.sh', 0.32, '#ffffff', m.red);
+		const packetBox = new THREE.Box3().setFromObject(this.packet);
+		this.packetHalf.set((packetBox.max.x - packetBox.min.x) / 2, (packetBox.max.y - packetBox.min.y) / 2);
 		// The verdicts grow from their feet. Stopped: a signpost planted where the packet fell back.
 		const blocked = standSign(createSign('Stopped at the fence', 0.32), 0.32, 3.08);
 		blocked.position.y = 3.4;
 		this.saidBlocked.add(blocked);
-		// In front of the hopper and out of the packet's lane.
-		this.saidBlocked.position.set(x1 - 3, WY, 4.6);
+		// In front of the hopper and out of the packet's lane, and far enough from the wall that its post never stands in
+		// front of the stopped call's words, which print larger on a phone.
+		this.saidBlocked.position.set(x1 - 3.9, WY, 4.6);
 		bt.add(this.saidBlocked);
 		// Got out: raised on a short post out of the top of the evil.sh sign, so it sways with it.
 		const through = standSign(createSign('It got out', 0.32, '#ffffff', m.red), 0.32, 0.52);
@@ -1906,7 +1911,8 @@ export class Back {
 			const sb = this.spec !== 'copilot';
 			const read = seg(T, 21.34, 21.5);
 			const fire = seg(T, 21.6, 21.72);
-			const fallen = seg(T, 21.75, 21.9);
+			// It has to be standing still before the card's stop, just under 21.87.
+			const fallen = seg(T, 21.75, 21.855);
 			const wall = WX + 13;
 			const py = WY + 1.9;
 			const pk = this.packet;
@@ -1928,12 +1934,25 @@ export class Back {
 				pk.position.set(wall - 0.24, py, 3.4);
 				pk.scale.set(0.3, 1.32, 1);
 			} else if (sb && fallen > 0) {
-				const bounce = bell(fallen, 0.8, 1) * 0.16;
-				// Back across the floor, clear of the green pipe's tray.
-				pk.position.set(lerp(wall - 0.3, wall - 2.7, fallen), lerp(py, WY + 0.17, Math.min(1, fallen / 0.8) ** 2) + Math.sin(Math.min(1, fallen / 0.8) * Math.PI) * 0.5 + bounce, lerp(3.4, 1.7, fallen));
-				pk.scale.setScalar(0.92);
-				pk.rotation.x = -1.46 * smooth(seg(fallen, 0, 0.8));
-				pk.rotation.z = Math.sin(fallen * Math.PI) * 0.5;
+				// Stopped dead: it peels off the glass, steps out of the green pipe's lane, slides down and stays there, on
+				// its edge against the wall, still saying what it wanted. Its right edge never leaves the glass.
+				const size = 0.92;
+				const peel = smooth(seg(fallen, 0, 0.36));
+				const drop = seg(fallen, 0.3, 0.84);
+				const settle = seg(fallen, 0.84, 1);
+				const lean = 0.06 * smooth(drop);
+				const sx = lerp(0.3, size, peel);
+				const half = this.packetHalf;
+				const tilt = -lean + Math.sin(settle * Math.PI * 2) * 0.025 * (1 - settle);
+				// Tipped, its low corner sits lower than its middle: lift it by that, so it stands on the floor, not in it.
+				const restY = WY + half.y * size * Math.cos(tilt) + half.x * sx * Math.abs(Math.sin(tilt)) + 0.02;
+				pk.scale.set(sx, lerp(1.32, size, peel), size);
+				pk.rotation.z = tilt;
+				pk.position.set(
+					wall - 0.03 - half.x * sx - half.y * size * lean - Math.sin(peel * Math.PI) * 0.22,
+					lerp(py, restY, drop * drop) + bell(settle, 0, 0.6) * 0.07,
+					lerp(3.4, 4.35, peel)
+				);
 			}
 			pk.visible = (read > 0 && read < 1) || (fire > 0 && fire < 1) || (sb && fire >= 1);
 			const gulp = bell(T, 21.48, 21.56);
