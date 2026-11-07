@@ -36,6 +36,8 @@
 	let check = $state(-1);
 	let gate = $state(-1);
 	let dark = $state(false);
+	/** The title page is up: it brings its own ground, so the header's fade stays out of its heading. */
+	let atTitle = $state(true);
 	let driven = $state(false);
 	let failed = $state(false);
 	let section = $state(0);
@@ -678,6 +680,7 @@
 				form = w.state.form;
 				// Only the header follows this. It switches while the screen is black, so nobody sees it happen.
 				dark = T >= 7.96 && T < 19.02;
+				atTitle = T < 0.45;
 				fade();
 				const starts = [2.04, 2.2, 2.36, 2.52];
 				let dr = -1;
@@ -1445,7 +1448,7 @@
 <div class="cut" data-cut aria-hidden="true"></div>
 
 <div class={['journey', { dark: dark && !track, words: failed, tripping: !!track }]}>
-<header class="bar">
+<header class={['bar', { 'at-title': atTitle && !trip }]}>
 	<button type="button" class="brand" aria-haspopup="dialog" aria-label="The journey of a token. Open the map of the trip" onclick={openMap}>
 		<svg viewBox="0 0 24 24" aria-hidden="true">
 			<path d="M6 19c7 0 3-7 8-7s5-7-1-7" />
@@ -4220,6 +4223,10 @@
 			z-index: -1;
 			pointer-events: none;
 			background: linear-gradient(to bottom, var(--tone, rgb(198 229 253)), transparent);
+			transition: opacity 0.4s;
+		}
+		.bar.at-title::before {
+			opacity: 0;
 		}
 		/* Small enough that the dots stop short of the panel, with the map beside it. */
 		.bar .spine ol {
@@ -4270,6 +4277,13 @@
 			height: auto;
 			min-height: 0;
 		}
+		/* Every card spans the screen, so its ground does too, however short its lines. */
+		.driven .pin,
+		.driven .pin.right,
+		.driven .pin.top-band {
+			left: 0;
+			right: 0;
+		}
 		.pin > :global(*) {
 			position: relative;
 		}
@@ -4280,7 +4294,7 @@
 			z-index: -1;
 			top: calc(var(--ramp, 52px) * -1);
 			left: -20px;
-			right: -20px;
+			width: 100vw;
 			height: 200vh;
 			background: linear-gradient(to bottom, rgb(var(--veil) / 0), rgb(var(--veil) / 0.97) var(--ramp, 52px));
 			pointer-events: none;
@@ -4415,6 +4429,10 @@
 		.steps li:not(.on) span {
 			display: none;
 		}
+		/* The title page's ground is the header's own sky, so the two meet without a seam. */
+		.hero .pin {
+			--veil: 198 229 253;
+		}
 		.hero .pin::before {
 			content: '';
 			position: absolute;
@@ -4425,6 +4443,26 @@
 		}
 		.cols {
 			grid-template-columns: 1fr;
+		}
+	}
+
+	/* A tablet held upright reads like a phone, a size up, with lines kept to a comfortable length. */
+	@media (max-aspect-ratio: 9/10) and (min-width: 600px) {
+		.pin,
+		.pin.right,
+		.pin.top-band {
+			padding-left: 40px;
+			padding-right: 40px;
+			font-size: 17.5px;
+		}
+		.pin > :global(*) {
+			max-width: 640px;
+		}
+		.driven .beat:not(.hero) .pin > :global(:first-child)::before {
+			left: -40px;
+		}
+		.hero .lede {
+			font-size: 18px;
 		}
 	}
 
