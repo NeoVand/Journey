@@ -3631,8 +3631,8 @@
 		display: flex;
 		flex-direction: column;
 		justify-content: center;
-		width: min(35vw, 470px);
-		padding: 92px 0 48px;
+		width: min(35vw, calc(470px * var(--ui, 1)));
+		padding: calc(92px * var(--ui, 1)) 0 calc(48px * var(--ui, 1));
 		margin-left: clamp(24px, 5.2vw, 88px);
 		pointer-events: auto;
 		font-size: clamp(17px, 1.25vw, 19px);
@@ -3694,7 +3694,25 @@
 		margin-right: clamp(24px, 5.2vw, 88px);
 	}
 	.hero .pin {
-		width: min(46vw, 760px);
+		width: min(46vw, calc(760px * var(--ui, 1)));
+	}
+	/*
+	 * A big monitor at its own size, such as a 27-inch one: the 3D grows with the screen, so the words and the controls
+	 * grow with it. The header and each card's contents are zoomed; the cards widen to match.
+	 */
+	@media (min-aspect-ratio: 9/10) and (min-width: 2000px) and (min-height: 1000px) {
+		.journey {
+			--ui: 1.18;
+		}
+		.bar,
+		.pin > :global(*) {
+			zoom: var(--ui);
+		}
+	}
+	@media (min-aspect-ratio: 9/10) and (min-width: 2400px) and (min-height: 1000px) {
+		.journey {
+			--ui: 1.32;
+		}
 	}
 
 	h1 {
