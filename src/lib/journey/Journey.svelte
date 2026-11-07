@@ -759,9 +759,14 @@
 			 * finishes one on the way briskly, or, where even briskly would take too long, cuts.
 			 */
 			let cutting = false;
+			/** How fast the story is playing this frame, times the authored pace: above 1 on the way past a card. */
+			let speed = 1;
+			/** Tells the sound the story was cut, once the sound exists. */
+			let heardCut: (to: number) => void = () => {};
 			const play = (dt: number) => {
 				if (cutting) return;
 				const m = director.move(head.T);
+				speed = m.speed;
 				if (m.cut === undefined) {
 					T = head.step(director.target, dt, m.speed);
 					return;
@@ -771,6 +776,7 @@
 				cover(to, () => {
 					head.jump(to);
 					T = to;
+					heardCut(to);
 					cutting = false;
 				});
 			};
@@ -786,6 +792,7 @@
 				const land = () => {
 					head.jump(nextT);
 					T = nextT;
+					heardCut(nextT);
 					director.go(pins.indexOf(pin));
 					align();
 				};
@@ -942,6 +949,7 @@
 				alignTrip();
 			};
 			let tripCutting = false;
+			let tripSpeed = 1;
 			const playTrip = (dt: number) => {
 				if (blend !== blendGoal) {
 					blend = Math.min(1, Math.max(0, blend + Math.sign(blendGoal - blend) * (dt / 1.4)));
@@ -970,6 +978,7 @@
 				}
 				if (!tripCutting) {
 					const m = tripDirector.move(tripHead.T);
+					tripSpeed = m.speed;
 					if (m.cut === undefined) tripHead.step(tripDirector.target, dt, m.speed);
 					else {
 						const to = m.cut;
@@ -977,6 +986,7 @@
 						tripCutting = true;
 						swap(() => {
 							head.jump(to);
+							heardCut(to);
 							tripCutting = false;
 						}, placeOf(track).cover);
 					}
@@ -1130,6 +1140,10 @@
 			const main = new Conductor(sound, story.cues, story.beds, hear);
 			let tripSound: Conductor | null = null;
 			let tripSoundFor: TrackId | null = null;
+			heardCut = (to) => {
+				if (track) tripSound?.cut(to);
+				else main.cut(to);
+			};
 			/** hello: the reader just turned it on, so it says so, softly, once everything has loaded. */
 			const begin = (hello = false) => {
 				main.reset();
@@ -1230,8 +1244,8 @@
 					if (tripSound) void sound.load(tripSound.names);
 					main.reset();
 				}
-				if (tripSound) tripSound.frame(w.trackT, dt);
-				else main.frame(T, dt);
+				if (tripSound) tripSound.frame(w.trackT, dt, tripSpeed > 1);
+				else main.frame(T, dt, speed > 1);
 				// Inside a room, its own ambience replaces the story's. Out of one, it's wherever the world is posed.
 				const room = w.trackIn ? 1 : 0;
 				const levels = main.levels(track && tripT !== null ? tripT : T, 1 - room);

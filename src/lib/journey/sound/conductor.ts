@@ -74,15 +74,23 @@ export class Conductor {
 		this.last = null;
 	}
 
-	/** Plays whatever the reader has just passed. */
-	frame(T: number, dt: number) {
+	/** The story was cut to T: whatever it skipped wasn't seen, so it isn't heard either, however short the skip. */
+	cut(T: number) {
+		this.last = T;
+	}
+
+	/**
+	 * Plays whatever the reader has just passed. hurried: the story is playing faster than it was made, on its way to the
+	 * next card, so the per-item detail drops out and only the moments that matter are heard.
+	 */
+	frame(T: number, dt: number, hurried = false) {
 		const prev = this.last;
 		this.last = T;
 		if (prev === null || T <= prev || !this.sound.on) return;
 		const moved = T - prev;
 		// A cut lands somewhere new: nothing in between was seen, so nothing is heard.
 		if (moved > 0.3) return;
-		const fast = dt > 0 && moved / dt > 0.8;
+		const fast = hurried || (dt > 0 && moved / dt > 0.8);
 		let played = 0;
 		for (const c of this.cues) {
 			if (c.T <= prev) continue;
