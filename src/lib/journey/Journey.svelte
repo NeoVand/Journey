@@ -2754,7 +2754,9 @@
 		height: auto;
 		min-height: 0;
 	}
-	.words .pin {
+	.words .pin,
+	.words .pin.right,
+	.words .pin.top-band {
 		position: static;
 		min-height: 0;
 		padding-block: 6vh;
@@ -2763,10 +2765,28 @@
 	.words .pin::before {
 		display: none;
 	}
+	/* On a wide screen the words make one column down the middle, the way an article reads, not a zigzag. */
+	@media (min-aspect-ratio: 9/10) {
+		.words .pin,
+		.words .pin.right,
+		.words .pin.top-band,
+		.words .hero .pin {
+			width: min(680px, calc(100vw - 48px));
+			margin-inline: auto;
+			padding-block: 5vh;
+		}
+		.words .hero .pin {
+			padding-top: 18vh;
+		}
+		.words .lede {
+			max-width: none;
+		}
+	}
 	.words .steps li {
 		opacity: 1;
 	}
-	.words .steps li span {
+	.words .steps li > span,
+	.words .steps li:not(.on) > span {
 		display: block;
 	}
 	.fallback {
@@ -4426,7 +4446,7 @@
 			margin-bottom: 18px;
 			max-width: none;
 		}
-		.steps li:not(.on) span {
+		.steps li:not(.on) > span {
 			display: none;
 		}
 		/* The title page's ground is the header's own sky, so the two meet without a seam. */
