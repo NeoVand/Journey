@@ -338,7 +338,9 @@
 	function showTip(el: HTMLElement, key: string) {
 		tipShownAt = performance.now();
 		const r = el.getBoundingClientRect();
-		const w = Math.min(TIP_W, window.innerWidth - 24);
+		// On a big monitor the words are scaled up, and the tip with them.
+		const ui = parseFloat(getComputedStyle(el).getPropertyValue('--ui')) || 1;
+		const w = Math.min(TIP_W * ui, window.innerWidth - 24);
 		const below = r.top < 150;
 		tip = {
 			key,
@@ -2959,13 +2961,13 @@
 	.tip {
 		position: fixed;
 		z-index: 30;
-		width: min(290px, calc(100vw - 24px));
-		padding: 11px 14px 12px;
-		border-radius: 12px;
+		width: min(calc(290px * var(--ui, 1)), calc(100vw - 24px));
+		padding: calc(11px * var(--ui, 1)) calc(14px * var(--ui, 1)) calc(12px * var(--ui, 1));
+		border-radius: calc(12px * var(--ui, 1));
 		background: #fffdf7;
 		color: #16243d;
 		font-family: var(--sans);
-		font-size: 14.5px;
+		font-size: calc(14.5px * var(--ui, 1));
 		font-weight: 450;
 		line-height: 1.42;
 		box-shadow:
