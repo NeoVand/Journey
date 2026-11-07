@@ -2227,9 +2227,11 @@
 			box-shadow 0.07s,
 			filter 0.15s;
 	}
-	.enter-key:hover {
-		filter: brightness(1.04) saturate(1.05);
-		transform: translateY(-1px);
+	@media (hover: hover) {
+		.enter-key:hover {
+			filter: brightness(1.04) saturate(1.05);
+			transform: translateY(-1px);
+		}
 	}
 	.enter-key:active {
 		transform: translateY(5px);
@@ -2274,8 +2276,10 @@
 		color: var(--ink);
 		box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.55);
 	}
-	.again.quiet:hover {
-		background: rgb(255 255 255 / 0.6);
+	@media (hover: hover) {
+		.again.quiet:hover {
+			background: rgb(255 255 255 / 0.6);
+		}
 	}
 
 	/* Only phones get this, in place of the plain name. */
@@ -2308,8 +2312,10 @@
 		color: #8a7445;
 		transition: transform 0.3s cubic-bezier(0.2, 1.6, 0.4, 1);
 	}
-	.agent:hover > :global(svg:last-child) {
-		transform: rotate(180deg);
+	@media (hover: hover) {
+		.agent:hover > :global(svg:last-child) {
+			transform: rotate(180deg);
+		}
 	}
 	/* A bigger target than it looks. */
 	.agent::after {
@@ -2412,19 +2418,23 @@
 			color 0.18s,
 			transform 0.12s;
 	}
-	.turns button:hover:not(.on) {
-		background: linear-gradient(#fffaf0, #fbefd6);
-		box-shadow:
-			inset 0 1px 0 #fff,
-			inset 0 -2px 0 #e2cb9f;
-		transform: translateY(-1px);
+	@media (hover: hover) {
+		.turns button:hover:not(.on) {
+			background: linear-gradient(#fffaf0, #fbefd6);
+			box-shadow:
+				inset 0 1px 0 #fff,
+				inset 0 -2px 0 #e2cb9f;
+			transform: translateY(-1px);
+		}
 	}
 	/* Not reached yet: faint, but still a way to get there. */
 	.turns button.ahead {
 		opacity: 0.42;
 	}
-	.turns button.ahead:hover {
-		opacity: 0.75;
+	@media (hover: hover) {
+		.turns button.ahead:hover {
+			opacity: 0.75;
+		}
 	}
 	/* The turn on show is the token, in amber. */
 	.turns button.on {
@@ -3060,8 +3070,10 @@
 			color 0.3s,
 			background 0.15s;
 	}
-	.brand:hover {
-		background: rgb(127 150 190 / 0.2);
+	@media (hover: hover) {
+		.brand:hover {
+			background: rgb(127 150 190 / 0.2);
+		}
 	}
 	.brand svg {
 		width: 22px;
@@ -3070,8 +3082,10 @@
 		overflow: visible;
 		transition: transform 0.25s cubic-bezier(0.2, 1.6, 0.4, 1);
 	}
-	.brand:hover svg {
-		transform: scale(1.14) rotate(-6deg);
+	@media (hover: hover) {
+		.brand:hover svg {
+			transform: scale(1.14) rotate(-6deg);
+		}
 	}
 	.brand path {
 		fill: none;
@@ -3216,9 +3230,11 @@
 			box-shadow 0.25s,
 			opacity 0.2s;
 	}
-	.stepper button:hover:not(:disabled) {
-		background: rgb(217 191 149 / 0.3);
-		color: #101a30;
+	@media (hover: hover) {
+		.stepper button:hover:not(:disabled) {
+			background: rgb(217 191 149 / 0.3);
+			color: #101a30;
+		}
 	}
 	.stepper button:active:not(:disabled) {
 		transform: translateY(1px);
@@ -3258,8 +3274,10 @@
 			inset 0 1px 0 rgb(255 255 255 / 0.55),
 			inset 0 -3px 0 rgb(176 104 0 / 0.42);
 	}
-	.stepper button[data-step='next']:hover:not(:disabled) {
-		background: linear-gradient(#ffdb78, #ffc23d);
+	@media (hover: hover) {
+		.stepper button[data-step='next']:hover:not(:disabled) {
+			background: linear-gradient(#ffdb78, #ffc23d);
+		}
 	}
 	.stepper button[data-step='next']:active:not(:disabled) {
 		box-shadow:
@@ -3460,8 +3478,10 @@
 			color 0.18s,
 			box-shadow 0.18s;
 	}
-	.picker button:hover {
-		color: #101a30;
+	@media (hover: hover) {
+		.picker button:hover {
+			color: #101a30;
+		}
 	}
 	.picker button.on {
 		background: linear-gradient(#fffaf0, #fbefd6);
@@ -3645,13 +3665,15 @@
 			box-shadow 0.08s,
 			filter 0.15s;
 	}
-	.begin:hover:not(:disabled) {
-		filter: brightness(1.04) saturate(1.05);
-		transform: translateY(-1px);
-		box-shadow:
-			inset 0 2px 0 rgb(255 255 255 / 0.6),
-			0 7px 0 #d18b00,
-			0 14px 26px rgb(150 90 0 / 0.32);
+	@media (hover: hover) {
+		.begin:hover:not(:disabled) {
+			filter: brightness(1.04) saturate(1.05);
+			transform: translateY(-1px);
+			box-shadow:
+				inset 0 2px 0 rgb(255 255 255 / 0.6),
+				0 7px 0 #d18b00,
+				0 14px 26px rgb(150 90 0 / 0.32);
+		}
 	}
 	.begin:active:not(:disabled),
 	.begin:global(.pressed) {
@@ -3682,8 +3704,10 @@
 	.begin :global(svg) {
 		transition: transform 0.2s cubic-bezier(0.2, 1.6, 0.4, 1);
 	}
-	.begin:hover:not(:disabled) :global(svg) {
-		transform: translateX(3px);
+	@media (hover: hover) {
+		.begin:hover:not(:disabled) :global(svg) {
+			transform: translateX(3px);
+		}
 	}
 	.begin-or {
 		font-size: 15px;
@@ -3730,8 +3754,10 @@
 			box-shadow 0.18s,
 			transform 0.1s;
 	}
-	.hear:hover {
-		color: #101a30;
+	@media (hover: hover) {
+		.hear:hover {
+			color: #101a30;
+		}
 	}
 	.hear:active {
 		transform: translateY(1px);
@@ -3830,13 +3856,15 @@
 			transform 0.12s,
 			box-shadow 0.12s;
 	}
-	.trip-go:hover:not(:disabled) {
-		transform: translateY(-2px);
-		box-shadow:
-			inset 0 1px 0 #fff,
-			inset 0 -3px 0 #e4cfa6,
-			0 1px 2px rgb(60 40 10 / 0.12),
-			0 10px 22px rgb(20 60 130 / 0.18);
+	@media (hover: hover) {
+		.trip-go:hover:not(:disabled) {
+			transform: translateY(-2px);
+			box-shadow:
+				inset 0 1px 0 #fff,
+				inset 0 -3px 0 #e4cfa6,
+				0 1px 2px rgb(60 40 10 / 0.12),
+				0 10px 22px rgb(20 60 130 / 0.18);
+		}
 	}
 	.trip-go:active:not(:disabled) {
 		transform: translateY(1px);
@@ -3876,8 +3904,10 @@
 			inset 0 -2px 0 rgb(0 0 0 / 0.2);
 		transition: transform 0.25s cubic-bezier(0.2, 1.6, 0.4, 1);
 	}
-	.trip-go:hover:not(:disabled) .badge {
-		transform: rotate(-7deg) scale(1.06);
+	@media (hover: hover) {
+		.trip-go:hover:not(:disabled) .badge {
+			transform: rotate(-7deg) scale(1.06);
+		}
 	}
 	.trip-words {
 		display: grid;
@@ -4036,8 +4066,10 @@
 			transform 0.12s,
 			box-shadow 0.12s;
 	}
-	.trip-back:hover {
-		transform: translateY(-1px);
+	@media (hover: hover) {
+		.trip-back:hover {
+			transform: translateY(-1px);
+		}
 	}
 	.trip-back:active {
 		transform: translateY(1px);
@@ -4206,8 +4238,10 @@
 			transform 0.12s,
 			box-shadow 0.12s;
 	}
-	.again:hover {
-		transform: translateY(-1px);
+	@media (hover: hover) {
+		.again:hover {
+			transform: translateY(-1px);
+		}
 	}
 	.again:active {
 		transform: translateY(1px);
