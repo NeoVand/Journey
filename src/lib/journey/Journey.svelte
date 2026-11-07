@@ -356,6 +356,13 @@
 
 	const nextAgent = $derived(ids[(ids.indexOf(harness) + 1) % ids.length]);
 
+	/** A new agent's name turns over into place on its key, like a label being flipped. Only where it can be seen. */
+	const flipIn = (node: Element) => ({
+		duration: matchMedia('(prefers-reduced-motion: reduce)').matches || getComputedStyle(node).visibility !== 'visible' ? 0 : 280,
+		easing: cubicOut,
+		css: (t: number) => `transform: perspective(240px) rotateX(${(1 - t) * -85}deg); opacity: ${t}`
+	});
+
 	/**
 	 * On a phone only the lit row of a list shows its words. Each list keeps the height of its tallest state,
 	 * or everything above it would jump every time a row of a different length lit up.
@@ -1371,8 +1378,9 @@
 <!-- The agent's name leads each note that differs between agents, and is the way to change it: one tap, the next agent. -->
 {#snippet agent()}
 	<button type="button" class={['agent', { hint: hinting(nextAgent) }]} aria-label="{spec.name}. Show this for {labels[nextAgent]}" onclick={() => choose(nextAgent)}>
-		<Icon icon={AGENT_MARK[harness]} size={15} stroke={1.8} />
-		{spec.name}
+		{#key harness}
+			<span class="agent-face" in:flipIn><Icon icon={AGENT_MARK[harness]} size={15} stroke={1.8} />{spec.name}</span>
+		{/key}
 		<Icon icon={SWAP} size={14} stroke={1.8} />
 	</button>
 {/snippet}
@@ -2306,6 +2314,11 @@
 			inset 0 -2px 0 #e2cb9f,
 			0 1px 3px rgb(60 40 10 / 0.16);
 		transition: transform 0.1s;
+	}
+	.agent-face {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
 	}
 	/* The swap mark says what a press does: the next agent. */
 	.agent > :global(svg:last-child) {
