@@ -3113,7 +3113,7 @@
 		display: grid;
 		grid-template-columns: 1fr auto 1fr;
 		align-items: center;
-		padding: 18px clamp(20px, 3vw, 44px);
+		padding: 16px clamp(20px, 3vw, 44px);
 		pointer-events: none;
 	}
 	.bar > * {
@@ -4061,6 +4061,31 @@
 		line-height: 1.2;
 	}
 
+	/* A short or narrow desktop screen: a card's tickets go down to one line each, the badge and the place, so two of
+	   them share a row and the card keeps clear of the header. */
+	@media (min-aspect-ratio: 9/10) and (max-height: 800px), (min-aspect-ratio: 9/10) and (max-width: 1240px) {
+		p.trips .trip-go {
+			gap: 7px;
+			padding: 4px 11px 5px 4px;
+			border-radius: 11px;
+		}
+		p.trips .badge {
+			width: 24px;
+			height: 24px;
+			border-radius: 7px;
+		}
+		p.trips .badge :global(svg) {
+			width: 14px;
+			height: 14px;
+		}
+		p.trips .trip-words small {
+			display: none;
+		}
+		p.trips .trip-words b {
+			font-size: 13.5px;
+		}
+	}
+
 	/* A phone's title page: everything a size down, so the words take the top of the screen and the world has the rest,
 	   even with a browser's bars at both ends. */
 	@media (max-aspect-ratio: 9/10) {
@@ -4402,7 +4427,7 @@
 		.bar {
 			grid-template-columns: minmax(0, 1fr) auto auto auto;
 			column-gap: 4px;
-			padding: 14px 10px 14px 20px;
+			padding: 12px 10px 12px 20px;
 		}
 		.bar-end {
 			display: contents;
