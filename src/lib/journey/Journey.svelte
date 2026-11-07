@@ -2208,31 +2208,35 @@
 		gap: 12px;
 		padding: 13px 18px 13px 22px;
 		border: 0;
-		border-radius: 14px;
-		background: linear-gradient(#ffffff, #eef3fb);
+		border-radius: 16px;
+		/* The same amber key the journey began with: it ends where it started, on a press. */
+		background: linear-gradient(#ffd660, #ffb921 70%);
 		color: #101a30;
 		font-family: var(--display);
-		font-weight: 700;
+		font-weight: 800;
 		font-size: 20px;
 		line-height: 1;
 		cursor: pointer;
+		-webkit-tap-highlight-color: transparent;
 		box-shadow:
-			inset 0 1px 0 #fff,
-			0 7px 0 #b3c3dc,
-			0 13px 22px rgb(30 70 140 / 0.3);
+			inset 0 2px 0 rgb(255 255 255 / 0.6),
+			0 6px 0 #d18b00,
+			0 12px 24px rgb(150 90 0 / 0.3);
 		transition:
 			transform 0.07s,
-			box-shadow 0.07s;
+			box-shadow 0.07s,
+			filter 0.15s;
 	}
 	.enter-key:hover {
+		filter: brightness(1.04) saturate(1.05);
 		transform: translateY(-1px);
 	}
 	.enter-key:active {
-		transform: translateY(6px);
+		transform: translateY(5px);
 		box-shadow:
-			inset 0 1px 0 #fff,
-			0 1px 0 #b3c3dc,
-			0 3px 7px rgb(30 70 140 / 0.3);
+			inset 0 2px 0 rgb(255 255 255 / 0.6),
+			0 1px 0 #d18b00,
+			0 4px 9px rgb(150 90 0 / 0.3);
 	}
 	.enter-key svg {
 		width: 20px;
