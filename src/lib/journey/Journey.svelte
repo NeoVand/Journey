@@ -1550,7 +1550,7 @@
 						<span class="by-tap">or swipe up</span>
 					</span>
 					<!-- The same switch as the header's, offered once where the reader is deciding how to start. -->
-					<button type="button" class="hear" aria-pressed={soundOn} onclick={() => toggleSound()}>
+					<button type="button" class="hear" aria-pressed={soundOn} disabled={!driven} onclick={() => toggleSound()}>
 						<Icon icon={soundOn ? VolumeHighIcon : VolumeOffIcon} size={17} stroke={1.9} />
 						Sound
 					</button>
@@ -3683,10 +3683,15 @@
 			0 1px 0 #d18b00,
 			0 4px 9px rgb(150 90 0 / 0.3);
 	}
+	/* While the machines warm up, the key waits unlit, in cream; it lights up amber as it drops into place. */
 	.begin:disabled {
 		cursor: default;
-		filter: saturate(0.5);
-		opacity: 0.7;
+		background: linear-gradient(#fffaf0, #fbefd6);
+		color: #8a93a6;
+		box-shadow:
+			inset 0 1px 0 #fff,
+			0 6px 0 #e4cfa6,
+			0 12px 24px rgb(20 60 130 / 0.12);
 	}
 	/* The world is ready: the key drops into place like the token on the map, squashes, and settles. */
 	.begin.live {
@@ -3759,8 +3764,12 @@
 			color: #101a30;
 		}
 	}
-	.hear:active {
+	.hear:active:not(:disabled) {
 		transform: translateY(1px);
+	}
+	.hear:disabled {
+		opacity: 0.5;
+		cursor: default;
 	}
 	.hear[aria-pressed='true'] {
 		background: linear-gradient(#fffaf0, #fbefd6);
