@@ -357,32 +357,33 @@
 	const nextAgent = $derived(ids[(ids.indexOf(harness) + 1) % ids.length]);
 
 	/**
-	 * The agent tray's cream key slides across to the agent just chosen. It is measured from the buttons themselves, again
-	 * whenever the tray changes size (fonts arriving, the map opening), and it jumps rather than slides when that happens.
+	 * A tray's cream key slides across to the button just chosen, the button at `at`. It is measured from the buttons
+	 * themselves, again whenever the tray changes size (fonts arriving, the map opening), and jumps rather than slides then.
 	 */
-	const slide: Attachment<HTMLElement> = (tray) => {
-		const at = ids.indexOf(harness);
-		const place = (still: boolean) => {
-			const key = tray.querySelectorAll<HTMLElement>('button')[at];
-			if (!key || !key.offsetWidth) return;
-			if (still) tray.classList.add('snap');
-			tray.style.setProperty('--x', `${key.offsetLeft}px`);
-			tray.style.setProperty('--w', `${key.offsetWidth}px`);
-			tray.classList.add('sliding');
-			if (still) requestAnimationFrame(() => tray.classList.remove('snap'));
-		};
-		const size = () => `${tray.offsetWidth}x${tray.offsetHeight}`;
-		place(!tray.classList.contains('sliding'));
-		tray.dataset.size = size();
-		// Only a real change of size moves it without a slide: the watcher also reports once as soon as it starts.
-		const watch = new ResizeObserver(() => {
-			if (size() === tray.dataset.size) return;
+	const slide =
+		(at: number): Attachment<HTMLElement> =>
+		(tray) => {
+			const place = (still: boolean) => {
+				const key = tray.querySelectorAll<HTMLElement>('button')[at];
+				if (!key || !key.offsetWidth) return;
+				if (still) tray.classList.add('snap');
+				tray.style.setProperty('--x', `${key.offsetLeft}px`);
+				tray.style.setProperty('--w', `${key.offsetWidth}px`);
+				tray.classList.add('sliding');
+				if (still) requestAnimationFrame(() => tray.classList.remove('snap'));
+			};
+			const size = () => `${tray.offsetWidth}x${tray.offsetHeight}`;
+			place(!tray.classList.contains('sliding'));
 			tray.dataset.size = size();
-			place(true);
-		});
-		watch.observe(tray);
-		return () => watch.disconnect();
-	};
+			// Only a real change of size moves it without a slide: the watcher also reports once as soon as it starts.
+			const watch = new ResizeObserver(() => {
+				if (size() === tray.dataset.size) return;
+				tray.dataset.size = size();
+				place(true);
+			});
+			watch.observe(tray);
+			return () => watch.disconnect();
+		};
 
 	/** A new agent's name turns over into place on its key, like a label being flipped. Only where it can be seen. */
 	const flipIn = (node: Element) => ({
@@ -1375,7 +1376,7 @@
 </script>
 
 {#snippet picker()}
-	<div class="picker" role="radiogroup" aria-label="Which coding agent do you use?" {@attach slide}>
+	<div class="picker" role="radiogroup" aria-label="Which coding agent do you use?" {@attach slide(ids.indexOf(harness))}>
 		{#each ids as id (id)}
 			<button
 				type="button"
@@ -2025,7 +2026,7 @@
 				<div class="ledger">
 					<p class="ten-intro">Each bar is one request. Green was already cached, amber is new. Only turn one pays for all of it. After that, with each turn minutes after the last, more than nine tokens in ten are already there.</p>
 					<div class="cache-row">
-						<div class="picker compact" role="radiogroup" aria-label="Run the ten turns with the cache, or without it">
+						<div class="picker compact" role="radiogroup" aria-label="Run the ten turns with the cache, or without it" {@attach slide(cacheOn ? 0 : 1)}>
 							<button type="button" role="radio" aria-checked={cacheOn} class={{ on: cacheOn }} onclick={() => setCache(true)}>With the cache</button>
 							<button type="button" role="radio" aria-checked={!cacheOn} class={{ on: !cacheOn }} onclick={() => setCache(false)}>Without it</button>
 						</div>
