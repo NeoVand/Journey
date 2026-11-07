@@ -4633,15 +4633,21 @@
 		.driven .pin > :global(*) {
 			display: none;
 		}
+		/* The caption is a label, made like the labels on the machines: cream, with an edge. */
 		.driven .pin > :global(h1),
 		.driven .pin > :global(h2) {
 			display: block;
 			width: fit-content;
 			margin: 0;
-			padding: 6px 14px 7px;
+			padding: 7px 14px 9px;
 			border-radius: 12px;
-			background: rgb(var(--veil) / 0.86);
-			color: var(--ink);
+			background: linear-gradient(#fffaf0, #fbefd6);
+			color: #101a30;
+			box-shadow:
+				inset 0 1px 0 #fff,
+				inset 0 -3px 0 #e4cfa6,
+				0 1px 2px rgb(60 40 10 / 0.14),
+				0 8px 20px rgb(20 60 130 / 0.16);
 			font-size: 17px;
 			line-height: 1.2;
 		}
