@@ -35,7 +35,6 @@
 	const shownDrawer = $derived(pulled >= 0 ? pulled : drawer);
 	let check = $state(-1);
 	let gate = $state(-1);
-	let scrolled = $state(false);
 	let dark = $state(false);
 	let driven = $state(false);
 	let failed = $state(false);
@@ -272,6 +271,15 @@
 		if (target?.closest('input, textarea, select, [contenteditable], [role="slider"], dialog') || document.querySelector('dialog[open]')) return;
 		event.preventDefault();
 		step(event.key === 'ArrowRight' ? 1 : -1, 'key');
+		if (event.key === 'ArrowRight') pressBegin();
+	}
+
+	/** The title page's Begin key goes down with the → key it stands for, while the title page is still there to see it. */
+	function pressBegin() {
+		const key = document.querySelector<HTMLElement>('.begin');
+		if (!key || key.closest<HTMLElement>('.pin')?.style.visibility === 'hidden') return;
+		key.classList.add('pressed');
+		setTimeout(() => key.classList.remove('pressed'), 150);
 	}
 
 	let tryOpen = $state(false);
@@ -671,7 +679,6 @@
 				// Only the header follows this. It switches while the screen is black, so nobody sees it happen.
 				dark = T >= 7.96 && T < 19.02;
 				fade();
-				scrolled = T > 0.72;
 				const starts = [2.04, 2.2, 2.36, 2.52];
 				let dr = -1;
 				starts.forEach((a, i) => {
@@ -1329,34 +1336,37 @@
 	}
 </script>
 
-{#snippet picker(compact: boolean)}
-	<div class={['picker', { compact }]} role="radiogroup" aria-label="Which coding agent do you use?">
+{#snippet picker()}
+	<div class="picker" role="radiogroup" aria-label="Which coding agent do you use?">
 		{#each ids as id (id)}
 			<button
 				type="button"
 				role="radio"
 				aria-checked={harness === id}
-				class={{ on: harness === id, hint: hinting(id) }}
-				title={hinting(id) ? `This page is different for ${labels[id]}` : undefined}
+				class={{ on: harness === id }}
 				onclick={() => choose(id)}
 			>
-				<Icon icon={AGENT_MARK[id]} size={compact ? 15 : 17} stroke={1.7} />
+				<Icon icon={AGENT_MARK[id]} size={15} stroke={1.8} />
 				{labels[id]}
 			</button>
 		{/each}
 	</div>
 {/snippet}
 
-{#snippet tripButton(id: TrackId)}
-	<button type="button" class="trip-go" disabled={!driven} onclick={() => takeTrip(id)}>
-		<Icon icon={TRACK_ICON[id]} size={17} stroke={1.8} />
-		{TRACKS[id].name}
+<!-- A ticket off the main road, with the badge of the place it goes. In a card it says what it is; on the title page the
+     heading over the set already does. -->
+{#snippet tripButton(id: TrackId, inCard = true)}
+	<button type="button" class="trip-go" data-place={id} disabled={!driven} onclick={() => takeTrip(id)}>
+		<span class="badge" aria-hidden="true"><Icon icon={TRACK_ICON[id]} size={17} stroke={1.9} /></span>
+		<span class="trip-words">
+			{#if inCard}<small>Side trip</small>{/if}
+			<b>{TRACKS[id].name}</b>
+		</span>
 	</button>
 {/snippet}
 
-<!-- A phone has no room for the picker in its header, so the agent's name in each note is the way to change it. -->
+<!-- The agent's name leads each note that differs between agents, and is the way to change it: one tap, the next agent. -->
 {#snippet agent()}
-	<b class="agent-name"><Icon icon={AGENT_MARK[harness]} size={15} stroke={1.8} />{spec.name}.</b>
 	<button type="button" class={['agent', { hint: hinting(nextAgent) }]} aria-label="{spec.name}. Show this for {labels[nextAgent]}" onclick={() => choose(nextAgent)}>
 		<Icon icon={AGENT_MARK[harness]} size={15} stroke={1.8} />
 		{spec.name}
@@ -1452,10 +1462,6 @@
 			<span class="long">Back to the journey</span>
 			<span class="short">Back</span>
 		</button>
-	{:else}
-		<div class={['bar-picker', { show: scrolled }]} inert={!scrolled}>
-			{@render picker(true)}
-		</div>
 	{/if}
 	<div class="bar-end">
 		<div class="spine" role="status" aria-live="polite">
@@ -1479,12 +1485,10 @@
 				</p>
 			{/if}
 		</div>
-		<div class={['stepper', 'sound', { show: driven }]} inert={!driven}>
-			<button type="button" aria-pressed={soundOn} aria-label="Sound" title={soundOn ? 'Sound is on' : 'Sound is off'} onclick={() => toggleSound()}>
+		<div class={['stepper', { show: driven }]} role="group" aria-label="Step through the story" inert={!driven}>
+			<button type="button" class="sound" aria-pressed={soundOn} aria-label="Sound" title={soundOn ? 'Sound is on' : 'Sound is off'} onclick={() => toggleSound()}>
 				<Icon icon={soundOn ? VolumeHighIcon : VolumeOffIcon} size={19} stroke={1.8} />
 			</button>
-		</div>
-		<div class={['stepper', { show: driven }]} role="group" aria-label="Step through the story" inert={!driven}>
 			<button type="button" data-step="back" aria-label="Previous step" aria-keyshortcuts="ArrowLeft" title="Previous step (←)" disabled={!canBack} onclick={() => step(-1)}>
 				<Icon icon={ArrowLeft01Icon} size={20} stroke={2} />
 			</button>
@@ -1528,27 +1532,31 @@
 	<section data-beat class="beat hero" style:--h="170vh">
 		<div class="pin left top" data-out="0.55">
 			<h1>How a coding agent works</h1>
-			<p class="lede">You type one sentence. Follow it all the way to the model and back, until the bug is fixed. Pick your agent, then scroll.</p>
-			{@render picker(false)}
+			<p class="lede">You type one sentence. Follow it all the way to the model and back, until the bug is fixed.</p>
 			{#if failed}
+				<div class="told"><span>Your agent</span>{@render picker()}</div>
 				<p class="fallback">This browser can’t draw the 3D scenes right now, so here’s the whole story in words.</p>
 			{:else}
-				<p class="scroll-hint">
-					<span class="arrow" aria-hidden="true"></span>
-					<span>
-						Scroll to begin
-						<small class="by-key">or step through with <kbd>←</kbd> <kbd>→</kbd></small>
-						<small class="by-tap">or step through with the arrows up top</small>
+				<div class="begin-row">
+					<button type="button" class="begin" disabled={!driven} aria-keyshortcuts="ArrowRight" onclick={() => step(1, 'button')}>
+						Begin
+						<Icon icon={ArrowRight01Icon} size={21} stroke={2.4} />
+					</button>
+					<span class="begin-or">
+						<span class="by-key">or scroll, or step with <kbd>←</kbd> <kbd>→</kbd></span>
+						<span class="by-tap">or swipe up</span>
 					</span>
-				</p>
+				</div>
 				<p class="upright">Scroll to watch. Turn your phone upright to read along.</p>
-				<p class="trips">
-					<span>Or take a side trip:</span>
-					{@render tripButton('harness')}
-					{@render tripButton('mcp')}
-					{@render tripButton('sandbox')}
-					{@render tripButton('memory')}
-				</p>
+				<div class="told"><span>Your agent</span>{@render picker()}</div>
+				<div class="trip-set">
+					<p class="trip-set-head">Side trips <span>Short detours that bring you back</span></p>
+					<ul>
+						{#each ['harness', 'mcp', 'sandbox', 'memory'] as const as id (id)}
+							<li>{@render tripButton(id, false)}</li>
+						{/each}
+					</ul>
+				</div>
 			{/if}
 		</div>
 	</section>
@@ -1578,8 +1586,6 @@
 				{/each}
 			</ol>
 			<p class="trips">
-				<!-- Two of them fit one line only without a label; the opening page has already said what they are. -->
-				<span class="unseen">Side trips:</span>
 				{@render tripButton('harness')}
 				{@render tripButton('mcp')}
 			</p>
@@ -2066,7 +2072,7 @@
 
 <TripMap bind:open={mapOpen} here={mapHere} onjump={jump} ontrip={takeTrip}>
 	{#snippet agents()}
-		{@render picker(false)}
+		{@render picker()}
 	{/snippet}
 </TripMap>
 
@@ -2228,29 +2234,26 @@
 		color: var(--ink-soft);
 	}
 	.again.quiet {
-		border: 0;
-		background: rgb(16 26 48 / 0.09);
+		background: rgb(255 255 255 / 0.4);
 		color: var(--ink);
-		font: inherit;
-		font-weight: 650;
-		cursor: pointer;
+		box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.55);
 	}
 	.again.quiet:hover {
-		background: rgb(16 26 48 / 0.15);
+		background: rgb(255 255 255 / 0.6);
 	}
 
 	/* Only phones get this, in place of the plain name. */
 	.agent {
-		display: none;
+		display: inline-flex;
 		position: relative;
 		align-items: center;
 		gap: 5px;
-		margin: -3px 2px -3px 0;
-		padding: 3px 8px 3px 10px;
+		margin: -4px 3px -4px 0;
+		padding: 4px 7px 5px 8px;
 		border: 0;
-		border-radius: 999px;
-		background: rgb(127 150 190 / 0.2);
-		color: var(--ink);
+		border-radius: 9px;
+		background: linear-gradient(#fffaf0, #fbefd6);
+		color: #101a30;
 		font: inherit;
 		font-weight: 650;
 		vertical-align: baseline;
@@ -2258,7 +2261,19 @@
 		cursor: pointer;
 		pointer-events: auto;
 		-webkit-tap-highlight-color: transparent;
+		box-shadow:
+			inset 0 1px 0 #fff,
+			inset 0 -2px 0 #e2cb9f,
+			0 1px 3px rgb(60 40 10 / 0.16);
 		transition: transform 0.1s;
+	}
+	/* The swap mark says what a press does: the next agent. */
+	.agent > :global(svg:last-child) {
+		color: #8a7445;
+		transition: transform 0.3s cubic-bezier(0.2, 1.6, 0.4, 1);
+	}
+	.agent:hover > :global(svg:last-child) {
+		transform: rotate(180deg);
 	}
 	/* A bigger target than it looks. */
 	.agent::after {
@@ -2267,14 +2282,7 @@
 		inset: -10px -6px;
 	}
 	.agent:active {
-		transform: scale(0.95);
-	}
-	/* The agent's mark leads its name, wherever the name stands for the product. */
-	.agent-name {
-		display: inline-flex;
-		align-items: center;
-		gap: 5px;
-		vertical-align: -2px;
+		transform: translateY(1px);
 	}
 	.agent.hint {
 		animation: agent-hint 3.2s ease-in-out infinite;
@@ -2282,16 +2290,27 @@
 	@keyframes agent-hint {
 		0%,
 		100% {
-			box-shadow: inset 0 0 0 1.5px rgb(110 162 255 / 0);
+			box-shadow:
+				inset 0 1px 0 #fff,
+				inset 0 -2px 0 #e2cb9f,
+				0 1px 3px rgb(60 40 10 / 0.16),
+				0 0 0 0 rgb(255 185 33 / 0);
 		}
 		50% {
-			box-shadow: inset 0 0 0 1.5px var(--cobalt);
+			box-shadow:
+				inset 0 1px 0 #fff,
+				inset 0 -2px 0 #e2cb9f,
+				0 1px 3px rgb(60 40 10 / 0.16),
+				0 0 0 2px rgb(255 185 33 / 0.95);
 		}
 	}
 	@media (prefers-reduced-motion: reduce) {
 		.agent.hint {
 			animation: none;
-			box-shadow: inset 0 0 0 1.5px var(--cobalt);
+			box-shadow:
+				inset 0 1px 0 #fff,
+				inset 0 -2px 0 #e2cb9f,
+				0 0 0 2px rgb(255 185 33 / 0.9);
 		}
 	}
 
@@ -2347,17 +2366,21 @@
 		padding: 0;
 		border: 0;
 		border-radius: 9px;
-		background: rgb(255 255 255 / 0.62);
+		background: rgb(255 255 255 / 0.5);
 		color: #33415c;
 		font: 700 14px/1 var(--sans);
 		cursor: pointer;
+		box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.6);
 		transition:
 			background 0.18s,
 			color 0.18s,
 			transform 0.12s;
 	}
 	.turns button:hover:not(.on) {
-		background: #fff;
+		background: linear-gradient(#fffaf0, #fbefd6);
+		box-shadow:
+			inset 0 1px 0 #fff,
+			inset 0 -2px 0 #e2cb9f;
 		transform: translateY(-1px);
 	}
 	/* Not reached yet: faint, but still a way to get there. */
@@ -2367,9 +2390,13 @@
 	.turns button.ahead:hover {
 		opacity: 0.75;
 	}
+	/* The turn on show is the token, in amber. */
 	.turns button.on {
-		background: #101a30;
-		color: #fff;
+		background: linear-gradient(#ffd45f, #ffb921);
+		color: #101a30;
+		box-shadow:
+			inset 0 1px 0 rgb(255 255 255 / 0.55),
+			inset 0 -3px 0 rgb(176 104 0 / 0.42);
 	}
 	.ticket dl {
 		display: grid;
@@ -2708,8 +2735,7 @@
 	}
 	/* No 3D: just the story, read straight down. */
 	.journey.words .spine,
-	.journey.words .stepper,
-	.journey.words .bar-picker {
+	.journey.words .stepper {
 		display: none;
 	}
 	.journey.words .bar {
@@ -2879,6 +2905,8 @@
 	.journey {
 		--rule: rgb(16 26 48 / 0.14);
 		--rail: rgb(16 26 48 / 0.16);
+		--tray: rgb(255 255 255 / 0.42);
+		--tray-rim: rgb(255 255 255 / 0.6);
 		color: var(--ink);
 	}
 	.journey.dark {
@@ -2886,6 +2914,8 @@
 		--ink-soft: #c2cfe6;
 		--cobalt: #6ea2ff;
 		--rail: rgb(243 247 255 / 0.22);
+		--tray: rgb(255 255 255 / 0.06);
+		--tray-rim: rgb(255 255 255 / 0.1);
 	}
 
 	/* Each card carries the colours of the world it stands in. */
@@ -2901,10 +2931,14 @@
 		--amber: #ffb921;
 		--green: #12a956;
 		--rule: rgb(16 26 48 / 0.14);
+		--tray: rgb(255 255 255 / 0.42);
+		--tray-rim: rgb(255 255 255 / 0.6);
 	}
 	/* Inside the harness: cream walls all round. */
 	.pin:global([data-tone='warm']) {
 		--veil: 251 241 221;
+		--tray: rgb(255 255 255 / 0.55);
+		--tray-rim: rgb(226 203 159 / 0.6);
 	}
 	.pin:global([data-tone='inside']) {
 		--ink: #f3f7ff;
@@ -2913,6 +2947,8 @@
 		--amber: #ffc247;
 		--green: #41e58a;
 		--rule: rgb(243 247 255 / 0.22);
+		--tray: rgb(255 255 255 / 0.06);
+		--tray-rim: rgb(255 255 255 / 0.1);
 		--veil: 6 15 38;
 		--veil-a: 0.97;
 	}
@@ -2988,10 +3024,14 @@
 		fill: #ffb921;
 	}
 	.map-chip {
-		padding: 3px 8px;
-		border-radius: 999px;
-		background: rgb(127 150 190 / 0.22);
-		font: 600 12.5px/1.2 var(--sans);
+		padding: 3px 8px 4px;
+		border-radius: 7px;
+		background: linear-gradient(#fffaf0, #fbefd6);
+		color: #101a30;
+		box-shadow:
+			inset 0 -2px 0 #e2cb9f,
+			0 1px 2px rgb(60 40 10 / 0.16);
+		font: 650 12.5px/1.2 var(--sans);
 		letter-spacing: 0;
 	}
 	/* A sheet is open, so the page behind it holds still. */
@@ -3061,71 +3101,65 @@
 		transition: opacity 0.13s ease-in;
 	}
 
-	.bar-picker {
-		opacity: 0;
-		transform: translateY(-6px);
-		transition:
-			opacity 0.25s,
-			transform 0.25s;
-	}
-	.bar-picker.show {
-		opacity: 1;
-		transform: none;
-	}
-
 	.bar-end {
+		grid-column: 3;
 		justify-self: end;
 		display: flex;
 		align-items: center;
-		gap: 14px;
+		gap: 16px;
 	}
 	.spine {
 		display: grid;
 		justify-items: end;
 		gap: 7px;
 	}
-	/* Next and back, one card at a time, for anyone who'd rather not scroll. */
+	/*
+	 * The controls are one panel, made of the same stuff as the labels on the machines: cream, with an edge you can see
+	 * the thickness of. Sound, then back and next. Next is amber, the token's colour, whenever it's yours to press.
+	 */
 	.stepper {
 		display: inline-flex;
-		gap: 2px;
-		padding: 3px;
-		border-radius: 999px;
-		background: rgb(255 255 255 / 0.62);
+		align-items: center;
+		gap: 3px;
+		padding: 4px;
+		border-radius: 16px;
+		background: linear-gradient(#fffaf0, #fbefd6);
 		box-shadow:
-			inset 0 0 0 1px rgb(255 255 255 / 0.8),
-			0 6px 20px rgb(30 80 150 / 0.14);
+			inset 0 1px 0 #fff,
+			inset 0 -3px 0 #e4cfa6,
+			0 1px 2px rgb(60 40 10 / 0.14),
+			0 10px 26px rgb(20 60 130 / 0.16);
 		opacity: 0;
 		transition: opacity 0.4s;
 	}
 	.stepper.show {
 		opacity: 1;
 	}
-	.dark .stepper {
-		background: rgb(255 255 255 / 0.88);
-	}
 	.stepper button {
 		display: grid;
 		place-items: center;
-		width: 36px;
-		height: 32px;
+		width: 40px;
+		height: 34px;
 		padding: 0;
 		border: 0;
-		border-radius: 999px;
+		border-radius: 11px;
 		background: transparent;
 		color: #33415c;
 		cursor: pointer;
+		-webkit-tap-highlight-color: transparent;
 		transition:
-			background 0.15s,
+			background 0.25s,
 			color 0.15s,
-			transform 0.12s,
+			transform 0.1s,
+			box-shadow 0.25s,
 			opacity 0.2s;
 	}
 	.stepper button:hover:not(:disabled) {
-		background: #101a30;
-		color: #fff;
+		background: rgb(217 191 149 / 0.3);
+		color: #101a30;
 	}
 	.stepper button:active:not(:disabled) {
-		transform: scale(0.92);
+		transform: translateY(1px);
 	}
 	.stepper button:disabled {
 		opacity: 0.32;
@@ -3135,10 +3169,45 @@
 		outline: 2px solid #1f5fe0;
 		outline-offset: 1px;
 	}
+	/* A seam between the sound and the steps, pressed into the panel. */
+	.stepper .sound {
+		position: relative;
+		margin-right: 5px;
+	}
+	.stepper .sound::after {
+		content: '';
+		position: absolute;
+		right: -5px;
+		top: 7px;
+		bottom: 7px;
+		width: 2px;
+		border-radius: 1px;
+		background: #ecdcbb;
+		box-shadow: 1px 0 0 #fff;
+	}
+	.stepper .sound[aria-pressed='false'] {
+		color: #7d879a;
+	}
+	/* Next, at rest: a little amber key. */
+	.stepper button[data-step='next']:not(:disabled) {
+		background: linear-gradient(#ffd45f, #ffb921);
+		color: #101a30;
+		box-shadow:
+			inset 0 1px 0 rgb(255 255 255 / 0.55),
+			inset 0 -3px 0 rgb(176 104 0 / 0.42);
+	}
+	.stepper button[data-step='next']:hover:not(:disabled) {
+		background: linear-gradient(#ffdb78, #ffc23d);
+	}
+	.stepper button[data-step='next']:active:not(:disabled) {
+		box-shadow:
+			inset 0 1px 0 rgb(255 255 255 / 0.55),
+			inset 0 -1px 0 rgb(176 104 0 / 0.42);
+	}
 	/*
-	 * The beat under way: the way it's going fills up as it plays, steadily by the clock, so the reader can see how long
-	 * is left. It stays light under the pointer, where a reader who just pressed it leaves it. Then the fill goes, a soft
-	 * ring opens round the button and the arrow gives one small nudge: your turn.
+	 * The beat under way: the key goes out, and the amber comes back into it from the side it's heading, steadily by the
+	 * clock, so the reader can see how long is left. Full again, it's the reader's turn, and the arrow gives one small
+	 * nudge. Back fills the same way, the other way round, on the way back.
 	 */
 	.stepper button[data-step] {
 		position: relative;
@@ -3151,19 +3220,22 @@
 		inset: 0;
 		z-index: -1;
 		border-radius: inherit;
-		background: linear-gradient(90deg, rgb(31 95 224 / 0.07), rgb(31 95 224 / 0.3));
-		/* Revealed from the start, so the pill keeps its round ends instead of squashing. */
+		background: linear-gradient(90deg, rgb(255 185 33 / 0.18), #ffb921);
+		/* Revealed from the start, so the key keeps its round ends instead of squashing. */
 		clip-path: inset(0 calc(100% - var(--done, 0) * 100%) 0 0);
 		opacity: 0;
 		transition: opacity 0.4s ease-out;
 	}
 	.stepper button[data-step='back']::before {
-		background: linear-gradient(270deg, rgb(31 95 224 / 0.07), rgb(31 95 224 / 0.3));
+		background: linear-gradient(270deg, rgb(255 185 33 / 0.18), #ffb921);
 		clip-path: inset(0 0 0 calc(100% - var(--done, 0) * 100%));
 	}
-	.stepper button[data-step]:global(.playing) {
-		background: rgb(31 95 224 / 0.07);
-		color: #1f5fe0;
+	.stepper button[data-step]:global(.playing),
+	.stepper button[data-step='next']:global(.playing):not(:disabled) {
+		background: rgb(217 191 149 / 0.26);
+		color: #101a30;
+		box-shadow: inset 0 1px 2px rgb(120 90 30 / 0.16);
+		transition: none;
 	}
 	.stepper button[data-step]:global(.playing)::before {
 		opacity: 1;
@@ -3177,10 +3249,16 @@
 	}
 	@keyframes ready {
 		0% {
-			box-shadow: 0 0 0 0 rgb(31 95 224 / 0.42);
+			box-shadow:
+				inset 0 1px 0 rgb(255 255 255 / 0.55),
+				inset 0 -3px 0 rgb(176 104 0 / 0.42),
+				0 0 0 0 rgb(255 185 33 / 0.6);
 		}
 		100% {
-			box-shadow: 0 0 0 9px rgb(31 95 224 / 0);
+			box-shadow:
+				inset 0 1px 0 rgb(255 255 255 / 0.55),
+				inset 0 -3px 0 rgb(176 104 0 / 0.42),
+				0 0 0 10px rgb(255 185 33 / 0);
 		}
 	}
 	@keyframes nudge {
@@ -3202,27 +3280,44 @@
 		}
 	}
 
+	/* Where the request is: a dot for each of its twelve forms, and the one it's in now is the token, in amber. */
 	.spine ol {
 		display: flex;
+		align-items: center;
 		gap: 5px;
 		list-style: none;
 		margin: 0;
 		padding: 0;
 	}
 	.spine li {
-		width: 16px;
+		width: 14px;
 		height: 6px;
 		border-radius: 3px;
 		background: var(--rail);
-		transition: background 0.3s;
+		transition:
+			background 0.3s,
+			width 0.35s cubic-bezier(0.2, 1.4, 0.4, 1);
+	}
+	.spine li.on {
+		background: var(--ink);
+	}
+	.spine li.now {
+		width: 24px;
+		height: 8px;
+		border-radius: 3px;
+		background: #ffb921;
+		box-shadow: inset 0 -2px 0 rgb(176 104 0 / 0.45);
 	}
 	/* On a narrower desktop the dots give up some width, so the name beside them stays on one line. */
 	@media (min-aspect-ratio: 9/10) and (max-width: 1240px) {
 		.spine li {
 			width: 10px;
 		}
+		.spine li.now {
+			width: 20px;
+		}
 		.bar-end {
-			gap: 10px;
+			gap: 12px;
 		}
 	}
 	/* Narrower still, the count leaves the screen and the name stays: the dots above it already say how far along it
@@ -3240,12 +3335,6 @@
 			margin-left: 0;
 		}
 	}
-	.spine li.on {
-		background: var(--ink);
-	}
-	.spine li.now {
-		background: var(--cobalt);
-	}
 	.spine p {
 		margin: 0;
 		font-size: 13.5px;
@@ -3258,81 +3347,54 @@
 		margin-left: 4px;
 	}
 
+	/*
+	 * Which agent the notes are told for: a small tray of three, with the chosen one standing up out of it as a cream key.
+	 * It's a preference, not a gate, so it stays a size below everything that tells the story.
+	 */
 	.picker {
 		display: inline-flex;
 		align-self: flex-start;
-		padding: 4px;
+		padding: 3px;
 		gap: 2px;
-		border-radius: 999px;
-		background: rgb(255 255 255 / 0.62);
+		border-radius: 12px;
+		background: rgb(255 255 255 / 0.42);
 		box-shadow:
-			inset 0 0 0 1px rgb(255 255 255 / 0.8),
-			0 6px 20px rgb(30 80 150 / 0.14);
+			inset 0 1px 2px rgb(30 60 110 / 0.12),
+			inset 0 0 0 1px rgb(255 255 255 / 0.5);
 	}
 	.picker button {
 		display: inline-flex;
 		align-items: center;
-		gap: 7px;
+		gap: 6px;
 		border: 0;
 		background: transparent;
-		color: #33415c;
-		font: 600 15px/1 var(--sans);
+		color: #4d5a72;
+		font: 600 13.5px/1 var(--sans);
 		white-space: nowrap;
-		padding: 11px 16px;
-		border-radius: 999px;
+		padding: 7px 11px 8px;
+		border-radius: 9px;
 		cursor: pointer;
+		-webkit-tap-highlight-color: transparent;
 		transition:
 			background 0.18s,
-			color 0.18s;
+			color 0.18s,
+			box-shadow 0.18s;
 	}
 	.picker button:hover {
 		color: #101a30;
 	}
 	.picker button.on {
-		background: #101a30;
-		color: #fff;
+		background: linear-gradient(#fffaf0, #fbefd6);
+		color: #101a30;
+		box-shadow:
+			inset 0 1px 0 #fff,
+			inset 0 -2px 0 #e2cb9f,
+			0 1px 3px rgb(60 40 10 / 0.18);
 	}
-	.dark .picker {
-		background: rgb(255 255 255 / 0.88);
-	}
-	/* Quiet on purpose: you notice it the second time you look, not the first. */
-	.picker button.hint {
-		animation: hint 3.2s ease-in-out infinite;
-	}
-	.picker button.hint:hover {
-		animation: none;
-	}
-	@keyframes hint {
-		0%,
-		100% {
-			color: #33415c;
-			box-shadow: inset 0 0 0 1px rgb(31 95 224 / 0);
-		}
-		50% {
-			color: #1f5fe0;
-			box-shadow: inset 0 0 0 1px rgb(31 95 224 / 0.32);
-		}
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.picker button.hint {
-			animation: none;
-			box-shadow: inset 0 0 0 1px rgb(31 95 224 / 0.28);
-		}
-	}
-	.picker.compact button {
-		font-size: 13px;
-		padding: 8px 12px;
-	}
-	/* Narrow phones: the three names still fit on one line, and on the narrowest the marks give way to them. */
-	@media (max-width: 400px) {
-		.picker button {
-			gap: 5px;
-			padding: 11px 12px;
-		}
-	}
+	/* The narrowest phones: the three names still fit on one line, with the marks giving way first. */
 	@media (max-width: 360px) {
 		.picker button {
-			padding: 10px 11px;
+			padding: 7px 9px 8px;
 		}
 		.picker button > :global(svg) {
 			display: none;
@@ -3466,57 +3528,245 @@
 		opacity: 0.8;
 	}
 
-	.scroll-hint {
-		display: flex;
-		align-items: center;
-		gap: 12px;
-		margin: 34px 0 0;
-		font-size: 15px;
-		font-weight: 600;
-		color: var(--ink);
-	}
-	/* Side trips: a quiet way off the main road, never louder than the road itself. */
-	.trips {
+	/*
+	 * The way in is a key, the reader's first press, in the token's amber. It's a real key with a real depth, and it goes
+	 * down when pressed, the same as the → key it stands for.
+	 */
+	.begin-row {
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 6px 8px;
-		margin: 16px 0 0;
+		gap: 10px 18px;
+		margin: 30px 0 0;
+	}
+	.begin {
+		display: inline-flex;
+		align-items: center;
+		gap: 10px;
+		margin-bottom: 6px;
+		padding: 14px 18px 15px 24px;
+		border: 0;
+		border-radius: 16px;
+		background: linear-gradient(#ffd660, #ffb921 70%);
+		color: #101a30;
+		font-family: var(--display);
+		font-weight: 800;
+		font-size: 22px;
+		line-height: 1;
+		letter-spacing: -0.01em;
+		cursor: pointer;
+		-webkit-tap-highlight-color: transparent;
+		box-shadow:
+			inset 0 2px 0 rgb(255 255 255 / 0.6),
+			0 6px 0 #d18b00,
+			0 12px 24px rgb(150 90 0 / 0.3);
+		transition:
+			transform 0.08s,
+			box-shadow 0.08s,
+			filter 0.15s;
+	}
+	.begin:hover:not(:disabled) {
+		filter: brightness(1.04) saturate(1.05);
+		transform: translateY(-1px);
+		box-shadow:
+			inset 0 2px 0 rgb(255 255 255 / 0.6),
+			0 7px 0 #d18b00,
+			0 14px 26px rgb(150 90 0 / 0.32);
+	}
+	.begin:active:not(:disabled),
+	.begin:global(.pressed) {
+		transform: translateY(5px);
+		box-shadow:
+			inset 0 2px 0 rgb(255 255 255 / 0.6),
+			0 1px 0 #d18b00,
+			0 4px 9px rgb(150 90 0 / 0.3);
+	}
+	.begin:disabled {
+		cursor: default;
+		filter: saturate(0.5);
+		opacity: 0.7;
+	}
+	.begin :global(svg) {
+		transition: transform 0.2s cubic-bezier(0.2, 1.6, 0.4, 1);
+	}
+	.begin:hover:not(:disabled) :global(svg) {
+		transform: translateX(3px);
+	}
+	.begin-or {
+		font-size: 15px;
+		line-height: 1.35;
+		color: var(--ink-soft);
+	}
+	.begin-or kbd {
+		display: inline-block;
+		min-width: 22px;
+		margin: 0 1px;
+		padding: 1px 5px 2px;
+		border-radius: 6px;
+		background: linear-gradient(#fffaf0, #fbefd6);
+		box-shadow:
+			inset 0 -2px 0 #e2cb9f,
+			0 1px 2px rgb(60 40 10 / 0.16);
+		font: 650 12.5px/1.5 var(--sans);
+		text-align: center;
+		color: #101a30;
+	}
+	.begin-or .by-tap {
+		display: none;
+	}
+	@media (pointer: coarse) {
+		.begin-or .by-key {
+			display: none;
+		}
+		.begin-or .by-tap {
+			display: inline;
+		}
+	}
+
+	.told {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 6px 12px;
+		margin: 28px 0 0;
 		font-size: 14px;
 		color: var(--ink-soft);
 	}
-	.trips .unseen {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		overflow: hidden;
-		clip-path: inset(50%);
-		white-space: nowrap;
+	.told .picker {
+		align-self: center;
+	}
+
+	/* Side trips: a set of tickets off the main road, each with the badge of the place it goes. */
+	.trip-set {
+		margin: 22px 0 0;
+		max-width: 540px;
+	}
+	.trip-set-head {
+		margin: 0 0 9px;
+		font-family: var(--display);
+		font-weight: 750;
+		font-size: 16px;
+		line-height: 1.2;
+		color: var(--ink);
+	}
+	.trip-set-head span {
+		margin-left: 6px;
+		font-family: var(--sans);
+		font-weight: 450;
+		font-size: 14px;
+		color: var(--ink-soft);
+	}
+	.trip-set ul {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 9px;
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+	.trip-set .trip-go {
+		width: 100%;
+		height: 100%;
+	}
+	p.trips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+		margin: 16px 0 0;
 	}
 	.trip-go {
+		--badge: #28405f;
+		--badge-ink: #fff3da;
 		display: inline-flex;
 		align-items: center;
-		gap: 7px;
-		padding: 7px 12px 7px 9px;
+		gap: 10px;
+		box-sizing: border-box;
+		padding: 7px 14px 8px 7px;
 		border: 0;
-		border-radius: 999px;
-		background: rgb(31 95 224 / 0.12);
-		color: var(--cobalt);
-		font: 650 14px/1.1 var(--sans);
+		border-radius: 14px;
+		background: linear-gradient(#fffaf0, #fbefd6);
+		color: #101a30;
+		font: inherit;
+		text-align: left;
 		cursor: pointer;
 		pointer-events: auto;
+		-webkit-tap-highlight-color: transparent;
+		box-shadow:
+			inset 0 1px 0 #fff,
+			inset 0 -3px 0 #e4cfa6,
+			0 1px 2px rgb(60 40 10 / 0.12),
+			0 6px 16px rgb(20 60 130 / 0.12);
 		transition:
-			background 0.15s,
-			transform 0.12s;
+			transform 0.12s,
+			box-shadow 0.12s;
 	}
 	.trip-go:hover:not(:disabled) {
-		background: rgb(31 95 224 / 0.2);
-		transform: translateY(-1px);
+		transform: translateY(-2px);
+		box-shadow:
+			inset 0 1px 0 #fff,
+			inset 0 -3px 0 #e4cfa6,
+			0 1px 2px rgb(60 40 10 / 0.12),
+			0 10px 22px rgb(20 60 130 / 0.18);
+	}
+	.trip-go:active:not(:disabled) {
+		transform: translateY(1px);
+		box-shadow:
+			inset 0 1px 0 #fff,
+			inset 0 -1px 0 #e4cfa6,
+			0 1px 2px rgb(60 40 10 / 0.12),
+			0 3px 8px rgb(20 60 130 / 0.12);
 	}
 	.trip-go:disabled {
-		opacity: 0.45;
+		opacity: 0.5;
 		cursor: default;
 	}
+	.trip-go[data-place='mcp'] {
+		--badge: #1f5fe0;
+		--badge-ink: #fff;
+	}
+	.trip-go[data-place='sandbox'] {
+		--badge: #12a956;
+		--badge-ink: #fff;
+	}
+	.trip-go[data-place='memory'] {
+		--badge: #ff7f17;
+		--badge-ink: #fff;
+	}
+	.badge {
+		display: grid;
+		place-items: center;
+		flex: none;
+		width: 32px;
+		height: 32px;
+		border-radius: 9px;
+		background: var(--badge);
+		color: var(--badge-ink);
+		box-shadow:
+			inset 0 1px 0 rgb(255 255 255 / 0.3),
+			inset 0 -2px 0 rgb(0 0 0 / 0.2);
+		transition: transform 0.25s cubic-bezier(0.2, 1.6, 0.4, 1);
+	}
+	.trip-go:hover:not(:disabled) .badge {
+		transform: rotate(-7deg) scale(1.06);
+	}
+	.trip-words {
+		display: grid;
+		gap: 1px;
+		min-width: 0;
+	}
+	.trip-words small {
+		font-size: 12px;
+		font-weight: 550;
+		line-height: 1.2;
+		color: #5c6880;
+		opacity: 1;
+	}
+	.trip-words b {
+		font-size: 14.5px;
+		font-weight: 650;
+		line-height: 1.2;
+	}
+
 	/* A phone's title page: everything a size down, so the words take the top of the screen and the world has the rest,
 	   even with a browser's bars at both ends. */
 	@media (max-aspect-ratio: 9/10) {
@@ -3527,60 +3777,56 @@
 		.hero .lede {
 			font-size: 15.5px;
 			line-height: 1.42;
-			margin-bottom: 14px;
+			margin-bottom: 0;
 		}
-		.hero .picker {
-			padding: 3px;
+		.begin-row {
+			margin-top: 16px;
+			gap: 8px 14px;
 		}
-		.hero .picker button {
-			font-size: 13.5px;
-			padding: 9px 12px;
-			gap: 6px;
+		.begin {
+			margin-bottom: 5px;
+			padding: 11px 14px 12px 19px;
+			border-radius: 14px;
+			font-size: 19px;
 		}
-		.hero .scroll-hint {
-			margin-top: 14px;
+		.begin-or {
 			font-size: 14px;
 		}
-		.hero .trips {
-			margin-top: 10px;
+		.told {
+			margin-top: 16px;
 			font-size: 13px;
 		}
-		.hero .trip-go {
+		.trip-set {
+			margin-top: 14px;
+		}
+		.trip-set-head {
+			margin-bottom: 7px;
+			font-size: 14.5px;
+		}
+		.trip-set-head span {
 			font-size: 13px;
-			padding: 6px 11px 6px 8px;
+		}
+		.trip-set ul {
+			gap: 7px;
+		}
+		.trip-go {
+			gap: 8px;
+			padding: 6px 10px 7px 6px;
+			border-radius: 12px;
+		}
+		.badge {
+			width: 28px;
+			height: 28px;
+			border-radius: 8px;
+		}
+		.trip-words b {
+			font-size: 13.5px;
 		}
 	}
-	/* On a short phone screen, such as Chrome's on an iPhone with its two bars, the step-through hint gives way. */
+	/* A short phone screen, such as Chrome's on an iPhone with its two bars: the line under the heading gives way. */
 	@media (max-aspect-ratio: 9/10) and (max-height: 720px) {
-		.hero .scroll-hint {
-			display: flex;
-		}
-		.hero .scroll-hint small {
+		.trip-set-head span {
 			display: none;
-		}
-	}
-	/* On a phone the title page's trips run in one row you can swipe, so the picture below keeps its room. The row
-	   reaches the screen's edge and fades there, which says there's more to see. */
-	@media (max-aspect-ratio: 9/10) {
-		.hero .trips {
-			/* Its own width counts for nothing, so the long row can't widen the card around it. */
-			contain: inline-size;
-			flex-wrap: nowrap;
-			overflow-x: auto;
-			margin-right: -20px;
-			padding: 2px 20px 2px 0;
-			scrollbar-width: none;
-			overscroll-behavior-x: contain;
-			scroll-snap-type: x proximity;
-			-webkit-mask-image: linear-gradient(to right, black calc(100% - 36px), transparent);
-			mask-image: linear-gradient(to right, black calc(100% - 36px), transparent);
-		}
-		.hero .trips::-webkit-scrollbar {
-			display: none;
-		}
-		.hero .trips > * {
-			flex: none;
-			scroll-snap-align: start;
 		}
 	}
 	/* The story steps aside while a trip has the screen, and comes back as it ends. */
@@ -3610,18 +3856,33 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 7px;
-		padding: 10px 18px 10px 13px;
+		padding: 10px 18px 11px 12px;
 		border: 0;
-		border-radius: 999px;
-		background: #101a30;
-		color: #fff;
+		border-radius: 14px;
+		background: linear-gradient(#fffaf0, #fbefd6);
+		color: #101a30;
 		font: 650 15px/1 var(--sans);
 		cursor: pointer;
-		box-shadow: 0 6px 20px rgb(30 80 150 / 0.18);
-		transition: transform 0.12s;
+		-webkit-tap-highlight-color: transparent;
+		box-shadow:
+			inset 0 1px 0 #fff,
+			inset 0 -3px 0 #e4cfa6,
+			0 1px 2px rgb(60 40 10 / 0.14),
+			0 10px 26px rgb(20 60 130 / 0.16);
+		transition:
+			transform 0.12s,
+			box-shadow 0.12s;
 	}
 	.trip-back:hover {
 		transform: translateY(-1px);
+	}
+	.trip-back:active {
+		transform: translateY(1px);
+		box-shadow:
+			inset 0 1px 0 #fff,
+			inset 0 -1px 0 #e4cfa6,
+			0 1px 2px rgb(60 40 10 / 0.14),
+			0 4px 10px rgb(20 60 130 / 0.14);
 	}
 	.trip-back:focus-visible {
 		outline: 2px solid #1f5fe0;
@@ -3631,75 +3892,15 @@
 		display: none;
 	}
 
-	/* The other way through, said once, in whichever form this device has. */
-	.scroll-hint small {
-		display: block;
-		margin-top: 4px;
-		font-size: 13px;
-		font-weight: 500;
-		color: var(--ink-soft);
-	}
-	.scroll-hint kbd {
-		display: inline-block;
-		min-width: 20px;
-		padding: 1px 5px;
-		border-radius: 5px;
-		background: rgb(255 255 255 / 0.7);
-		box-shadow:
-			inset 0 -1.5px 0 rgb(16 26 48 / 0.18),
-			0 0 0 1px rgb(16 26 48 / 0.1);
-		font: 600 12px/1.5 var(--sans);
-		text-align: center;
-		color: var(--ink);
-	}
-	.scroll-hint .by-tap {
-		display: none;
-	}
-	@media (pointer: coarse) {
-		.scroll-hint .by-key {
-			display: none;
-		}
-		.scroll-hint .by-tap {
-			display: block;
-		}
-	}
-	.arrow {
-		display: block;
-		position: relative;
-		width: 2px;
-		height: 26px;
-		border-radius: 2px;
-		background: var(--ink);
-		animation: nudge 1.8s ease-in-out infinite;
-	}
-	.arrow::after {
-		content: '';
-		position: absolute;
-		left: -4px;
-		bottom: 0;
-		width: 8px;
-		height: 8px;
-		border-right: 2px solid var(--ink);
-		border-bottom: 2px solid var(--ink);
-		transform: rotate(45deg);
-	}
-	@keyframes nudge {
-		50% {
-			transform: translateY(6px);
-		}
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.arrow {
-			animation: none;
-		}
-	}
-
+	/* What differs between agents: a soft tray under the story, led by a key with the agent's name on it. */
 	.note {
-		margin-top: 8px;
-		padding-left: 14px;
-		border-left: 3px solid var(--cobalt);
+		margin-top: 10px;
+		padding: 10px 14px 11px;
+		border-radius: 14px;
+		background: var(--tray);
+		box-shadow: inset 0 0 0 1px var(--tray-rim);
 		font-size: 0.9em;
-		line-height: 1.45;
+		line-height: 1.5;
 	}
 	.note b {
 		color: var(--ink);
@@ -3823,13 +4024,35 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 8px;
+		padding: 11px 18px 12px 14px;
+		border: 0;
+		border-radius: 14px;
+		background: linear-gradient(#fffaf0, #fbefd6);
+		color: #101a30;
+		font: inherit;
 		font-weight: 650;
-		color: #fff;
-		background: #101a30;
-		padding: 11px 18px;
-		border-radius: 999px;
 		text-decoration: none;
+		cursor: pointer;
 		pointer-events: auto;
+		box-shadow:
+			inset 0 1px 0 #fff,
+			inset 0 -3px 0 #e4cfa6,
+			0 1px 2px rgb(60 40 10 / 0.12),
+			0 6px 16px rgb(20 60 130 / 0.12);
+		transition:
+			transform 0.12s,
+			box-shadow 0.12s;
+	}
+	.again:hover {
+		transform: translateY(-1px);
+	}
+	.again:active {
+		transform: translateY(1px);
+		box-shadow:
+			inset 0 1px 0 #fff,
+			inset 0 -1px 0 #e4cfa6,
+			0 1px 2px rgb(60 40 10 / 0.12),
+			0 3px 8px rgb(20 60 130 / 0.12);
 	}
 	.driven .pin.end {
 		pointer-events: auto;
@@ -3865,18 +4088,6 @@
 		.spine strong {
 			margin-left: 0;
 		}
-		/* The narrowest phones also tighten the dots and the buttons. */
-		@media (max-width: 380px) {
-			.bar .spine ol {
-				gap: 4px;
-			}
-			.bar .spine li {
-				width: 7px;
-			}
-			.stepper button {
-				width: 32px;
-			}
-		}
 		.spine {
 			order: 1;
 			justify-self: start;
@@ -3885,9 +4096,6 @@
 		}
 		.stepper {
 			order: 2;
-		}
-		.bar-picker {
-			display: none;
 		}
 		/* On a trip, the way back takes the map's place, where a thumb finds it. */
 		.tripping .brand {
@@ -3908,8 +4116,19 @@
 		.brand {
 			order: 3;
 			gap: 5px;
-			margin: 0;
-			padding: 8px 8px 8px 6px;
+			margin: 0 0 0 2px;
+			padding: 9px 11px 10px 8px;
+			border-radius: 15px;
+			background: linear-gradient(#fffaf0, #fbefd6);
+			color: #101a30;
+			box-shadow:
+				inset 0 1px 0 #fff,
+				inset 0 -3px 0 #e4cfa6,
+				0 1px 2px rgb(60 40 10 / 0.14),
+				0 10px 26px rgb(20 60 130 / 0.16);
+		}
+		.brand:hover {
+			background: linear-gradient(#fffaf0, #fbefd6);
 		}
 		.brand .name {
 			display: none;
@@ -3917,6 +4136,7 @@
 		.map-chip {
 			padding: 0;
 			background: none;
+			box-shadow: none;
 			font-size: 14px;
 		}
 		/* On a phone the scene runs up under the header, so the header brings its own ground. It's a flat colour, the
@@ -3934,12 +4154,35 @@
 			pointer-events: none;
 			background: linear-gradient(to bottom, var(--tone, rgb(198 229 253)), transparent);
 		}
-		/* Small enough that the dots stop short of the sound button, with the map beside the steps. */
+		/* Small enough that the dots stop short of the panel, with the map beside it. */
 		.bar .spine ol {
-			gap: 4px;
+			gap: 3px;
 		}
 		.spine li {
 			width: 8px;
+		}
+		.spine li.now {
+			width: 14px;
+		}
+		.stepper {
+			gap: 2px;
+			padding: 3px;
+			border-radius: 15px;
+		}
+		.stepper button {
+			width: 37px;
+		}
+		/* The narrowest phones tighten the dots and the keys a little more. */
+		@media (max-width: 380px) {
+			.bar .spine li {
+				width: 6px;
+			}
+			.bar .spine li.now {
+				width: 12px;
+			}
+			.bar .stepper button {
+				width: 33px;
+			}
 		}
 		.pin,
 		.pin.right,
@@ -4029,12 +4272,6 @@
 			max-width: none;
 			height: 36px;
 		}
-		.agent {
-			display: inline-flex;
-		}
-		.agent-name {
-			display: none;
-		}
 		/* On the shortest phones the ticket keeps its room, and the explaining gives way. */
 		@media (max-height: 760px) {
 			.ten-intro,
@@ -4080,9 +4317,6 @@
 				margin-bottom: 6px;
 				padding: 6px 10px;
 			}
-			.scroll-hint {
-				display: none;
-			}
 			.short-note {
 				display: none;
 			}
@@ -4111,9 +4345,6 @@
 			margin-bottom: 18px;
 			max-width: none;
 		}
-		.scroll-hint {
-			margin-top: 18px;
-		}
 		.steps li:not(.on) span {
 			display: none;
 		}
@@ -4135,8 +4366,7 @@
 		.bar {
 			padding: 10px 16px;
 		}
-		.brand .name,
-		.bar-picker {
+		.brand .name {
 			display: none;
 		}
 		.driven .pin,

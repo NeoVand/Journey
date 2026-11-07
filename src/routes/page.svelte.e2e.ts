@@ -80,6 +80,31 @@ test('the arrow keys step through the story a card at a time', async ({ page }) 
 	await expect(back).toBeEnabled({ timeout: 60_000 });
 });
 
+test('the Begin key plays the first card', async ({ page }) => {
+	test.setTimeout(150_000);
+	await page.goto('/');
+	await page.waitForFunction(() => document.querySelector('main.driven'), null, { timeout: 90_000 });
+	await page.getByRole('button', { name: 'Begin' }).click();
+	await page.waitForFunction(() => scrollY > innerHeight * 0.5, null, { timeout: 10_000 });
+	await expect(page.getByRole('button', { name: 'Previous step' })).toBeEnabled({ timeout: 60_000 });
+});
+
+test('a phone never has to scroll sideways on the title page', async ({ browser }) => {
+	test.setTimeout(150_000);
+	const phone = await browser.newContext({ viewport: { width: 360, height: 740 }, isMobile: true, hasTouch: true });
+	const page = await phone.newPage();
+	await page.goto('/');
+	await expect(page.getByRole('button', { name: /Memory, forks and rewinds/ }).first()).toBeVisible();
+	const [wide, room] = await page.evaluate(() => [document.documentElement.scrollWidth, innerWidth]);
+	expect(wide).toBeLessThanOrEqual(room);
+	// Every side trip's ticket sits wholly on the screen, with no row to swipe.
+	for (const box of await page.locator('.trip-set .trip-go').evaluateAll((els) => els.map((el) => el.getBoundingClientRect().toJSON()))) {
+		expect(box.left).toBeGreaterThanOrEqual(0);
+		expect(box.right).toBeLessThanOrEqual(360);
+	}
+	await phone.close();
+});
+
 test('one flick of the wheel is one step, however far it would have scrolled', async ({ page }) => {
 	test.setTimeout(150_000);
 	await page.goto('/');
