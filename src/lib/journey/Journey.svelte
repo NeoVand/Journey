@@ -1549,7 +1549,7 @@
 				</p>
 			{/if}
 		</div>
-		<div class={['stepper', { show: driven }]} role="group" aria-label="Step through the story" inert={!driven}>
+		<div class={['stepper', { show: driven }]} role="group" aria-label="Sound, and steps through the story" inert={!driven}>
 			<button type="button" class="sound" aria-pressed={soundOn} aria-label="Sound" title={soundOn ? 'Sound is on' : 'Sound is off'} onclick={() => toggleSound()}>
 				<Icon icon={soundOn ? VolumeHighIcon : VolumeOffIcon} size={19} stroke={1.8} />
 			</button>
@@ -1619,8 +1619,8 @@
 				<p class="upright">Scroll to watch. Turn your phone upright to read along.</p>
 				<div class="told"><span>Your agent</span>{@render picker()}</div>
 				<div class="trip-set">
-					<p class="trip-set-head">Side trips <span>Short detours that bring you back</span></p>
-					<ul>
+					<p class="trip-set-head" id="trip-set-head">Side trips <span>Short detours that bring you back</span></p>
+					<ul aria-labelledby="trip-set-head">
 						{#each ['harness', 'mcp', 'sandbox', 'memory'] as const as id (id)}
 							<li>{@render tripButton(id, false)}</li>
 						{/each}
