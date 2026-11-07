@@ -1542,7 +1542,8 @@
 					{/each}
 				</ol>
 				<p>
-					<span>Form {form} of 12</span> <strong>{current.name}</strong>
+					<span>Form {form} of 12</span>
+					{#key current.name}<strong in:flipIn>{current.name}</strong>{/key}
 				</p>
 			{/if}
 		</div>
@@ -2391,6 +2392,10 @@
 	}
 	.agent.hint {
 		animation: agent-hint 3.2s ease-in-out infinite;
+	}
+	/* A card off the screen is inert: its key needn't breathe for nobody. */
+	:global([inert]) .agent.hint {
+		animation: none;
 	}
 	@keyframes agent-hint {
 		0%,
@@ -3502,7 +3507,9 @@
 		line-height: 1;
 		color: var(--ink-soft);
 	}
+	/* A block of its own, so the name can turn over into place when the request takes a new form. */
 	.spine strong {
+		display: inline-block;
 		color: var(--ink);
 		font-weight: 650;
 		margin-left: 4px;
