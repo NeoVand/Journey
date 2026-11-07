@@ -270,11 +270,31 @@
 		if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
 		if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.defaultPrevented || !driven) return;
 		const target = event.target as HTMLElement | null;
-		if (target?.closest('input, textarea, select, [contenteditable], [role="slider"], dialog') || document.querySelector('dialog[open]')) return;
+		if (target?.closest('input, textarea, select, [contenteditable], [role="slider"], [role="radiogroup"], dialog') || document.querySelector('dialog[open]'))
+			return;
 		event.preventDefault();
 		step(event.key === 'ArrowRight' ? 1 : -1, 'key');
 		if (event.key === 'ArrowRight') pressBegin();
 	}
+
+	/** Inside a tray of choices the arrow keys move the choice, as they do in any set of radio buttons, not the story. */
+	function roam(event: KeyboardEvent) {
+		const by: Record<string, number> = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 };
+		const radios = [...(event.currentTarget as HTMLElement).querySelectorAll<HTMLElement>('[role="radio"]')];
+		const at = radios.indexOf(document.activeElement as HTMLElement);
+		if (at < 0) return;
+		const to =
+			event.key === 'Home' ? 0 : event.key === 'End' ? radios.length - 1 : event.key in by ? (at + by[event.key] + radios.length) % radios.length : -1;
+		if (to < 0) return;
+		event.preventDefault();
+		radios[to].focus();
+		radios[to].click();
+	}
+	/** The keys listen on the tray, where the radios are; the focus itself stays on the radio chosen. */
+	const roaming: Attachment<HTMLElement> = (tray) => {
+		tray.addEventListener('keydown', roam);
+		return () => tray.removeEventListener('keydown', roam);
+	};
 
 	/** The title page's Begin key goes down with the → key it stands for, while the title page is still there to see it. */
 	function pressBegin() {
@@ -1376,12 +1396,13 @@
 </script>
 
 {#snippet picker()}
-	<div class="picker" role="radiogroup" aria-label="Which coding agent do you use?" {@attach slide(ids.indexOf(harness))}>
+	<div class="picker" role="radiogroup" aria-label="Which coding agent do you use?" {@attach roaming} {@attach slide(ids.indexOf(harness))}>
 		{#each ids as id (id)}
 			<button
 				type="button"
 				role="radio"
 				aria-checked={harness === id}
+				tabindex={harness === id ? 0 : -1}
 				class={{ on: harness === id }}
 				onclick={() => choose(id)}
 			>
@@ -2026,9 +2047,9 @@
 				<div class="ledger">
 					<p class="ten-intro">Each bar is one request. Green was already cached, amber is new. Only turn one pays for all of it. After that, with each turn minutes after the last, more than nine tokens in ten are already there.</p>
 					<div class="cache-row">
-						<div class="picker compact" role="radiogroup" aria-label="Run the ten turns with the cache, or without it" {@attach slide(cacheOn ? 0 : 1)}>
-							<button type="button" role="radio" aria-checked={cacheOn} class={{ on: cacheOn }} onclick={() => setCache(true)}>With the cache</button>
-							<button type="button" role="radio" aria-checked={!cacheOn} class={{ on: !cacheOn }} onclick={() => setCache(false)}>Without it</button>
+						<div class="picker compact" role="radiogroup" aria-label="Run the ten turns with the cache, or without it" {@attach roaming} {@attach slide(cacheOn ? 0 : 1)}>
+							<button type="button" role="radio" aria-checked={cacheOn} tabindex={cacheOn ? 0 : -1} class={{ on: cacheOn }} onclick={() => setCache(true)}>With the cache</button>
+							<button type="button" role="radio" aria-checked={!cacheOn} tabindex={cacheOn ? -1 : 0} class={{ on: !cacheOn }} onclick={() => setCache(false)}>Without it</button>
 						</div>
 						<p class="tally"><b>{Math.round(ran.current).toLocaleString('en-US')}</b> tokens to run</p>
 					</div>

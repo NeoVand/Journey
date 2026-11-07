@@ -102,6 +102,21 @@ test("the title page's sound switch is the header's", async ({ page }) => {
 	await expect(here).toHaveAttribute('aria-pressed', 'false');
 });
 
+test('the arrow keys move the choice inside the agent tray, not the story', async ({ page }) => {
+	test.setTimeout(150_000);
+	await page.goto('/');
+	await page.waitForFunction(() => document.querySelector('main.driven'), null, { timeout: 90_000 });
+	const tray = page.locator('main').getByRole('radiogroup', { name: 'Which coding agent do you use?' });
+	await tray.getByRole('radio', { name: /Claude Code/ }).focus();
+	await page.keyboard.press('ArrowRight');
+	await expect(tray.getByRole('radio', { name: /Codex/ })).toHaveAttribute('aria-checked', 'true');
+	await expect(tray.getByRole('radio', { name: /Codex/ })).toBeFocused();
+	await page.keyboard.press('End');
+	await expect(tray.getByRole('radio', { name: /Copilot/ })).toHaveAttribute('aria-checked', 'true');
+	await page.waitForTimeout(300);
+	expect(await page.evaluate(() => scrollY)).toBe(0);
+});
+
 test('a phone never has to scroll sideways on the title page', async ({ browser }) => {
 	test.setTimeout(150_000);
 	const phone = await browser.newContext({ viewport: { width: 360, height: 740 }, isMobile: true, hasTouch: true });
