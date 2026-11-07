@@ -1549,6 +1549,11 @@
 						<span class="by-key">or scroll, or step with <kbd>←</kbd> <kbd>→</kbd></span>
 						<span class="by-tap">or swipe up</span>
 					</span>
+					<!-- The same switch as the header's, offered once where the reader is deciding how to start. -->
+					<button type="button" class="hear" aria-pressed={soundOn} onclick={() => toggleSound()}>
+						<Icon icon={soundOn ? VolumeHighIcon : VolumeOffIcon} size={17} stroke={1.9} />
+						Sound
+					</button>
 				</div>
 				<p class="upright">Scroll to watch. Turn your phone upright to read along.</p>
 				<div class="told"><span>Your agent</span>{@render picker()}</div>
@@ -3674,6 +3679,43 @@
 	.begin-or .by-tap {
 		display: none;
 	}
+	/* Quiet until pressed, then it stands up as a cream key, like the chosen agent. */
+	.hear {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		margin-bottom: 6px;
+		padding: 7px 12px 8px 10px;
+		border: 0;
+		border-radius: 11px;
+		background: rgb(255 255 255 / 0.42);
+		color: #4d5a72;
+		font: 600 14px/1 var(--sans);
+		cursor: pointer;
+		-webkit-tap-highlight-color: transparent;
+		box-shadow:
+			inset 0 1px 2px rgb(30 60 110 / 0.12),
+			inset 0 0 0 1px rgb(255 255 255 / 0.5);
+		transition:
+			background 0.18s,
+			color 0.18s,
+			box-shadow 0.18s,
+			transform 0.1s;
+	}
+	.hear:hover {
+		color: #101a30;
+	}
+	.hear:active {
+		transform: translateY(1px);
+	}
+	.hear[aria-pressed='true'] {
+		background: linear-gradient(#fffaf0, #fbefd6);
+		color: #101a30;
+		box-shadow:
+			inset 0 1px 0 #fff,
+			inset 0 -2px 0 #e2cb9f,
+			0 1px 3px rgb(60 40 10 / 0.18);
+	}
 	@media (pointer: coarse) {
 		.begin-or .by-key {
 			display: none;
@@ -3892,6 +3934,9 @@
 		.begin-or,
 		.told {
 			font-size: clamp(14.5px, 0.88vw, 17px);
+		}
+		.hear {
+			font-size: clamp(14px, 0.85vw, 16px);
 		}
 		.hero .picker button {
 			font-size: clamp(13.5px, 0.8vw, 15.5px);

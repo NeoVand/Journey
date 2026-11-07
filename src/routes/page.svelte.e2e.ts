@@ -89,6 +89,19 @@ test('the Begin key plays the first card', async ({ page }) => {
 	await expect(page.getByRole('button', { name: 'Previous step' })).toBeEnabled({ timeout: 60_000 });
 });
 
+test("the title page's sound switch is the header's", async ({ page }) => {
+	test.setTimeout(150_000);
+	await page.goto('/');
+	await page.waitForFunction(() => document.querySelector('main.driven'), null, { timeout: 90_000 });
+	const here = page.locator('main').getByRole('button', { name: 'Sound', exact: true });
+	const up = page.locator('header').getByRole('button', { name: 'Sound', exact: true });
+	await expect(here).toHaveAttribute('aria-pressed', 'false');
+	await here.click();
+	await expect(up).toHaveAttribute('aria-pressed', 'true');
+	await up.click();
+	await expect(here).toHaveAttribute('aria-pressed', 'false');
+});
+
 test('a phone never has to scroll sideways on the title page', async ({ browser }) => {
 	test.setTimeout(150_000);
 	const phone = await browser.newContext({ viewport: { width: 360, height: 740 }, isMobile: true, hasTouch: true });
