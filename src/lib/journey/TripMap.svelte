@@ -355,6 +355,19 @@
 			--ui: 1.32;
 		}
 	}
+	/* High contrast: every button keeps an edge, and where the reader is stays marked. */
+	@media (forced-colors: active) {
+		/* Above each button's own border rule, which says none. */
+		button {
+			border: 1px solid ButtonText !important;
+		}
+		.route ul button.now,
+		.at .node {
+			forced-color-adjust: none;
+			background: Highlight;
+			color: HighlightText;
+		}
+	}
 	@media (prefers-reduced-motion: reduce) {
 		.map,
 		.map::backdrop {

@@ -506,6 +506,18 @@
 			--ui: 1.32;
 		}
 	}
+	/* High contrast: every button keeps an edge, and the chosen one stays marked. */
+	@media (forced-colors: active) {
+		/* Above each button's own border rule, which says none. */
+		button {
+			border: 1px solid ButtonText !important;
+		}
+		button.on {
+			forced-color-adjust: none;
+			background: Highlight !important;
+			color: HighlightText !important;
+		}
+	}
 	@media (prefers-reduced-motion: reduce) {
 		.try,
 		.try::backdrop {

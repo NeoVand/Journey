@@ -3699,6 +3699,35 @@
 		width: min(46vw, calc(760px * var(--ui, 1)));
 	}
 	/*
+	 * High contrast: the system takes over the colours and drops the shadows, so the keys would lose their edges and the
+	 * chosen one its key. Every key gets an edge in the system's own colour, and what's chosen or current is highlighted.
+	 */
+	@media (forced-colors: active) {
+		.journey button:not(.term),
+		.picker button,
+		.again {
+			border: 1px solid ButtonText;
+		}
+		.journey [aria-checked='true'],
+		.journey [aria-pressed='true'],
+		.picker:global(.sliding) button.on,
+		.turns button.on,
+		.trip li.now {
+			forced-color-adjust: none;
+			background: Highlight;
+			color: HighlightText;
+		}
+		.picker:global(.sliding)::before,
+		.stepper button[data-step]::before {
+			display: none;
+		}
+		.spine li.now {
+			forced-color-adjust: none;
+			background: Highlight;
+		}
+	}
+
+	/*
 	 * A big monitor at its own size, such as a 27-inch one: the 3D grows with the screen, so the words and the controls
 	 * grow with it. The header and each card's contents are zoomed; the cards widen to match.
 	 */
