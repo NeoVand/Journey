@@ -348,8 +348,9 @@ const S_NET: Omit<Shot, 'T'> = { ...MAP_SHOT, az: 8, el: 26, target: at(0, FLOOR
 /** Over a token, at the height of the small network floating above it. */
 const overToken = (i: number): [number, number, number] => at(P[3][i][0], FLOORS[1] + 1.9, CZ + P[3][i][1]);
 /** Close on the network as it first fires over "job", and close again where it ends its tour: it's what the card is about. */
-const S_NET_CLOSE: Omit<Shot, 'T'> = { ...MAP_SHOT, az: 10, el: 21, target: overToken(JOB), radius: 4.3, ry: 3.3 };
-const S_NET_END: Omit<Shot, 'T'> = { ...MAP_SHOT, az: 6, el: 24, target: overToken(NET_TOUR[NET_TOUR.length - 1]), radius: 5.4, ry: 3.8 };
+const S_NET_CLOSE: Omit<Shot, 'T'> = { ...MAP_SHOT, az: 10, el: 21, target: overToken(JOB), radius: 4.3, ry: 3.3, wide: box(0.5, 0.07, 0.5, 0.84) };
+// Not so close that the bright map reaches in under the card's words on a shorter laptop screen.
+const S_NET_END: Omit<Shot, 'T'> = { ...MAP_SHOT, az: 6, el: 17, target: overToken(NET_TOUR[NET_TOUR.length - 1]), radius: 6.6, ry: 4.4, wide: box(0.5, 0.07, 0.5, 0.84) };
 const S_TOP: Omit<Shot, 'T'> = { ...MAP_SHOT, az: 11, el: 36, target: at(0, FLOORS[4] + 0.9, CZ), ry: 5, wide: box(0.41, 0.1, 0.59, 0.8) };
 
 export const TRANSFORMER_SHOTS: Shot[] = [
@@ -965,7 +966,9 @@ export class Transformer {
 			const hop = Math.min(NET_TOUR.length - 2, Math.floor(visit));
 			const f = inOut(Math.min(1, visit - hop));
 			arcPoint(this.netStops[hop], this.netStops[hop + 1], 0.5, f, this.net.position);
-			this.net.scale.setScalar(Math.max(0.0001, netK * lerp(1, 0.78, smooth(Math.min(1, visit)))));
+			// Smaller while it hops from token to token, then it settles on the last one and draws itself up to be looked at.
+			const settled = outBack(seg(T, NET_VISIT[1] - 0.003, NET_VISIT[1] + 0.003), 1.6);
+			this.net.scale.setScalar(Math.max(0.0001, netK * lerp(1, 0.78, smooth(Math.min(1, visit))) * lerp(1, 1.42, settled)));
 			// A pulse runs up through it: one long one for "job", then one per token it visits.
 			const run = visit > 0 ? visit % 1 : seg(T, NET_RUN[0], NET_RUN[1]);
 			const amber = this.mapTint.set('#ffae1a');
