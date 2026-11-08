@@ -16,7 +16,7 @@ NORA: Less bad than it sounds. "Condition" comes after "race", so "condition" ca
 THEO: [thoughtful] So the meaning isn't lost. It's carried by the later words.
 NORA: Yes. And that matters at the top, where only the last position is used to score the next word. The last position has seen everything.
 THEO: Do the early floors do something different from the late ones? Grammar first, meaning later, that kind of thing?
-NORA: [laughs] The book doesn't say, and I'm not going to guess. What it does say: they share a design, each has its own weights, and each starts where the last one finished.
+NORA: [laughs] I can't tell you that, and I'm not going to guess. What I can say: they share a design, each has its own weights, and each starts where the last one finished.
 THEO: Fair. And all eighty run for every token?
 NORA: Every one. On the first turn, the prompt goes up together. Then, while the model writes its answer, each new token climbs all eighty floors on its own, once per token. And all those weights together are far too big for one chip, so a model like this is split across many.
 THEO: Does my agent matter at all up here?

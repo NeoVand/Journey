@@ -21,4 +21,4 @@ NORA: It takes a side path. The image is cut into small patches, and a separate 
 THEO: [skeptical] Let me check I've got the order right. Nothing on my laptop was ever a token. Not in the harness, not on the wire.
 NORA: Not one. Plain text left your laptop, scrambled bytes crossed the internet, and only here, behind the front door, does it become token IDs. That's form four of the twelve.
 THEO: So the model reads numbers, writes numbers, and everything else on this trip is about turning words into numbers and back.
-NORA: [warmly] That's the book's whole idea in one line. And your nine little numbers are about to find out how much company they have.
+NORA: [warmly] That's the whole trip in one line. And your nine little numbers are about to find out how much company they have.

@@ -6,7 +6,7 @@ NORA: Your files and your conversation both say so. That's the odd part: after t
 THEO: What else is in that category?
 NORA: Anything that reached outside. A message sent. A database changed. A deploy started. Each of those happened in some other system, and your checkpoint never held a copy of any of it. That kind of state can outlive the whole run.
 THEO: [skeptical] I can push a revert, though.
-NORA: You can, and that's a new action out in the world, on top of the old one. It isn't going back. The book is blunt about it: nothing undoes a sent message or a merged pull request.
+NORA: You can, and that's a new action out in the world, on top of the old one. It isn't going back. Put bluntly, nothing undoes a sent message or a merged pull request.
 THEO: Do the agents admit this, or is it buried somewhere?
 NORA: All three say it plainly. Claude Code's documentation says actions on remote systems, like databases, APIs and deployments, can't be checkpointed. Codex's says changing an instruction doesn't undo an action already completed.
 THEO: And Copilot?

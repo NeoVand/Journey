@@ -1,7 +1,7 @@
 {
 	"a-place-for-every-word": {
 		"title": "A place for every word",
-		"seconds": 213.6
+		"seconds": 212.9
 	},
 	"a-tool-call-is-born": {
 		"title": "A tool call is born",
@@ -9,11 +9,11 @@
 	},
 	"across-the-wire": {
 		"title": "Across the wire",
-		"seconds": 211.5
+		"seconds": 210.9
 	},
 	"all-of-them-at-once": {
 		"title": "All of them, at once",
-		"seconds": 213.9
+		"seconds": 212.6
 	},
 	"around-the-loop": {
 		"title": "Around the loop",
@@ -29,15 +29,15 @@
 	},
 	"different-bodies-one-kind-of-mind": {
 		"title": "Different bodies, one kind of mind",
-		"seconds": 189.5
+		"seconds": 184.7
 	},
 	"evidence-not-opinion": {
 		"title": "Evidence, not opinion",
-		"seconds": 188.9
+		"seconds": 188
 	},
 	"finding-the-code": {
 		"title": "Finding the code",
-		"seconds": 209.5
+		"seconds": 203.8
 	},
 	"harness-a-loop-inside-the-loop": {
 		"title": "A loop inside the loop",
@@ -65,7 +65,7 @@
 	},
 	"how-a-coding-agent-works": {
 		"title": "How a coding agent works",
-		"seconds": 204.7
+		"seconds": 205.4
 	},
 	"intent-is-not-authority": {
 		"title": "Intent is not authority",
@@ -73,7 +73,7 @@
 	},
 	"it-starts-as-a-sentence": {
 		"title": "It starts as a sentence",
-		"seconds": 205.5
+		"seconds": 208.6
 	},
 	"its-working-memory": {
 		"title": "Its working memory",
@@ -121,11 +121,11 @@
 	},
 	"memory-what-going-back-can-t-reach": {
 		"title": "What going back can’t reach",
-		"seconds": 132.9
+		"seconds": 131.2
 	},
 	"now-it-is-a-token": {
 		"title": "Now it is a token",
-		"seconds": 216.9
+		"seconds": 215.5
 	},
 	"one-at-a-time": {
 		"title": "One at a time",
@@ -149,7 +149,7 @@
 	},
 	"reading-and-writing": {
 		"title": "Reading and writing",
-		"seconds": 210.7
+		"seconds": 213.2
 	},
 	"sandbox-deny-then-ask-then-allow": {
 		"title": "Deny, then ask, then allow",
@@ -197,7 +197,7 @@
 	},
 	"the-model-has-no-hands": {
 		"title": "The model has no hands",
-		"seconds": 215.6
+		"seconds": 213.9
 	},
 	"the-transformer": {
 		"title": "The transformer",
@@ -213,11 +213,11 @@
 	},
 	"then-again-eighty-times": {
 		"title": "Then again, eighty times",
-		"seconds": 203.9
+		"seconds": 203.3
 	},
 	"then-each-token-by-itself": {
 		"title": "Then each token, by itself",
-		"seconds": 211.8
+		"seconds": 212.9
 	},
 	"thousands-more-behind-it": {
 		"title": "Thousands more behind it",
@@ -237,14 +237,14 @@
 	},
 	"when-the-answer-gets-lost": {
 		"title": "When the answer gets lost",
-		"seconds": 193.1
+		"seconds": 192.5
 	},
 	"when-the-context-fills-up": {
 		"title": "When the context fills up",
-		"seconds": 213.1
+		"seconds": 213.9
 	},
 	"when-the-page-lies": {
 		"title": "When the page lies",
-		"seconds": 217.9
+		"seconds": 217.5
 	}
 }

@@ -18,9 +18,9 @@ NORA: Same token, same number, so the same list. Both tiles land on exactly one 
 THEO: That's a problem. If the model can't tell which "the" came first, it can't tell my sentence from the same words shuffled.
 NORA: Exactly the problem. So a second signal is mixed in: position. It says where each token sits in the line. After that the two "the" tiles come apart, and the order of every word is part of the picture.
 THEO: Mixed in how? Another list?
-NORA: The book calls it a positional encoding, mixed into each token's numbers, and there's more than one recipe for it. The point is simply that the first "the" and the second stop being twins.
+NORA: It's called a positional encoding, mixed into each token's numbers, and there's more than one recipe for it. The point is simply that the first "the" and the second stop being twins.
 THEO: [impressed] So this is where my sentence stops being numbers in a row and starts being places.
-NORA: The book counts it as a new form, the fifth of the twelve shapes your request takes on its trip. Token numbers became embeddings, and they live on the chip now.
+NORA: And it counts as a new form, the fifth of the twelve shapes your request takes on its trip. Token numbers became embeddings, and they live on the chip now.
 THEO: Does any of this depend on which agent I use?
 NORA: Not here. Claude Code, Codex and Copilot in VS Code all send text, and by the time it's this deep, it's tokens on a chip. Nothing down here knows which agent sent them.
 THEO: So every word starts at its dictionary meaning, in the right order, and nothing more.

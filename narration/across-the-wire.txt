@@ -18,6 +18,6 @@ NORA: The harness asks for the answer as a stream. Instead of building the whole
 THEO: Do all three stream the same way?
 NORA: Roughly. Claude Code sends its request to Anthropic's Messages API at api.anthropic.com with a flag asking for a stream, and the pieces come back as server-sent events: one long-lived connection the server keeps writing to. Codex uses OpenAI's Responses API, streaming over server-sent events or over a WebSocket, a connection that stays open both ways. Copilot's requests go to GitHub's API, which streams back chat chunks in OpenAI's style, whichever vendor's model is behind them.
 THEO: [thoughtful] What's underneath all this? HTTP two, HTTP three?
-NORA: The book is careful there. That's decided by the client library and the server, not the harness, so nobody should claim one without evidence. I won't either.
+NORA: That one isn't ours to say. It's decided by the client library and the server, not the harness, so nobody should claim one without evidence. I won't either.
 THEO: Okay. So: encrypted, signed with a pass, and asking for its answer in pieces.
 NORA: That's the whole crossing. And on the far side is the provider's front door, where the encryption finally ends.

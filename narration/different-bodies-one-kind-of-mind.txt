@@ -1,7 +1,7 @@
 # Different bodies, one kind of mind
 NORA: If you had to put the model into one sentence, the whole thing, what would you say?
 THEO: [thoughtful] A very well-read engineer who types fast?
-NORA: [chuckles] Generous. Here's the book's version. The model is a function from tokens to odds. Tokens go in, small pieces of text written as numbers, and out come the odds for every possible next token. One is picked, it goes on the end, and the whole thing runs again.
+NORA: [chuckles] Generous. Here's the plain version. The model is a function from tokens to odds. Tokens go in, small pieces of text written as numbers, and out come the odds for every possible next token. One is picked, it goes on the end, and the whole thing runs again.
 THEO: That's it? That's all it is?
 NORA: That's all the model is. Everything else you've watched on this trip, searching the code, editing the scheduler, running the tests, remembering, asking you for permission, is the harness. That's the program on your laptop around the model, the part you installed.
 THEO: Okay, here's my picture. The harness is the body, the model is the brain.

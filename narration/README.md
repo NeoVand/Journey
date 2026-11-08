@@ -5,7 +5,9 @@ than a card can. The card is the summary. The conversation is the explanation a 
 two people beside the sound key, plays the conversation of the card on screen and fills with amber as it goes; once
 pressed, it follows the reader, so each card they step to starts its own. Resting the pointer on the key (or tapping it
 on a phone) drops a small player from it: the conversation drawn as two lanes, Nora's turns above and Theo's below, with
-a playhead to drag, fifteen seconds back or ahead, and four speeds. The player reads who speaks when from `<id>.json`.
+a playhead to drag, fifteen seconds back or ahead, four speeds, and a subtitle key. Subtitles show what's being said,
+a sentence or a short run of one at a time, in a clear stretch of the screen away from the cards' words. The player and
+the subtitles read who speaks when, and each sentence's start, from `<id>.json`.
 
 - `narration/<id>.txt` is one script. `<id>` is the card's title through `slug()` in `src/lib/journey/content.ts`; a
   side-trip card is `<trip>-<slug>`, for example `sandbox-inside-the-glass`.
@@ -47,6 +49,9 @@ They like each other. There is no show intro, no "welcome back", no "great quest
 
 - Everything said must be backed by the book (`reference/The Journey of a Token How a Coding Agent Works, End to End.md`)
   or by the card itself. Never contradict the card. Don't invent numbers, features, versions or dates.
+- Never name the book out loud: "the book calls it", "by the book's count", "the book's example". The reader can't open it
+  from the page, so the line points at nothing. Say the fact in Nora's own voice, keep its hedge, and call the running
+  example's numbers "this example" or "our count".
 - Keep the book's hedges: "usually", "can", "in this example". A number the book calls illustrative is an example
   number when spoken.
 - Settled points to keep straight: nothing is a token until the provider tokenizes it; the model never touches your

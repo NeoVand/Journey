@@ -11,9 +11,9 @@ NORA: Eventually. A token is a small piece of text, usually a word or part of a 
 THEO: [curious] My agent shows me a token count, though. Where does that come from?
 NORA: The harness may estimate one for itself, say, to decide when the conversation is getting too long. But the real count comes back from the provider's server with every reply. The harness never cuts your sentence up and sends the pieces. It sends text.
 THEO: Fine. And the card says my request will take twelve forms on this trip.
-NORA: Twelve, by the book's count, and the counter in the corner ticks them off. Keystrokes are number one. Before it leaves your laptop it'll be a page of structured text. On the internet, scrambled bytes. By the time the model reads it, a row of numbers.
+NORA: Twelve, by our count, and the counter in the corner ticks them off. Keystrokes are number one. Before it leaves your laptop it'll be a page of structured text. On the internet, scrambled bytes. By the time the model reads it, a row of numbers.
 THEO: So my sentence literally turns into the fix at the end?
-NORA: Not literally, and the book is careful about that. A character, a token, a network packet and a file write are different units, and they don't map one to one. Your words shape what the model writes. They don't become it. The twelve forms follow the task, not one particular token.
+NORA: Not literally, and that difference matters. A character, a token, a network packet and a file write are different units, and they don't map one to one. Your words shape what the model writes. They don't become it. The twelve forms follow the task, not one particular token.
 THEO: [thoughtful] Does any of this start differently depending on which agent I use?
 NORA: The first step is the same. Where the loop runs differs a little. Claude Code is one program, and the terminal, the VS Code extension and the desktop app all run that same program. Codex's terminal app runs the agent loop in its own process, and its VS Code extension and desktop app reach the same engine through something called codex app-server.
 THEO: And Copilot?

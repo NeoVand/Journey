@@ -19,6 +19,6 @@ NORA: [warmly] Exactly. Until now, everything was the model's opinion: I think t
 THEO: [curious] If it ran a few things at once, how does it know which result is which?
 NORA: Every result carries the ID of the call it answers. In Claude Code, it's a tool result block with a tool_use_id. In Codex, it's a call_id. Codex's shell can also keep a process running inside a pretend terminal, from one round trip to the model to the next, so the model can come back to it later.
 THEO: And if the tests just hang?
-NORA: The time limit stops them. Though the book adds a warning: killing the shell can leave a process it started still running, so the harness has to kill the whole group, or tell the model.
+NORA: The time limit stops them. There's a catch, though: killing the shell can leave a process it started still running, so the harness has to kill the whole group, or tell the model.
 THEO: [thoughtful] So a red test isn't bad news. It's the first real news.
 NORA: That's the best way to put it. And it's about to travel back to the model.

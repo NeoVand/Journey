@@ -8,9 +8,9 @@ NORA: Right, it only writes requests. Once a request passes the permission check
 THEO: So step one, look for the words.
 NORA: In our fix, it searches the source folder for lock and schedule. Fourteen lines come back, each with its file name and line number. From those it suspects the run method touches the job queue without taking the lock, so it reads the scheduler file, lines sixty to a hundred and sixty. And there it is: two threads can grab the same job.
 THEO: [skeptical] Why not just read the whole file? Feels safer.
-NORA: Cost. The book's example is a three-thousand-line file, which would come to about forty thousand tokens, tokens being the small pieces of text the model reads and you pay for. Reading a range is what a careful engineer does too. You don't print the whole codebase to find one function.
+NORA: Cost. Take a three-thousand-line file. Read whole, it would come to about forty thousand tokens, tokens being the small pieces of text the model reads and you pay for. Reading a range is what a careful engineer does too. You don't print the whole codebase to find one function.
 THEO: And each of those steps is a separate trip?
-NORA: Each is its own turn. Call, result, think, next call. A turn is one round trip: the conversation goes to the model, a reply comes back, the harness acts on it. The book reckons a good model needs three to six of them just to locate a bug.
+NORA: Each is its own turn. Call, result, think, next call. A turn is one round trip: the conversation goes to the model, a reply comes back, the harness acts on it. A good model typically needs three to six of them just to locate a bug.
 THEO: That sounds slow.
 NORA: It would be, except calls that don't need each other's answers can share a turn, and the harness runs them side by side. In Claude Code, the very first turn sends the search and a fetch of the library's docs out together.
 THEO: [curious] Does every agent search the same way?

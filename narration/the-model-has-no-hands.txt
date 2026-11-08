@@ -10,7 +10,7 @@ NORA: It wrote it one token at a time, a token being a small piece of text, and 
 THEO: So in our fix, what's the first thing it asks for?
 NORA: A search: look for the words lock and schedule in the source folder. In Claude Code that's the Grep tool. In Codex it's ripgrep, a very fast search program, typed into the shell. In Copilot it's a text search. Three spellings, one request.
 THEO: Request. You keep leaning on that word.
-NORA: Because that's all it is. The book's picture is a web form. You can type anything you like into a form on a website, and pressing submit doesn't make the server do it. The server decides.
+NORA: Because that's all it is. Picture a web form. You can type anything you like into a form on a website, and pressing submit doesn't make the server do it. The server decides.
 THEO: [thoughtful] So the model can't read my file. It can only write, please read this file.
 NORA: Exactly that. And everything after this point exists to decide whether to say yes.
 THEO: Let me try my own picture. It's a manager giving the team instructions.

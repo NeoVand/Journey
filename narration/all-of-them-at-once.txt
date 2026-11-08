@@ -14,7 +14,7 @@ NORA: For now. But think about what comes next. The model writes its answer one 
 THEO: [curious] Why not keep the queries too?
 NORA: Because a query is only asked once, by its own token, right now. Keys and values are what every later token comes back to.
 THEO: [impressed] That's tidy. Is it big?
-NORA: It's the scarcest thing in the building. In the book's example, about three hundred and thirty kilobytes per token, so a first turn of twenty-one thousand tokens takes about seven gigabytes of chip memory. Example numbers, but that's the scale.
+NORA: It's the scarcest thing in the building. In this example, about three hundred and thirty kilobytes per token, so a first turn of twenty-one thousand tokens takes about seven gigabytes of chip memory. Example numbers, but that's the scale.
 THEO: Is that how the model remembers me between turns?
 NORA: [short pause] It's how it saves work, which isn't the same thing. When your agent comes back for the next turn, the request starts with exactly the same bytes, plus a little more. If those blocks are still kept, only the new part runs. If something near the start changes, everything from that point on is worked out again. And blocks are usually kept for minutes, not days.
 THEO: Do the agents handle that differently?

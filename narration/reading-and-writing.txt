@@ -6,7 +6,7 @@ NORA: In prefill, the model takes in all your tokens at once, thousands of them,
 THEO: And writing?
 NORA: Decode is one token per step. To write each one, the chip has to read every one of the model's weights, all those billions of learned numbers, out of memory, and then it does fairly little arithmetic with them. So the limit is how fast it can move numbers out of memory, not how fast it can compute.
 THEO: [curious] So reading is a math problem, and writing is a moving-boxes problem.
-NORA: [chuckles] That's a fair way to put it. The book's rule of thumb: a step takes at least as long as the slower of two things, doing the arithmetic or moving the weights and the cache through memory. Prefill runs into the first. Decode runs into the second. It isn't absolute, though. A big batch or a very long context can move the bottleneck.
+NORA: [chuckles] That's a fair way to put it. Here's a rule of thumb: a step takes at least as long as the slower of two things, doing the arithmetic or moving the weights and the cache through memory. Prefill runs into the first. Decode runs into the second. It isn't absolute, though. A big batch or a very long context can move the bottleneck.
 THEO: And why does it matter if both happen on the same chip?
 NORA: Picture a chip busy writing for lots of people when a big new prompt arrives. Even read in slices, that prompt competes with everyone being written for, and their typing stutters. So many clusters split the two jobs into pools. A prefill pool reads prompts and builds the KV cache. Then the cache is shipped across to a decode pool, which writes the answers.
 THEO: Shipped how? That cache is gigabytes.
@@ -16,6 +16,6 @@ NORA: A lot of public designs do it. DistServe, Mooncake, NVIDIA Dynamo, and mod
 THEO: Does the split look any different from Claude Code versus Codex versus Copilot?
 NORA: Not from your side. It all happens behind the front door, and providers don't publish exactly how they arrange it. What we know comes from those open designs.
 THEO: So that pause before the first word is when prefill happens.
-NORA: That's when it happens, along with the trip there. The book's rough figures: for a long prompt read from scratch, one to three seconds to the first token. When the start is already cached, under half a second. After that, decode turns out a token every ten to forty milliseconds or so.
+NORA: That's when it happens, along with the trip there. Some rough figures: for a long prompt read from scratch, one to three seconds to the first token. When the start is already cached, under half a second. After that, decode turns out a token every ten to forty milliseconds or so.
 THEO: [thoughtful] So reading is all at once and limited by compute. Writing is one at a time and limited by memory. And sometimes they're in different rooms.
 NORA: [warmly] That's it. Your prompt is in the first room right now. Which leaves the real question: what's actually running in there?

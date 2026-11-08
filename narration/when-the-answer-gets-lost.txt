@@ -3,7 +3,7 @@ NORA: Here's a nasty one. The model asks for an edit. The harness, the program o
 THEO: [curious] How does a result just get lost?
 NORA: Plenty of ways. The harness crashes after writing the file but before recording what happened. The connection drops before the last message arrives. A test run times out, but a worker it started is still alive, still holding a lock file. They all have the same shape: something happened, and nobody's sure what.
 THEO: So the model thinks the file is unchanged.
-NORA: Which is the dangerous part, because if it simply tries again, it might be doing the thing twice. So the book's rule is that an unknown outcome is a state of its own. The honest answer is, I don't know whether that happened. And the next step is to look, not to retry.
+NORA: Which is the dangerous part, because if it simply tries again, it might be doing the thing twice. So the rule is that an unknown outcome is a state of its own. The honest answer is, I don't know whether that happened. And the next step is to look, not to retry.
 THEO: Look how?
 NORA: Read the file again. Run git status. Ask the remote service about the job. Even the rules for HTTP, the protocol behind the web, warn against blindly repeating a request whose effect may already have happened.
 THEO: [thoughtful] But say it does retry by mistake. With the scheduler edit.

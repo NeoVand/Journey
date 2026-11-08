@@ -16,7 +16,7 @@ NORA: It's a loop. One pass around it is called a turn. A real fix like ours tak
 THEO: [surprised] And every turn makes that whole trip? Laptop, internet, data center, and back?
 NORA: Every single one. It sounds wasteful, and a good part of the story is why it isn't as bad as it sounds. When the start of a request matches one the provider has just seen, it can reuse the work it already did, so turn two starts ahead.
 THEO: Okay. And along the way, my sentence keeps changing shape?
-NORA: Twelve shapes, by the book's count. Keystrokes, a JSON request, encrypted bytes, token numbers, long lists of numbers inside the chips, and so on, until it comes home as the result of a tool. There's a counter in the corner that keeps track as you go.
+NORA: Twelve shapes, by our count. Keystrokes, a JSON request, encrypted bytes, token numbers, long lists of numbers inside the chips, and so on, until it comes home as the result of a tool. There's a counter in the corner that keeps track as you go.
 THEO: [thoughtful] Does it matter which agent I pick?
 NORA: The bones are the same. The details differ: which file holds your rules, what the tools are called, how permission works. Pick yours, and the notes along the way speak its language.
 THEO: One sentence, twelve forms, and a loop. Alright. Let's follow it.

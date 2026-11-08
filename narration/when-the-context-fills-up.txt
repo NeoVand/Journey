@@ -1,13 +1,13 @@
 # When the context fills up
 NORA: Picture the model's context window as a desk. It's the most the model can take in at once, measured in tokens, the small pieces of text it reads. Everything the harness sends it, the harness being the program on your laptop around the model, has to fit on that desk.
 THEO: And a long session keeps piling paper on it.
-NORA: Every file it reads, every test run, every reply. The transcript, the full record of the session, goes back to the model on every turn, every round trip, so it only grows. Our scheduler fix is small: in the book's example it ends at about twenty-seven thousand tokens, against a window of two hundred thousand or more. But a long afternoon of work can creep right up to the edge.
+NORA: Every file it reads, every test run, every reply. The transcript, the full record of the session, goes back to the model on every turn, every round trip, so it only grows. Our scheduler fix is small: in this example it ends at about twenty-seven thousand tokens, against a window of two hundred thousand or more. But a long afternoon of work can creep right up to the edge.
 THEO: [curious] Then what? Things fall off the desk?
 NORA: Before that happens, the harness steps in. It watches the token counts the server sends back, and at some threshold it runs compaction. A separate model call reads the session and writes a summary: the task, the decisions, which files changed, what's left to do.
 THEO: And that replaces the conversation?
 NORA: In what gets sent, yes. The next request carries the summary plus the latest few turns, in place of all the older messages. But the saved session on your disk keeps every one of them. Nothing's deleted. It's just not on the desk any more.
 THEO: [skeptical] A summary loses things, though. That's what a summary is.
-NORA: It does, which is why what goes into it matters. The book lists what has to survive: the goal, the constraints, the evidence so far, the current state of each file, failures still unresolved, jobs still running, and the next step. If the summary dropped the fact that the first fix deadlocked, the model might make the same mistake twice.
+NORA: It does, which is why what goes into it matters. Here's what has to survive: the goal, the constraints, the evidence so far, the current state of each file, failures still unresolved, jobs still running, and the next step. If the summary dropped the fact that the first fix deadlocked, the model might make the same mistake twice.
 THEO: And the cache? All that saved work on the start of the request?
 NORA: The start just changed, so the cache is lost, once. Then the new, shorter request becomes the start that later turns match, and the saving builds up again.
 THEO: Do the three agents handle this differently?
