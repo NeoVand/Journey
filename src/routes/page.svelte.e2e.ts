@@ -120,7 +120,7 @@ test('the player under the talk key scrubs, skips and changes speed', async ({ p
 	await expect(player).toBeHidden();
 });
 
-test('the tour shows the controls, can turn the sound on, and ends with Begin', async ({ page }) => {
+test('the tour shows the controls, can turn the sound on, asks for a star, and ends with Begin', async ({ page }) => {
 	test.setTimeout(150_000);
 	await page.goto('/');
 	await page.waitForFunction(() => document.querySelector('main.driven'), null, { timeout: 90_000 });
@@ -139,7 +139,11 @@ test('the tour shows the controls, can turn the sound on, and ends with Begin', 
 	await expect(page.locator('header').getByRole('button', { name: 'Sound', exact: true })).toHaveAttribute('aria-pressed', 'true');
 	await sound.getByRole('button', { name: 'Next' }).click();
 	await page.getByRole('dialog', { name: 'The map' }).getByRole('button', { name: 'Next' }).click();
-	await page.getByRole('dialog', { name: 'Off you go' }).getByRole('button', { name: 'Begin' }).click();
+	// The last stop is the source in the corner: a star, feedback, and Begin.
+	const last = page.getByRole('dialog', { name: 'Made in the open' });
+	await expect(last.getByRole('link', { name: 'Star on GitHub' })).toHaveAttribute('href', 'https://github.com/NeoVand/Journey');
+	await expect(page.getByRole('link', { name: 'Source on GitHub' })).toHaveAttribute('target', '_blank');
+	await last.getByRole('button', { name: 'Begin' }).click();
 	await expect(page.getByRole('dialog')).toBeHidden();
 	await page.waitForFunction(() => scrollY > innerHeight * 0.5, null, { timeout: 10_000 });
 });

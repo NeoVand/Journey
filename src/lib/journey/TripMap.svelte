@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { GithubIcon } from '@hugeicons/core-free-icons';
 	import type { Snippet } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
 	import { STOPS, TRACKS, type TrackId } from './content';
@@ -81,6 +82,11 @@
 				</li>
 			{/each}
 		</ul>
+		<!-- The way to the source on every screen: a phone keeps the corner key to its title page. -->
+		<a class="stop repo" href="https://github.com/NeoVand/Journey" target="_blank" rel="noopener">
+			<b><Icon icon={GithubIcon} size={19} stroke={1.8} />Source on GitHub</b>
+			<span>Made in the open. If you enjoy the trip, a star helps other people find it, and ideas, fixes and feedback are always welcome.</span>
+		</a>
 	</div>
 </dialog>
 
@@ -285,6 +291,13 @@
 	}
 	.stop:hover {
 		background: rgb(16 26 48 / 0.06);
+	}
+	.repo {
+		box-sizing: border-box;
+		padding-top: 14px;
+		border-top: 1px solid var(--line);
+		border-radius: 0 0 10px 10px;
+		text-decoration: none;
 	}
 	.stop b {
 		display: flex;

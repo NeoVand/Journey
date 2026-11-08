@@ -18,7 +18,7 @@
 	import { SvelteSet } from 'svelte/reactivity';
 	import Blueprint, { type Stage } from './Blueprint.svelte';
 	import Icon from './Icon.svelte';
-	import { ArrowLeft01Icon, ArrowRight01Icon, ConversationIcon, SignpostIcon, VolumeHighIcon, VolumeOffIcon } from '@hugeicons/core-free-icons';
+	import { ArrowLeft01Icon, ArrowRight01Icon, ConversationIcon, GithubIcon, SignpostIcon, VolumeHighIcon, VolumeOffIcon } from '@hugeicons/core-free-icons';
 	import { Narrator, TALKS, spoken } from './narrator.svelte';
 	import { Sound } from './sound/engine';
 	import { Conductor } from './sound/conductor';
@@ -41,6 +41,8 @@
 	let dark = $state(false);
 	/** The title page is up: it brings its own ground, so the header's fade stays out of its heading. */
 	let atTitle = $state(true);
+	/** Set while a card's words reach down into the corner the source key sits in. */
+	let crowded = $state(false);
 	let driven = $state(false);
 	let failed = $state(false);
 	let section = $state(0);
@@ -572,6 +574,28 @@
 				watch.note.gpu = info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL)) : String(gl.getParameter(gl.RENDERER));
 			}
 			let noted = 0;
+			// The source key steps out of its corner while a card's words reach into it: a few cards run that low on a
+			// shorter screen, and the last one ends there.
+			const sourceEl = document.querySelector<HTMLElement>('a.source');
+			const WORDS = 'h1, h2, p, li, dt, dd, button, pre, table, figure, .dial, .ticket';
+			let cornered = 0;
+			const crowds = () => {
+				if (!sourceEl) return false;
+				const key = sourceEl.getBoundingClientRect();
+				// Its size at rest, not with its name out, and a little room around it.
+				const left = key.left - 8;
+				const right = key.left + key.height + 8;
+				const top = key.top - 6;
+				for (const pin of document.querySelectorAll<HTMLElement>('.pin')) {
+					if (pin.style.visibility === 'hidden') continue;
+					for (const el of pin.querySelectorAll<HTMLElement>(WORDS)) {
+						const q = el.getBoundingClientRect();
+						if (!q.width || q.bottom <= top || q.top >= key.bottom || q.left >= right || q.right <= left) continue;
+						if (el.checkVisibility({ opacityProperty: true, visibilityProperty: true })) return true;
+					}
+				}
+				return false;
+			};
 
 			const sections = [...document.querySelectorAll<HTMLElement>('[data-beat]')];
 			const pins = sections.flatMap((s, i) =>
@@ -866,6 +890,10 @@
 				w.update(track && tripT !== null ? tripT : T, reduced ? 0 : time, dt, reduced ? 0 : px, reduced ? 0 : py, reduced);
 				if (soundOn) playSound(dt);
 				publish();
+				if (now - cornered > 300) {
+					cornered = now;
+					crowded = crowds();
+				}
 				if (now - noted > 1500) {
 					noted = now;
 					const mem = w.stage.renderer.info.memory;
@@ -1434,6 +1462,7 @@
 						head.jump(nextT);
 						w.update(nextT, t, 1, 0, 0, true);
 						publish();
+						crowded = crowds();
 					},
 					maxT: () => stops[stops.length - 1]
 				};
@@ -2275,6 +2304,11 @@
 {#if tip}
 	<div class={['tip', { below: tip.below }]} aria-hidden="true" style:left="{tip.x}px" style:top="{tip.y}px">{tip.text}</div>
 {/if}
+<!-- The source, in the corner opposite the controls. A phone keeps it to the title page: its cards fill the bottom of the screen. -->
+<a class={['source', { show: driven && !crowded, away: !atTitle || !!trip }]} href="https://github.com/NeoVand/Journey" target="_blank" rel="noopener">
+	<Icon icon={GithubIcon} size={20} stroke={1.8} />
+	<span class="source-name">Source on GitHub</span>
+</a>
 <!-- Inside the page's frame, so a big monitor's larger words reach the tour's card too. -->
 <Tour bind:open={tourOpen} {soundOn} ontogglesound={() => toggleSound()} onbegin={() => step(1, 'button')} />
 </div>
@@ -3931,6 +3965,123 @@
 	}
 
 	/*
+	 * The source: a cream key like the controls, in the corner opposite them, lined up under the map's mark. Pointed
+	 * at, the mark waves and its name slides out beside it.
+	 */
+	.source {
+		position: fixed;
+		z-index: 10;
+		left: calc(clamp(20px, 3vw, 44px) - 9px);
+		bottom: max(16px, env(safe-area-inset-bottom));
+		display: flex;
+		align-items: center;
+		box-sizing: border-box;
+		height: 40px;
+		padding: 0 10px 3px;
+		border-radius: 13px;
+		background: linear-gradient(#fffaf0, #fbefd6);
+		box-shadow:
+			inset 0 1px 0 #fff,
+			inset 0 -3px 0 #e4cfa6,
+			0 1px 2px rgb(60 40 10 / 0.14),
+			0 10px 26px rgb(20 60 130 / 0.16);
+		color: #33415c;
+		font: 650 14px/1 var(--sans);
+		text-decoration: none;
+		white-space: nowrap;
+		opacity: 0;
+		visibility: hidden;
+		-webkit-tap-highlight-color: transparent;
+		transition:
+			opacity 0.4s,
+			visibility 0.4s,
+			color 0.15s,
+			transform 0.1s;
+	}
+	.source.show {
+		opacity: 1;
+		visibility: visible;
+	}
+	.source :global(svg) {
+		transform-origin: 50% 85%;
+	}
+	.source-name {
+		max-width: 0;
+		overflow: hidden;
+		opacity: 0;
+		transition:
+			max-width 0.4s cubic-bezier(0.3, 1.2, 0.4, 1),
+			margin 0.4s cubic-bezier(0.3, 1.2, 0.4, 1),
+			opacity 0.2s;
+	}
+	.source:focus-visible .source-name {
+		max-width: 10em;
+		margin: 0 2px 0 8px;
+		opacity: 1;
+	}
+	@media (hover: hover) {
+		.source:hover {
+			color: #101a30;
+		}
+		.source:hover .source-name {
+			max-width: 10em;
+			margin: 0 2px 0 8px;
+			opacity: 1;
+		}
+		.source:hover :global(svg) {
+			animation: wave 0.7s ease-in-out;
+		}
+	}
+	@keyframes wave {
+		25% {
+			transform: rotate(-16deg);
+		}
+		55% {
+			transform: rotate(11deg);
+		}
+		80% {
+			transform: rotate(-4deg);
+		}
+	}
+	.source:active {
+		transform: translateY(1px);
+	}
+	.source:focus-visible {
+		outline: 2px solid #1f5fe0;
+		outline-offset: 2px;
+	}
+	/* A phone's cards fill the bottom of the screen: the key keeps to the title page there, and the map carries the link. */
+	@media (max-aspect-ratio: 9/10) {
+		/* In line with the words above it. */
+		.source {
+			left: 20px;
+		}
+		.source.away {
+			opacity: 0;
+			visibility: hidden;
+		}
+	}
+	/* A phone on its side puts each chapter's caption in that corner. */
+	@media (max-height: 500px) and (min-aspect-ratio: 9/10) {
+		.source {
+			display: none;
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.source:hover :global(svg) {
+			animation: none;
+		}
+		.source-name {
+			transition: opacity 0.2s;
+		}
+	}
+	@media (forced-colors: active) {
+		.source {
+			border: 1px solid LinkText;
+		}
+	}
+
+	/*
 	 * A big monitor at its own size, such as a 27-inch one: the 3D grows with the screen, so the words and the controls
 	 * grow with it. The header and each card's contents are zoomed; the cards widen to match.
 	 */
@@ -3939,6 +4090,7 @@
 			--ui: 1.18;
 		}
 		.bar,
+		.source,
 		.pin > :global(*) {
 			zoom: var(--ui);
 		}

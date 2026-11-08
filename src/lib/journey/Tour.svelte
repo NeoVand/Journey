@@ -1,10 +1,10 @@
 <script lang="ts">
 	/**
 	 * A quick look around. A welcome, then a spotlight that glides from one control to the next (the steps, the talk
-	 * key, sound, the map) and ends on Begin. The page opens it by itself on a first visit, once the world is ready, and
-	 * the title page's Show me around key opens it after that.
+	 * key, sound, the map) and ends in the corner, on the source, with Begin. The page opens it by itself on a first visit,
+	 * once the world is ready, and the title page's Show me around key opens it after that.
 	 */
-	import { ArrowLeft01Icon, ArrowRight01Icon, Cancel01Icon, VolumeHighIcon, VolumeOffIcon } from '@hugeicons/core-free-icons';
+	import { ArrowLeft01Icon, ArrowRight01Icon, Cancel01Icon, StarIcon, VolumeHighIcon, VolumeOffIcon } from '@hugeicons/core-free-icons';
 	import { tick } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
 	import { fade } from 'svelte/transition';
@@ -34,6 +34,8 @@
 		/** Room for a key's edge, which hangs below its box. */
 		edge?: number;
 		sound?: true;
+		/** The links to the source: a star, and feedback. */
+		source?: true;
 	};
 	const STOPS: Stop[] = [
 		{
@@ -66,10 +68,10 @@
 			body: 'The whole trip on one page. Jump to any stop, change your agent, or take a side trip. A side trip always brings you back to where you left off.'
 		},
 		{
-			at: '.begin-row > button',
-			title: 'Off you go',
-			body: 'Press Begin whenever you’re ready. If you want this tour again, it’s right beside it.',
-			edge: 6
+			at: '.source',
+			title: 'Made in the open',
+			body: 'The whole trip is open source, and this key opens it on GitHub. If you enjoy it, a star helps other people find it. Ideas, fixes and feedback are always welcome.',
+			source: true
 		}
 	];
 	const LAST = STOPS.length - 1;
@@ -254,6 +256,15 @@
 					{stop.body}
 					{#if extra}{extra}{/if}
 				</p>
+				{#if stop.source}
+					<div class="links">
+						<a class="star" href="https://github.com/NeoVand/Journey" target="_blank" rel="noopener">
+							<Icon icon={StarIcon} size={17} stroke={1.9} />
+							Star on GitHub
+						</a>
+						<a class="feedback" href="https://github.com/NeoVand/Journey/issues" target="_blank" rel="noopener">Share feedback</a>
+					</div>
+				{/if}
 				{#if stop.sound}
 					<button type="button" class={['sound', { on: soundOn }]} onclick={ontogglesound}>
 						<Icon icon={soundOn ? VolumeHighIcon : VolumeOffIcon} size={17} stroke={1.9} />
@@ -462,6 +473,9 @@
 		.spot::after {
 			animation: none;
 		}
+		.star :global(svg) {
+			transition: none;
+		}
 		.spot.placed,
 		.card.placed {
 			transition: opacity 0.2s;
@@ -533,6 +547,72 @@
 	}
 	.words .sound:active {
 		transform: translateY(1px);
+	}
+	/* The source's two links: a key with a star that fills with amber and spins when pointed at, and a plain link. */
+	.links {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 4px 14px;
+		margin: 13px 0 2px;
+	}
+	.links a {
+		color: #101a30;
+		font: 650 14px/1 var(--sans);
+		-webkit-tap-highlight-color: transparent;
+	}
+	.star {
+		display: inline-flex;
+		align-items: center;
+		gap: 7px;
+		padding: 8px 13px 10px 10px;
+		border-radius: 12px;
+		background: linear-gradient(#fffefa, #fff4dc);
+		text-decoration: none;
+		box-shadow:
+			inset 0 -2px 0 #e2cb9f,
+			0 1px 3px rgb(60 40 10 / 0.18);
+		transition:
+			box-shadow 0.18s,
+			transform 0.1s;
+	}
+	.star :global(svg) {
+		color: #b06800;
+		transition: transform 0.5s cubic-bezier(0.3, 1.5, 0.4, 1);
+	}
+	.star :global(path) {
+		fill: rgb(255 201 74 / 0);
+		transition: fill 0.25s;
+	}
+	@media (hover: hover) {
+		.star:hover :global(svg) {
+			transform: rotate(144deg) scale(1.15);
+		}
+		.star:hover :global(path) {
+			fill: #ffc94a;
+		}
+		.feedback:hover {
+			text-decoration-color: currentColor;
+		}
+	}
+	.star:active {
+		transform: translateY(1px);
+		box-shadow:
+			inset 0 -1px 0 #e2cb9f,
+			0 1px 2px rgb(60 40 10 / 0.18);
+	}
+	.feedback {
+		padding: 6px 0;
+		text-decoration: underline 1.5px rgb(16 26 48 / 0.3);
+		text-underline-offset: 3px;
+		transition: text-decoration-color 0.15s;
+	}
+	.tour a:focus-visible {
+		outline: 2px solid #1f5fe0;
+		outline-offset: 2px;
+	}
+	.feedback:focus-visible {
+		border-radius: 4px;
 	}
 
 	.foot {
