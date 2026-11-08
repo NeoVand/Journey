@@ -3,9 +3,10 @@
  * can. One plays at a time. Once the reader has pressed it, it follows them: a card they arrive at and stay on starts its
  * own conversation, and one they leave fades out. Pausing stops following.
  *
- * The audio is made by scripts/narration/say.mjs from the scripts in narration/, with timed words beside it for a
- * transcript one day.
+ * The audio is made by scripts/narration/say.mjs from the scripts in narration/, with the words beside it, timed by
+ * turn and by sentence: the player's lanes and the subtitles both come from them.
  */
+import { cuesOf, type Cue, type Line } from './cues';
 import manifest from './narration.json';
 
 export const TALKS: Record<string, { title: string; seconds: number }> = manifest;
@@ -26,6 +27,8 @@ export const spoken = (s: number) => {
 
 /** How long a card must stay before its conversation starts on its own, so a reader passing through isn't talked at. */
 const SETTLE = 900;
+/** A subtitle stays this long into a pause after its words, so a breath between turns doesn't blink the screen. */
+const CUE_HOLD = 0.7;
 
 export class Narrator {
 	/** The conversation on the air, or paused. */
@@ -45,6 +48,10 @@ export class Narrator {
 	rate = $state(1);
 	/** Each conversation's turns, fetched the first time the player shows it. */
 	turns = $state.raw<Record<string, Turn[]>>({});
+	/** Each conversation's subtitles, fetched with its turns. */
+	cues = $state.raw<Record<string, Cue[]>>({});
+	/** Subtitles on screen while they talk, remembered between visits. Off until the reader asks. */
+	subtitles = $state(false);
 	readonly progress = $derived(this.duration ? Math.min(1, this.time / this.duration) : 0);
 
 	private audio: HTMLAudioElement | null = null;
@@ -86,6 +93,16 @@ export class Narrator {
 	pause() {
 		this.listening = false;
 		this.audio?.pause();
+	}
+
+	/**
+	 * The reader leapt somewhere else, from the map: what's on the air fades out, and the card they land on waits for the
+	 * key instead of starting on its own. Where it was is kept, so going back to that card picks it up again.
+	 */
+	leave() {
+		this.listening = false;
+		window.clearTimeout(this.settle);
+		this.fadeOut(false);
 	}
 
 	/** Stops, and forgets where it was. */
@@ -144,26 +161,57 @@ export class Narrator {
 		}
 	}
 
-	/** The speed from last time. Called once the page is in a browser. */
+	/** Subtitles on or off. */
+	setSubtitles(on: boolean) {
+		this.subtitles = on;
+		try {
+			localStorage.setItem('journey-talk-subtitles', on ? 'on' : 'off');
+		} catch {
+			// Private browsing: it just isn't remembered.
+		}
+	}
+
+	/** The speed and the subtitles from last time. Called once the page is in a browser. */
 	restore() {
 		try {
 			const rate = Number(localStorage.getItem('journey-talk-rate'));
 			if (RATES.includes(rate)) this.rate = rate;
+			this.subtitles = localStorage.getItem('journey-talk-subtitles') === 'on';
 		} catch {
-			// No storage: the usual speed.
+			// No storage: the usual speed, and no subtitles.
 		}
 	}
 
-	/** Fetches who speaks when in a conversation, for the player's picture of it. A few kilobytes, once. */
+	/** Fetches a conversation's words, timed: who speaks when, for the player's picture of it, and the subtitles. A few kilobytes, once. */
 	peek(id: string) {
 		if (this.turns[id] || this.asked[id] || !TALKS[id]) return;
 		this.asked[id] = true;
 		fetch(this.url(`${id}.json`))
 			.then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-			.then(({ lines }: { lines: Turn[] }) => {
-				this.turns = { ...this.turns, [id]: lines.map(({ who, start, end }) => ({ who, start, end })) };
+			.then(({ lines }: { lines: Line[] }) => {
+				const timed = lines.filter((l) => l.start !== null && l.end !== null);
+				this.turns = { ...this.turns, [id]: timed.map(({ who, start, end }) => ({ who, start, end })) };
+				this.cues = { ...this.cues, [id]: cuesOf(timed) };
 			})
 			.catch(() => (this.asked[id] = false));
+	}
+
+	/** The subtitle for some seconds into a conversation: the last one started, held a moment into the pause after it. */
+	cue(id: string, at: number) {
+		const cues = this.cues[id];
+		if (!cues) return null;
+		let lo = 0;
+		let hi = cues.length - 1;
+		let found = -1;
+		while (lo <= hi) {
+			const mid = (lo + hi) >> 1;
+			if (cues[mid].start <= at) {
+				found = mid;
+				lo = mid + 1;
+			} else hi = mid - 1;
+		}
+		const cue = cues[found];
+		return cue && at < cue.end + CUE_HOLD ? cue : null;
 	}
 
 	/** Who is talking at some seconds into a conversation, or null in a pause between turns. */

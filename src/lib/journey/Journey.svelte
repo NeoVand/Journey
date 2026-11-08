@@ -4,6 +4,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import TripMap from './TripMap.svelte';
+	import Subtitles from './Subtitles.svelte';
 	import TalkPlayer from './TalkPlayer.svelte';
 	import Tour from './Tour.svelte';
 	import Tokenizer from './Tokenizer.svelte';
@@ -43,6 +44,8 @@
 	let atTitle = $state(true);
 	/** Set while a card's words reach down into the corner the source key sits in. */
 	let crowded = $state(false);
+	/** Where the subtitles have room: a stretch along the bottom, or with a top, a band under the header. */
+	let subtitlePlace = $state<{ top: number | null; left: number; right: number }>({ top: null, left: 0, right: 0 });
 	let driven = $state(false);
 	let failed = $state(false);
 	let section = $state(0);
@@ -297,8 +300,10 @@
 	let leaveTrack: (atOnce?: boolean) => void = () => {};
 	const trip = $derived(track ? TRACKS[track] : null);
 
+	/** A leap from the map lets the conversation go: the card it lands on waits for the talk key. */
 	function takeTrip(id: TrackId) {
 		mapOpen = false;
+		narrator.leave();
 		enterTrack(id);
 	}
 
@@ -310,6 +315,7 @@
 
 	function jump(title: string) {
 		mapOpen = false;
+		narrator.leave();
 		leaveTrack(true);
 		goto(resolve(`/#${slug(title)}`), { shallow: true, replace: true });
 		cutTo(title);
@@ -595,6 +601,46 @@
 					}
 				}
 				return false;
+			};
+			/** The room a subtitle needs: two lines, and a margin. */
+			const SUBTITLE_ROOM = 120;
+			const barOf = document.querySelector<HTMLElement>('header.bar');
+			/**
+			 * Where the subtitles can go without covering a card's words: the widest clear stretch along the bottom of the
+			 * screen, or, where the words fill the bottom as on a phone, a band under the header if that's clear.
+			 */
+			const roomForSubtitles = () => {
+				const w = innerWidth;
+				const h = innerHeight;
+				const edge = 16;
+				const taken: DOMRect[] = [];
+				for (const pin of document.querySelectorAll<HTMLElement>('.pin')) {
+					if (pin.style.visibility === 'hidden') continue;
+					for (const el of pin.querySelectorAll<HTMLElement>(WORDS)) {
+						const q = el.getBoundingClientRect();
+						if (q.width && q.bottom > 0 && q.top < h && el.checkVisibility({ opacityProperty: true, visibilityProperty: true })) taken.push(q);
+					}
+				}
+				if (sourceEl?.checkVisibility({ opacityProperty: true, visibilityProperty: true })) taken.push(sourceEl.getBoundingClientRect());
+				const low = taken
+					.filter((q) => q.bottom > h - SUBTITLE_ROOM)
+					.map((q) => [q.left - 24, q.right + 24])
+					.sort((a, b) => a[0] - b[0]);
+				let best = [0, 0];
+				let x = edge;
+				for (const [a, b] of [...low, [w - edge, w]]) {
+					if (a - x > best[1] - best[0]) best = [x, a];
+					x = Math.max(x, b);
+				}
+				if (best[1] - best[0] >= Math.min(340, w * 0.6)) return { top: null, left: Math.round(best[0]), right: Math.round(best[1]) };
+				const head = Math.round((barOf?.getBoundingClientRect().bottom ?? 0) + 10);
+				if (!taken.some((q) => q.top < head + SUBTITLE_ROOM && q.bottom > head)) return { top: head, left: edge, right: w - edge };
+				return { top: null, left: edge, right: w - edge };
+			};
+			const placeSubtitles = () => {
+				const at = roomForSubtitles();
+				const was = subtitlePlace;
+				if (at.top !== was.top || at.left !== was.left || at.right !== was.right) subtitlePlace = at;
 			};
 
 			const sections = [...document.querySelectorAll<HTMLElement>('[data-beat]')];
@@ -893,6 +939,7 @@
 				if (now - cornered > 300) {
 					cornered = now;
 					crowded = crowds();
+					if (narrator.subtitles && narrator.playing) placeSubtitles();
 				}
 				if (now - noted > 1500) {
 					noted = now;
@@ -1463,6 +1510,7 @@
 						w.update(nextT, t, 1, 0, 0, true);
 						publish();
 						crowded = crowds();
+						placeSubtitles();
 					},
 					maxT: () => stops[stops.length - 1]
 				};
@@ -2309,6 +2357,8 @@
 	<Icon icon={GithubIcon} size={20} stroke={1.8} />
 	<span class="source-name">Source on GitHub</span>
 </a>
+<!-- What Nora and Theo are saying, when the player's subtitle key is on. -->
+<Subtitles {narrator} place={subtitlePlace} />
 <!-- Inside the page's frame, so a big monitor's larger words reach the tour's card too. -->
 <Tour bind:open={tourOpen} {soundOn} ontogglesound={() => toggleSound()} onbegin={() => step(1, 'button')} />
 </div>

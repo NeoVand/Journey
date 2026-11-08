@@ -1,10 +1,10 @@
 <script lang="ts">
 	/**
 	 * The little player that drops from the header's talk key: the conversation drawn as two lanes, one for each voice,
-	 * filling as it plays; a playhead to drag; back and ahead by fifteen seconds; and how fast they talk. The page opens
-	 * it on hover, on keyboard focus, and on a tap of the key.
+	 * filling as it plays; a playhead to drag; back and ahead by fifteen seconds; how fast they talk; and subtitles. The
+	 * page opens it on hover, on keyboard focus, and on a tap of the key.
 	 */
-	import { GoBackward15SecIcon, GoForward15SecIcon } from '@hugeicons/core-free-icons';
+	import { ClosedCaptionIcon, GoBackward15SecIcon, GoForward15SecIcon } from '@hugeicons/core-free-icons';
 	import type { Attachment } from 'svelte/attachments';
 	import Icon from './Icon.svelte';
 	import { RATES, TALKS, clock, type Narrator } from './narrator.svelte';
@@ -77,7 +77,19 @@
 {#if talk}
 	<div class={['player', { open }]} inert={!open}>
 		<div class="plate" {@attach aim} role="group" aria-label="Player for this card’s conversation">
-			<p class="title">{talk.title}</p>
+			<div class="top">
+				<p class="title">{talk.title}</p>
+				<button
+					type="button"
+					class={['cc', { on: narrator.subtitles }]}
+					aria-pressed={narrator.subtitles}
+					aria-label="Subtitles"
+					title={narrator.subtitles ? 'Subtitles are on' : 'Subtitles'}
+					onclick={() => narrator.setSubtitles(!narrator.subtitles)}
+				>
+					<Icon icon={ClosedCaptionIcon} size={19} stroke={1.7} />
+				</button>
+			</div>
 			<div class="score" style:--p={p}>
 				{#each lanes as [who, name] (who)}
 					<span class={['who', who.toLowerCase(), { now: now === who, talking: now === who && playing }]}>{name}</span>
@@ -201,10 +213,77 @@
 		box-shadow: -2px -2px 5px rgb(20 60 130 / 0.07);
 		transform: rotate(45deg);
 	}
-	.title {
+	.top {
+		display: flex;
+		align-items: flex-start;
+		gap: 8px;
 		margin: 0 0 11px;
+	}
+	.title {
+		flex: 1;
+		margin: 2px 0 0;
 		font: 700 14.5px/1.25 var(--display);
 		letter-spacing: -0.01em;
+	}
+	/* Subtitles: a small key in the corner of the plate. On, it stands up in cream with an amber line under the letters. */
+	.cc {
+		position: relative;
+		flex: none;
+		display: grid;
+		place-items: center;
+		width: 34px;
+		height: 26px;
+		margin: -3px -4px 0 0;
+		padding: 0;
+		border: 0;
+		border-radius: 8px;
+		background: transparent;
+		color: #7d879a;
+		cursor: pointer;
+		-webkit-tap-highlight-color: transparent;
+		transition:
+			background 0.2s,
+			color 0.15s,
+			box-shadow 0.2s,
+			transform 0.1s;
+	}
+	.cc::after {
+		content: '';
+		position: absolute;
+		left: 50%;
+		bottom: 3px;
+		width: 14px;
+		height: 2.5px;
+		margin-left: -7px;
+		border-radius: 2px;
+		background: #ffb921;
+		transform: scaleX(0);
+		transition: transform 0.25s cubic-bezier(0.3, 1.5, 0.4, 1);
+	}
+	.cc.on {
+		background: linear-gradient(#fffefa, #fff4dc);
+		color: #101a30;
+		box-shadow:
+			inset 0 -2px 0 #e2cb9f,
+			0 1px 3px rgb(60 40 10 / 0.18);
+	}
+	.cc.on::after {
+		transform: none;
+	}
+	@media (hover: hover) {
+		.cc:hover {
+			color: #101a30;
+		}
+		.cc:not(.on):hover {
+			background: rgb(217 191 149 / 0.3);
+		}
+	}
+	.cc:active {
+		transform: translateY(1px);
+	}
+	.cc:focus-visible {
+		outline: 2px solid #1f5fe0;
+		outline-offset: 1px;
 	}
 
 	/*
@@ -488,7 +567,8 @@
 		.play.waiting svg {
 			animation: none;
 		}
-		.speeds::before {
+		.speeds::before,
+		.cc::after {
 			transition: none;
 		}
 	}
@@ -500,7 +580,8 @@
 		.lane i {
 			background: GrayText;
 		}
-		.speeds button[aria-checked='true'] {
+		.speeds button[aria-checked='true'],
+		.cc.on {
 			outline: 2px solid ButtonText;
 		}
 	}

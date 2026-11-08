@@ -120,6 +120,40 @@ test('the player under the talk key scrubs, skips and changes speed', async ({ p
 	await expect(player).toBeHidden();
 });
 
+test('the player turns on subtitles that follow what is being said, and turns them off', async ({ page }) => {
+	test.setTimeout(150_000);
+	await page.goto('/');
+	const talk = page.getByRole('button', { name: /^Listen to Nora and Theo talk about this card/ });
+	await expect(talk).toBeEnabled({ timeout: 120_000 });
+	await talk.hover();
+	const player = page.getByRole('group', { name: /Player for this card/ });
+	const subtitles = player.getByRole('button', { name: 'Subtitles' });
+	await expect(subtitles).toHaveAttribute('aria-pressed', 'false');
+	await subtitles.click();
+	await expect(subtitles).toHaveAttribute('aria-pressed', 'true');
+	await player.getByRole('button', { name: 'Play' }).click();
+	// The words on screen are the line being said, under the speaker's name.
+	const line = page.locator('.subtitles .line');
+	await expect(line).toHaveText(/^(Nora|Theo)\S.{6,}/, { timeout: 30_000 });
+	await subtitles.click();
+	await expect(line).toHaveCount(0);
+});
+
+test('a jump from the map lets the conversation go, and the card it lands on waits for the key', async ({ page }) => {
+	test.setTimeout(150_000);
+	await page.goto('/');
+	const talk = page.getByRole('button', { name: /^Listen to Nora and Theo talk about this card/ });
+	await expect(talk).toBeEnabled({ timeout: 120_000 });
+	await talk.click();
+	await expect(talk).toHaveAttribute('aria-pressed', 'true', { timeout: 30_000 });
+	await page.getByRole('button', { name: /Open the map/ }).click();
+	await page.getByRole('dialog').getByRole('button', { name: 'One model, many chips', exact: true }).click();
+	await expect(page).toHaveURL(/#one-model-many-chips/);
+	// Well past the moment a followed conversation would have started on its own.
+	await page.waitForTimeout(3000);
+	await expect(talk).toHaveAttribute('aria-pressed', 'false');
+});
+
 test('the tour shows the controls, can turn the sound on, asks for a star, and ends with Begin', async ({ page }) => {
 	test.setTimeout(150_000);
 	await page.goto('/');
