@@ -300,11 +300,15 @@
 	let leaveTrack: (atOnce?: boolean) => void = () => {};
 	const trip = $derived(track ? TRACKS[track] : null);
 
-	/** A leap from the map lets the conversation go: the card it lands on waits for the talk key. */
 	function takeTrip(id: TrackId) {
 		mapOpen = false;
-		narrator.leave();
 		enterTrack(id);
+	}
+
+	/** A leap from the map lets the conversation go: the card it lands on waits for the talk key. */
+	function tripFromMap(id: TrackId) {
+		narrator.leave();
+		takeTrip(id);
 	}
 
 	function openMap() {
@@ -313,6 +317,7 @@
 		mapOpen = true;
 	}
 
+	/** A chapter picked on the map. The conversation goes, as it does for a trip taken from there. */
 	function jump(title: string) {
 		mapOpen = false;
 		narrator.leave();
@@ -2365,7 +2370,7 @@
 
 <Tokenizer bind:open={tryOpen} oncut={(now, before) => cue('tokens', now, before)} />
 
-<TripMap bind:open={mapOpen} here={mapHere} onjump={jump} ontrip={takeTrip}>
+<TripMap bind:open={mapOpen} here={mapHere} onjump={jump} ontrip={tripFromMap}>
 	{#snippet agents()}
 		{@render picker()}
 	{/snippet}
