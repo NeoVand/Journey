@@ -36,3 +36,9 @@ SvelteKit with the static adapter, and Three.js for one continuous scene. Every 
 ## Accuracy
 
 The content follows the book in `reference/`. Harness details come from public docs and source as of November 2026. Inside the data center it follows public engines and papers, because providers don't publish their own. Numbers marked illustrative are just that.
+
+## Licence
+
+MIT, in [`LICENSE`](LICENSE): the code, the words, the book in `reference/`, the narration and the sounds. The two
+typefaces in `static/fonts/`, Bricolage Grotesque and Instrument Sans, are their authors' work under the SIL Open Font
+License 1.1. Stars, issues and pull requests are all welcome.
