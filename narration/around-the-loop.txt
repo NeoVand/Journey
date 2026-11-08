@@ -1,0 +1,21 @@
+# Around the loop
+THEO: So the tests failed, and the output is sitting on my laptop. How does the model ever find out?
+NORA: There's a green pipe that's been in the picture since the very first frame, and this is what it carries: the result, back up from your tools to the harness, the program on your laptop around the model. The harness puts it into the transcript, the full record of the session. Then the whole conversation goes back to the provider, the company that runs the model.
+THEO: The whole conversation? Not just the new bit?
+NORA: In Claude Code, everything. Your prompt, the model's thinking, every tool call, every result, and the fresh test output on the end. Anthropic's API is stateless, meaning the server keeps nothing between requests, so each request has to carry the lot.
+THEO: [skeptical] That sounds wildly wasteful. Every single time, I resend the entire history?
+NORA: It would be, if not for the cache. The provider keeps the work it did on recent requests, usually for a few minutes, and if the new request starts with exactly the same bytes as the last one, only the new part at the end needs computing. That's the prefix cache. It's also why harnesses are fussy about order: change the start, with a new tool or an edited system prompt or a timestamp at the top, and everything has to be computed again.
+THEO: So the model doesn't remember me. The cache remembers the bytes.
+NORA: [warmly] Precisely. It's saved work, not memory.
+THEO: What about the model's thinking? Does it start from scratch every time?
+NORA: No, the thinking goes back too, so it can carry on with its plan. Claude Code sends its signed thinking blocks back. Codex also resends everything, with its reasoning sealed as encrypted items that the client can't read but has to pass along. And OpenAI's API can keep the state on its own side instead, and take just the new items.
+THEO: And Copilot?
+NORA: Copilot rebuilds the prompt from its parts every time. When the budget is tight, it trims the low-priority parts first.
+THEO: Okay. So one trip around: request out, reply back, the harness acts, the result goes in.
+NORA: That's a turn. And a real fix takes somewhere between five and thirty of them.
+THEO: [surprised] Thirty? What stops it going round forever?
+NORA: A few guards. A cap on turns, or a budget. Some harnesses notice the same failing command three times in a row, and warn or stop. And for the opposite problem there are stop hooks, your own scripts that can refuse to let the agent stop, say, before the tests have run.
+THEO: Let me try a picture. It's a phone call where every time you speak, you have to replay the whole call from the beginning.
+NORA: [laughs] That's very nearly right, and it is a little absurd. Where it breaks: the other end has kept the recording, at least for a few minutes, so the familiar part goes by in a flash. Leave it too long, and you pay to replay it in full, once.
+THEO: [thoughtful] So that's what the pipe was for all along.
+NORA: That's what the pipe is for. The model reads why the test failed, and goes round again.

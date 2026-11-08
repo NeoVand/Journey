@@ -1,0 +1,23 @@
+# Across the wire
+THEO: [skeptical] I'll be honest, this sounds like the dull part. It's an HTTP request, isn't it?
+NORA: It is, and dull is exactly what you want here. The harness opens a secure connection to the provider, the company running the model, using the same HTTPS your browser uses. From this moment your request is encrypted bytes on the internet.
+THEO: Encrypted by what, exactly?
+NORA: TLS. It's the encryption behind the padlock in your browser. Only the two ends of the connection can read what passes between them. Your Wi-Fi, your internet provider, every machine along the way: they all carry your request without being able to read a word of it.
+THEO: Which matters, because that request has my project's rules in it.
+NORA: And soon your actual code, once the model starts asking for files and the harness sends them back. Every one of those trips is scrambled the same way.
+THEO: How does the provider know the request is from me?
+NORA: It carries a credential in a header, and this is where the three agents differ. Claude Code sends an Anthropic API key, or a token from signing in with your Claude account. Codex is the same idea with OpenAI: an API key, or your ChatGPT login.
+THEO: [curious] Hang on. A token? I thought nothing was a token yet.
+NORA: [laughs] Different token, same unlucky word. That one's a pass, a credential. The tokens the model reads, the small pieces of text, still don't exist. They're made at the other end.
+THEO: And Copilot?
+NORA: Copilot does a swap. VS Code holds your GitHub login. The extension shows it to GitHub and gets back a short-lived Copilot token, and that's what goes to api.githubcopilot.com with each request. It's refreshed in the background, roughly every twenty to twenty-five minutes. Your GitHub token itself never reaches the model service.
+THEO: So it's a day pass instead of the house keys.
+NORA: [chuckles] More like a twenty-minute pass, quietly renewed. But yes, the keys stay home.
+THEO: Where does the streaming come in? The card says that's why I see the agent typing.
+NORA: The harness asks for the answer as a stream. Instead of building the whole reply and sending it in one go, the server keeps the connection open and sends small pieces as they're written. That's why you watch the agent type, instead of waiting for one big reply at the end.
+THEO: Do all three stream the same way?
+NORA: Roughly. Claude Code sends its request to Anthropic's Messages API at api.anthropic.com with a flag asking for a stream, and the pieces come back as server-sent events: one long-lived connection the server keeps writing to. Codex uses OpenAI's Responses API, streaming over server-sent events or over a WebSocket, a connection that stays open both ways. Copilot's requests go to GitHub's API, which streams back chat chunks in OpenAI's style, whichever vendor's model is behind them.
+THEO: [thoughtful] What's underneath all this? HTTP two, HTTP three?
+NORA: The book is careful there. That's decided by the client library and the server, not the harness, so nobody should claim one without evidence. I won't either.
+THEO: Okay. So: encrypted, signed with a pass, and asking for its answer in pieces.
+NORA: That's the whole crossing. And on the far side is the provider's front door, where the encryption finally ends.

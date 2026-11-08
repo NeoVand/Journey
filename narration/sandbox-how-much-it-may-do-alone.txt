@@ -1,0 +1,19 @@
+# How much it may do alone
+THEO: By the twentieth "may I?" in a row, I'm clicking yes without reading a word.
+NORA: [laughs] Which is why there's a dial for it. Above the rules sits a mode: how much the agent may do on its own, without asking. Strict, and it asks about almost everything. Loose, and it asks about nothing.
+THEO: Nothing at all sounds like a bad idea.
+NORA: On its own, it is. A loose mode leans on the sandbox, the fence the operating system puts around the commands the agent runs. If nobody's asking, the fence is what's left. That's why Claude Code's bypassPermissions mode, which skips the checks, is meant for isolated machines.
+THEO: [curious] And between the two ends?
+NORA: Two useful middles. In one, edits go through freely while commands still ask. The agent can rewrite the scheduler's locking without bothering you, but running pytest still waits for your yes.
+THEO: And the other?
+NORA: Each call goes to a second model, a reviewer, and only the risky ones come to you.
+THEO: [skeptical] A model checking a model. How far should I trust that?
+NORA: As far as its own documentation claims, and no further. In Claude Code it's auto mode: a classifier, a small model, reads each call and the conversation, and judges whether it's safe to run without asking you. It's documented as cutting down the questions, not as a guarantee of safety. When a judgment is wrong, the sandbox is the layer that still holds.
+THEO: How do I move between modes?
+NORA: In Claude Code, Shift-Tab cycles them: ask first, accept edits, plan, which only reads and never changes anything, and auto.
+THEO: Codex?
+NORA: Codex splits it into two dials. The approval policy says when to ask: on request, or never. The sandbox mode says what commands can touch. So even set to never ask, the sandbox mode still limits what can happen.
+THEO: And Copilot?
+NORA: Tools can be approved per tool, per session or per workspace. And assisted approvals let a model judge the risky ones.
+THEO: So the real choice is how much of the deciding I hand over, and to what.
+NORA: [warmly] That's it exactly. Hand more to a reviewer, or to the fence, and you'll get fewer questions. The ones that still reach you deserve a proper read.

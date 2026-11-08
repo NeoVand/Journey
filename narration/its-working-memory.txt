@@ -1,0 +1,24 @@
+# Its working memory
+NORA: Imagine writing a reply where, before every single word, you had to reread the whole conversation from the top and take fresh notes on it.
+THEO: [laughs] I'd never finish a sentence.
+NORA: Neither would the model. That, more or less, is the problem the KV cache solves.
+THEO: Start with the problem, then. Why would it reread anything?
+NORA: To predict the next token, the model looks back at every earlier token. The step that does the looking back is called attention, and it happens in every layer of the model. For each earlier token, attention needs two lists of numbers, called a key and a value. K and V.
+THEO: [curious] And those get worked out again for every new token?
+NORA: That would be absurd. Every time it wrote one more token, it would redo the keys and values for all the thousands before it. So they're computed once and kept. That store is the KV cache, the model's working memory. And it's the thing that gets handed out, cut into blocks, shared and shipped around in everything that follows.
+THEO: How big is it?
+NORA: Here's an illustrative model. Eighty layers. In each layer, a key and a value of about a thousand numbers each for every token, at two bytes per number. Multiply that out and every token needs about three hundred and thirty kilobytes.
+THEO: Per token.
+NORA: Per token. In this example your first turn is about twenty-one thousand tokens, so that comes to about seven gigabytes of chip memory, for your one request.
+THEO: [surprised] Seven gigabytes for one sentence?
+NORA: For one sentence plus the twenty thousand tokens of instructions and tools in front of it. A long session of two hundred thousand tokens would need about sixty-five gigabytes.
+THEO: That's most of a chip.
+NORA: It can be. A chip has eighty to two hundred eighty-eight gigabytes of its own fast memory, called HBM, high-bandwidth memory. And the model's weights, its learned numbers, take their share of that first. That's why the card calls this memory the scarcest thing in the building. HBM is what everyone on the chip is competing for.
+THEO: [skeptical] Okay, so that's a real cost. Can they shrink it?
+NORA: There are three common tricks. Several parts of attention can share one key and value instead of each keeping its own. The cache can hold a small compressed version of each token and expand it when it's needed. Or the numbers can be stored in one byte instead of two, which halves it outright.
+THEO: Does any of this depend on which agent I'm using?
+NORA: Not at this point. This is inside the provider's cluster, and every model that works this way needs some version of it. The numbers just change with the model's shape.
+THEO: [thoughtful] So the model isn't remembering me in some deep way. It's keeping a pile of numbers it would otherwise have to recompute.
+NORA: Exactly. Working memory, not learning. Nothing in it changes the model's weights. It's bookkeeping, so the model can look back quickly at what's already been read.
+THEO: And when my request is finished, that seven gigabytes just gets wiped?
+NORA: That's where it gets clever. It doesn't have to be. But first it has to be stored without wasting the scarcest memory in the building.

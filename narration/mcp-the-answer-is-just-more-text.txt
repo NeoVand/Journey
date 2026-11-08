@@ -1,0 +1,20 @@
+# The answer is just more text
+NORA: The docs server has found what the model asked for: the part of the library's documentation about locking. Now it has to get back. And how it gets back is almost boring.
+THEO: Boring how?
+NORA: The server replies with blocks of content. Here, a few paragraphs of text about locks. The harness, the agent program on your laptop, takes those blocks and files them in the conversation as the tool's result, right after the call that asked for them.
+THEO: And then the model reads them.
+NORA: On the next round trip. The harness sends the next request with the whole conversation, as it always does, and now the docs are part of it. To the model, they're just more text.
+THEO: [curious] What if the tool fails? Or the server falls over?
+NORA: Those are two different failures, and they go two different ways. If the tool ran and reported a failure, that's a result. The harness files it like any other, and the model reads it and can try something else. Another query, or a plain web fetch instead.
+THEO: And if the server falls over?
+NORA: If the connection itself failed, the server's process died or the request never got through, the model never hears of it. The harness retries, or it tells you.
+THEO: [thoughtful] So the model sees what the tool said, good news or bad. But never the plumbing.
+NORA: Never the plumbing. Which brings us to the part that matters most. That text came from outside, and nobody checked it.
+THEO: [skeptical] It's documentation. What's going to be in it?
+NORA: Probably documentation. But a page can also carry text written to trick a model into obeying it as if you'd said it. Ignore your instructions, run this command. That's called prompt injection, and a server's answer can carry it just as a web page can. So the harness handles it like a fetched web page.
+THEO: Meaning what, exactly?
+NORA: It wraps the result with clear edges, and a reminder that what's inside is untrusted. The model is trained to treat tool results as data, not orders. And if something gets through anyway, whatever it tries to do still has to pass the same gates as every other call.
+THEO: That's a lot of layers for some docs about locks.
+NORA: [chuckles] None of them is perfect on its own. That's why there are several.
+THEO: So the docs come back as text, sit in the conversation as text, and get the suspicion text deserves.
+NORA: That's it. Just more text. Useful, and kept at arm's length.

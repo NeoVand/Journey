@@ -1,0 +1,26 @@
+# The harness wakes up
+NORA: Before your sentence leaves your laptop, the harness spends a few hundred milliseconds packing for it, like someone going round the house before a trip.
+THEO: Packing what? It's one sentence.
+NORA: [laughs] Everything the model will need, because the model knows nothing about you. Not your project, not your machine, not what it's allowed to do. All of that has to travel with the request.
+THEO: And the harness is the agent itself. Claude Code, Codex, Copilot.
+NORA: The program around the model, yes, the part you installed. It packs four things. Think of them as four drawers.
+THEO: Go on, open the first one.
+NORA: Instructions. Who the agent is and how it should behave, written by the people who made the harness. That's the system prompt, and it runs to several thousand tokens. Then your project's own rules get pasted in. In Claude Code they live in CLAUDE.md, in Codex it's AGENTS.md, and in Copilot it's copilot-instructions.md.
+THEO: So if my project's rules say "always run the tests with pytest", the model really reads that.
+NORA: It does, because it's pasted into the request. Each harness gathers them its own way. Claude Code walks up from your folder and loads every CLAUDE.md it finds. Codex reads one AGENTS.md per directory, from the project root down, so the closest file comes last and wins. Copilot has its main file, plus smaller ones that attach only to matching files, and it honors AGENTS.md too.
+THEO: Second drawer.
+NORA: Environment. Where you are: the folder, the git branch, the operating system, the date, the shell. Small facts, written in as plain text, so the model knows where it is.
+THEO: [curious] Copilot lives inside my editor. Does it get more than that?
+NORA: It does. Your open editors, what you've selected, the Problems panel, the terminal, your source control changes. All of it is there without a single tool call.
+THEO: Third.
+NORA: Tools. A list of what the model may ask to do: read a file, search, edit, run a command. Some are built in. Some come from MCP servers. MCP, the Model Context Protocol, is a standard way for outside programs to offer extra tools, like a documentation server or a database.
+THEO: And a tool is just a name on the list?
+NORA: A name, a plain English description, and a JSON Schema, which is a precise description of what the arguments must look like. Here's the catch: all of it is sent as text, so every tool costs tokens on every turn. A turn is one round trip to the model and back.
+THEO: [skeptical] So a pile of MCP servers isn't free.
+NORA: Not at all. That's why harnesses now hold the rarely used tools back and show only their names until they're needed. Skills work in a similar spirit. They're folders of instructions for one kind of task, waiting on a shelf until a task calls for them.
+THEO: And the last drawer is me.
+NORA: The conversation. Your prompt, plus anything you attached. On this first turn, it's just your one sentence.
+THEO: Here's what I'd have bet was in there somewhere: my code. The scheduler file, at least.
+NORA: [short pause] None of it. Not one line. The harness doesn't go fetching your code ahead of time. The model will have to ask for it, one tool call at a time, the way you'd grep around a codebase you'd never seen.
+THEO: Four drawers, one sentence, zero code. And all of it still plain text.
+NORA: Plain text, and every drawer is about to empty onto one page.

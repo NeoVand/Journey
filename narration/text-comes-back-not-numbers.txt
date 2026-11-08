@@ -1,0 +1,24 @@
+# Text comes back, not numbers
+NORA: There's a small thing that could go wrong right here, and it's half a letter.
+THEO: [curious] Half a letter?
+NORA: The model has been writing token numbers. Your laptop wants text. So each number is looked up in the vocabulary to get its bytes, the raw pieces text is stored as. Some characters, an emoji, a Persian letter, take several bytes, and one token can hold just part of one.
+THEO: So if you sent the bytes straight off, I'd get a broken character on screen.
+NORA: Exactly. So the detokenizer waits. It holds on until it has a whole UTF-8 character, then sends a small chunk of text. Each chunk is called a delta: just the bit that's new since the last one.
+THEO: [surprised] So it isn't tokens that cross the internet.
+NORA: Never. Token numbers never leave the data center. Only text does. Even a tool call comes back as text: small chunks of its JSON, the name and then the arguments, piece by piece.
+THEO: [amused] So text goes in at the front door, text comes out, and the tokens only ever lived in between.
+NORA: That's the shape of it. Your harness never receives a single token number.
+THEO: How does it travel, though? One big message at the end?
+NORA: As a stream: one long-lived connection that the provider keeps writing to, a chunk at a time. And the three agents hear slightly different streams. Claude Code's has separate events for thinking, for text and for a tool call's JSON, then a stop reason.
+THEO: And the other two?
+NORA: Codex gets typed events from the Responses API, each named for exactly what's arriving, like the arguments of a function call. Copilot gets OpenAI-style chat chunks from GitHub's API, whichever vendor's model is behind them.
+THEO: Do the pieces line up? One token, one chunk?
+NORA: No. One token can be split across two chunks, one chunk can carry several tokens, and one network packet can hold several events. The harness reassembles at every level. And it doesn't wait for the end: once a tool call's block has closed, the harness can get going on it while the model is still writing the next one.
+THEO: [skeptical] And while all this streams out, is anybody checking what it says?
+NORA: [short pause] Somebody is. A second set of classifiers reads along: small models that sort text into categories, here, within the rules or not. If the text crosses a line, generation stops mid-sentence, and the reply ends with a special stop reason. At Anthropic it's called refusal.
+THEO: Mid-sentence. Can the harness override that? Or the model?
+NORA: Neither. It happens on the provider's side. With Copilot there can be one more check: GitHub has an optional filter that compares completions with public code and holds back matches, after the vendor's own filters.
+THEO: So the slips going up that glass tube...
+NORA: Are text. The thinking first, then the tool call. Heading home to your laptop, where for the first time something that can actually act will read them.
+THEO: So: numbers looked up, held until each character is whole, sent as small chunks of text, with a reader checking along the way.
+NORA: [thoughtful] And on the far end, a harness putting it back together into a request it hasn't agreed to yet.

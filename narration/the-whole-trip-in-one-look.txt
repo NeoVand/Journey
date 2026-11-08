@@ -1,0 +1,28 @@
+# The whole trip, in one look
+NORA: Count the stops on this loop. There are nine. Now guess how many of them are the model.
+THEO: Most of them? It's the AI. It's the whole point.
+NORA: [amused] One. Stop five. Go round with me once and you'll see why.
+THEO: Okay. Stop one.
+NORA: Ask. You type one sentence: "Fix the race condition in the job scheduler." At this point it's keystrokes on your laptop, nothing more.
+THEO: Two.
+NORA: Assemble. The harness, the program around the model, the part you installed, wraps your sentence in everything the model will need. Its own instructions, your project's rules, the list of tools the model may ask for, and everything said so far. One big request, still plain text.
+THEO: Three, it leaves my laptop.
+NORA: Cross. The request, written as JSON, goes over the internet encrypted, so nobody along the way can read it.
+THEO: And four is where it turns into tokens?
+NORA: Encode. It reaches the provider's front door, where it's checked: who you are, whether you're within your limits. Only there is it cut into tokens, small pieces of text turned into numbers. With Copilot there are two front doors, GitHub's and then the model maker's.
+THEO: Five's the model.
+NORA: Compute. On thousands of chips in a data center, the model reads the whole request at once, then writes the reply one token at a time, each one picked from odds. If the start of the request matches one the chips have just seen, they reuse that work. And it's the only stop that runs on odds at all. Every other stop is ordinary code, mostly predictable.
+THEO: Six.
+NORA: [short pause] Stream. Text comes back to your laptop, not numbers. Even when the reply asks for a tool, it's only words. The model has touched nothing.
+THEO: [curious] Seven's the gates.
+NORA: Authorize. The harness checks what the reply asks for, gate by gate. Is it a real tool, is the path allowed, does your policy let it run without asking, does it need you? A request for your secrets gets refused right there.
+THEO: Eight.
+NORA: Act. Now the tools really run, on your machine: a search, a file read, an edit, the tests. Commands run inside a sandbox if your agent has one, a fence the operating system puts around them. What the tools find is real: real lines of code, a real test failure.
+THEO: And nine sends it all back.
+NORA: Loop. The results join the conversation, and the whole lot goes round again. Search, read, edit, test, fail, fix, test again. Each lap is a turn, and a real fix takes anywhere from five to thirty of them.
+THEO: [thoughtful] When does it stop?
+NORA: When a reply comes back without asking for a tool. And even then, green tests are evidence, not proof, and committing, merging and shipping are still separate steps, each with its own permission.
+THEO: [impressed] Let me sum it up, then. One stop picks the words. Eight stops do everything else.
+NORA: That's the shape. And to be honest about the map: the harness side comes from public docs and source code as of November twenty twenty-six. Inside the data center, it follows public engines and papers, because the providers don't publish their own.
+THEO: So next time I press Enter...
+NORA: [warmly] You'll know where it goes.

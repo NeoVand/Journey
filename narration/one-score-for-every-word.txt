@@ -1,0 +1,26 @@
+# One score for every word
+NORA: Layer after layer of work, and here's everything that comes out of the top: a list of scores.
+THEO: [skeptical] That's it? Not an answer? Not even a word?
+NORA: A list of scores, one for every entry in the vocabulary, which is usually somewhere between a hundred thousand and two hundred thousand pieces. Those scores are all the model ever outputs.
+THEO: Back up. Where are we?
+NORA: At the top of the stack. Your whole request has climbed every layer, about twenty-one thousand tokens in this example, and every token has ended up somewhere on the map of meaning. And now only one of them matters.
+THEO: Which one?
+NORA: The last one. The final position.
+THEO: [surprised] After all that work on every token? "Job", "race", "condition", and we only use the last one?
+NORA: For this step, yes. The question is what comes after your request, and the last position is the one that has looked back at everything. Its numbers carry your whole sentence, and everything before it.
+THEO: So the rest were scaffolding.
+NORA: [amused] Scaffolding that stays up. Their keys and values are what the last token looked back at, and they're kept, for every token the model writes next. In the picture, the others press flat into the map, and the last one lights up.
+THEO: Then what turns that last one into scores?
+NORA: A final step called the LM head, for language model head. It takes that one final list of numbers and gives every entry in the vocabulary a raw score. That score is called a logit.
+THEO: Raw meaning what?
+NORA: Not a probability yet. Higher means more likely, lower means less, and a score can even be negative. They don't add up to anything in particular. Turning them into odds comes next.
+THEO: And what scores highest here?
+NORA: In this example, "The", then "I", then "Let", then "First". The numbers are illustrative, but they're the kind of words a reply might start with. On screen, the best scores rise as columns from the map and line up as a chart.
+THEO: [thoughtful] So the model never actually says "the next word is The".
+NORA: Never. It says how much it likes each possibility, all of them at once. Choosing one is a separate step, and it's the only place in the whole journey where chance comes in.
+THEO: And all of this is happening while I'm staring at the screen, waiting.
+NORA: [laughs] This is the wait. All of it, the embedding, every layer, the LM head, is the pause before the agent starts typing. It's called time to first token. For a prompt this size, usually three tenths of a second to two seconds.
+THEO: And on the next turn?
+NORA: Much less, if the start of the request still matches what's kept in the cache, because only the new part has to climb. Claude Code marks explicit cache breakpoints in its request, and Codex keeps its instructions fixed so the start stays identical. With Copilot, GitHub's service sits in between, and any caching there isn't disclosed.
+THEO: [impressed] So a whole request goes in, and out comes one list: how much it likes every possible next piece.
+NORA: One list, from one position. Next, those scores become odds on a wheel.

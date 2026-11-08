@@ -89,6 +89,18 @@ test('the Begin key plays the first card', async ({ page }) => {
 	await expect(page.getByRole('button', { name: 'Previous step' })).toBeEnabled({ timeout: 60_000 });
 });
 
+test("the header's talk key plays this card's conversation, and pauses it", async ({ page }) => {
+	test.setTimeout(150_000);
+	await page.goto('/');
+	const talk = page.getByRole('button', { name: /^Listen to Nora and Theo talk about this card, \d+ minutes?/ });
+	// The header's keys wake once the world is built, which takes a while without a GPU.
+	await expect(talk).toBeEnabled({ timeout: 120_000 });
+	await talk.click();
+	await expect(talk).toHaveAttribute('aria-pressed', 'true', { timeout: 30_000 });
+	await talk.click();
+	await expect(talk).toHaveAttribute('aria-pressed', 'false');
+});
+
 test("the title page's sound switch is the header's", async ({ page }) => {
 	test.setTimeout(150_000);
 	await page.goto('/');

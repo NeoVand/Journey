@@ -1,0 +1,24 @@
+# Sharing the chips
+NORA: There's a second scheduler in this story, and it isn't the one with the race condition.
+THEO: [laughs] Good. One buggy scheduler is plenty.
+NORA: This one lives inside the inference engine, the program that runs the model. At every step, it decides which requests the chips work on next.
+THEO: Why not just take them in turn? Finish mine, then start the next person's.
+NORA: Because the chip would sit mostly idle. Producing a token means reading all the model's weights, its learned numbers, out of memory, and that costs the same whether one request uses them or a hundred. So a chip only earns its keep when it's working on lots of requests at once.
+THEO: [curious] So it's carpooling. The drive costs the same, so you fill the seats.
+NORA: Good picture, with one difference. A carpool waits until everyone's in the car. This doesn't wait for anyone. At every step, the scheduler gathers a batch: a list of requests that each need one more token. Each one gets its token, and the next step gathers a fresh batch.
+THEO: And when someone's done?
+NORA: The moment a request finishes, a waiting one takes its lane right away. Nobody waits for a batch to fill. It's called continuous batching.
+THEO: Okay. What happens when memory runs short? Every one of those requests has its own keys and values sitting in chip memory, the numbers it keeps for every earlier token.
+NORA: Then someone gets paused, and that's called preemption. The scheduler sets a request aside, and either works its cache out again later or moves its blocks to the server's ordinary memory until there's room. Priority tiers decide who goes first.
+THEO: [skeptical] So my request could get bumped.
+NORA: It could. Paused, then picked up again later. It isn't thrown away.
+THEO: Now, mine's the amber one, and mine's long.
+NORA: Yours is long. About twenty-one thousand tokens to read before it can write a single word. Reading all of that in one go would hog the chip, and everyone else's typing would freeze while it happened.
+THEO: [thoughtful] I'm the person in the coffee queue ordering for the whole office.
+NORA: [chuckles] Pretty much. So the scheduler cuts your prompt into slices and slips them in between everyone else's steps. That's called chunked prefill, prefill being the model's first pass, reading your prompt. Your request gets read a piece at a time, and the others keep typing.
+THEO: Is any of this different depending on which agent I'm using?
+NORA: Not here. Whatever sits behind the front door, this is how a cluster of this kind shares its chips. Providers don't publish their exact schedulers, so this comes from open engines that anyone can read.
+THEO: Coding agents must be awkward customers, then. Long prompts, every turn.
+NORA: That's exactly why those two refinements matter so much for them, the slicing and the pausing. Agent requests are long, and they keep coming back for another turn.
+THEO: Let me say it back. One shared step, everyone in the batch gets a token, a lane refills the moment it's free, and a big prompt goes in slices.
+NORA: That's sharing the chips. And inside it there are really two different jobs, reading and writing, which don't sit together as comfortably as you'd hope.

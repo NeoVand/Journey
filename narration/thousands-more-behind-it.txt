@@ -1,0 +1,23 @@
+# Thousands more behind it
+THEO: [surprised] Twenty-one thousand tokens. I typed eight words.
+NORA: And your eight words come to about ten of those tokens. Your sentence is only the tail. Everything in front of it counts too: the harness's instructions, your project's rules, the environment, and every single tool definition.
+THEO: The tools are really that heavy?
+NORA: They add up. The system prompt and tool definitions of a coding harness typically come to fifteen to twenty-five thousand tokens. So in this example, turn one is about twenty-one thousand. That number is illustrative, but it's well inside the usual range.
+THEO: [skeptical] That sounds wasteful. Twenty thousand tokens of preamble so the model can read one line.
+NORA: It would be, if every turn paid for all of it in full. Most turns don't, because that preamble is identical every time, and the provider can reuse work for a start it has already seen. But that comes later. Right now, the tokens have one more check to pass on their way out of the front door.
+THEO: Another check? It's already been through five.
+NORA: Those five at the front door were plain code. These are small models called classifiers. A classifier sorts text into categories, and here the categories are simple: within the rules, or not. They score the text for serious policy violations, things like child safety, weapons of mass destruction and abuse.
+THEO: So the model itself is checking up on me?
+NORA: No, and that's the point. The classifiers aren't the model. They're small and fast, cheap enough to run on every single request. Anthropic calls one family of them Constitutional Classifiers.
+THEO: What happens if one trips?
+NORA: A clear violation stops right here, with an error. A borderline score might just be logged, or might make the check on the model's output stricter later. A request to fix a race condition goes straight on through.
+THEO: Does Copilot add anything at this point?
+NORA: GitHub runs its own layer. Content exclusions stop chosen files from ever leaving the editor, and a duplication filter can block suggestions that match public code. Both run at GitHub, before and after the vendor.
+THEO: Okay. Where does it go now? Just "the model"?
+NORA: A model's name doesn't point at one computer. It points at many copies of the same model, running on pools of chips in several data centers. A router picks a region, a service tier, a pool with room to spare, and then one particular copy.
+THEO: [curious] Router as in the box under my desk?
+NORA: [chuckles] Different router. This one is the part of the provider that decides which copy serves you. And it has one favorite trick: it looks at the start of your request and sends it to the copy most likely to already hold that start in memory.
+THEO: And is anything kept about me along the way?
+NORA: Every request gets an ID and a trace. What's stored afterward depends on your account's data policy, and some accounts keep nothing at all once the reply is sent.
+THEO: [thoughtful] So my twenty-one thousand tokens are about to walk into a building that's already busy.
+NORA: Very busy. The machine you land on is already serving hundreds of other people. Next stop, the inference cluster, the rooms of machines that actually run the model. Inference just means using a trained model, rather than training it.

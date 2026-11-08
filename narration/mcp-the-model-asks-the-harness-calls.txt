@@ -1,0 +1,21 @@
+# The model asks, the harness calls
+THEO: Here's how I've always pictured it. The model wants the docs, so it calls the docs server.
+NORA: That's the picture most people have, and it's off by one step. The model can't call anything. It writes.
+THEO: Writes what?
+NORA: A tool call, exactly like any other. A name, the docs server's search tool, and some arguments: a query, locking. Same shape as when it asks to search your code or run the tests. And that's the whole of what the model can do: write the request.
+THEO: [skeptical] So it doesn't even know the tool lives in a separate program?
+NORA: It doesn't need to. To the model, it's a name on the list, with a description. Where it runs is the harness's business, the agent program on your laptop.
+THEO: Okay. The harness gets the call. Then what?
+NORA: It checks it the way it checks every call. Is this a real tool, do the arguments fit? Does your policy let it run on its own, or does it need you? Copilot, for one, shows a confirmation card before running a tool that isn't built in. A tool from a server gets no free pass for coming from outside.
+THEO: And if it passes?
+NORA: The harness turns it into a message for the server, in JSON-RPC, a tiny format that says: run this method, with these parameters. The method is tools/call, and the parameters are the tool's name and the arguments. Then it goes down the cable.
+THEO: And the server does the actual searching.
+NORA: [warmly] The server does the work. It looks through the library's documentation, finds the part about locks, and sends its answer back. To the harness, not to the model. The model never talks to the server.
+THEO: Like ordering through a waiter. I never set foot in the kitchen.
+NORA: [amused] Close, except this waiter reads your order first, and may decide not to take it to the kitchen at all.
+THEO: [chuckles] Fair. Can the harness do anything else while it waits?
+NORA: It can. If the model asked for two things in the same reply, say the docs and a search of your code, and they don't depend on each other, the harness runs both at once.
+THEO: [curious] With all that going back and forth, how does an answer find the right call?
+NORA: By number. The model's call carries an ID of its own. The JSON-RPC request gets a different one, and the server's answer comes back with that same number. A careful harness keeps track of which goes with which.
+THEO: So: the model asks, the harness checks, the harness calls, the server works.
+NORA: And the model waits for the next request, with the answer in it. It asked. The calling was the harness's.

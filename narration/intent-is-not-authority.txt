@@ -1,0 +1,24 @@
+# Intent is not authority
+NORA: Four gates stand between the model's request and your machine, and every tool call faces the same four, in order. In this scene, the first call to arrive doesn't make it past the second.
+THEO: [curious] What was it asking for?
+NORA: To read your .env file, the one where API keys and passwords tend to live.
+THEO: [surprised] Why on earth would it want that?
+NORA: The scene doesn't say, and the gate doesn't ask. That's rather the point. A tool call is the model's intent, a request written as text. Whether it runs is a matter of authority, and authority sits on your laptop, in the harness, the program around the model.
+THEO: Okay. Gate one.
+NORA: Valid shape. Is this a real tool, and do the arguments fit? Every tool comes with a precise description of what its arguments must look like, called a JSON Schema, and a made-up tool or a missing argument stops right here. Our .env request sails through. It's a perfectly well-formed read.
+THEO: Gate two.
+NORA: Allowed path. Is it inside the project, and is it on a deny list? Files like .env and your SSH keys are exactly what deny lists are for. So that's where it stops.
+THEO: [skeptical] And refused means what? It just vanishes?
+NORA: It goes back to the model as the result of its call, saying it was denied. The model reads that on its next turn and tries something else. A turn being one round trip, out to the model and back.
+THEO: Then the good call comes through. The search for the lock code.
+NORA: Right, and it reaches gate three, policy. May this run without asking you? In Claude Code and Copilot, this is where your hooks plug in, little scripts you set up to run at fixed moments, like just before a tool runs. A hook can block a call here, or rewrite it. In Codex, its execpolicy rules can block a command at this gate instead.
+THEO: And gate four is me.
+NORA: You, if asked. Reads often pass on their own, while writes and commands may come to you. Our search is a read, so it usually goes through without bothering you.
+THEO: This is where the three agents really differ, isn't it?
+NORA: More than anywhere. Claude Code has permission modes, allow, ask and deny rules, hooks, and in auto mode a classifier, a small model that reviews each call before it runs. Codex has two dials: an approval policy for when to ask you, and a sandbox mode for what's allowed at all. Copilot shows a confirmation card in the editor, with lists you can auto-approve from, and a cap on how many model calls it makes before it stops to check with you.
+THEO: [amused] Let me try a picture. It's airport security. Boarding pass, bag check, scanner, and a person if something beeps.
+NORA: That's close, and here's where it breaks. At the airport, once you're through, you can wander anywhere past security. Here, an approved command still runs inside a fence the operating system puts around it, if your agent uses one. Getting past the gates isn't the same as being trusted with everything.
+THEO: Why so many layers, though? A good model won't ask for my secrets.
+NORA: A good model can still be wrong, and it can be talked into things by text it has read. The gates don't need to know why a request was made. They only look at what it asks for.
+THEO: [thoughtful] So the model can want anything it likes. Wanting just doesn't get it anything.
+NORA: [warmly] That's the idea in one line. Intent is not authority. And it matters most when the text the model read was written to trick it.

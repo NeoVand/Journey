@@ -1,0 +1,20 @@
+# Going back
+NORA: There's a moment in most sessions when the last change was a mistake. A test that passed now fails, and you want your files back the way they were.
+THEO: An undo, basically.
+NORA: A rewind. It returns the session to an earlier point. The conversation after that point is dropped, and the files are put back from the checkpoint, the copy the harness kept before the change.
+THEO: Dropped how? Does the model forget it?
+NORA: Remember, the model only ever sees what's in the request. After a rewind, the next request is built from the conversation as it now stands, so the dropped part simply isn't in it.
+THEO: [curious] Do I have to take both back together?
+NORA: Often you can choose: the code, the conversation, or both. Say the broken change taught you something. You might put the code back but keep the conversation, so the failed attempt is still there for the model to read. Or the code's fine and the conversation has wandered somewhere unhelpful: take that back, and leave the files.
+THEO: How does it look in each agent?
+NORA: In Claude Code, /rewind, or Escape twice, restores the code, the conversation or both. Or it can summarize the conversation from that point, instead of dropping it.
+THEO: Codex?
+NORA: Escape twice takes the conversation back. For files there's no checkpoint in Codex, so git is how you restore them.
+THEO: And VS Code?
+NORA: Restore Checkpoint puts the files back, and removes the later requests from the chat.
+THEO: [skeptical] It still sounds a little too tidy. What doesn't come back?
+NORA: Anything the checkpoint didn't hold. A rewind can only restore what was copied. In Claude Code, for instance, a file changed only by a shell command isn't tracked, so going back leaves it as it is.
+THEO: So after a rewind, check the files. Don't just trust it.
+NORA: Read before you retry: run git status, look at the file. And anything that already left your machine is another story altogether.
+THEO: Back to a point, drop what came after, put the files back, and pick which.
+NORA: [thoughtful] That's a rewind. It's only ever as good as the copy behind it.

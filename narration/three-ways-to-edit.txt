@@ -1,0 +1,23 @@
+# Three ways to edit
+THEO: Three ways to edit a file? I'd have said there's one. You change it.
+NORA: [laughs] From where you sit, sure. But the model is in a data center and can't touch your disk. It can only write a request. The harness, the program on your laptop around the model, has to turn that text into a safe change to a real file. And our three agents each picked a different design for it.
+THEO: Set the scene first. What's the change?
+NORA: By now the model has read the scheduler and the test file. It's worked out that two threads can grab the same job, so the lines that take a job off the queue need a lock around them. It asks to edit, and that request goes through the same permission gates as any other call.
+THEO: Okay. Design one.
+NORA: Claude Code does exact-string replacement. The model gives the old text and the new text. The old text has to appear exactly once in the file, or the harness refuses. And the model must have read that file during this session.
+THEO: [curious] Why the reading rule?
+NORA: So it can't edit from stale memory, from what it thinks the file says. And the exactly-once rule means it can't change the wrong spot by accident.
+THEO: Design two.
+NORA: Codex uses apply_patch. The model writes a patch in a simple text format, like a diff: which file, a few lines of context, lines to take out, lines to put in. The harness applies it one hunk at a time, a hunk being one changed block, and reports which ones failed. And because the format has a strict grammar, OpenAI's API can enforce it while the model is still writing.
+THEO: [impressed] So it can't even produce a broken patch.
+NORA: It can't break the format. It can still write the wrong fix. Grammar isn't judgment.
+THEO: [chuckles] Fair. And Copilot?
+NORA: Edit tools, plus a review surface. The diff lands right in your editor, and you accept or reject it, hunk by hunk, and the editor's undo covers it too. Because it's in the editor, the type checker can answer within milliseconds of the change, before any test has run.
+THEO: Let me guess where they agree. Somewhere boring.
+NORA: Very boring, very important. All three write atomically: the new version goes to a temporary file, which is then renamed over the old one. Anyone looking sees the old file or the new one, never something in between. So a crash halfway never leaves you with half a scheduler.
+THEO: Like saving a copy of a document and swapping it in at the last second.
+NORA: That's the idea. And they share one more thing. Proposing a patch and applying it are different events. The model writing an edit doesn't mean the edit happened, and the result that comes back says which.
+THEO: [thoughtful] So the model finds out the same way I would. By reading what the tool said.
+NORA: Exactly. In our fix, the result says the edit went in at lines one hundred and one to one hundred and nine. In Claude Code's auto mode, a small reviewing model approved it first. In Codex the file is inside the workspace, so it was written without asking. In Copilot, the diff opened for you to review.
+THEO: So which design is best?
+NORA: They're guarding against different things. One against the wrong spot, one against a broken format, and one by putting you in the loop. Whichever it is, the next question is the same: does it actually work?

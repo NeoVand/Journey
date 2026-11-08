@@ -1,0 +1,21 @@
+# A server is its own program
+THEO: Something I've never been clear on. When I add an MCP server, what am I actually adding? A plugin? A website?
+NORA: A program. Its own program, separate from the agent. That's the first thing to get straight.
+THEO: And MCP itself is...
+NORA: The Model Context Protocol: a standard way for outside programs to offer extra tools to an agent. Anyone can write a server, and the harness, the agent program on your laptop, can plug it in.
+THEO: Give me one I'd actually use.
+NORA: In our fix, the model wants the library's documentation on locking. So picture a server whose whole job is serving that documentation. Ask it about the library, and it sends back the matching part.
+THEO: [curious] Where does it run?
+NORA: Two ways. A local server runs on your laptop. The harness starts it as a separate program and talks to it through its input and output, the plain channels any command-line program reads from and prints to. A remote server lives somewhere else, and the harness reaches it over the internet.
+THEO: [skeptical] Those sound like two completely different things.
+NORA: The plumbing differs. The messages don't. Either way, every message is JSON-RPC, a tiny format that says: run this method, with these parameters. The answer comes back with the same number as the question, so the two can be matched.
+THEO: So it's like USB. Doesn't matter what you plug in, the socket's the same.
+NORA: [amused] That's the comparison everyone reaches for, and it mostly holds. Where it breaks: a USB device sits on your desk. A remote server can be on the other side of the world, and it may want you to sign in before it answers at all.
+THEO: Where do I tell the agent which servers to use?
+NORA: Each harness has its own place. Claude Code takes them from your settings, from a .mcp.json file in the project, or from your organization. Codex lists them in config.toml. Copilot reads them from mcp.json in the project's VS Code folder, or from your settings.
+THEO: And if I don't want to run anything myself?
+NORA: In Copilot, GitHub's hosted connectors work like servers you don't have to run at all.
+THEO: [thoughtful] Can an agent be a server too?
+NORA: Claude Code is only ever the client. Codex can also be a server itself, so one agent can drive another. The thing that calls tools becomes a tool.
+THEO: So a server is just a program with something to offer, on the far end of a cable.
+NORA: [warmly] Just that. And before the model can use any of it, the harness has to ask what's on offer.

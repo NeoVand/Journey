@@ -1,0 +1,22 @@
+# One model, many chips
+NORA: From here on, it stops mattering which agent you typed into. Claude Code, Codex, Copilot: whatever sits behind the front door is a cluster of the same kind.
+THEO: [skeptical] Three companies, three sets of data centers, and they all look the same inside?
+NORA: In outline. Providers don't publish how they run these systems, so the honest thing is to describe the public blueprint: open engines like vLLM and SGLang, which anyone can read. Providers run their own equivalents on the same ideas.
+THEO: Okay. So what's actually sitting in there waiting for me?
+NORA: The model itself, which is a huge set of learned numbers called weights. Training sets them, and nothing you do in a session ever changes them. A frontier model has hundreds of billions to a few trillion of them.
+THEO: [curious] And they don't fit on one chip.
+NORA: Not even close. Even squeezed down to one byte per number, a trillion of them is a terabyte. A single accelerator, a chip built for exactly this kind of arithmetic, like a GPU, typically has between eighty and two hundred eighty-eight gigabytes of its own fast memory. So the weights get split across many chips.
+THEO: Split how? Like cutting a big file into chunks?
+NORA: Several ways at once, usually. One is to slice each layer's big tables of numbers across the chips in one server, so every chip does a share of the same layer, and at the end they add up their partial answers. Another is to put the early layers on one server and the later ones on the next, so tokens flow through like an assembly line.
+THEO: That's two.
+NORA: The third depends on how the model is built. Many large models are what's called a mixture of experts. Inside certain layers there are many small expert networks, and a tiny chooser picks a few of them for each token, say eight out of two hundred fifty-six. The experts live on different chips, often in different servers, so each token's numbers get shipped out to its experts and the results shipped back.
+THEO: That sounds like a lot of traffic.
+NORA: It's the heaviest use of the network between servers. Which brings us to the wiring. Chips in one server talk over NVLink, at terabytes per second. Servers talk to each other more slowly, over InfiniBand or RoCE, at hundreds of gigabits per second.
+THEO: So it's a team in one office talking across the desk, versus phoning the office down the road.
+NORA: [chuckles] Nice, though the office down the road is still very fast. Hundreds of gigabits a second. It only looks slow next to the chips in one box. The internet your request came in on is slower again, down at gigabits.
+THEO: [thoughtful] So my request crossed three different networks to get here.
+NORA: Three. The internet to the front door, the data center's network to the cluster, and then the links between chips. And that last one carries thousands of times more traffic than the first.
+THEO: Where do the weights come from in the first place? Do the chips load them when I show up?
+NORA: Long before. A copy of the model is set up minutes or hours ahead of your request. The weights are pulled from storage, split up according to the plan and loaded onto the chips, and the copy passes a health check before it takes any traffic. Your request just borrows it.
+THEO: So: the weights are split across many chips, fast wires inside each server, slower wires between them, and the whole thing was ready before I arrived.
+NORA: That's the floor plan. What's left is the memory your own tokens need while they're in there.

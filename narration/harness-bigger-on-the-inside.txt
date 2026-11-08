@@ -1,0 +1,22 @@
+# Bigger on the inside
+NORA: From the outside it's one command in your terminal. Step inside, and there's a whole workshop.
+THEO: This is the harness, then. The thing I actually installed.
+NORA: That's the one. And the first thing to notice is that the model isn't in here. It's far away, in a data center, and it only ever does one thing: it reads text and writes text.
+THEO: So when I type "Fix the race condition in the job scheduler," and files start opening...
+NORA: [warmly] That all happens in here, on your machine. Searching the code, reading the scheduler, running the tests, asking you before an edit. The model only sees text about those things, and writes text back.
+THEO: [skeptical] Then the model's the brain and the harness is the body.
+NORA: People say that, and it breaks in a useful place. A body does what the brain tells it. The harness doesn't always. Every request from the model is checked against your rules first, and some are refused.
+THEO: Fair. So what's actually in here?
+NORA: At the heart of it, a loop. Send a request, read the reply, do what it asks if that's allowed, and go round again. Around the loop sit the parts you can see from outside: four drawers, the cables and the tools.
+THEO: Drawers for what?
+NORA: Everything the request is packed from: the agent's instructions and your project's rules, facts about where you are, the list of tools, and the conversation so far. The cables carry your typing in and the request out, and the tools do the searching, editing and running.
+THEO: Is it the same program whichever agent I use?
+NORA: Same shape, different packaging. Claude Code is one program: the terminal, the VS Code extension and the desktop app all run this same loop. Codex makes the loop an engine of its own. The terminal runs it inside, and the editor and the desktop app talk to it over JSON-RPC.
+THEO: [curious] Which is?
+NORA: A tiny message format one program uses to ask another to run something. A method name, some parameters, and an answer that comes back with the same number, so the two can be matched up.
+THEO: And Copilot?
+NORA: Since the middle of twenty twenty-six, its loop runs in a process of its own, the Agent Host, which can even live on another machine.
+THEO: [surprised] So the harness doesn't even have to be on my laptop.
+NORA: For Copilot, not necessarily. In our story it is: one program on your desk, with a loop in the middle.
+THEO: So the model writes, and everything that happens, happens in here.
+NORA: [thoughtful] In here. Which is why that loop is worth walking round, slowly.

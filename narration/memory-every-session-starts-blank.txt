@@ -1,0 +1,18 @@
+# Every session starts blank
+NORA: Every morning, the model meets you for the first time.
+THEO: That can't be right. My agent knows my project's rules, it knows how I run the tests...
+NORA: [amused] The agent does. The model doesn't. The model keeps nothing between sessions. Yesterday's whole conversation is saved, as a file on your disk, but none of it reaches the model today unless the harness puts it in the request.
+THEO: So where does yesterday actually live?
+NORA: In the transcript, the full record of the session: every message, every tool call, every result. If you resume yesterday's session, the harness reads that file back and sends it along. The model isn't remembering anything. It's being handed the record.
+THEO: And if I start a fresh one?
+NORA: Then today starts with only what's always loaded: your rules. That's the instruction file your project keeps for the agent, with things like how to run the tests and what to leave alone.
+THEO: So the model's a temp. Sharp, capable, and it reads the note on the desk every morning.
+NORA: Close, and here's where it breaks. A temp who comes back every day starts to learn the place, note or no note. The model never will. Nothing you do in a session changes its weights, the learned numbers that make it what it is. Using an agent doesn't train the model.
+THEO: [skeptical] Not even a little? After a whole month on the scheduler?
+NORA: Not even a little. Training is a separate process, and it doesn't happen in your session. What feels like familiarity is the harness packing the right text into the request.
+THEO: How do the three load the rules?
+NORA: Claude Code loads every CLAUDE.md from your folder upward, whole, at the start, as a message right after the system prompt, the harness's own hidden instructions. Codex joins the AGENTS.md files from the repository's root down to your folder, once per run. Copilot in VS Code sends copilot-instructions.md, or AGENTS.md, with every request.
+THEO: [curious] Once per run, for Codex. So if I edit AGENTS.md halfway through...
+NORA: It was read at the start, so the change waits for a restart.
+THEO: A blank model, then, plus whatever the harness chooses to hand it.
+NORA: [warmly] That's the whole arrangement. Whatever the model knows about you today, it's reading right now, in the request.

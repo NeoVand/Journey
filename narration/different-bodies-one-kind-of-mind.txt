@@ -1,0 +1,20 @@
+# Different bodies, one kind of mind
+NORA: If you had to put the model into one sentence, the whole thing, what would you say?
+THEO: [thoughtful] A very well-read engineer who types fast?
+NORA: [chuckles] Generous. Here's the book's version. The model is a function from tokens to odds. Tokens go in, small pieces of text written as numbers, and out come the odds for every possible next token. One is picked, it goes on the end, and the whole thing runs again.
+THEO: That's it? That's all it is?
+NORA: That's all the model is. Everything else you've watched on this trip, searching the code, editing the scheduler, running the tests, remembering, asking you for permission, is the harness. That's the program on your laptop around the model, the part you installed.
+THEO: Okay, here's my picture. The harness is the body, the model is the brain.
+NORA: That's where the title comes from, so you're close. But it breaks in two places. A brain moves its own hand, while this one can only write, please move the hand, and the body decides. And a brain remembers. This one forgets everything when the session ends, unless the harness writes it down.
+THEO: [skeptical] It feels like it knows my codebase, though. It goes straight to the right file.
+NORA: It doesn't know it. It searches, one tool call at a time, the way you would. In our fix it looked for the words lock and schedule, read about two hundred and fifty lines, and never saw the rest of the repository. It only looks like knowing.
+THEO: So why do three companies build three different bodies?
+NORA: Because there are real choices to make, and they made different ones. Claude Code gives the model dedicated tools for searching, reading and exact-string edits, and runs commands inside the operating system's own sandbox, a fence around what they can touch. Codex hands the model a shell for nearly everything, edits by patch, and keeps the network off by default.
+THEO: And Copilot lives in my editor.
+NORA: Right. It can ask the language server, the part of the editor that knows where every function is used. It can search your code by meaning. And it puts every diff in front of you to accept or reject.
+THEO: Different bodies.
+NORA: And yet, put them side by side on the same fix, and a lot is identical. The shape of the loop, and the model never touching your disk. Search, then read, then edit, then test. The cache making every round trip after the first one cheap, and the handoff to git at the end.
+THEO: [curious] Even the mind can be the same, can't it? Copilot can run a Claude model.
+NORA: It can. GitHub's service sits in front of models from OpenAI, Anthropic and Google. With a Claude model behind it, the thinking even comes back looking like Claude Code's, and with a GPT model, like Codex's. Same kind of mind, different body around it.
+THEO: So next time the agent impresses me, I should ask which half did it.
+NORA: [warmly] Usually both. The model chose the words, and the harness made them real. And now the result is on its way home to your laptop.

@@ -1,0 +1,22 @@
+# How a coding agent works
+THEO: [curious] Can I make a confession? I use a coding agent every single day, and I have no real idea what happens after I press Enter.
+NORA: [laughs] You're in very good company. Most people picture the model opening their files, reading the code, running the tests.
+THEO: Isn't that what it does?
+NORA: Never. Not once. The model does exactly one thing: it reads text, and it writes text. Everything physical, opening a file, running a command, asking you for permission, is done by a program on your own laptop. That program is called the harness.
+THEO: The harness. So Claude Code, Codex, Copilot in VS Code, those are all harnesses?
+NORA: Exactly. Three harnesses from three different companies, and underneath, the same shape. That shape is what this whole journey is about. We take one sentence you type, "Fix the race condition in the job scheduler," and we follow it all the way to the model and back, until the bug is fixed and the tests pass.
+THEO: All the way? Like, physically?
+NORA: Physically. It starts as keystrokes on your laptop. The harness wraps it in one big request: your project's rules, a list of tools the model may ask for, and the conversation so far. That request crosses the internet, encrypted, and arrives at the provider's front door. It gets checked there, and only there is it cut into tokens.
+THEO: Wait. So it isn't tokens on my machine?
+NORA: Not yet. Until the front door it's plain text. Tokens are something the provider makes. Then it goes into a data center, onto thousands of chips, through the model, and a reply comes back, one token at a time.
+THEO: And that reply is the fix.
+NORA: [warmly] Here's the twist. The reply is only text. Sometimes that text is a request: please search the code for the word lock, or please run the tests. The model can ask. Only the harness can act. It checks whether the request is allowed, runs it on your machine, and sends the result back for another round.
+THEO: So it's a loop.
+NORA: It's a loop. One pass around it is called a turn. A real fix like ours takes somewhere between five and thirty turns. Search, read, edit, test, watch it fail, fix it, test again.
+THEO: [surprised] And every turn makes that whole trip? Laptop, internet, data center, and back?
+NORA: Every single one. It sounds wasteful, and a good part of the story is why it isn't as bad as it sounds. When the start of a request matches one the provider has just seen, it can reuse the work it already did, so turn two starts ahead.
+THEO: Okay. And along the way, my sentence keeps changing shape?
+NORA: Twelve shapes, by the book's count. Keystrokes, a JSON request, encrypted bytes, token numbers, long lists of numbers inside the chips, and so on, until it comes home as the result of a tool. There's a counter in the corner that keeps track as you go.
+THEO: [thoughtful] Does it matter which agent I pick?
+NORA: The bones are the same. The details differ: which file holds your rules, what the tools are called, how permission works. Pick yours, and the notes along the way speak its language.
+THEO: One sentence, twelve forms, and a loop. Alright. Let's follow it.

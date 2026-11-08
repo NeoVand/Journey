@@ -1,0 +1,27 @@
+# Then again, eighty times
+THEO: So a layer is: every token looks back at the ones before it, then each one goes through a small network on its own, with some tidying around both. And there are eighty of those?
+NORA: In this example, eighty. It's an illustrative number. Providers don't publish theirs.
+THEO: [surprised] Eighty copies of the same thing?
+NORA: Same design, not the same thing. Each layer has its own weights, its own learned numbers. And each one starts where the last one finished. What comes out of floor one is what goes into floor two, all the way up.
+THEO: [curious] And the threads in the picture?
+NORA: Each thread is one token's path up the stack. The site draws every layer as the same map of meaning, so as a token climbs, you can see where each floor moves it. Watch them all at once, and they gather.
+THEO: Gather where?
+NORA: Toward each other, and toward code. At the bottom, each word sat at its dictionary meaning: "job" among careers, "race" in sports. Floor by floor, each takes in more of the sentence, and they drift toward what the whole prompt is about.
+THEO: Except "race".
+NORA: [amused] You spotted it. "Race" never quite arrives.
+THEO: Why not? It's half of "race condition".
+NORA: Because it comes first. A token can only look back, and "condition" comes after it. So "race" can see the instructions, then "Fix" and "the", and that's all. It never finds out it's half of a bug. That's the price of only looking back.
+THEO: [skeptical] That seems bad. The whole prompt is about a race condition.
+NORA: Less bad than it sounds. "Condition" comes after "race", so "condition" can look back at it. The pair still gets read as a pair, just from the second word's side. And everything after, "job", "scheduler", the last marker, can look back at both.
+THEO: [thoughtful] So the meaning isn't lost. It's carried by the later words.
+NORA: Yes. And that matters at the top, where only the last position is used to score the next word. The last position has seen everything.
+THEO: Do the early floors do something different from the late ones? Grammar first, meaning later, that kind of thing?
+NORA: [laughs] The book doesn't say, and I'm not going to guess. What it does say: they share a design, each has its own weights, and each starts where the last one finished.
+THEO: Fair. And all eighty run for every token?
+NORA: Every one. On the first turn, the prompt goes up together. Then, while the model writes its answer, each new token climbs all eighty floors on its own, once per token. And all those weights together are far too big for one chip, so a model like this is split across many.
+THEO: Does my agent matter at all up here?
+NORA: Not up here. Whichever of the three sent the request, Claude Code, Codex or Copilot in VS Code, it's the same climb.
+THEO: And the weights on each floor. My prompt goes up through all of them and leaves them as they were?
+NORA: Exactly as they were. Training set them, and using the model never changes them. Your prompt changes where the tokens end up, never the floors.
+THEO: So eighty floors, each nudging the words closer to what I meant, except the ones that came too early to know.
+NORA: And at the very top, the last token has gathered the whole sentence. That's the one the model listens to.

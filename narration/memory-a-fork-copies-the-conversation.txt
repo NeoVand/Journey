@@ -1,0 +1,19 @@
+# A fork copies the conversation
+THEO: I want to try two fixes for the race at once. One puts a lock around the queue, the other tries a different design. Do I fork?
+NORA: A fork is the tool for it, with one catch you should know first. A fork starts a second session from a copy of this one, up to a point. From there the two go their own ways, and the original is left as it was.
+THEO: [curious] So both forks know everything we've worked out so far.
+NORA: Everything up to the fork point: what was read, the test that failed, the plan. That's the conversation, and the conversation is copied. Here's the catch: only the conversation is copied.
+THEO: [surprised] Not the files?
+NORA: Not the files. Both sessions still work on the same scheduler.py in the same folder. One rewrites the lock, the other rewrites it a different way, and each is changing the file under the other's feet.
+THEO: So it's a git branch, but for the chat.
+NORA: Half right, and that's where it breaks. A git branch carries its own version of the files. A fork, on its own, is a new conversation over the very same files. For separate files you need a worktree: a second working copy of your repository, on a branch of its own, in another folder. A session working there can't touch your files.
+THEO: How do the three do it?
+NORA: In Claude Code, /branch, or a fork option when you resume a session, copies the conversation into a new session. Only a worktree gives it its own files.
+THEO: Codex?
+NORA: /fork clones the chat and leaves the original untouched, either right here or in a new worktree. And pressing Escape twice edits your last message and forks from there.
+THEO: And Copilot?
+NORA: /fork copies the whole conversation, and Fork Conversation copies it up to a checkpoint, a saved copy of your files from before a request. A fork there doesn't get files of its own either.
+THEO: [thoughtful] So for my two fixes: two forks, two worktrees.
+NORA: Where your agent lets a fork have its own worktree, that's the safe version. Two conversations, two copies of the code, and your own folder left alone while they work.
+THEO: A fork copies what was said, not what's on disk.
+NORA: [amused] Exactly. The conversation splits. The files only split if you split them.

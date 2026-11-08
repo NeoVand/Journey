@@ -1,0 +1,23 @@
+# Turn two starts ahead
+THEO: So this is the bit where the model remembers me. That's why the second turn comes back quicker.
+NORA: [short pause] It is quicker. But it isn't remembering you, and that difference is the whole point here.
+THEO: Okay. Then what is it?
+NORA: Jump ahead a moment. On turn one the model asked to search your code, and the harness ran the search on your laptop. Now it comes back for turn two, a turn being one round trip to the model and back. And the new request starts with exactly the same bytes as the first: the same instructions, the same tools, your same sentence, the model's reply. Plus a little more at the end, the search results.
+THEO: Because the harness sends everything again, every turn.
+NORA: Every turn. Claude Code resends the whole thing, because Anthropic's API keeps nothing between requests. Codex usually resends too, though OpenAI's API can keep state on its side instead. Copilot rebuilds it from its parts each time. Either way, the front of turn two matches turn one.
+THEO: [curious] And the provider notices?
+NORA: A router at the front reads the start of the request and sends it to the copy of the model most likely to still have those blocks. The blocks hold the keys and values the model already worked out for every token of that start, the numbers it needs to look back at them. They're sitting there already. So only the new part has to run through the model.
+THEO: How much of turn two is that?
+NORA: In this example, twenty-one thousand tokens are already cached, and about fifteen hundred are new. Across the later turns of a fix like this one, more than nine tokens in ten are hits.
+THEO: [skeptical] Then why say it's not memory? It kept my stuff.
+NORA: It kept some arithmetic. It saves computing. It doesn't change what the model knows, and it only works when the start matches exactly. Change one byte near the top and everything after that byte has to be worked out again.
+THEO: Which is why the harness was so fussy about putting the steady parts first.
+NORA: That's the payoff. Instructions and tools at the top, the growing conversation at the bottom. This is what that careful order was for.
+THEO: How long do the blocks stick around?
+NORA: Not long. Unused blocks slide down to slower memory, from the chip to the server's ordinary memory, then to disk or a shared store, and eventually they get thrown out, usually within minutes. Step away for an hour and the next turn pays full price once.
+THEO: Do the agents handle this differently?
+NORA: Quite differently. Claude Code marks explicit cache breakpoints in the request, and reading from the cache costs a tenth of the normal input price. Codex relies on the Responses API's automatic prefix caching, and keeps its instructions fixed for the session so the start stays identical.
+THEO: And Copilot?
+NORA: GitHub's service sits in the middle, so the extension can't see hits or misses at all. Whether GitHub keeps any caches of its own isn't disclosed. The caching that counts happens at the model vendor behind it.
+THEO: [thoughtful] So the model doesn't remember me. The building just avoids redoing work it did a minute ago.
+NORA: Exactly. A shortcut for the chips, not a memory of you. And it's why sending everything, every single turn, costs far less than it sounds.

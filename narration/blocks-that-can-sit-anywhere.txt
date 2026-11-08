@@ -1,0 +1,25 @@
+# Blocks that can sit anywhere
+THEO: Okay, memory management. I'll admit my eyes glaze over a little.
+NORA: [laughs] Stay with me, because this is really a restaurant problem, and you've been to a restaurant.
+THEO: Go on.
+NORA: Start with what's being stored. While the model reads your request, it keeps two lists of numbers for every token in every layer, a key and a value, so it can look back at that token later without working it out again. That store is the KV cache, and it lives in the chip's own memory, which is the scarcest thing in the building.
+THEO: And it's big.
+NORA: In this example, about seven gigabytes for your first turn alone. Now, early engines handled it the way a nervous restaurant handles a booking. When a request arrived, they reserved one long unbroken stretch of memory for it, sized for the longest it could possibly grow. Most requests never got that long, so most of that space sat empty, and nobody else could use it.
+THEO: Like holding a table for twelve because someone might bring friends.
+NORA: Exactly that. The fix came from vLLM, an open-source engine, and it's called PagedAttention. It cuts the KV cache into small, fixed-size blocks, say sixteen tokens each. A block can sit in any free slot in memory. And a little table, the block table, remembers which slot holds which piece of which request.
+THEO: [curious] So my request ends up scattered all over the chip.
+NORA: Scattered, and it doesn't matter, because the table knows the order. The idea was borrowed from the way operating systems handle memory, in pages.
+THEO: So the operating system is actually doing it?
+NORA: No, and that's worth being precise about. It's an analogy, not the same machinery. The engine grabs one big pool of memory when it starts up, and hands out blocks from that pool itself.
+THEO: How many blocks are we talking about, for me?
+NORA: The picture shows four, to keep it readable. A real request has far more. At sixteen tokens a block, your twenty-one thousand tokens fill well over a thousand of them.
+THEO: And the grey ones?
+NORA: Other people. This chip is serving lots of requests at once, and their blocks sit right alongside yours, packed into whatever slots are free. The result is that almost nothing goes to waste.
+THEO: [thoughtful] Fine, less waste. But the card says something else too: two requests can share a block.
+NORA: That's the better trick. If two requests begin with exactly the same tokens, the keys and values for that stretch are the same as well, so there's no reason to store them twice. Both block tables simply point at the same slot.
+THEO: Only if they start the same, though? Matching stuff in the middle doesn't count?
+NORA: Only the start. An engine like vLLM indexes each block together with all the blocks in front of it, so a match has to run unbroken from the very first token. One different byte early on, and everything after it has to be computed afresh.
+THEO: [skeptical] That sounds fragile.
+NORA: It is, which is why coding agents are so careful to put the parts that never change at the top of the request: the instructions first, then the tools, and the conversation last.
+THEO: And my own agent comes back with that exact same start every single turn.
+NORA: Every turn, with a little more on the end. So hold on to that second trick, sharing a start. It's the one that pays.

@@ -1,0 +1,17 @@
+# When the glass says no
+THEO: Here's a situation. The agent's fixing the scheduler, the tests need a package, the download hits the wall, and the command just fails. Then what?
+NORA: First, why it failed. A command can need more than the glass allows: a package from a domain that isn't on the approved list, or a file outside the project. Either way it runs into the wall, and fails.
+THEO: [curious] And the agent gives up?
+NORA: Not necessarily. It can ask to run that same command outside the glass. And this is the important part: that request goes through the rules like any other call. It isn't a back door. It usually lands with you, as a question you can say no to.
+THEO: [skeptical] Usually?
+NORA: Usually, because the rules still decide, the same way they decide everything else. In Claude Code the agent can retry a blocked command outside the sandbox, and that asks you first. And one setting rules it out entirely, so a blocked command simply stays blocked.
+THEO: What does Codex do?
+NORA: The model asks again with a reason attached. That's called an escalation request: this failed in the sandbox, and here's why it needs to run outside. You can approve it for this one run, or save a rule so that command never asks again.
+THEO: [thoughtful] "Never asks again" is a big thing to click.
+NORA: It is. You're no longer answering for one run, you're answering for that command from now on. Worth a second look at what it actually is.
+THEO: And VS Code?
+NORA: VS Code asks you whether to allow the command outside the sandbox. A plain question, the same idea.
+THEO: Say I answer no.
+NORA: Then the command stays failed, and the refusal goes back to the model as the result. It reads that, and it can try another way, or come back to you with what it knows. What you don't want is a way out that nobody had to approve.
+THEO: So the wall isn't a dead end. It's a door that only opens from my side.
+NORA: [warmly] From your side, and through the rules, like every other call. That's what keeps the glass worth having.

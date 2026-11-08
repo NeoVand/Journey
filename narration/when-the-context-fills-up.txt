@@ -1,0 +1,22 @@
+# When the context fills up
+NORA: Picture the model's context window as a desk. It's the most the model can take in at once, measured in tokens, the small pieces of text it reads. Everything the harness sends it, the harness being the program on your laptop around the model, has to fit on that desk.
+THEO: And a long session keeps piling paper on it.
+NORA: Every file it reads, every test run, every reply. The transcript, the full record of the session, goes back to the model on every turn, every round trip, so it only grows. Our scheduler fix is small: in the book's example it ends at about twenty-seven thousand tokens, against a window of two hundred thousand or more. But a long afternoon of work can creep right up to the edge.
+THEO: [curious] Then what? Things fall off the desk?
+NORA: Before that happens, the harness steps in. It watches the token counts the server sends back, and at some threshold it runs compaction. A separate model call reads the session and writes a summary: the task, the decisions, which files changed, what's left to do.
+THEO: And that replaces the conversation?
+NORA: In what gets sent, yes. The next request carries the summary plus the latest few turns, in place of all the older messages. But the saved session on your disk keeps every one of them. Nothing's deleted. It's just not on the desk any more.
+THEO: [skeptical] A summary loses things, though. That's what a summary is.
+NORA: It does, which is why what goes into it matters. The book lists what has to survive: the goal, the constraints, the evidence so far, the current state of each file, failures still unresolved, jobs still running, and the next step. If the summary dropped the fact that the first fix deadlocked, the model might make the same mistake twice.
+THEO: And the cache? All that saved work on the start of the request?
+NORA: The start just changed, so the cache is lost, once. Then the new, shorter request becomes the start that later turns match, and the saving builds up again.
+THEO: Do the three agents handle this differently?
+NORA: A little. Claude Code compacts on its own near the limit, or when you type /compact, and it can keep durable notes outside the conversation entirely, in CLAUDE.md and in its auto memory. Codex can compact on your side, or let OpenAI's server do it, which hands back a sealed, encrypted item to add to the next request. Copilot runs a background summarizer that watches the budget and can get ahead of the limit, with a simpler way to fall back on.
+THEO: Different question. What if I'd rather not make the mess at all?
+NORA: Then big side quests can go to a subagent: a second conversation the model starts, with its own fresh context and its own loop. Its own desk, if you like. It goes off, reads its stack of files, and reports back in a summary, and only the summary lands on the parent's desk.
+THEO: [amused] Like sending an intern to the library.
+NORA: [chuckles] With one catch. It works on the same files as everyone else, unless it's given its own copy, a separate working folder on a branch of its own. If it changes the scheduler, the scheduler is changed for everyone.
+THEO: And its summary could be wrong.
+NORA: It could. Treat it like any report, and check it before you build on it.
+THEO: [thoughtful] So either the desk gets cleared, or the mess happens on someone else's desk.
+NORA: Those are the two moves. And either way, the model only ever sees what's on the desk in front of it.

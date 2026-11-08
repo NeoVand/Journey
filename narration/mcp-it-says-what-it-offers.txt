@@ -1,0 +1,18 @@
+# It says what it offers
+NORA: An MCP server is an outside program that lends an agent new tools. But before the model can use a single one, the harness, the agent program on your laptop, has to ask it a plain question: what have you got?
+THEO: And the server hands over a menu.
+NORA: A very precise one. For every tool, three things. A name, say search_docs. A sentence in plain words about what it does: search this library's documentation. And a JSON Schema for its arguments.
+THEO: JSON Schema being...
+NORA: A precise description of what the arguments must look like. This tool takes a query, the query is text, and it's required. That's how the model knows how to call it without guessing.
+THEO: [curious] Then what happens to the menu?
+NORA: The tools go into the request, in the same drawer as the built-in ones. Search the code, read a file, edit, run a command, and now, search the docs. The model just sees one list.
+THEO: [thoughtful] And it sees that list every turn.
+NORA: Every turn, every round trip. Tool definitions travel as text, and the model reads text as tokens, small pieces that each cost something. A server can bring a handful of tools. Connect a few servers and that's a long list riding along on every request, whether the model uses any of it or not.
+THEO: Like carrying the whole toolbox up the ladder for every single screw.
+NORA: [laughs] Exactly that. Which is why many harnesses carry just the labels. They send only the names, and fetch the full description and schema when a tool is actually needed.
+THEO: How does that look in each agent?
+NORA: In Claude Code, the tools arrive named after their server, like mcp__docs__search_docs, and wait as names until ToolSearch fetches the rest. In Codex, they join the tools in the request, and OpenAI's API can also add tools further along, so the start of the request, which the provider may have kept its work on, stays the same. In Copilot, they join the built-in tools in the same picker, and you can tick each one on or off.
+THEO: [skeptical] Hang on. That sentence about what the tool does. Who wrote it?
+NORA: Whoever wrote the server. And it matters, because the model reads it as text, alongside your own instructions. A malicious server could hide orders in its own description. That's why harnesses show you the descriptions when you install a server, and pin them.
+THEO: So the menu is also a message. One I didn't write.
+NORA: That's the catch. A server tells the model what it can do, in the server's own words. Worth reading those words once yourself.

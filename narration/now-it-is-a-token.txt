@@ -1,0 +1,24 @@
+# Now it is a token
+NORA: This is the moment the whole trip is named after. Until now your request has been text. Right here, at the provider, it turns into numbers, and numbers are all the model will ever read.
+THEO: [curious] So what gets cut up? Just my sentence?
+NORA: Everything. First, a chat template flattens the whole request, instructions, tools and conversation, into one long string. It wraps each message in special markers that say who's speaking: the system, the user, the assistant. Tool definitions get a fixed layout, and tool results get markers of their own, so the model can tell a result from something you typed.
+THEO: Is that template the same for every model?
+NORA: No. Every model family has its own, in the format that model was trained on. Then the tokenizer cuts that long string into pieces, using a vocabulary of a hundred thousand to two hundred thousand entries.
+THEO: Pieces meaning words?
+NORA: Often. Common words are one piece. Rare words and code identifiers break into several. A file name like job_scheduler.py might be five tokens. Four spaces of indentation may be a single one. And a word in a different alphabet, Persian say, can take several.
+THEO: How does it decide where to cut?
+NORA: The method is called byte-pair encoding, and the vocabulary is learned ahead of time. Common words end up with a piece of their own. A variable name you made up last Tuesday probably doesn't.
+THEO: [laughs] Fair. And each piece gets a number.
+NORA: Each piece has an ID, its number in that vocabulary. And from here on, the numbers are all there is. No letters. The model never sees an F, an i and an x. It sees one number that stands for "Fix".
+THEO: [thoughtful] There are two "the"s in my sentence. "Fix the race condition in the job scheduler."
+NORA: And they get the same number, because they're the same piece. That's what the two matching tiles show. The blue tiles at each end aren't your words at all. They're markers the template added: the user starts here, and the user stops here.
+THEO: Are those the real numbers on the tiles?
+NORA: No, they're illustrative. What's real is the idea: the same piece always gets the same number.
+THEO: So in that picture my sentence is nine numbers, with a marker on either side.
+NORA: In this example, yes. Tiny. And this is the first moment anyone knows exactly how many tokens you sent. Your laptop could only estimate. Now the provider has the true count, and it uses it three ways: for your bill, for looking up work it may already have done, and for checking you're inside the context window, the most the model can read at once.
+THEO: What if I'd pasted in a screenshot?
+NORA: It takes a side path. The image is cut into small patches, and a separate network, a vision encoder, turns each patch into an image token. Those sit in the same line as the text tokens.
+THEO: [skeptical] Let me check I've got the order right. Nothing on my laptop was ever a token. Not in the harness, not on the wire.
+NORA: Not one. Plain text left your laptop, scrambled bytes crossed the internet, and only here, behind the front door, does it become token IDs. That's form four of the twelve.
+THEO: So the model reads numbers, writes numbers, and everything else on this trip is about turning words into numbers and back.
+NORA: [warmly] That's the book's whole idea in one line. And your nine little numbers are about to find out how much company they have.

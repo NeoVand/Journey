@@ -1,0 +1,23 @@
+# All of them, at once
+THEO: Honest question. If every token has to look back at every token before it, on every layer, isn't this painfully slow?
+NORA: [amused] It would be if they took turns. They don't. While the model reads your prompt, every token does its looking back in the same instant.
+THEO: How? Doesn't "job" have to wait for something?
+NORA: Not on the same floor. Your whole prompt is already there. Every token's query, key and value can be worked out at once, and then every comparison at once, because inside one layer, no token needs another's answer. Reading a prompt this way is called prefill.
+THEO: [thoughtful] So it's a classroom where every kid does their own sum at the same time, instead of one kid doing all of them.
+NORA: Nearly. Where it breaks is that the sums aren't private. Every kid is reading everyone else's labels off the board. But the board's already written, so nobody waits. And that's exactly the work these chips are built for: huge numbers of multiplications, side by side.
+THEO: The graphics card thing.
+NORA: The same family of chips, yes. They're superb at doing the same simple math to a lot of numbers at once, and wasted on doing one thing at a time. A prompt of thousands of tokens keeps them busy. Prefill is limited by how fast they can compute, which is what they're for.
+THEO: Okay. Now the lights. There's a row of little lights along the front edge of each layer.
+NORA: [warmly] My favorite part. As each token works out its key and value, it also stores them in that row. One key and one value per token, on every layer.
+THEO: Why store them? The layer's done with them.
+NORA: For now. But think about what comes next. The model writes its answer one token at a time, and every new token has to look back at all the earlier ones, on every layer. Working out their keys and values again at every step, for thousands of tokens, would be absurd. So they're computed once and kept, and that store is the KV cache.
+THEO: [curious] Why not keep the queries too?
+NORA: Because a query is only asked once, by its own token, right now. Keys and values are what every later token comes back to.
+THEO: [impressed] That's tidy. Is it big?
+NORA: It's the scarcest thing in the building. In the book's example, about three hundred and thirty kilobytes per token, so a first turn of twenty-one thousand tokens takes about seven gigabytes of chip memory. Example numbers, but that's the scale.
+THEO: Is that how the model remembers me between turns?
+NORA: [short pause] It's how it saves work, which isn't the same thing. When your agent comes back for the next turn, the request starts with exactly the same bytes, plus a little more. If those blocks are still kept, only the new part runs. If something near the start changes, everything from that point on is worked out again. And blocks are usually kept for minutes, not days.
+THEO: Do the agents handle that differently?
+NORA: A little. Claude Code marks explicit cache breakpoints in its request, and reading from the cache costs a tenth of the normal input price. Codex relies on automatic prefix caching, and keeps its instructions fixed for the session so the start stays identical. With Copilot, GitHub's service sits in between, so the extension can't see hits or misses at all.
+THEO: So every token does its looking back at once, and leaves its key and value behind for whoever comes next.
+NORA: For every token after it, this turn and maybe the next. That row of lights is why writing the answer doesn't mean reading your whole prompt again.

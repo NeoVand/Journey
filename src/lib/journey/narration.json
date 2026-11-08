@@ -1,0 +1,250 @@
+{
+	"a-place-for-every-word": {
+		"title": "A place for every word",
+		"seconds": 213.6
+	},
+	"a-tool-call-is-born": {
+		"title": "A tool call is born",
+		"seconds": 205.9
+	},
+	"across-the-wire": {
+		"title": "Across the wire",
+		"seconds": 211.5
+	},
+	"all-of-them-at-once": {
+		"title": "All of them, at once",
+		"seconds": 213.9
+	},
+	"around-the-loop": {
+		"title": "Around the loop",
+		"seconds": 193.7
+	},
+	"attention": {
+		"title": "Attention",
+		"seconds": 214.9
+	},
+	"blocks-that-can-sit-anywhere": {
+		"title": "Blocks that can sit anywhere",
+		"seconds": 206.3
+	},
+	"different-bodies-one-kind-of-mind": {
+		"title": "Different bodies, one kind of mind",
+		"seconds": 189.5
+	},
+	"evidence-not-opinion": {
+		"title": "Evidence, not opinion",
+		"seconds": 188.9
+	},
+	"finding-the-code": {
+		"title": "Finding the code",
+		"seconds": 209.5
+	},
+	"harness-a-loop-inside-the-loop": {
+		"title": "A loop inside the loop",
+		"seconds": 151.4
+	},
+	"harness-asking-is-not-doing": {
+		"title": "Asking is not doing",
+		"seconds": 155.1
+	},
+	"harness-bigger-on-the-inside": {
+		"title": "Bigger on the inside",
+		"seconds": 155.4
+	},
+	"harness-everything-is-written-down": {
+		"title": "Everything is written down",
+		"seconds": 152.3
+	},
+	"harness-packed-fresh-every-turn": {
+		"title": "Packed fresh, every turn",
+		"seconds": 157.5
+	},
+	"harness-round-and-round": {
+		"title": "Round and round",
+		"seconds": 160.3
+	},
+	"how-a-coding-agent-works": {
+		"title": "How a coding agent works",
+		"seconds": 204.7
+	},
+	"intent-is-not-authority": {
+		"title": "Intent is not authority",
+		"seconds": 221.3
+	},
+	"it-starts-as-a-sentence": {
+		"title": "It starts as a sentence",
+		"seconds": 205.5
+	},
+	"its-working-memory": {
+		"title": "Its working memory",
+		"seconds": 194.4
+	},
+	"mcp-a-server-is-its-own-program": {
+		"title": "A server is its own program",
+		"seconds": 154.3
+	},
+	"mcp-it-says-what-it-offers": {
+		"title": "It says what it offers",
+		"seconds": 163.1
+	},
+	"mcp-the-answer-is-just-more-text": {
+		"title": "The answer is just more text",
+		"seconds": 147.6
+	},
+	"mcp-the-model-asks-the-harness-calls": {
+		"title": "The model asks, the harness calls",
+		"seconds": 157.1
+	},
+	"mcp-tools-are-one-of-three": {
+		"title": "Tools are one of three",
+		"seconds": 156.3
+	},
+	"memory-a-copy-before-the-change": {
+		"title": "A copy before the change",
+		"seconds": 121
+	},
+	"memory-a-fork-copies-the-conversation": {
+		"title": "A fork copies the conversation",
+		"seconds": 139.5
+	},
+	"memory-every-session-starts-blank": {
+		"title": "Every session starts blank",
+		"seconds": 141.2
+	},
+	"memory-going-back": {
+		"title": "Going back",
+		"seconds": 127.7
+	},
+	"memory-notes-that-outlive-a-session": {
+		"title": "Notes that outlive a session",
+		"seconds": 131.7
+	},
+	"memory-what-going-back-can-t-reach": {
+		"title": "What going back can’t reach",
+		"seconds": 132.9
+	},
+	"now-it-is-a-token": {
+		"title": "Now it is a token",
+		"seconds": 216.9
+	},
+	"one-at-a-time": {
+		"title": "One at a time",
+		"seconds": 223.2
+	},
+	"one-json-request": {
+		"title": "One JSON request",
+		"seconds": 205.5
+	},
+	"one-model-many-chips": {
+		"title": "One model, many chips",
+		"seconds": 216.8
+	},
+	"one-score-for-every-word": {
+		"title": "One score for every word",
+		"seconds": 195.4
+	},
+	"one-token-is-chosen": {
+		"title": "One token is chosen",
+		"seconds": 216.3
+	},
+	"reading-and-writing": {
+		"title": "Reading and writing",
+		"seconds": 210.7
+	},
+	"sandbox-deny-then-ask-then-allow": {
+		"title": "Deny, then ask, then allow",
+		"seconds": 145.1
+	},
+	"sandbox-how-much-it-may-do-alone": {
+		"title": "How much it may do alone",
+		"seconds": 142.9
+	},
+	"sandbox-inside-the-glass": {
+		"title": "Inside the glass",
+		"seconds": 124.5
+	},
+	"sandbox-outside-the-glass": {
+		"title": "Outside the glass",
+		"seconds": 127
+	},
+	"sandbox-two-different-questions": {
+		"title": "Two different questions",
+		"seconds": 158.9
+	},
+	"sandbox-when-the-glass-says-no": {
+		"title": "When the glass says no",
+		"seconds": 121.2
+	},
+	"seven-things-called-memory": {
+		"title": "Seven things called memory",
+		"seconds": 203.3
+	},
+	"sharing-the-chips": {
+		"title": "Sharing the chips",
+		"seconds": 192.6
+	},
+	"text-comes-back-not-numbers": {
+		"title": "Text comes back, not numbers",
+		"seconds": 199.4
+	},
+	"the-front-door": {
+		"title": "The front door",
+		"seconds": 199.6
+	},
+	"the-harness-wakes-up": {
+		"title": "The harness wakes up",
+		"seconds": 224.3
+	},
+	"the-model-has-no-hands": {
+		"title": "The model has no hands",
+		"seconds": 215.6
+	},
+	"the-transformer": {
+		"title": "The transformer",
+		"seconds": 221.3
+	},
+	"the-whole-fix-in-ten-turns": {
+		"title": "The whole fix, in ten turns",
+		"seconds": 230.3
+	},
+	"the-whole-trip-in-one-look": {
+		"title": "The whole trip, in one look",
+		"seconds": 205.6
+	},
+	"then-again-eighty-times": {
+		"title": "Then again, eighty times",
+		"seconds": 203.9
+	},
+	"then-each-token-by-itself": {
+		"title": "Then each token, by itself",
+		"seconds": 211.8
+	},
+	"thousands-more-behind-it": {
+		"title": "Thousands more behind it",
+		"seconds": 203.5
+	},
+	"three-ways-to-edit": {
+		"title": "Three ways to edit",
+		"seconds": 203.2
+	},
+	"turn-two-starts-ahead": {
+		"title": "Turn two starts ahead",
+		"seconds": 200.8
+	},
+	"what-finished-means": {
+		"title": "What finished means",
+		"seconds": 190.1
+	},
+	"when-the-answer-gets-lost": {
+		"title": "When the answer gets lost",
+		"seconds": 193.1
+	},
+	"when-the-context-fills-up": {
+		"title": "When the context fills up",
+		"seconds": 213.1
+	},
+	"when-the-page-lies": {
+		"title": "When the page lies",
+		"seconds": 217.9
+	}
+}

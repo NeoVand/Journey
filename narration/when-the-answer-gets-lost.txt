@@ -1,0 +1,24 @@
+# When the answer gets lost
+NORA: Here's a nasty one. The model asks for an edit. The harness, the program on your laptop around the model, makes it, and the file on your disk really changes. Then the result never makes it back.
+THEO: [curious] How does a result just get lost?
+NORA: Plenty of ways. The harness crashes after writing the file but before recording what happened. The connection drops before the last message arrives. A test run times out, but a worker it started is still alive, still holding a lock file. They all have the same shape: something happened, and nobody's sure what.
+THEO: So the model thinks the file is unchanged.
+NORA: Which is the dangerous part, because if it simply tries again, it might be doing the thing twice. So the book's rule is that an unknown outcome is a state of its own. The honest answer is, I don't know whether that happened. And the next step is to look, not to retry.
+THEO: Look how?
+NORA: Read the file again. Run git status. Ask the remote service about the job. Even the rules for HTTP, the protocol behind the web, warn against blindly repeating a request whose effect may already have happened.
+THEO: [thoughtful] But say it does retry by mistake. With the scheduler edit.
+NORA: Then exact-string edits pay off. That's Claude Code's design: find this old text, which must appear exactly once, and swap in the new. If the first edit went through, the old text is gone, so the second attempt finds nothing and fails, harmlessly. A patch with a few lines of context, the way Codex edits, behaves the same way.
+THEO: An edit that's safe to do twice. I like that.
+NORA: It's the property you want wherever you can get it. And when looking doesn't settle things, a few bounded retries, then stop and tell you what's known.
+THEO: Okay, the other half. I'm watching it work and I want to step in. I've got buttons for that.
+NORA: You've got four controls, and they do four different things, which people mix up all the time. Steering changes the plan: you type something new while it works, and that becomes the next message it reads.
+THEO: Cancelling.
+NORA: Stops the stream, so the reply stops arriving. In Claude Code that's Escape, and whatever text had already arrived stays in the conversation. In Copilot it's the Stop button.
+THEO: Terminating.
+NORA: Kills the process: the test run, or a server it started. And the fourth, rolling back: putting a file back the way it was, with git, say. That's the only one of the four that undoes a file change.
+THEO: [surprised] So if I hit cancel after an edit's gone through, the edit's still there.
+NORA: It is. Cancelling stops words, not changes. OpenAI's documentation for Codex is blunt about it: a new instruction doesn't undo earlier actions, or cancel a tool that's already started.
+THEO: [skeptical] And rolling back fixes everything else?
+NORA: Not everything. Nothing undoes a message that's been sent, or a pull request that's been merged.
+THEO: Steer, cancel, kill, roll back. Four levers.
+NORA: [warmly] Four levers. Pull the one you mean.

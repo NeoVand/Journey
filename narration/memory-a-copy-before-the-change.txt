@@ -1,0 +1,20 @@
+# A copy before the change
+NORA: Before the agent touches scheduler.py, the harness can quietly keep a copy of how it was. That copy is a checkpoint.
+THEO: [skeptical] Why bother? I have git.
+NORA: You do, and git still matters. But a checkpoint is the harness's own copy, kept without you committing anything first, so a change the agent makes in this session can be put back.
+THEO: Walk me through today, then.
+NORA: Today's work begins. The agent edits the scheduler to put a lock around the queue. It pushes a commit. Then it makes one more change, and that one breaks a test. When the copies get taken depends on the agent.
+THEO: When, exactly?
+NORA: In Claude Code, a checkpoint is taken before each of your prompts, and it covers the edits its file tools make.
+THEO: [curious] Its file tools. As opposed to what?
+NORA: As opposed to the shell. If a file is changed only by a shell command, say a formatter the agent ran from the terminal, Claude Code's checkpoint doesn't track it.
+THEO: So it's like the undo in my editor.
+NORA: A fair start, and here's where it breaks. Undo walks back one small edit at a time. A checkpoint is a copy of the files as they stood at one moment, just before a prompt or a request.
+THEO: What about VS Code?
+NORA: Before each request, VS Code keeps a copy of the files that request changes. Checkpoints are on by default there.
+THEO: And Codex?
+NORA: [short pause] Codex keeps no checkpoints today. Its undo was removed in April twenty twenty-six. So your way back there is git, and the habit worth having is to commit before big changes.
+THEO: Hang on. The agent pushed a commit in the middle of all that. Does a checkpoint know about the push?
+NORA: A checkpoint is a copy of files on your disk. That's all it holds. Keep that in mind, because it matters the moment you want to go back.
+THEO: [thoughtful] So a copy before each step if your agent keeps one, and git if it doesn't.
+NORA: And either way, it's worth knowing which one you have before the day you need it.

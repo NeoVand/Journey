@@ -8,6 +8,8 @@ import { useRecordings } from './synth';
 import { PADS } from './pads';
 
 const MASTER = 0.9;
+/** How loud the world stays under a conversation. */
+const HUSH = 0.28;
 
 export interface Play {
 	/** Linear volume, 1 as recorded. */
@@ -66,6 +68,8 @@ export class Sound {
 	ctx: AudioContext | null = null;
 	on = false;
 	private master!: GainNode;
+	/** Everything, made quieter while Nora and Theo are talking. */
+	private under!: GainNode;
 	private sfx!: GainNode;
 	private bedsBus!: GainNode;
 	private duck!: GainNode;
@@ -112,7 +116,9 @@ export class Sound {
 		comp.release.value = 0.25;
 		this.master = ctx.createGain();
 		this.master.gain.value = 0;
-		comp.connect(this.master).connect(ctx.destination);
+		this.under = ctx.createGain();
+		this.under.gain.value = this.hushed ? HUSH : 1;
+		comp.connect(this.under).connect(this.master).connect(ctx.destination);
 		this.sfx = ctx.createGain();
 		this.sfx.connect(comp);
 		this.duck = ctx.createGain();
@@ -202,6 +208,16 @@ export class Sound {
 		if (!ctx || !this.on) return;
 		const at = ctx.currentTime + (o.delay ?? 0) + 0.005;
 		v(ctx, this.strip(o.gain ?? 1, o.pan ?? 0, o.wet ?? 0.2, at), at);
+	}
+
+	private hushed = false;
+	/** Makes room for a conversation: the world keeps sounding, a long way under the voices. */
+	hush(on: boolean) {
+		this.hushed = on;
+		const ctx = this.ctx;
+		if (!ctx) return;
+		this.under.gain.cancelScheduledValues(ctx.currentTime);
+		this.under.gain.setTargetAtTime(on ? HUSH : 1, ctx.currentTime, on ? 0.25 : 0.8);
 	}
 
 	/** Lets the ambiences make room for a moment, for something that matters. */

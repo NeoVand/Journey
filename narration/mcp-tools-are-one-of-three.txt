@@ -1,0 +1,19 @@
+# Tools are one of three
+THEO: I always thought MCP was a way to add tools to an agent. Full stop.
+NORA: Tools are one of three things an MCP server, the outside program on the other end, can offer. The other two are easy to miss, because the model never reaches for them itself.
+THEO: Go on.
+NORA: Tools are actions the model can ask for: search the docs, run a query, open a page. Resources are things to read, such as a file or a table. And prompts are ready-made requests, often offered to you as slash commands.
+THEO: Make it concrete. Take a documentation server.
+NORA: As a tool, it might offer a search. The model writes a call, search for locking, and gets back the matching sections. As resources, it might offer the documentation pages themselves. And as a prompt, it might offer a request already written out, like: explain how this library expects its locks to be used. Often you'd pick it as a slash command.
+THEO: [skeptical] That's the same thing three ways. Search the docs, read the docs, ask about the docs.
+NORA: The content overlaps, sure. What differs is who decides. Tools are the model's to call. It reads the list, and in the middle of fixing your scheduler it decides it needs the docs on locking, and asks.
+THEO: And the other two?
+NORA: Aren't the model's to reach for. The app decides when a resource or a prompt comes in, or you do. If you want the locking page in the conversation from the start, it comes in because you chose it, not because the model asked.
+THEO: [curious] And a prompt is what, a saved message?
+NORA: Close. A template, really: a request someone wrote well once, maybe with a blank or two for you to fill. You choose it, it goes in as your request, and the loop runs as usual from there.
+THEO: So it's a kitchen. Tools are the knives, resources are the pantry, prompts are the set menu.
+NORA: [amused] I like it, with one correction. In this kitchen, the cook only gets to pick up the knives. What comes out of the pantry, and which set menu is served, is up to the front of house, which is the app, or up to you.
+THEO: [thoughtful] So if the model wants a resource it hasn't been given, it's stuck?
+NORA: It can't pull one in by itself. If the server offers a tool that does the same job, it can ask for that, and that call goes through the usual checks like any other.
+THEO: Tools, the model asks for. Resources and prompts, someone else chooses.
+NORA: Three kinds of offer, one rule. Only tools are the model's to call.

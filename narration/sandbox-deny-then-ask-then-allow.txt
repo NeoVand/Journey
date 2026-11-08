@@ -1,0 +1,20 @@
+# Deny, then ask, then allow
+NORA: Three calls reach the gate, one after another. Read the .env file. Run git push. Run the scheduler tests. Each gets a different answer, and the order of the checks is what sorts them.
+THEO: Which order?
+NORA: Deny first, then ask, then allow, and the first match decides. The .env file is where a project usually keeps its secrets, passwords and keys, so reading it matches a deny. Nothing runs. A refusal goes back to the model as the result of that call.
+THEO: So the model finds out it was told no.
+NORA: It reads the refusal like any other result, and carries on from there. The git push matches an ask, so it stops and waits for you. And the tests match an allow, so pytest just runs, without a word.
+THEO: [curious] What if I've written a really specific allow rule? In CSS, the most specific rule wins.
+NORA: And that's exactly where the comparison breaks. Specificity counts for nothing here. However narrow and careful an allow rule is, if a deny matches the same call, the deny wins. Order by kind, not by detail.
+THEO: [skeptical] That feels harsh.
+NORA: [chuckles] It's meant to. It means a broad allow you wrote in a hurry can't quietly reopen the file you denied. The deny is the one rule you can count on holding.
+THEO: And a call that matches nothing at all?
+NORA: Then it falls to the session's default, which usually means it asks you.
+THEO: Where do these rules actually live?
+NORA: In Claude Code, in settings, merged from your organization, from you and from the project. A rule names a tool and a pattern: Bash commands that start with pytest, say, or reading the .env file. And hooks, your own scripts that run just before a tool, can't talk their way past them: a hook that says allow can't beat a deny or an ask.
+THEO: Codex?
+NORA: Rule files that allow, prompt for or forbid commands by how they start. Anything those don't cover follows the approval policy, the setting for when to ask.
+THEO: And Copilot?
+NORA: In VS Code, terminal commands are checked against allow and deny lists, and anything not on them gets a confirmation card.
+THEO: [thoughtful] So the deny list is the one I should write first.
+NORA: First, and most carefully. Allows save you clicks. Denies are what you're relying on.

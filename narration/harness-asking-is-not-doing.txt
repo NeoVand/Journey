@@ -1,0 +1,20 @@
+# Asking is not doing
+NORA: Picture the moment a reply arrives, and in it the model has written: run pytest on the scheduler tests. At that moment, nothing has run.
+THEO: Even though it's a proper tool call? A name, the arguments, all of it?
+NORA: Even then. A tool call is neatly structured text, but it's still text. A request. The model has no way to run anything. Only the harness can, the program on your machine.
+THEO: So where does the request go?
+NORA: To a gate, and the gate has three answers. It's allowed, so it runs. It needs you, so the harness stops and asks. Or it's refused, and the refusal goes back to the model as the result, so it can try something else.
+THEO: Who decides which answer?
+NORA: Cheap checks first. Is this a real tool, do the arguments fit, is the file inside your project and not on a deny list? Then your settings: what may run on its own, and what has to ask.
+THEO: [skeptical] And when my team has a rule the settings don't cover? Say, nothing touches the migrations folder without a human looking.
+NORA: That's where hooks plug in. A hook is your own script, and the harness runs it at fixed moments: before a tool runs, after it runs, and when the agent stops.
+THEO: So before an edit, my script looks at the path, sees migrations, and says no.
+NORA: Exactly that. A hook that runs first can block a call, or change it before it goes through. One that runs after can look at what happened, say, run your linter over the file that was just edited.
+THEO: And when the agent stops?
+NORA: [thoughtful] A script there can look at the final state and refuse to let the agent finish. For example: the tests haven't been run, so you're not done yet.
+THEO: A bouncer I hired myself, with my own list.
+NORA: [chuckles] A bouncer who also watches the exit. Most bouncers only care who comes in.
+THEO: Do the three agents all do this the same way?
+NORA: Same idea, different fittings. Claude Code's hooks can catch every step, from just before a tool runs to just before the conversation gets squeezed into a summary. In Codex, rules in execpolicy do that job for commands, and an approval policy decides when to ask you. In Copilot, you set hooks in the agent's customization settings, and a confirmation card asks you before risky steps.
+THEO: [thoughtful] So the model can ask for whatever it likes. What actually runs is decided on my machine, by rules I set.
+NORA: That's the line to hold on to. Asking is the model's. Doing belongs to the harness, and to you.

@@ -1,0 +1,24 @@
+# The front door
+NORA: The first thing your request meets at the provider isn't artificial intelligence at all. It's five plain checks, run by ordinary code, in a fixed order.
+THEO: [surprised] No AI at the front door of an AI company?
+NORA: None yet. A load balancer, then API servers, doing the same cheap, predictable checks any web service does. Check one: decrypt. The encryption that protected your request across the internet ends right here.
+THEO: So from here on, the provider can read it.
+NORA: Its own servers can, yes. They have to, to do anything with it. Check two: who are you? Is this key valid, and which organization owns it?
+THEO: Then the limits, I'm guessing. I've hit those.
+NORA: [chuckles] Most of us have. Check three is the rate limit: has this organization sent too many requests this minute, or used too many tokens, the small pieces of text it's billed by? Check four is the budget: is there any quota or money left?
+THEO: And five?
+NORA: Capacity. If every chip in the cluster is busy, your request either waits in a queue or gets turned away with an overloaded error. At Anthropic that's status code five twenty-nine. Elsewhere it's often four twenty-nine or five oh three.
+THEO: I've seen that one. It's not me, it's them.
+NORA: Exactly. It's about the service, not about you. And the harness quietly tries again, with what's called exponential backoff: wait one second, then two, then four.
+THEO: [skeptical] Why can't they just switch on more machines when it's busy?
+NORA: Because a working copy of the model isn't quick to set up. Hundreds of gigabytes of weights have to be pulled in and spread across the chips, warmed up and health checked, before it takes a single request. So capacity can't appear instantly in a spike, and that's why this check exists at all.
+THEO: Is the front door the same for all three agents?
+NORA: For two of them there's only one door. Claude Code goes to Anthropic's own, or to Bedrock, Vertex or Foundry serving the same models. Codex has one door too, though with a ChatGPT login the request goes to ChatGPT's backend rather than the public API host.
+THEO: And Copilot?
+NORA: Copilot has two. GitHub's service goes first. It checks who you are, which plan you're on, your organization's policies, which models you're allowed, and content exclusions, which are rules that keep certain files from ever leaving the editor. Then it forwards the request to the model vendor, and the vendor's own front door runs this whole list again.
+THEO: [thoughtful] So a Copilot request gets checked twice over.
+NORA: Twice, and the extension only ever sees GitHub's answers. Which vendor's cluster served it isn't public.
+THEO: Let me get this straight. Decrypt, who are you, rate limit, budget, capacity. Not a single neural network involved.
+NORA: Not one. This whole stretch is ordinary web infrastructure, plain rules with no guessing. The part that deals in probabilities, the model itself, is still further in.
+THEO: And once it's through?
+NORA: The JSON itself is checked against the API's rules, and the model's name is pinned to one exact version. Then the request goes down the pipe, to be turned into tokens at last.

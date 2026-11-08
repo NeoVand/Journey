@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { GLOSSARY, HARNESSES, FORMS, LOGITS, RUN_WITH_CACHE, RUN_WITHOUT_CACHE, slug, TEN_AT, TEN_STEP, TEN_TURNS, TOP_K, TRACK_AT, TRACKS, TRIP, wheelOdds, wholePercents, type HarnessId, type TrackId } from './content';
-	import { tick } from 'svelte';
+	import { onDestroy, tick } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import TripMap from './TripMap.svelte';
@@ -16,7 +16,8 @@
 	import { SvelteSet } from 'svelte/reactivity';
 	import Blueprint, { type Stage } from './Blueprint.svelte';
 	import Icon from './Icon.svelte';
-	import { ArrowLeft01Icon, ArrowRight01Icon, VolumeHighIcon, VolumeOffIcon } from '@hugeicons/core-free-icons';
+	import { ArrowLeft01Icon, ArrowRight01Icon, ConversationIcon, VolumeHighIcon, VolumeOffIcon } from '@hugeicons/core-free-icons';
+	import { Narrator, TALKS, clock, spoken } from './narrator.svelte';
 	import { Sound } from './sound/engine';
 	import { Conductor } from './sound/conductor';
 	import { score, tripScore, TURN_NOTES } from './sound/score';
@@ -209,6 +210,21 @@
 	}
 	/** Sound: off until the reader turns it on, and remembered between visits. */
 	let soundOn = $state(false);
+	/** While Nora and Theo talk, the world's own sounds make room. Set once the sound exists. */
+	let hush: (on: boolean) => void = () => {};
+	/** Each card's conversation, behind the header's talk key. */
+	const narrator = new Narrator((file) => `${resolve('/')}narration/${file}`, (on) => hush(on));
+	// The page going away, or a new version of it arriving while it's being worked on, must not leave a voice talking.
+	onDestroy(() => narrator.dispose());
+	/** Which conversation belongs to a card: its title's, and on a side trip the trip's name first. */
+	const talkOf = (el: HTMLElement, trip?: TrackId) => {
+		const title = el.querySelector('h1, h2')?.textContent;
+		return title ? `${trip ? `${trip}-` : ''}${slug(title)}` : null;
+	};
+	/** The header's conversation key: what it would play, and how it describes itself. */
+	const talk = $derived(narrator.here ? TALKS[narrator.here] : null);
+	const talkOn = $derived(!!talk && narrator.id === narrator.here);
+	const talkLeft = $derived(talkOn && narrator.time > 0.5 && !narrator.done ? narrator.duration - narrator.time : (talk?.seconds ?? 0));
 	let toggleSound: () => void = () => {};
 	/** The sounds of the interface itself: a step, a flight, the map. Quiet until sound is on. */
 	/** The page's own sounds: the reader's steps and flights, and the controls they press. `n` and `m` say which, or how many. */
@@ -709,6 +725,11 @@
 						if (n === 0) el.style.pointerEvents = k > 0.6 ? 'auto' : 'none';
 						el.inert = k < 0.1;
 					});
+					// The card that's fully up, if one is: its conversation may start, and any other one goes.
+					if (!track) {
+						const up = shownKey.indexOf(200);
+						narrator.reader(up >= 0 ? talkOf(pins[up].el) : null);
+					}
 					diveEl.style.opacity = String(w.state.dive);
 					diveEl.style.visibility = w.state.dive > 0 ? '' : 'hidden';
 					// A phone browser paints the page's own colour around the page, so it has to go dark with the world.
@@ -1077,6 +1098,7 @@
 					el.inert = k < 0.1;
 				});
 				if (at !== trackCard && most > 0.5) trackCard = at;
+				narrator.reader(most > 0.995 ? talkOf(tripPins[at], track) : null);
 				canBack = tripDirector.goal > 0 || t > 0.004;
 				// At the end, a step forward is the way home.
 				canOn = true;
@@ -1203,6 +1225,7 @@
 			/* ---- sound ---- */
 			// Under the site's own address, wherever it's hosted.
 			const sound = new Sound((name) => `${resolve('/')}sound/${name}.mp3`);
+			hush = (on) => sound.hush(on);
 			const hear = (x: number, y: number, z: number) => w.heard(x, y, z);
 			const story = score(w);
 			const main = new Conductor(sound, story.cues, story.beds, hear);
@@ -1549,9 +1572,22 @@
 				</p>
 			{/if}
 		</div>
-		<div class={['stepper', { show: driven }]} role="group" aria-label="Sound, and steps through the story" inert={!driven}>
+		<div class={['stepper', { show: driven }]} role="group" aria-label="Sound, a conversation about this card, and steps through the story" inert={!driven}>
 			<button type="button" class="sound" aria-pressed={soundOn} aria-label="Sound" title={soundOn ? 'Sound is on' : 'Sound is off'} onclick={() => toggleSound()}>
 				<Icon icon={soundOn ? VolumeHighIcon : VolumeOffIcon} size={19} stroke={1.8} />
+			</button>
+			<!-- Nora and Theo talk the card through. Playing, amber fills the key as the conversation goes. -->
+			<button
+				type="button"
+				class={['talk', { on: talkOn, playing: talkOn && narrator.playing, waiting: talkOn && narrator.waiting }]}
+				style:--done={talkOn ? narrator.progress : 0}
+				aria-pressed={talkOn && narrator.playing}
+				aria-label={talk ? `Listen to Nora and Theo talk about this card, ${spoken(talk.seconds)}` : 'Listen to a conversation about this card'}
+				title={!talk ? 'No conversation here' : talkOn && narrator.playing ? `Pause, ${clock(talkLeft)} left` : `Listen to Nora and Theo talk about this card, ${clock(talkLeft)}`}
+				disabled={!talk}
+				onclick={() => narrator.here && narrator.toggle(narrator.here)}
+			>
+				<Icon icon={ConversationIcon} size={20} stroke={1.8} />
 			</button>
 			<button type="button" data-step="back" aria-label="Previous step" aria-keyshortcuts="ArrowLeft" title="Previous step (←)" disabled={!canBack} onclick={() => step(-1)}>
 				<Icon icon={ArrowLeft01Icon} size={20} stroke={2} />
@@ -3317,12 +3353,67 @@
 		outline: 2px solid #1f5fe0;
 		outline-offset: 1px;
 	}
-	/* A seam between the sound and the steps, pressed into the panel. */
-	.stepper .sound {
+	.stepper .sound[aria-pressed='false'] {
+		color: #7d879a;
+	}
+	/*
+	 * Two people talking: Nora and Theo, on this card. While they talk, amber fills the key from the left, steadily by
+	 * the clock, the way Next fills while a card plays, so the reader can see how much is left. Paused, the amber stays,
+	 * paler. A seam after it, pressed into the panel, keeps the listening apart from the steps.
+	 */
+	.stepper .talk {
 		position: relative;
+		isolation: isolate;
 		margin-right: 5px;
 	}
-	.stepper .sound::after {
+	.stepper .talk::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		z-index: -1;
+		border-radius: inherit;
+		background: linear-gradient(#ffd45f, #ffb921);
+		clip-path: inset(0 calc(100% - var(--done, 0) * 100%) 0 0);
+		opacity: 0;
+		transition: opacity 0.3s;
+	}
+	.stepper .talk.on,
+	.stepper .talk.on:hover {
+		background: #fff0c7;
+		color: #101a30;
+		box-shadow: inset 0 1px 2px rgb(150 100 10 / 0.2);
+	}
+	.stepper .talk.on::before {
+		opacity: 0.45;
+	}
+	.stepper .talk.playing::before {
+		opacity: 1;
+	}
+	/* Talking, the two of them nod along; waiting for the voices to arrive, they breathe. */
+	.stepper .talk.playing :global(svg) {
+		animation: nod 1.4s ease-in-out infinite;
+	}
+	.stepper .talk.waiting :global(svg) {
+		animation: breathe 0.9s ease-in-out infinite alternate;
+	}
+	@keyframes nod {
+		0%,
+		100% {
+			transform: none;
+		}
+		30% {
+			transform: translateY(-1.5px) rotate(-4deg);
+		}
+		60% {
+			transform: translateY(0.5px) rotate(3deg);
+		}
+	}
+	@keyframes breathe {
+		to {
+			opacity: 0.4;
+		}
+	}
+	.stepper .talk::after {
 		content: '';
 		position: absolute;
 		right: -5px;
@@ -3332,9 +3423,6 @@
 		border-radius: 1px;
 		background: #ecdcbb;
 		box-shadow: 1px 0 0 #fff;
-	}
-	.stepper .sound[aria-pressed='false'] {
-		color: #7d879a;
 	}
 	/* Next, at rest: a little amber key. */
 	.stepper button[data-step='next']:not(:disabled) {
@@ -3426,6 +3514,8 @@
 	@media (prefers-reduced-motion: reduce) {
 		.stepper button[data-step='next']:global(.ready),
 		.stepper button[data-step='next']:global(.ready) :global(svg),
+		.stepper .talk.playing :global(svg),
+		.stepper .talk.waiting :global(svg),
 		.spine li.now,
 		.begin.live {
 			animation: none;
@@ -3718,7 +3808,8 @@
 			color: HighlightText;
 		}
 		.picker:global(.sliding)::before,
-		.stepper button[data-step]::before {
+		.stepper button[data-step]::before,
+		.stepper .talk::before {
 			display: none;
 		}
 		.spine li.now {
@@ -4561,6 +4652,24 @@
 		.stepper button {
 			width: 37px;
 		}
+		/* A phone has the panel's four keys, the dots and the form's name to fit side by side, so the map's key keeps
+		   only its mark, and the keys give up a little width. */
+		@media (max-width: 440px) {
+			.brand .map-chip {
+				position: absolute;
+				width: 1px;
+				height: 1px;
+				overflow: hidden;
+				clip-path: inset(50%);
+				white-space: nowrap;
+			}
+			.brand {
+				padding: 9px 9px 10px;
+			}
+			.bar .stepper button {
+				width: 34px;
+			}
+		}
 		/* The narrowest phones tighten the dots and the keys a little more. */
 		@media (max-width: 380px) {
 			.bar .spine li {
@@ -4570,7 +4679,19 @@
 				width: 12px;
 			}
 			.bar .stepper button {
-				width: 33px;
+				width: 31px;
+			}
+		}
+		/* And the very smallest, the first iPhone SE's width, a notch more again. */
+		@media (max-width: 340px) {
+			.bar .spine li {
+				width: 5px;
+			}
+			.bar .spine li.now {
+				width: 10px;
+			}
+			.bar .stepper button {
+				width: 29px;
 			}
 		}
 		.pin,

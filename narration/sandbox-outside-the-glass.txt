@@ -1,0 +1,16 @@
+# Outside the glass
+NORA: Here's a line that catches careful people out. The sandbox wraps the commands the agent runs, and only them.
+THEO: Only them? Then what about the edit to the scheduler? That's the most important thing it does.
+NORA: That edit doesn't go through the shell. The harness has its own tools for reading and editing files, and they run outside the glass, with your full access. So do the MCP servers it starts, the outside programs that lend it extra tools. And so do your hooks, the scripts you set up to run at fixed moments.
+THEO: [surprised] So the thing that changes my code isn't fenced at all?
+NORA: Not by the glass. It's kept in check by the rules, the permission side. In Claude Code that's the documented line: the sandbox covers shell commands only, and the file tools are held to your working directory by the permission rules.
+THEO: [skeptical] Fine, the edit tool I can live with. It's built in, and all it does is edit files. But an MCP server is somebody else's program.
+NORA: That's the part worth slowing down on. Say you've plugged in a server that serves a library's documentation. It's a separate program, running on your laptop, with your access. When you write an allow rule for one of its tools, there's no glass behind that rule. So an allow rule for an MCP tool deserves as much thought as one for a shell command.
+THEO: [curious] Does any of the three wrap more than commands?
+NORA: Codex is stricter about edits. Its file edits are checked against the same writable folders as its commands. Its MCP servers still run on their own, though.
+THEO: And VS Code?
+NORA: With the Copilot harness, the sandbox can wrap MCP servers too, and does once it's switched on. File edits there go through VS Code's own permissions.
+THEO: And my hooks?
+NORA: Outside the glass too, with your access. They're your own scripts, so it pays to know what's in them.
+THEO: [thoughtful] So the glass is a fence around one kind of thing, and the rules guard everything else.
+NORA: That's it. Know which of your tools live outside the glass, because for those, the rules and your answers are the only gate.

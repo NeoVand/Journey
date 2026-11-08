@@ -1,0 +1,21 @@
+# What finished means
+THEO: Four hundred and eighteen tests pass. The agent says it's done. We're done.
+NORA: The model has stopped asking for tools. Strictly speaking, that's all done means.
+THEO: [skeptical] That sounds like a lawyer's answer.
+NORA: [laughs] It's a precise one. There's no special finished signal. After the green tests, the model writes a plain-text summary and then an end-of-turn token, one small piece of text that marks the end of its reply, instead of another tool call. In Claude Code the stop reason is end_turn, and in Codex and Copilot the turn simply ends.
+THEO: And the harness takes that as finished.
+NORA: Usually. The harness, the program on your laptop around the model, first runs any stop hooks, scripts you've set up to run when the agent tries to stop. One might check that the tests were really run. If a hook objects, the objection goes back to the model as a new message, and the loop carries on.
+THEO: But the tests did pass. Green is green.
+NORA: Green tests are evidence, not proof, especially for a race condition. A good finish can answer some awkward questions. Was the original failure reproduced before the fix? Does the change deal with the threads themselves, or only with the case the test happened to hit? Were the tests run after the very last edit, and are your own uncommitted changes still intact?
+THEO: [thoughtful] And the model actually asks itself all that?
+NORA: It's trained to, and the harness's instructions push it to. But that's a habit, not a guarantee. A run can also end without finishing: stuck on a question, cancelled, out of budget, or refused. A good summary says which.
+THEO: Fine. Say it really is fixed. Is it shipped?
+NORA: Not even close. The ending is five separate steps, each with its own permission. Presenting the patch needs nobody's say-so, because it's only a proposal on your screen. Committing goes through the same permission gate as any other command. Opening a pull request needs that gate too, plus GitHub credentials that are allowed to do it.
+THEO: And merging?
+NORA: Merging belongs to human reviewers and your branch rules. Deploying belongs to your release process, outside the agent entirely. An agent that says it's finished has usually done the first one or two.
+THEO: [amused] So done really means, I've left it on your desk.
+NORA: That's it exactly. Claude Code shows the diff and the summary. Codex lists the changed files in the terminal. Copilot's Agents window puts the files and diffs beside the chat. And if it does commit, harnesses add a line to the message, so reviewers know an agent wrote it.
+THEO: What did the whole thing cost? Ten round trips.
+NORA: A typical fix runs from tens of cents to a few dollars. Most of what you pay for is cache reads: the same conversation sent again, served from saved work at a fraction of the price.
+THEO: So, cheap, stopped, and not shipped.
+NORA: [warmly] The model can stop. Everything after that has a different owner at every step.

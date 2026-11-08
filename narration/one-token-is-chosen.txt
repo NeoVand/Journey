@@ -1,0 +1,29 @@
+# One token is chosen
+THEO: [skeptical] A wheel. There's a roulette wheel in the middle of my coding agent.
+NORA: There is, and it's the only roll of the dice in the whole journey. The tokenizer, every layer of the model, the harness on your laptop, all of it does the same thing every time, given the same input. This doesn't.
+THEO: Okay. What lands on the wheel?
+NORA: The model's output is a raw score for every entry in its vocabulary, called a logit. The highest ones come to this board. In this example, "The" scores highest, then "I", "Let", "First" and "To", and a couple of long shots, "Sorry" and "Cat".
+THEO: [laughs] "Cat."
+NORA: [chuckles] Every entry gets a score, and most are hopeless. So before the spin, the long shots are cut. That's top-k or top-p.
+THEO: Two ways of doing the same thing?
+NORA: Two ways to cut the long shots. Top-k keeps a fixed number of the best, and here that's five. Top-p keeps the smallest group whose chances add up to a set share. Here, "Sorry" and "Cat" sink off the board.
+THEO: And the five that are left become slices.
+NORA: They become odds, and the odds are the slices. A formula called softmax turns the scores into shares of a hundred percent, the biggest taking the most. But first there's a dial on them: temperature.
+THEO: Which does what, exactly?
+NORA: It scales the scores before they become odds. Turn it down and the gaps grow, so the favorite nearly always wins. Turn it up and the gaps shrink, and the long shots get a real chance.
+THEO: [excited] Give me numbers.
+NORA: Illustrative ones, but the wheel on the card is real, so you can check me. At a temperature of one, "The" gets about six spins in ten. Drag the dial right down and it's nearly every spin. Push it up to two, and "The" is still the favorite, but under four in ten, and even "To" gets about one in ten.
+THEO: So where do coding agents set it?
+NORA: Usually cool: near zero, or at the provider's default. So in practice the wheel is lopsided.
+THEO: Then why not go all the way? Always take the top score, and drop the wheel.
+NORA: Near zero comes close: the favorite almost always wins. But as long as there's a wheel, a random draw picks one. Lopsided is still a wheel.
+THEO: [thoughtful] So the same prompt could start differently on two runs.
+NORA: It could. Same model, same request, and another spin might start with "I" instead of "The". Everything after builds on whatever was picked, so the reply could be worded differently from there on.
+THEO: Is temperature the only dial?
+NORA: There can also be a repetition penalty, which discourages the model from going round in loops. But the heart of it is on the card: cut the long shots, reshape the rest, and draw.
+THEO: And where is the wheel? On my laptop?
+NORA: In the data center, right after the model, whichever agent you use. Claude Code, Codex and Copilot never spin it themselves. What they get back is the result, as text.
+THEO: And what does it land on here?
+NORA: In this story, "The". One token ID. That number goes onto the end of the sequence, and it's the first word of the model's thinking: "The user wants the race condition fixed." Its own key and value don't exist yet. They're worked out on the next pass.
+THEO: One spin, one token. And then the whole stack runs again.
+NORA: [warmly] For every token it writes. Before you scroll on, move the dial and spin it yourself. The odds on the card are the ones the wheel really draws from.

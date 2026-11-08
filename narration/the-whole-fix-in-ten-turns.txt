@@ -1,0 +1,24 @@
+# The whole fix, in ten turns
+NORA: Two hundred and fifty-four thousand tokens, or twenty-seven thousand. Same fix, same ten requests. Which number the chips actually run comes down to one thing.
+THEO: Let me guess. The cache.
+NORA: [amused] The cache, the work the provider saved from earlier requests. But let's earn it. Each bar is one request, one turn: the harness, the program on your laptop around the model, sends everything, the model replies, and the harness acts on the reply. Green on a bar is what was already cached. Amber is new.
+THEO: Turn one.
+NORA: All amber. Twenty-one thousand tokens, tokens being the small pieces of text the model reads: the harness's instructions, the tool list, your project's rules and your one sentence. The model thinks, I need the scheduler code and the library's docs on locking, and asks for a search and a fetch.
+THEO: And turn two is mostly green.
+NORA: Twenty-one thousand green, fifteen hundred amber: the fourteen matching lines and the docs. From those, it suspects the run method touches the queue without the lock, and asks to read a hundred lines around it.
+THEO: Then?
+NORA: Turn three, it sees that two threads can grab the same job, and reads the test file. Turn four, it puts a lock around those lines. Turn five, it adds a test with two worker threads. Turn six, the tests run, and fail. The new lock deadlocks: a thread waiting for a lock it's already holding.
+THEO: [sighs] There it is.
+NORA: There's always one. Turn seven, it swaps in a lock the same thread can take twice, an RLock. Turn eight, the tests pass, twelve of them. Turn nine, it runs the whole suite to be safe. Turn ten, four hundred and eighteen passed, so it writes a summary and stops.
+THEO: [curious] Okay, the numbers. The bars barely grow.
+NORA: Each request carries the whole conversation, so by turn ten it's about twenty-seven thousand tokens long. But only a hundred and fifty of them are new. After turn one, with each turn just minutes after the last, more than nine tokens in ten are already cached.
+THEO: And cached means the chips skip them.
+NORA: They skip them. That work comes straight from memory, at a tenth of the price. Add up the amber across all ten turns and you get about twenty-seven thousand tokens actually run. Switch the cache off, and the chips run every token, the full two hundred and fifty-four thousand.
+THEO: [skeptical] Nine times the tokens. So nine times the bill?
+NORA: About five times. The cached tokens aren't free, they cost a tenth each, and they add up. So without the cache it's nine times the work, about five times the bill, and every reply slower to start. These are Claude Code's numbers, and they're illustrative: your own session will differ.
+THEO: Does the shape change with the other agents?
+NORA: The steps shift a little. Codex has no search or read tools, so the first turns go through the shell, and its edits inside the workspace are written without asking. Copilot can skip a search and ask the language server, the part of the editor that knows where every function is used, for all the callers. It also opens each diff for you to review, and shows a confirmation card before the tests run.
+THEO: But it's still search, read, edit, test.
+NORA: Search, read, edit, test, fail, fix, test again. The same shape in all three. And across the whole fix, the model read about two hundred and fifty lines of your repository, never the whole thing.
+THEO: [thoughtful] So turn one pays full price, and every turn after rides on it.
+NORA: That's the whole bill, in one sentence.

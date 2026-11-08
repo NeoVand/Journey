@@ -1,0 +1,26 @@
+# One at a time
+NORA: Reading your prompt took one enormous pass. Writing the answer takes one pass per token.
+THEO: [surprised] Per token? The whole model, every layer, for one little word?
+NORA: For one little token. The newest one climbs the same stack, alone. On every layer it looks back at everything before it, your whole request plus whatever it's written so far, and adds its own key and value to the row of lights along the edge.
+THEO: [curious] Looks back how, if those tokens went through ages ago?
+NORA: Through the KV cache. Every earlier token left its key and its value behind on every layer, so nothing has to be redone. The new token asks its question against everything stored, then leaves its own pair for the next one.
+THEO: Why can't it write the whole answer at once, the way it read the prompt?
+NORA: Because the next token doesn't exist until the one before it is picked. Each one is drawn from odds, and the odds depend on everything before. So it's a loop: climb, score, pick, add, climb again. That loop is called decode.
+THEO: How long is one trip round?
+NORA: Usually ten to forty milliseconds. That's the typing speed you see in your terminal or your editor, somewhere around twenty-five to a hundred tokens a second.
+THEO: [skeptical] That's quick, for eighty layers.
+NORA: Quick, and still the bottleneck. Every step has to read all of the model's weights from memory, just to move your reply on by one token. So the chips work on lots of people's next tokens in the same step, to share that read.
+THEO: And what's it writing first? My fix?
+NORA: [chuckles] Not yet. In twenty twenty-six the model usually thinks first. It writes a private chain of tokens, here something like "The user wants the race condition fixed. I should search first." Only then does it write a visible answer or a tool call.
+THEO: Is thinking a special mode? A separate engine?
+NORA: No. Thinking tokens are ordinary tokens, made in exactly this loop, and billed as output. On typical price lists, output costs about five times what input does, so thinking isn't free.
+THEO: Does it just vanish when it's done?
+NORA: It has to come back on the next turn, so the model keeps its train of thought across tool calls. And here the three agents differ. Claude Code gets thinking blocks that carry a signature, and sends them back on the next turn. In Codex, reasoning can travel as encrypted items, which the client can't read but must send back. In Copilot it depends on the model you picked, and the extension shows either kind as a section you can fold away.
+THEO: So Codex carries a sealed envelope it isn't allowed to open.
+NORA: [laughs] Can't open, not just isn't allowed: it's encrypted. And it still posts it back, unopened.
+THEO: Is there any way to make this faster? One pass per token sounds stubborn.
+NORA: There's a trick called speculative decoding. A quick helper guesses the next few tokens cheaply, and the big model checks all the guesses in one pass. The ones that match are kept, the first wrong one is replaced, and on it goes.
+THEO: [thoughtful] Guessing sounds like it would change the answer.
+NORA: It doesn't. The checking rule keeps the odds exactly as they'd be with the big model alone, so it changes speed, not answers. On code, which is fairly predictable, it's often two to three times faster.
+THEO: So: one token, all the way up, look back through the cache, leave a key and a value, pick the next. Dozens of times a second.
+NORA: That's decode. And somewhere in this stream, right after the thinking, the model starts writing something that looks like a request.

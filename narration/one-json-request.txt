@@ -1,0 +1,21 @@
+# One JSON request
+THEO: I've seen these in debug logs. Huge blobs of JSON. I always scroll straight past them.
+NORA: [amused] Next time, don't. That blob is everything the model will be told on this turn. It has three parts, and the order they come in matters more than you'd think.
+THEO: Okay. Top to bottom.
+NORA: First, the instructions: the harness's own system prompt, your project's rules file and the facts about your environment. Second, the tools, every definition, built in or from an MCP server. Third, the conversation so far. On turn one, that's only your sentence.
+THEO: Do all three agents label them the same way?
+NORA: Close. Claude Code and Copilot call them system, tools and messages. Codex talks to OpenAI's Responses API, which calls the first one instructions and the last one input. Same three ideas.
+THEO: [curious] So why does the order matter? JSON doesn't care about order.
+NORA: JSON doesn't. The provider does. The first two parts barely change from one turn to the next. The conversation changes every turn, and only by growing at the end: a reply gets added, then a tool result, then another reply. So the parts that stay the same go first, and the part that grows goes last.
+THEO: Like keeping the books you never touch at the bottom of the pile.
+NORA: [chuckles] That's it, with one catch: the bottom of the pile has to be identical, byte for byte. The provider can reuse work it already did for a request that starts exactly the same way. Change one character near the top and everything after it has to be worked out again.
+THEO: [thoughtful] So anything that changes from turn to turn has to stay out of the top.
+NORA: Exactly, and each harness guards it. Claude Code keeps its system prompt unchanged and slips changing facts in as small reminder notes inside your turn. Codex keeps its instructions fixed for the whole session, which is why a change to AGENTS.md needs a restart. Copilot rebuilds the list every turn, but puts the static parts first and trims from the low-priority end.
+THEO: Okay. And what isn't on the page?
+NORA: Your code. That's the part people don't expect. No scheduler, no tests, not a single file. Older tools used retrieval: a search system picked out text that looked relevant and put it in before the model saw anything. Coding agents don't. The model asks for what it wants with tool calls, one at a time, the way you'd search with grep.
+THEO: Even Copilot? It has that whole code index.
+NORA: Even Copilot. It does have a semantic search tool built on an index of your code, sitting beside plain text search. But it's a tool. Nothing is fetched before the first call, and the model chooses whether to use it.
+THEO: And this page is already tokens, right? Ready for the model?
+NORA: Still plain text. The harness doesn't tokenize. It may estimate a count for itself, but the provider does the real cutting, and the real count comes back with the reply.
+THEO: So: one page, the steady parts on top, the conversation underneath. No code, no tokens.
+NORA: And that order pays off as soon as the next turn, when the same steady start comes round again. Now the page rolls up and heads for the internet.

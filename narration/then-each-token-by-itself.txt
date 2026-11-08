@@ -1,0 +1,28 @@
+# Then each token, by itself
+NORA: There's a moment in every layer where the tokens stop talking to each other.
+THEO: [curious] They were talking?
+NORA: In a way. Attention is where information moves between tokens. "Job" looks back at "race" and "condition", takes in what it needs, and shifts toward code. Then comes the quiet part.
+THEO: Which is?
+NORA: A small network. It's called fully connected, because every input is wired to every unit inside it. It takes one token's list of numbers, runs it through, and hands back a new one. Then the next token, through exactly the same network.
+THEO: The same one for every token?
+NORA: The same one, within a layer. Same wiring, same learned numbers. "Job", "scheduler", the full stop, the markers around your sentence, all get identical treatment. The next layer has a network of its own.
+THEO: So attention is the meeting, and this is everyone going back to their desk to think it over.
+NORA: [chuckles] I like that, and here's where it breaks. Nobody's thinking in any sense you'd recognise. It's a fixed calculation. But the desk part is right: here, no token can see any other. Whatever "job" knows about its neighbors, it picked up in the meeting.
+THEO: [skeptical] Then what's it for, if it can't learn anything new from the others?
+NORA: Attention gathers. This step works on what was gathered, each token on its own. The book doesn't say which part of the model knows which things, and I won't pretend it does. What's certain is the rhythm: gather, then work alone, on every floor.
+THEO: In the picture it hops from token to token. Is the chip really doing them one after another?
+NORA: It doesn't have to. Since no token needs any other here, the chip can put them all through side by side. The picture visits them in turn so you can see that each one gets the same network.
+THEO: Okay. The small print on the card. Normalizing, and adding back.
+NORA: Two bits of housekeeping, around both steps. Before each one, the layer normalizes the numbers, keeping them in a stable range. After each one, it adds the old vector back.
+THEO: Adds it back to what?
+NORA: To the result. So what a step produces isn't a replacement for the token. It's an adjustment on top of what was there. Nothing is lost.
+THEO: [amused] Like keeping the original file and saving the edit as a diff.
+NORA: Close. Where it breaks is that the two are added into one list, so there's no separate original sitting beside it. But nothing is thrown away, and in the picture's terms, each step nudges a token on from where it was.
+THEO: And the experts?
+NORA: In many large models this network isn't one network. It comes in hundreds of versions, called experts, and each token is sent to just a few of them. So for any one token, most of that network sits idle.
+THEO: Who decides which few?
+NORA: A small part of the layer, which the book calls a router. And in those models, this is where tokens get swapped between chips, in what the book calls an all-to-all exchange, so each one reaches its experts.
+THEO: Does the model behind my agent use experts?
+NORA: [short pause] Providers don't publish that, whether the model is behind Claude Code, Codex or Copilot. All the card can honestly say is that many large models do.
+THEO: So: gather in the meeting, then each token alone through the same small network, with tidying and adding back around both.
+NORA: [warmly] That's one layer, start to finish. The next one starts exactly where this one left off.

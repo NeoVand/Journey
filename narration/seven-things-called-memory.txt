@@ -1,0 +1,25 @@
+# Seven things called memory
+THEO: Be honest with me. When I correct my agent, does it learn?
+NORA: The model? Not one bit.
+THEO: [surprised] Then what's all this memory everyone talks about?
+NORA: Seven different things, all wearing the same word. That's where most of the confusion comes from. Each has its own owner and its own lifetime, and once you pull them apart, your question answers itself.
+THEO: Seven. Go on, then.
+NORA: One, the conversation history: every message, tool call and result in the session. It belongs to the harness, the program on your laptop around the model, and it's saved to disk.
+THEO: That one I knew.
+NORA: Two, the current model context: the part of that history actually sent this time round, on this turn. Usually that's all of it, but after a long session gets summarized, it's less. The harness owns that too, and it lives for exactly one request.
+THEO: So history is what happened. Context is what the model sees right now.
+NORA: Perfect. Three, continuation state. Some APIs, OpenAI's for one, can store a response on their side, so the next request just points to it. The provider, the company serving the model, owns that, and keeps it for days, by policy.
+THEO: Four.
+NORA: The inference cache. That's the work the chips already did on the start of a recent request, kept so that a request starting the same way doesn't redo it. It lives in the data center, for minutes, up to about an hour. And it remembers bytes, not you.
+THEO: [amused] Less flattering than I'd hoped.
+NORA: Five, the workspace: your files, build outputs, running processes. That's on your laptop, or in a container, and it doesn't depend on the conversation at all. Close the chat, and the edit to the scheduler is still there.
+THEO: Six?
+NORA: External state. Branches on the git host, pull requests, remote jobs, documents in other services. That can outlive the whole run. Forget the session if you like, because a pushed branch stays pushed.
+THEO: And the last one's the red drawer.
+NORA: The model's parameters. Its weights, the learned numbers that make it what it is. The provider owns them, and nothing you do in a session changes them. Learning happens only in a separate training process, so when your session ends, the model hasn't learned a thing from you.
+THEO: [skeptical] But my agent does remember things. It knew my test command this morning.
+NORA: Because something wrote it down. Your project's rules file goes into the request: CLAUDE.md for Claude Code, AGENTS.md for Codex, copilot-instructions.md for Copilot. Some agents also keep notes of their own on disk. But all of that is text in the request, the harness remembering on the model's behalf.
+THEO: Okay, my picture. The model's a contractor with no memory, and the harness hands it my notes at the door every morning.
+NORA: [chuckles] That's good. Where it breaks: a real contractor still gets better at the trade over the years. This one doesn't, not from your sessions. Same weights tomorrow as today.
+THEO: [thoughtful] Seven drawers. Six that change as you work, and one that nothing you do will change.
+NORA: So whenever someone says the agent remembered, ask which drawer. Most of the mystery goes away.

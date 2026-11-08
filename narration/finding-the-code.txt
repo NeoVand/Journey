@@ -1,0 +1,25 @@
+# Finding the code
+THEO: I always pictured the agent loading my whole repository before it starts.
+NORA: Most people do. In this fix, it reads about two hundred and fifty lines of your code. The rest, it never sees.
+THEO: [surprised] Two hundred and fifty? How does it know which ones?
+NORA: The same way you would in a codebase you've never opened. Look for the words. List the files that come up. Open the promising one, but only the part that matters.
+THEO: But the model can't open anything. It's in a data center.
+NORA: Right, it only writes requests. Once a request passes the permission checks, the harness, the program on your laptop around the model, turns it into a system call. That's how any program asks the operating system for real work: open this file, start this process. This is where the model's request finally becomes real work on your machine.
+THEO: So step one, look for the words.
+NORA: In our fix, it searches the source folder for lock and schedule. Fourteen lines come back, each with its file name and line number. From those it suspects the run method touches the job queue without taking the lock, so it reads the scheduler file, lines sixty to a hundred and sixty. And there it is: two threads can grab the same job.
+THEO: [skeptical] Why not just read the whole file? Feels safer.
+NORA: Cost. The book's example is a three-thousand-line file, which would come to about forty thousand tokens, tokens being the small pieces of text the model reads and you pay for. Reading a range is what a careful engineer does too. You don't print the whole codebase to find one function.
+THEO: And each of those steps is a separate trip?
+NORA: Each is its own turn. Call, result, think, next call. A turn is one round trip: the conversation goes to the model, a reply comes back, the harness acts on it. The book reckons a good model needs three to six of them just to locate a bug.
+THEO: That sounds slow.
+NORA: It would be, except calls that don't need each other's answers can share a turn, and the harness runs them side by side. In Claude Code, the very first turn sends the search and a fetch of the library's docs out together.
+THEO: [curious] Does every agent search the same way?
+NORA: Same idea, different tools. Claude Code has a Grep tool, built around a very fast search program called ripgrep, and a Read tool that returns numbered lines, so the model can point at exact positions. Codex has no separate search tools at all. The model types rg, which is ripgrep, and sed straight into the shell.
+THEO: [amused] Codex just hands it a terminal.
+NORA: A simpler catalog, the same behavior. Copilot has the most to choose from. There's text search, and there's the language server, the part of the editor that knows where every symbol is defined and used, so it can find all the callers of a function without any grepping. And there's a search by meaning, over an index of your code.
+THEO: And the model picks which one?
+NORA: The model picks, or you do, by mentioning one in your message.
+THEO: So it's me on day one at a new job. Search, skim, open.
+NORA: Close. Where it breaks: on day two, you'd remember the layout. The model won't, unless the harness writes it down and puts it back in the request.
+THEO: Two hundred and fifty lines. I really thought it read everything.
+NORA: [warmly] It read what an engineer would read. And now it knows what to change.

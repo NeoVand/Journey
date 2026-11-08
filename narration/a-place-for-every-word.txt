@@ -1,0 +1,27 @@
+# A place for every word
+THEO: [amused] My prompt just landed on a map. "Job" is off with the careers, and "race" is over in sports.
+NORA: [chuckles] Which is exactly wrong for your sentence, and exactly right for this step. Nothing down here has read the sentence yet.
+THEO: Back up. Where's "down here"?
+NORA: The bottom of the model, on a chip in the data center. Your prompt has already been cut into tokens, and each token is just a number now. On the first turn almost nothing is cached, nothing has been worked out before and kept, so the whole request goes in together. In this example that's about twenty-one thousand tokens, and your sentence is the last few.
+THEO: And the first thing that happens to a number is...
+NORA: It's swapped for a list of numbers. That's called an embedding. Every token in the vocabulary has its own long list, a few thousand numbers, learned in training. Tokens with similar meanings get similar lists.
+THEO: [skeptical] A list of numbers being a place. Sell me on that.
+NORA: Take two numbers. That's a point on a flat map: how far across, how far up. Three numbers, a point in a room. A few thousand, and it's a point in a space nobody can picture, but the rule still holds: lists that are alike sit close together. So you can read each list as a place on a map of meaning.
+THEO: And the map on screen is the real one?
+NORA: It's the idea, not a photograph. It has two dimensions where the real one has thousands, and its neighborhoods are illustrative. The card says so in the small print.
+THEO: So why is "job" with the careers? It's a background job, a task in a queue.
+NORA: Because an embedding knows the word, not the sentence. "Job" gets the same list wherever it appears: in a job advert, in a cover letter, in your scheduler. So it starts out where jobs usually live.
+THEO: Same for "race". On its own, that's a sprint.
+NORA: And "condition" on its own could be a medical condition. None of them know yet that together they mean a bug in concurrent code.
+THEO: [thoughtful] What about the two "the" tiles? Same word, twice.
+NORA: Same token, same number, so the same list. Both tiles land on exactly one spot, one on top of the other.
+THEO: That's a problem. If the model can't tell which "the" came first, it can't tell my sentence from the same words shuffled.
+NORA: Exactly the problem. So a second signal is mixed in: position. It says where each token sits in the line. After that the two "the" tiles come apart, and the order of every word is part of the picture.
+THEO: Mixed in how? Another list?
+NORA: The book calls it a positional encoding, mixed into each token's numbers, and there's more than one recipe for it. The point is simply that the first "the" and the second stop being twins.
+THEO: [impressed] So this is where my sentence stops being numbers in a row and starts being places.
+NORA: The book counts it as a new form, the fifth of the twelve shapes your request takes on its trip. Token numbers became embeddings, and they live on the chip now.
+THEO: Does any of this depend on which agent I use?
+NORA: Not here. Claude Code, Codex and Copilot in VS Code all send text, and by the time it's this deep, it's tokens on a chip. Nothing down here knows which agent sent them.
+THEO: So every word starts at its dictionary meaning, in the right order, and nothing more.
+NORA: [warmly] Nothing more. It's somewhere to start from. Getting "job" out of the careers and over toward code is what comes next: the words get to look at each other.

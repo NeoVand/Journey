@@ -1,0 +1,18 @@
+# Inside the glass
+NORA: Picture pytest starting up inside a glass box. It starts Python. Python starts a worker. Every one of them is born inside the box, and none of them can climb out.
+THEO: Why does that part matter? It's all one command.
+NORA: Because a fence around only the first program would be easy to step around: start something new, and the new thing is free. Here the operating system holds the line. On macOS the fence is called Seatbelt, on Linux it's bubblewrap, and anything a fenced program starts stays inside the same fence.
+THEO: So it's a blocklist of dangerous commands.
+NORA: That's where it breaks. A blocklist cares what a command is called. The glass doesn't. It limits what the running process can reach, whatever the process turns out to be, so a harmless-looking command gets exactly the same box as a scary one.
+THEO: What can they reach, then?
+NORA: Your project, for writing, and nowhere else. A write to your home folder, or anywhere outside the project, simply fails.
+THEO: [curious] And the network? Some tests reach out.
+NORA: Not in a straight line. To reach the network they go through a proxy, a gatekeeper that only lets approved domains through. In Claude Code that list starts empty, and the first time a command needs a new domain, you're asked.
+THEO: Is it the same box in all three?
+NORA: Same idea, different defaults. In Codex, in workspace-write mode, commands write to the workspace, but the .git folder is kept read-only, and the network is off unless you turn it on.
+THEO: And in VS Code?
+NORA: Once its terminal sandbox setting is switched on, terminal commands run inside it on macOS and Linux. But there the network stays open unless you list the domains.
+THEO: [surprised] Open by default. I'd never have guessed that.
+NORA: Which is the point: check, don't guess. The glass holds exactly what it's set to hold, and no more.
+THEO: [thoughtful] Everything it starts stays in, it writes only to the project, and the network goes through a gate.
+NORA: [warmly] That's the room. Small, on purpose.

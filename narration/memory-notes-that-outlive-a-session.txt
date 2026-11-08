@@ -1,0 +1,19 @@
+# Notes that outlive a session
+THEO: If the model forgets everything overnight, how does my agent know today that the scheduler tests run with pytest?
+NORA: Because yesterday, before the session ended, a note of that went onto a shelf on your disk. Agents keep notes. Today's request starts with the shelf's index, plus the note today's task needs.
+THEO: Only the index? Not the whole shelf?
+NORA: The index, and the note that matters right now. The rest of the shelf waits until it's needed. Everything in the request takes up room, so there's no sense unpacking the whole shelf for one fix.
+THEO: [skeptical] So it does learn, then. It learned my test command.
+NORA: That's the part to get straight. A note never changes the model. It's more text in the request, read just like your rules. Take the note away and that knowledge goes with it. The model is the same model it was yesterday.
+THEO: So less like memory, more like a notebook it reads every morning.
+NORA: [chuckles] Better than most comparisons. Where it breaks: you'd read a notebook front to back. This one is read through its index, and only the right page gets opened.
+THEO: Who writes the notes? Me?
+NORA: Mostly the agent, and the three go about it differently. Claude Code calls it auto memory. Claude writes it, one folder per repository, and the first two hundred lines of its MEMORY.md index load at the start of a session. The /memory command opens it, so you can see what it wrote.
+THEO: Codex?
+NORA: Memories are off there by default. Turned on, Codex writes them itself, from chats that have gone quiet, and brings them into later sessions.
+THEO: And Copilot?
+NORA: Copilot saves memories as it works, or when you ask it to. Facts about a repository stay with that repository, and they're shared with your collaborators.
+THEO: [surprised] So something my agent noticed can show up for my teammates.
+NORA: Facts about the repository, yes. Which is a good reason to read them now and then. A wrong note gets loaded just as faithfully as a right one.
+THEO: [thoughtful] Notes on a shelf, the index up front, and the model itself never changes.
+NORA: Just more text in the request, chosen well. That's all a memory is here.
