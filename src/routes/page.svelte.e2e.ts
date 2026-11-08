@@ -101,17 +101,47 @@ test("the header's talk key plays this card's conversation, and pauses it", asyn
 	await expect(talk).toHaveAttribute('aria-pressed', 'false');
 });
 
-test("the title page's sound switch is the header's", async ({ page }) => {
+test('the player under the talk key scrubs, skips and changes speed', async ({ page }) => {
+	test.setTimeout(150_000);
+	await page.goto('/');
+	const talk = page.getByRole('button', { name: /^Listen to Nora and Theo talk about this card/ });
+	await expect(talk).toBeEnabled({ timeout: 120_000 });
+	// Resting the pointer on the key drops the player from it.
+	await talk.hover();
+	const player = page.getByRole('group', { name: /Player for this card/ });
+	await expect(player).toBeVisible();
+	const at = player.getByRole('slider', { name: 'Where in the conversation' });
+	await player.getByRole('button', { name: 'Ahead 15 seconds' }).click();
+	await expect.poll(async () => Number(await at.inputValue())).toBeGreaterThanOrEqual(14);
+	await player.getByRole('radio', { name: '1.5×' }).click();
+	await expect(player.getByRole('radio', { name: '1.5×' })).toHaveAttribute('aria-checked', 'true');
+	// Away from the key and the plate, it goes again.
+	await page.mouse.move(10, 500);
+	await expect(player).toBeHidden();
+});
+
+test('the tour shows the controls, can turn the sound on, and ends with Begin', async ({ page }) => {
 	test.setTimeout(150_000);
 	await page.goto('/');
 	await page.waitForFunction(() => document.querySelector('main.driven'), null, { timeout: 90_000 });
-	const here = page.locator('main').getByRole('button', { name: 'Sound', exact: true });
-	const up = page.locator('header').getByRole('button', { name: 'Sound', exact: true });
-	await expect(here).toHaveAttribute('aria-pressed', 'false');
-	await here.click();
-	await expect(up).toHaveAttribute('aria-pressed', 'true');
-	await up.click();
-	await expect(here).toHaveAttribute('aria-pressed', 'false');
+	await page.getByRole('button', { name: 'Show me around' }).click();
+	const tour = page.getByRole('dialog', { name: 'Before you set off' });
+	await expect(tour).toBeVisible();
+	await tour.getByRole('button', { name: 'Show me' }).click();
+	await expect(page.getByRole('dialog', { name: 'One card at a time' })).toBeVisible();
+	// The arrow keys move through the tour while it's open, not through the story.
+	await page.keyboard.press('ArrowRight');
+	await page.keyboard.press('ArrowRight');
+	const sound = page.getByRole('dialog', { name: 'Sound, if you like' });
+	await expect(sound).toBeVisible();
+	expect(await page.evaluate(() => scrollY)).toBe(0);
+	await sound.getByRole('button', { name: 'Turn the sound on' }).click();
+	await expect(page.locator('header').getByRole('button', { name: 'Sound', exact: true })).toHaveAttribute('aria-pressed', 'true');
+	await sound.getByRole('button', { name: 'Next' }).click();
+	await page.getByRole('dialog', { name: 'The map' }).getByRole('button', { name: 'Next' }).click();
+	await page.getByRole('dialog', { name: 'Off you go' }).getByRole('button', { name: 'Begin' }).click();
+	await expect(page.getByRole('dialog')).toBeHidden();
+	await page.waitForFunction(() => scrollY > innerHeight * 0.5, null, { timeout: 10_000 });
 });
 
 test('the arrow keys move the choice inside the agent tray, not the story', async ({ page }) => {

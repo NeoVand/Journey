@@ -4,6 +4,8 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import TripMap from './TripMap.svelte';
+	import TalkPlayer from './TalkPlayer.svelte';
+	import Tour from './Tour.svelte';
 	import Tokenizer from './Tokenizer.svelte';
 	import { Tween } from 'svelte/motion';
 	import { cubicOut } from 'svelte/easing';
@@ -16,8 +18,8 @@
 	import { SvelteSet } from 'svelte/reactivity';
 	import Blueprint, { type Stage } from './Blueprint.svelte';
 	import Icon from './Icon.svelte';
-	import { ArrowLeft01Icon, ArrowRight01Icon, ConversationIcon, VolumeHighIcon, VolumeOffIcon } from '@hugeicons/core-free-icons';
-	import { Narrator, TALKS, clock, spoken } from './narrator.svelte';
+	import { ArrowLeft01Icon, ArrowRight01Icon, ConversationIcon, SignpostIcon, VolumeHighIcon, VolumeOffIcon } from '@hugeicons/core-free-icons';
+	import { Narrator, TALKS, spoken } from './narrator.svelte';
 	import { Sound } from './sound/engine';
 	import { Conductor } from './sound/conductor';
 	import { score, tripScore, TURN_NOTES } from './sound/score';
@@ -174,6 +176,17 @@
 		spinning = false;
 	}
 
+	/** A quick look around the controls: by itself on a first visit, and from the title page's key after that. */
+	let tourOpen = $state(false);
+	function openTour() {
+		tourOpen = true;
+		try {
+			localStorage.setItem('journey-tour', 'seen');
+		} catch {
+			// Private browsing: it may be offered again next time.
+		}
+	}
+
 	/** The map lets a reader go straight to any chapter, and a chapter's address can be shared. */
 	let mapOpen = $state(false);
 	let mapHere = $state('How a coding agent works');
@@ -224,7 +237,56 @@
 	/** The header's conversation key: what it would play, and how it describes itself. */
 	const talk = $derived(narrator.here ? TALKS[narrator.here] : null);
 	const talkOn = $derived(!!talk && narrator.id === narrator.here);
-	const talkLeft = $derived(talkOn && narrator.time > 0.5 && !narrator.done ? narrator.duration - narrator.time : (talk?.seconds ?? 0));
+	/**
+	 * The player under the talk key. A mouse opens it by resting on the key, and it stays while the mouse is on the key
+	 * or the plate. A finger opens it with a tap, and it goes with a tap anywhere else or after a few idle seconds. The
+	 * keyboard opens it by landing on the key.
+	 */
+	let talkBox = $state<HTMLElement>();
+	let talkKey = $state<HTMLButtonElement>();
+	let playerOpen = $state(false);
+	let playerByTouch = $state(false);
+	let playerTimer = 0;
+	let hovering = false;
+	let tapped = false;
+	/** Set while Esc hands the focus back to the key, so that landing there doesn't open the player again. */
+	let escaping = false;
+	function showPlayer(on: boolean, wait = on ? 140 : 300) {
+		clearTimeout(playerTimer);
+		playerTimer = window.setTimeout(() => {
+			playerOpen = on && !!talk;
+			if (!playerOpen) playerByTouch = false;
+			else if (narrator.here) narrator.peek(narrator.here);
+		}, wait);
+	}
+	/** A click plays and pauses. A tap shows the player first, and plays if nothing was playing; with the player showing, a tap is a click. */
+	function pressTalk() {
+		const id = narrator.here;
+		if (!id) return;
+		if (tapped && !playerOpen) {
+			playerByTouch = true;
+			showPlayer(true, 0);
+			if (!(narrator.id === id && narrator.playing)) narrator.play(id);
+			return;
+		}
+		narrator.toggle(id);
+	}
+	$effect(() => {
+		if (!playerOpen || !playerByTouch) return;
+		let idle = window.setTimeout(() => showPlayer(false, 0), 6000);
+		const touch = (e: PointerEvent) => {
+			clearTimeout(idle);
+			if (!talkBox?.contains(e.target as Node)) showPlayer(false, 0);
+			else idle = window.setTimeout(() => showPlayer(false, 0), 6000);
+		};
+		window.addEventListener('pointerdown', touch, true);
+		window.addEventListener('pointerup', touch, true);
+		return () => {
+			clearTimeout(idle);
+			window.removeEventListener('pointerdown', touch, true);
+			window.removeEventListener('pointerup', touch, true);
+		};
+	});
 	let toggleSound: () => void = () => {};
 	/** The sounds of the interface itself: a step, a flight, the map. Quiet until sound is on. */
 	/** The page's own sounds: the reader's steps and flights, and the controls they press. `n` and `m` say which, or how many. */
@@ -470,6 +532,7 @@
 		let cleanup = () => {};
 		const params = new URLSearchParams(location.search);
 		const still = params.has('still');
+		narrator.restore();
 
 		// If the last visit ended without the page being closed, a phone's browser most likely ran out of memory.
 		const before = takeLastStop();
@@ -1394,6 +1457,18 @@
 				w.dispose();
 			};
 			driven = true;
+			// A first visit is shown around once the world is there to show. A browser driven by a script isn't; ?tour asks.
+			let seen = true;
+			try {
+				seen = localStorage.getItem('journey-tour') === 'seen';
+			} catch {
+				// No storage: no way to offer it only once, so it waits for the key.
+			}
+			if (!still && (params.has('tour') || (!seen && !navigator.webdriver))) {
+				setTimeout(() => {
+					if (!disposed && atTitle && !track && !mapOpen && !report) openTour();
+				}, 1300);
+			}
 			// Measured once the cards have their real widths, and again if the type arrives late and wraps differently.
 			tick().then(holdSteps);
 			document.fonts.ready.then(holdSteps);
@@ -1576,19 +1651,52 @@
 			<button type="button" class="sound" aria-pressed={soundOn} aria-label="Sound" title={soundOn ? 'Sound is on' : 'Sound is off'} onclick={() => toggleSound()}>
 				<Icon icon={soundOn ? VolumeHighIcon : VolumeOffIcon} size={19} stroke={1.8} />
 			</button>
-			<!-- Nora and Theo talk the card through. Playing, amber fills the key as the conversation goes. -->
-			<button
-				type="button"
-				class={['talk', { on: talkOn, playing: talkOn && narrator.playing, waiting: talkOn && narrator.waiting }]}
-				style:--done={talkOn ? narrator.progress : 0}
-				aria-pressed={talkOn && narrator.playing}
-				aria-label={talk ? `Listen to Nora and Theo talk about this card, ${spoken(talk.seconds)}` : 'Listen to a conversation about this card'}
-				title={!talk ? 'No conversation here' : talkOn && narrator.playing ? `Pause, ${clock(talkLeft)} left` : `Listen to Nora and Theo talk about this card, ${clock(talkLeft)}`}
-				disabled={!talk}
-				onclick={() => narrator.here && narrator.toggle(narrator.here)}
+			<!-- Nora and Theo talk the card through. Playing, amber fills the key as the conversation goes; the player hangs under it. -->
+			<div
+				class="talk-box"
+				role="presentation"
+				bind:this={talkBox}
+				onpointerenter={(e) => {
+					if (e.pointerType === 'touch') return;
+					hovering = true;
+					showPlayer(true);
+				}}
+				onpointerleave={(e) => {
+					if (e.pointerType === 'touch') return;
+					hovering = false;
+					if (!talkBox?.contains(document.activeElement) || !document.activeElement?.matches(':focus-visible')) showPlayer(false);
+				}}
+				onfocusin={(e) => !escaping && (e.target as HTMLElement).matches(':focus-visible') && showPlayer(true, 0)}
+				onfocusout={(e) => !hovering && !talkBox?.contains(e.relatedTarget as Node) && showPlayer(false, 0)}
+				onkeydown={(e) => {
+					if (e.key !== 'Escape' || !playerOpen) return;
+					e.preventDefault();
+					e.stopPropagation();
+					escaping = true;
+					talkKey?.focus();
+					escaping = false;
+					showPlayer(false, 0);
+				}}
 			>
-				<Icon icon={ConversationIcon} size={20} stroke={1.8} />
-			</button>
+				<button
+					type="button"
+					bind:this={talkKey}
+					class={['talk', { on: talkOn, playing: talkOn && narrator.playing, waiting: talkOn && narrator.waiting }]}
+					style:--done={talkOn ? narrator.progress : 0}
+					aria-pressed={talkOn && narrator.playing}
+					aria-label={talk ? `Listen to Nora and Theo talk about this card, ${spoken(talk.seconds)}` : 'Listen to a conversation about this card'}
+					title={talk ? undefined : 'No conversation here'}
+					disabled={!talk}
+					onpointerdown={(e) => (tapped = e.pointerType === 'touch')}
+					onkeydown={() => (tapped = false)}
+					onclick={pressTalk}
+				>
+					<Icon icon={ConversationIcon} size={20} stroke={1.8} />
+				</button>
+				{#if narrator.here}
+					<TalkPlayer {narrator} id={narrator.here} open={playerOpen} anchor={talkKey} />
+				{/if}
+			</div>
 			<button type="button" data-step="back" aria-label="Previous step" aria-keyshortcuts="ArrowLeft" title="Previous step (←)" disabled={!canBack} onclick={() => step(-1)}>
 				<Icon icon={ArrowLeft01Icon} size={20} stroke={2} />
 			</button>
@@ -1637,19 +1745,15 @@
 				<div class="told"><span>Your agent</span>{@render picker()}</div>
 				<p class="fallback">This browser can’t draw the 3D scenes right now, so here’s the whole story in words.</p>
 			{:else}
+				<!-- Two keys side by side: the way in, and a look around the controls first. -->
 				<div class="begin-row">
 					<button type="button" class={['begin', { live: driven }]} disabled={!driven} aria-keyshortcuts="ArrowRight" onclick={() => step(1, 'button')}>
 						Begin
 						<Icon icon={ArrowRight01Icon} size={21} stroke={2.4} />
 					</button>
-					<span class="begin-or">
-						<span class="by-key">or scroll, or step with <kbd>←</kbd> <kbd>→</kbd></span>
-						<span class="by-tap">or swipe up</span>
-					</span>
-					<!-- The same switch as the header's, offered once where the reader is deciding how to start. -->
-					<button type="button" class="hear" aria-pressed={soundOn} disabled={!driven} onclick={() => toggleSound()}>
-						<Icon icon={soundOn ? VolumeHighIcon : VolumeOffIcon} size={17} stroke={1.9} />
-						Sound
+					<button type="button" class={['tour-key', { live: driven }]} aria-haspopup="dialog" disabled={!driven} onclick={openTour}>
+						<Icon icon={SignpostIcon} size={19} stroke={1.8} />
+						Show me around
 					</button>
 				</div>
 				<p class="upright">Scroll to watch. Turn your phone upright to read along.</p>
@@ -2171,6 +2275,8 @@
 {#if tip}
 	<div class={['tip', { below: tip.below }]} aria-hidden="true" style:left="{tip.x}px" style:top="{tip.y}px">{tip.text}</div>
 {/if}
+<!-- Inside the page's frame, so a big monitor's larger words reach the tour's card too. -->
+<Tour bind:open={tourOpen} {soundOn} ontogglesound={() => toggleSound()} onbegin={() => step(1, 'button')} />
 </div>
 
 <Tokenizer bind:open={tryOpen} oncut={(now, before) => cue('tokens', now, before)} />
@@ -3300,6 +3406,8 @@
 	 * the thickness of. Sound, then back and next. Next is amber, the token's colour, whenever it's yours to press.
 	 */
 	.stepper {
+		/* The talk key's player hangs from here. */
+		position: relative;
 		display: inline-flex;
 		align-items: center;
 		gap: 3px;
@@ -3361,6 +3469,9 @@
 	 * the clock, the way Next fills while a card plays, so the reader can see how much is left. Paused, the amber stays,
 	 * paler. A seam after it, pressed into the panel, keeps the listening apart from the steps.
 	 */
+	.talk-box {
+		display: flex;
+	}
 	.stepper .talk {
 		position: relative;
 		isolation: isolate;
@@ -3517,7 +3628,8 @@
 		.stepper .talk.playing :global(svg),
 		.stepper .talk.waiting :global(svg),
 		.spine li.now,
-		.begin.live {
+		.begin.live,
+		.tour-key.live {
 			animation: none;
 		}
 	}
@@ -3880,8 +3992,8 @@
 	.begin-row {
 		display: flex;
 		flex-wrap: wrap;
-		align-items: center;
-		gap: 10px 18px;
+		align-items: stretch;
+		gap: 10px 14px;
 		margin: 30px 0 0;
 	}
 	.begin {
@@ -3959,78 +4071,64 @@
 			transform: translateX(3px);
 		}
 	}
-	.begin-or {
-		font-size: 15px;
-		line-height: 1.35;
-		color: var(--ink-soft);
-	}
-	.begin-or kbd {
-		display: inline-block;
-		min-width: 22px;
-		margin: 0 1px;
-		padding: 1px 5px 2px;
-		border-radius: 6px;
-		background: linear-gradient(#fffaf0, #fbefd6);
-		box-shadow:
-			inset 0 -2px 0 #e2cb9f,
-			0 1px 2px rgb(60 40 10 / 0.16);
-		font: 650 12.5px/1.5 var(--sans);
-		text-align: center;
-		color: #101a30;
-	}
-	.begin-or .by-tap {
-		display: none;
-	}
-	/* Quiet until pressed, then it stands up as a cream key, like the chosen agent. */
-	.hear {
+	/* Beside it, the way to a look around first: a cream key of the same height and depth, so the two read as a pair. */
+	.tour-key {
 		display: inline-flex;
 		align-items: center;
-		gap: 6px;
+		gap: 8px;
 		margin-bottom: 6px;
-		padding: 7px 12px 8px 10px;
+		padding: 0 18px 0 14px;
 		border: 0;
-		border-radius: 11px;
-		background: rgb(255 255 255 / 0.42);
-		color: #4d5a72;
-		font: 600 14px/1 var(--sans);
+		border-radius: 16px;
+		background: linear-gradient(#fffaf0, #fbefd6);
+		color: #101a30;
+		font: 650 16px/1 var(--sans);
+		white-space: nowrap;
 		cursor: pointer;
 		-webkit-tap-highlight-color: transparent;
 		box-shadow:
-			inset 0 1px 2px rgb(30 60 110 / 0.12),
-			inset 0 0 0 1px rgb(255 255 255 / 0.5);
+			inset 0 2px 0 #fff,
+			0 6px 0 #e4cfa6,
+			0 12px 24px rgb(20 60 130 / 0.14);
 		transition:
-			background 0.18s,
-			color 0.18s,
-			box-shadow 0.18s,
-			transform 0.1s;
+			transform 0.08s,
+			box-shadow 0.08s,
+			color 0.15s;
 	}
 	@media (hover: hover) {
-		.hear:hover {
-			color: #101a30;
+		.tour-key:hover:not(:disabled) {
+			transform: translateY(-1px);
+			box-shadow:
+				inset 0 2px 0 #fff,
+				0 7px 0 #e4cfa6,
+				0 14px 26px rgb(20 60 130 / 0.16);
 		}
 	}
-	.hear:active:not(:disabled) {
-		transform: translateY(1px);
-	}
-	.hear:disabled {
-		opacity: 0.5;
-		cursor: default;
-	}
-	.hear[aria-pressed='true'] {
-		background: linear-gradient(#fffaf0, #fbefd6);
-		color: #101a30;
+	.tour-key:active:not(:disabled) {
+		transform: translateY(5px);
 		box-shadow:
-			inset 0 1px 0 #fff,
-			inset 0 -2px 0 #e2cb9f,
-			0 1px 3px rgb(60 40 10 / 0.18);
+			inset 0 2px 0 #fff,
+			0 1px 0 #e4cfa6,
+			0 4px 9px rgb(20 60 130 / 0.14);
 	}
-	@media (pointer: coarse) {
-		.begin-or .by-key {
-			display: none;
-		}
-		.begin-or .by-tap {
-			display: inline;
-		}
+	.tour-key:disabled {
+		cursor: default;
+		color: #8a93a6;
+	}
+	.tour-key :global(svg) {
+		color: #28405f;
+	}
+	.tour-key:disabled :global(svg) {
+		color: inherit;
+	}
+	.tour-key:focus-visible,
+	.begin:focus-visible {
+		outline: 2px solid #1f5fe0;
+		outline-offset: 3px;
+	}
+	/* It drops into place just after Begin does. */
+	.tour-key.live {
+		animation: land 0.62s 0.22s cubic-bezier(0.2, 1.5, 0.4, 1) backwards;
 	}
 
 	.told {
@@ -4220,7 +4318,7 @@
 		}
 		.begin-row {
 			margin-top: 16px;
-			gap: 8px 14px;
+			gap: 8px 10px;
 		}
 		.begin {
 			margin-bottom: 5px;
@@ -4228,8 +4326,26 @@
 			border-radius: 14px;
 			font-size: 19px;
 		}
-		.begin-or {
-			font-size: 14px;
+		.tour-key {
+			min-height: 44px;
+			margin-bottom: 5px;
+			padding: 0 14px 0 11px;
+			border-radius: 14px;
+			font-size: 15px;
+		}
+		/* The narrowest phones keep the two keys on one line, a little tighter. */
+		@media (max-width: 340px) {
+			.begin-row {
+				gap: 8px;
+			}
+			.begin {
+				padding: 11px 10px 12px 15px;
+			}
+			.tour-key {
+				gap: 6px;
+				padding: 0 11px 0 9px;
+				font-size: 14px;
+			}
 		}
 		.told {
 			margin-top: 16px;
@@ -4268,12 +4384,12 @@
 			font-size: clamp(22px, 1.35vw, 27px);
 			padding: 0.64em 0.8em 0.7em 1.08em;
 		}
-		.begin-or,
 		.told {
 			font-size: clamp(14.5px, 0.88vw, 17px);
 		}
-		.hear {
-			font-size: clamp(14px, 0.85vw, 16px);
+		.tour-key {
+			font-size: clamp(16px, 0.95vw, 19px);
+			padding: 0 1.1em 0 0.85em;
 		}
 		.hero .picker button {
 			font-size: clamp(13.5px, 0.8vw, 15.5px);
@@ -4570,8 +4686,10 @@
 			justify-items: start;
 			min-width: 0;
 		}
+		/* The talk key's player hangs from the whole header instead, the width of the screen. */
 		.stepper {
 			order: 2;
+			position: static;
 		}
 		/* On a trip, the way back takes the map's place, where a thumb finds it. */
 		.tripping .brand {

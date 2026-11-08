@@ -3,7 +3,9 @@
 Every card in the story and in the side trips has a conversation: two people talk the card through, slower and fuller
 than a card can. The card is the summary. The conversation is the explanation a friend gives. The header's talk key, the
 two people beside the sound key, plays the conversation of the card on screen and fills with amber as it goes; once
-pressed, it follows the reader, so each card they step to starts its own.
+pressed, it follows the reader, so each card they step to starts its own. Resting the pointer on the key (or tapping it
+on a phone) drops a small player from it: the conversation drawn as two lanes, Nora's turns above and Theo's below, with
+a playhead to drag, fifteen seconds back or ahead, and four speeds. The player reads who speaks when from `<id>.json`.
 
 - `narration/<id>.txt` is one script. `<id>` is the card's title through `slug()` in `src/lib/journey/content.ts`; a
   side-trip card is `<trip>-<slug>`, for example `sandbox-inside-the-glass`.

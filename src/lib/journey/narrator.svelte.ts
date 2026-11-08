@@ -10,6 +10,11 @@ import manifest from './narration.json';
 
 export const TALKS: Record<string, { title: string; seconds: number }> = manifest;
 
+/** One turn of a conversation: who speaks, from when to when, in seconds. */
+export type Turn = { who: 'NORA' | 'THEO'; start: number; end: number };
+/** The speeds the player offers. */
+export const RATES = [1, 1.25, 1.5, 2];
+
 /** "3:25", the way a podcast app shows a length. */
 export const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 /** "3 minutes 25 seconds", for a screen reader. */
@@ -36,6 +41,10 @@ export class Narrator {
 	listening = $state(false);
 	/** The card the reader is on, or was last fully on: what the talk key would play. */
 	here = $state<string | null>(null);
+	/** How fast they talk, remembered between visits. */
+	rate = $state(1);
+	/** Each conversation's turns, fetched the first time the player shows it. */
+	turns = $state.raw<Record<string, Turn[]>>({});
 	readonly progress = $derived(this.duration ? Math.min(1, this.time / this.duration) : 0);
 
 	private audio: HTMLAudioElement | null = null;
@@ -43,6 +52,8 @@ export class Narrator {
 	private fading = 0;
 	private shown: string | null = null;
 	private settle = 0;
+	/** Turns already asked for, so a second look doesn't fetch them again. */
+	private asked: Record<string, boolean> = {};
 
 	constructor(
 		private url: (file: string) => string,
@@ -98,11 +109,66 @@ export class Narrator {
 		this.audio = null;
 	}
 
-	/** Jumps back or ahead by some seconds, as the lock screen's buttons ask. */
-	skip(by: number) {
-		if (!this.audio || !this.id) return;
-		this.audio.currentTime = Math.max(0, Math.min(this.duration || Infinity, this.audio.currentTime + by));
-		this.time = this.audio.currentTime;
+	/** Jumps back or ahead by some seconds, as the player's and the lock screen's buttons ask. */
+	skip(by: number, id = this.id) {
+		if (!id) return;
+		this.seek(id, (this.id === id && this.audio ? this.audio.currentTime : 0) + by);
+	}
+
+	/**
+	 * Puts a card's conversation at some seconds in. If it's playing it plays on from there; if not, it waits there for
+	 * the key. A conversation not yet loaded is loaded, quietly.
+	 */
+	seek(id: string, seconds: number) {
+		const audio = this.element();
+		if (this.id !== id) this.load(id, audio);
+		const end = this.duration || TALKS[id]?.seconds || 0;
+		// Not quite the very end: that would end it at once.
+		const at = Math.max(0, Math.min(end - 0.25, seconds));
+		audio.currentTime = at;
+		this.time = at;
+		this.done = false;
+	}
+
+	/** Faster or slower, without changing their voices. */
+	setRate(rate: number) {
+		this.rate = rate;
+		if (this.audio) {
+			this.audio.defaultPlaybackRate = rate;
+			this.audio.playbackRate = rate;
+		}
+		try {
+			localStorage.setItem('journey-talk-rate', String(rate));
+		} catch {
+			// Private browsing: it just isn't remembered.
+		}
+	}
+
+	/** The speed from last time. Called once the page is in a browser. */
+	restore() {
+		try {
+			const rate = Number(localStorage.getItem('journey-talk-rate'));
+			if (RATES.includes(rate)) this.rate = rate;
+		} catch {
+			// No storage: the usual speed.
+		}
+	}
+
+	/** Fetches who speaks when in a conversation, for the player's picture of it. A few kilobytes, once. */
+	peek(id: string) {
+		if (this.turns[id] || this.asked[id] || !TALKS[id]) return;
+		this.asked[id] = true;
+		fetch(this.url(`${id}.json`))
+			.then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+			.then(({ lines }: { lines: Turn[] }) => {
+				this.turns = { ...this.turns, [id]: lines.map(({ who, start, end }) => ({ who, start, end })) };
+			})
+			.catch(() => (this.asked[id] = false));
+	}
+
+	/** Who is talking at some seconds into a conversation, or null in a pause between turns. */
+	speaker(id: string, at: number) {
+		return this.turns[id]?.find((t) => at >= t.start && at < t.end)?.who ?? null;
 	}
 
 	/**
@@ -157,11 +223,16 @@ export class Narrator {
 	}
 
 	private load(id: string, audio: HTMLAudioElement) {
+		if (!audio.paused) audio.pause();
 		this.id = id;
 		this.done = false;
 		this.time = 0;
 		this.duration = TALKS[id]?.seconds ?? 0;
+		this.peek(id);
 		audio.src = this.url(`${id}.mp3`);
+		// A new source starts at the usual speed unless told otherwise.
+		audio.defaultPlaybackRate = this.rate;
+		audio.playbackRate = this.rate;
 		audio.currentTime = 0;
 		if ('mediaSession' in navigator) {
 			navigator.mediaSession.metadata = new MediaMetadata({
@@ -233,7 +304,7 @@ export class Narrator {
 		audio.addEventListener('timeupdate', () => {
 			if (!this.duration || !Number.isFinite(audio.currentTime)) return;
 			try {
-				ms.setPositionState({ duration: this.duration, position: Math.min(audio.currentTime, this.duration), playbackRate: 1 });
+				ms.setPositionState({ duration: this.duration, position: Math.min(audio.currentTime, this.duration), playbackRate: this.rate });
 			} catch {
 				// A position past the end, while the file is still being measured.
 			}
