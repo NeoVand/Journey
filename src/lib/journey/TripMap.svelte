@@ -85,7 +85,7 @@
 		<!-- The way to the source on every screen: a phone keeps the corner key to its title page. -->
 		<a class="stop repo" href="https://github.com/NeoVand/Journey" target="_blank" rel="noopener">
 			<b><Icon icon={GithubIcon} size={19} stroke={1.8} />Source on GitHub</b>
-			<span>Made in the open. If you enjoy the trip, a star helps other people find it, and ideas, fixes and feedback are always welcome.</span>
+			<span>Made in the open by Neo Mohsenvand. If you enjoy the trip, a star helps other people find it, and ideas, fixes and feedback are always welcome.</span>
 		</a>
 	</div>
 </dialog>

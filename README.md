@@ -1,6 +1,6 @@
 # The journey of a token
 
-**[See it live →](https://neovand.github.io/Journey/)**
+By Neo Mohsenvand. **[See it live →](https://neovand.github.io/Journey/)**
 
 [![A laptop, a harness machine and an MCP box on a floating porcelain island](static/og.png)](https://neovand.github.io/Journey/)
 
@@ -39,6 +39,6 @@ The content follows the book in `reference/`. Harness details come from public d
 
 ## Licence
 
-MIT, in [`LICENSE`](LICENSE): the code, the words, the book in `reference/`, the narration and the sounds. The two
-typefaces in `static/fonts/`, Bricolage Grotesque and Instrument Sans, are their authors' work under the SIL Open Font
-License 1.1. Stars, issues and pull requests are all welcome.
+MIT, in [`LICENSE`](LICENSE), © 2026 Neo Mohsenvand: the code, the words, the book in `reference/`, the narration
+and the sounds. The two typefaces in `static/fonts/`, Bricolage Grotesque and Instrument Sans, are their authors' work
+under the SIL Open Font License 1.1. Stars, issues and pull requests are all welcome.

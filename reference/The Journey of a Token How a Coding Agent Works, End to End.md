@@ -1,6 +1,6 @@
 # The Journey of a Token: How a Coding Agent Works, End to End
 
-Nov 3, 2026 · @Eleo
+Nov 3, 2026 · Neo Mohsenvand
 
 ## Contents
 

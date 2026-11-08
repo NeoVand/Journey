@@ -9,6 +9,7 @@
 <svelte:head>
 	<title>The journey of a token: how a coding agent works</title>
 	<meta name="description" content={summary} />
+	<meta name="author" content="Neo Mohsenvand" />
 	<meta name="theme-color" content="#9fd0f8" />
 	<meta property="og:type" content="website" />
 	<meta property="og:site_name" content="The journey of a token" />
