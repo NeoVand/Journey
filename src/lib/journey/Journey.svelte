@@ -30,6 +30,20 @@
 
 	const ids: HarnessId[] = ['claude', 'codex', 'copilot'];
 	const labels: Record<HarnessId, string> = { claude: 'Claude Code', codex: 'Codex', copilot: 'Copilot' };
+	/** The title page's side-trip clouds, in a 168 by 96 box: a rounded base and four puffs along its top. */
+	const CLOUD_BASE = { x: 12, y: 44, width: 144, height: 44, r: 22 };
+	const CLOUD_PUFFS = [
+		{ x: 38, y: 56, r: 22 },
+		{ x: 66, y: 40, r: 27 },
+		{ x: 100, y: 36, r: 29 },
+		{ x: 132, y: 52, r: 23 }
+	];
+	/** The same cloud turned round, for every other one, so the four aren't stamped from one shape. Its base is symmetrical. */
+	const CLOUD_TURNED = CLOUD_PUFFS.map((p) => ({ ...p, x: 168 - p.x }));
+	/** How much wider the white rim is than the window in it. */
+	const CLOUD_RIM = 6;
+	/** Where a still sits in its window, when its subject isn't in the middle: the MCP box's name is at its top. */
+	const CLOUD_ALIGN: Partial<Record<TrackId, string>> = { mcp: 'xMidYMin slice' };
 
 	let harness = $state<HarnessId>('claude');
 	let form = $state(1);
@@ -1607,6 +1621,50 @@
 	</button>
 {/snippet}
 
+<!--
+  A side trip on the title page: a little cloud with the trip's best view inside, as if seen through a gap in it, and its
+  name underneath. The view is a still of the real scene, made by scripts/trip-views.mjs.
+-->
+{#snippet tripCloud(id: TrackId, n: number)}
+	<button type="button" class="trip-cloud" data-place={id} style:--n={n} disabled={!driven} onclick={() => takeTrip(id)}>
+		<svg viewBox="0 0 168 96" aria-hidden="true">
+			<defs>
+				<clipPath id="cloud-{id}">
+					<rect x={CLOUD_BASE.x} y={CLOUD_BASE.y} width={CLOUD_BASE.width} height={CLOUD_BASE.height} rx={CLOUD_BASE.r} />
+					{#each n % 2 ? CLOUD_TURNED : CLOUD_PUFFS as p (p.x)}<circle cx={p.x} cy={p.y} r={p.r} />{/each}
+				</clipPath>
+				<!-- One gradient across the whole cloud, not one per puff. -->
+				<linearGradient id="cloud-rim-{id}" x1="0" y1="2" x2="0" y2="93" gradientUnits="userSpaceOnUse">
+					<stop offset="0" class="rim-top" />
+					<stop offset="0.5" class="rim-top" />
+					<stop offset="1" class="rim-under" />
+				</linearGradient>
+				<!-- Mist at the window's edges, wider than tall like the window itself. -->
+				<radialGradient id="cloud-mist-{id}" cx="84" cy="50" r="78" gradientUnits="userSpaceOnUse" gradientTransform="translate(84 50) scale(1 0.62) translate(-84 -50)">
+					<stop offset="0.6" stop-color="#fff" stop-opacity="0" />
+					<stop offset="0.86" stop-color="#fff" stop-opacity="0.45" />
+					<stop offset="1" stop-color="#fff" stop-opacity="0.9" />
+				</radialGradient>
+			</defs>
+			<g fill="url(#cloud-rim-{id})">
+				<rect
+					x={CLOUD_BASE.x - CLOUD_RIM}
+					y={CLOUD_BASE.y - CLOUD_RIM}
+					width={CLOUD_BASE.width + 2 * CLOUD_RIM}
+					height={CLOUD_BASE.height + 2 * CLOUD_RIM}
+					rx={CLOUD_BASE.r + CLOUD_RIM}
+				/>
+				{#each n % 2 ? CLOUD_TURNED : CLOUD_PUFFS as p (p.x)}<circle cx={p.x} cy={p.y} r={p.r + CLOUD_RIM} />{/each}
+			</g>
+			<g clip-path="url(#cloud-{id})">
+				<image class="view" href="{resolve('/')}trips/{id}.webp" x="12" y="7" width="144" height="81" preserveAspectRatio={CLOUD_ALIGN[id] ?? 'xMidYMid slice'} />
+				<rect class="mist" width="168" height="96" fill="url(#cloud-mist-{id})" />
+			</g>
+		</svg>
+		<span class="trip-name">{TRACKS[id].name}</span>
+	</button>
+{/snippet}
+
 <!-- The agent's name leads each note that differs between agents, and is the way to change it: one tap, the next agent. -->
 {#snippet agent()}
 	<button type="button" class={['agent', { hint: hinting(nextAgent) }]} aria-label="{spec.name}. Show this for {labels[nextAgent]}" onclick={() => choose(nextAgent)}>
@@ -1843,8 +1901,8 @@
 				<div class="trip-set">
 					<p class="trip-set-head" id="trip-set-head">Side trips <span>Short detours that bring you back</span></p>
 					<ul aria-labelledby="trip-set-head">
-						{#each ['harness', 'mcp', 'sandbox', 'memory'] as const as id (id)}
-							<li>{@render tripButton(id, false)}</li>
+						{#each ['harness', 'mcp', 'sandbox', 'memory'] as const as id, n (id)}
+							<li>{@render tripCloud(id, n)}</li>
 						{/each}
 					</ul>
 				</div>
@@ -4351,7 +4409,7 @@
 		align-self: center;
 	}
 
-	/* Side trips: a set of tickets off the main road, each with the badge of the place it goes. */
+	/* Side trips: four little clouds off the main road, each with a view of the place it goes. */
 	.trip-set {
 		margin: 22px 0 0;
 		max-width: 540px;
@@ -4373,15 +4431,145 @@
 	}
 	.trip-set ul {
 		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 9px;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: 10px;
 		list-style: none;
 		margin: 0;
 		padding: 0;
 	}
-	.trip-set .trip-go {
+	/*
+	 * A cloud: a white rim with a soft underside, tinted a little with the colour of the place, around a window onto the
+	 * trip's world, misty at its edges. Pointed at, it lifts, the mist clears and the view leans in. At rest the clouds
+	 * drift, slowly and each in its own time.
+	 */
+	.trip-cloud {
+		--tint: #28405f;
+		display: grid;
+		justify-items: center;
+		align-content: start;
+		gap: 2px;
 		width: 100%;
-		height: 100%;
+		margin: 0;
+		padding: 0;
+		border: 0;
+		border-radius: 14px;
+		background: none;
+		color: var(--ink);
+		font: inherit;
+		cursor: pointer;
+		-webkit-tap-highlight-color: transparent;
+	}
+	.trip-cloud[data-place='mcp'] {
+		--tint: #1f5fe0;
+	}
+	.trip-cloud[data-place='sandbox'] {
+		--tint: #12a956;
+	}
+	.trip-cloud[data-place='memory'] {
+		--tint: #ff7f17;
+	}
+	.trip-cloud svg {
+		display: block;
+		width: 100%;
+		height: auto;
+		overflow: visible;
+		filter: drop-shadow(0 5px 7px rgb(40 80 150 / 0.2));
+		transition:
+			transform 0.4s cubic-bezier(0.3, 1.5, 0.4, 1),
+			filter 0.4s;
+		animation: drift 7s ease-in-out calc(var(--n) * -1.9s) infinite alternate;
+	}
+	@keyframes drift {
+		from {
+			translate: 0 1px;
+		}
+		to {
+			translate: 0 -2px;
+		}
+	}
+	/* A card off the screen is inert: its clouds needn't drift for nobody. */
+	:global([inert]) .trip-cloud svg {
+		animation: none;
+	}
+	.trip-cloud .rim-top {
+		stop-color: #fff;
+	}
+	.trip-cloud .rim-under {
+		stop-color: color-mix(in srgb, var(--tint) 14%, #dce7f5);
+	}
+	/* The stills are of a pale, bright world; a touch more colour keeps them clear at this size. */
+	.trip-cloud .view {
+		filter: saturate(1.2) contrast(1.06);
+		transform-box: fill-box;
+		transform-origin: 50% 35%;
+		transition: transform 0.6s cubic-bezier(0.2, 0.9, 0.3, 1);
+	}
+	.trip-cloud .mist {
+		transition: opacity 0.4s;
+	}
+	.trip-name {
+		max-width: 100%;
+		font-family: var(--display);
+		font-weight: 700;
+		font-size: 13px;
+		line-height: 1.12;
+		letter-spacing: -0.005em;
+		text-align: center;
+		text-wrap: pretty;
+		/* A glow of the sky round the letters, so a name stays clear where the world rises behind it, as on a short phone. */
+		text-shadow:
+			0 0 2px rgb(214 234 251),
+			0 0 6px rgb(214 234 251 / 0.95),
+			0 0 12px rgb(214 234 251 / 0.85);
+	}
+	@media (hover: hover) {
+		.trip-cloud:hover:not(:disabled) svg {
+			transform: translateY(-3px);
+			filter: drop-shadow(0 9px 10px rgb(40 80 150 / 0.17));
+		}
+		.trip-cloud:hover:not(:disabled) .view {
+			transform: scale(1.07);
+		}
+		.trip-cloud:hover:not(:disabled) .mist {
+			opacity: 0.3;
+		}
+	}
+	.trip-cloud:focus-visible {
+		outline: 2px solid #1f5fe0;
+		outline-offset: 3px;
+	}
+	.trip-cloud:focus-visible svg {
+		transform: translateY(-3px);
+	}
+	.trip-cloud:focus-visible .view {
+		transform: scale(1.07);
+	}
+	.trip-cloud:focus-visible .mist {
+		opacity: 0.3;
+	}
+	.trip-cloud:active:not(:disabled) svg {
+		transform: translateY(-1px);
+		transition-duration: 0.1s;
+	}
+	.trip-cloud:disabled {
+		cursor: default;
+	}
+	.trip-cloud:disabled svg {
+		opacity: 0.6;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.trip-cloud svg {
+			animation: none;
+		}
+		.trip-cloud .view,
+		.trip-cloud svg {
+			transition: none;
+		}
+	}
+	@media (forced-colors: active) {
+		.trip-cloud {
+			border: 1px solid ButtonText;
+		}
 	}
 	p.trips {
 		display: flex;
@@ -4553,6 +4741,9 @@
 				padding: 0 11px 0 9px;
 				font-size: 14px;
 			}
+			.trip-name {
+				font-size: 11px;
+			}
 		}
 		.told {
 			margin-top: 16px;
@@ -4569,7 +4760,10 @@
 			font-size: 13px;
 		}
 		.trip-set ul {
-			gap: 7px;
+			gap: 6px;
+		}
+		.trip-name {
+			font-size: 12px;
 		}
 		.trip-go {
 			gap: 8px;
@@ -4610,12 +4804,8 @@
 		.trip-set-head span {
 			font-size: clamp(14px, 0.85vw, 16px);
 		}
-		.trip-set .trip-words b {
-			font-size: clamp(14.5px, 0.88vw, 17px);
-		}
-		.trip-set .badge {
-			width: clamp(32px, 2vw, 38px);
-			height: clamp(32px, 2vw, 38px);
+		.trip-set .trip-name {
+			font-size: clamp(13px, 0.78vw, 15.5px);
 		}
 	}
 	/* A short phone screen, such as Chrome's on an iPhone with its two bars: the line under the heading gives way. */
