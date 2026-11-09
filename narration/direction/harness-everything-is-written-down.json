@@ -1,0 +1,7 @@
+{
+	"cues": [
+		{ "at": "sends the whole conversation", "show": ["front:Conversation"], "hold": 3.4 },
+		{ "at": "So the harness compacts", "show": ["press-head", "press-frame"], "together": true, "hold": 3.4 },
+		{ "at": "the recording isn't thrown away", "show": ["reel", "sign:Saved transcript"], "together": true, "hold": 4.5 }
+	]
+}

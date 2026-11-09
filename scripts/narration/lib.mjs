@@ -1,8 +1,8 @@
-// What say.mjs and spots.mjs share: reading a script, the words as the voices hear them, how a script is cut into
-// requests, and where in a recording each named thing is said.
+// What say.mjs and direct.mjs share: reading a script, the words as the voices hear them, how a script is cut into
+// requests, and when in a recording each phrase of a conversation's direction is said.
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 
 export const root = new URL('../../', import.meta.url);
 export const scripts = new URL('narration/', root);
@@ -79,46 +79,97 @@ export function request(script, g, group, take = 0) {
 
 export const seconds = (file) => Number(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', file]).toString().trim());
 
-/** The things in the scene that can be pointed at, and the words that name each one: narration/spots.json. */
-const SPOTS = existsSync(new URL('spots.json', scripts)) ? JSON.parse(readFileSync(new URL('spots.json', scripts), 'utf8')) : {};
-const NAMES = Object.entries(SPOTS)
-	.filter(([key]) => !key.startsWith('//'))
-	.flatMap(([key, words]) => words.map((w) => ({ key, re: new RegExp(`(?<![\\w-])${spoken(w).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w-])`, 'gi') })));
-/** The same thing named again this soon after is the same mention. */
-const AGAIN = 6;
+/** Letters compared without case or curly quotes, one for one, so a place in one is the same place in the other. */
+const fold = (text) => text.toLowerCase().replace(/[’‘]/g, "'").replace(/[“”]/g, '"');
 
 /**
- * When each thing in the scene is named in a recording, in seconds from its start: [[seconds, key], ...]. pieces are the
- * requests in order, each with its inputs, the voices' timing (letter by letter where the answer has it, else turn by
- * turn) and where its audio starts in the joined file.
+ * A recording's words as one string, with when each letter is said, in seconds from the start. pieces are its requests
+ * in order: each with its inputs, the voices' timing (letter by letter where the answer has it, else turn by turn) and
+ * where its audio starts in the joined file.
  */
-export function spotsIn(pieces) {
-	const found = [];
+export function timeline(pieces) {
+	let text = '';
+	const times = [];
 	for (const p of pieces) {
 		let base = 0;
 		const letters = p.alignment?.characters?.join('');
 		for (const [k, input] of p.inputs.entries()) {
-			const text = input.text;
+			const said = input.text;
 			const segs = p.segments.filter((s) => s.dialogue_input_index === k);
-			const t0 = segs.length ? Math.min(...segs.map((s) => s.start_time_seconds)) : null;
-			const t1 = segs.length ? Math.max(...segs.map((s) => s.end_time_seconds)) : null;
-			for (const { key, re } of NAMES) {
-				re.lastIndex = 0;
-				for (let m = re.exec(text); m; m = re.exec(text)) {
-					// Letter-timed where the voices said when; otherwise as far through the turn as the word is through its text.
-					let at = letters && letters.slice(base, base + text.length) === text ? p.alignment.character_start_times_seconds[base + m.index] : null;
-					if (at === null || at === undefined) at = t0 === null ? null : t0 + ((t1 - t0) * m.index) / text.length;
-					if (at !== null) found.push([+(p.offset + at).toFixed(2), key]);
-				}
+			const t0 = segs.length ? Math.min(...segs.map((s) => s.start_time_seconds)) : 0;
+			const t1 = segs.length ? Math.max(...segs.map((s) => s.end_time_seconds)) : t0;
+			const exact = letters && letters.slice(base, base + said.length) === said;
+			for (let i = 0; i < said.length; i++) {
+				// Letter-timed where the voices said when; otherwise as far through the turn as the letter is through its text.
+				times.push(p.offset + (exact ? p.alignment.character_start_times_seconds[base + i] : t0 + ((t1 - t0) * i) / said.length));
 			}
-			base += text.length;
+			text += said;
+			base += said.length;
+			text += ' ';
+			times.push(times[times.length - 1] ?? p.offset);
 		}
 	}
-	found.sort((a, b) => a[0] - b[0]);
-	const last = {};
-	return found.filter(([at, key]) => {
-		const keep = last[key] === undefined || at - last[key] > AGAIN;
-		last[key] = at;
-		return keep;
-	});
+	return { text: fold(text), times };
+}
+
+/**
+ * When a phrase of the script is said, after a place in the recording: its first letter's time and where it ends, or
+ * null if it isn't there. The phrase is written as the script has it; the voices' respellings are applied here.
+ */
+export function when(line, phrase, from = 0) {
+	const said = fold(spoken(phrase));
+	const at = line.text.indexOf(said, from);
+	if (at < 0) return null;
+	return { t: +line.times[at].toFixed(2), end: at + said.length };
+}
+
+/**
+ * A conversation's recording as say.mjs made it, read back from narration-lab/raw: its pieces, each with where it
+ * starts. Null if it hasn't been recorded. A word added to the say list since changes a piece's name, not the
+ * recording: the only take kept is the one playing.
+ */
+export function recording(script, take = 0) {
+	const dir = new URL(`${script.id}/`, raw);
+	const pieces = [];
+	let offset = 0;
+	for (const [g, group] of chunks(script.turns).entries()) {
+		const { inputs, hash } = request(script, g, group, take);
+		let file = new URL(`${g}-${hash}.json`, dir);
+		if (!existsSync(file)) {
+			const kept = existsSync(dir) ? readdirSync(dir).filter((f) => new RegExp(`^${g}-[0-9a-f]{12}\\.json$`).test(f)) : [];
+			if (kept.length !== 1) return null;
+			file = new URL(kept[0], dir);
+		}
+		const res = JSON.parse(readFileSync(file, 'utf8'));
+		pieces.push({ inputs, segments: res.voice_segments, alignment: res.alignment, offset });
+		// The joined audio puts a breath after each piece: its length measured as say.mjs measured it.
+		const wav = new URL(`piece-${g}.wav`, dir);
+		offset += seconds((existsSync(wav) ? wav : new URL(file.href.replace(/\.json$/, '.mp3'))).pathname) + GAP;
+	}
+	return pieces;
+}
+
+/**
+ * A conversation's direction: narration/direction/<id>.json, the moments it shows something in the scene, each at a
+ * phrase of the script, made into times. Each moment: { at: phrase, show: [names], together?, do?, index?, in?, hold? }.
+ * Phrases are found in order, each after the last. Returns the moments with times, and the phrases not found.
+ */
+export function directionOf(id, pieces) {
+	const file = new URL(`direction/${id}.json`, scripts);
+	if (!existsSync(file)) return { direction: [], missing: [] };
+	const { cues } = JSON.parse(readFileSync(file, 'utf8'));
+	const line = timeline(pieces);
+	const direction = [];
+	const missing = [];
+	let from = 0;
+	for (const { at, ...cue } of cues) {
+		const found = when(line, at, from);
+		if (!found) {
+			missing.push(at);
+			continue;
+		}
+		from = found.end;
+		direction.push({ t: found.t, ...cue });
+	}
+	return { direction, missing };
 }

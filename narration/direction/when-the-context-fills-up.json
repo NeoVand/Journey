@@ -1,0 +1,8 @@
+{
+	"cues": [
+		{ "at": "creep right up to the edge", "show": ["limit"], "hold": 3 },
+		{ "at": "at some threshold it runs compaction", "show": ["press-frame"], "hold": 3.6 },
+		{ "at": "All that saved work on the start of the request", "show": ["label:Instructions and tools"], "hold": 3 },
+		{ "at": "or when you type /compact", "show": ["Laptop"], "hold": 3 }
+	]
+}

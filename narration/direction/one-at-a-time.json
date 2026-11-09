@@ -1,0 +1,8 @@
+{
+	"cues": [
+		{ "at": "the row of lights along the edge", "show": ["sign:KV cache: one key and one value more each step"], "hold": 3.6 },
+		{ "at": "That loop is called decode", "show": ["pool-Decode pool", "label:One at a time. Limited by memory."], "together": true, "in": "Reading and writing", "hold": 3.2 },
+		{ "at": "So the chips work on lots of people's next tokens", "show": ["lanes", "label:One step: one more token each"], "together": true, "in": "Sharing the chips", "hold": 3.4 },
+		{ "at": "It writes a private chain of tokens", "show": ["sign:Thinking: billed as output, kept private"], "hold": 3.6 }
+	]
+}

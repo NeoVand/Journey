@@ -1,0 +1,7 @@
+{
+	"cues": [
+		{ "at": "The server replies with blocks of content", "show": ["MCP"], "hold": 3.4 },
+		{ "at": "sends the next request", "show": ["Harness"], "hold": 3.2 },
+		{ "at": "or it tells you", "show": ["Laptop"], "hold": 3 }
+	]
+}

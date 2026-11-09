@@ -1,0 +1,10 @@
+{
+	"cues": [
+		{ "at": "One. Stop five.", "show": ["sign:5  Compute"], "hold": 3 },
+		{ "at": "keystrokes on your laptop", "show": ["Laptop"], "hold": 3 },
+		{ "at": "wraps your sentence in everything the model will need", "show": ["Harness"], "hold": 3 },
+		{ "at": "goes over the internet encrypted", "show": ["tunnel-frame", "Front door"], "together": true, "hold": 6 },
+		{ "at": "On thousands of chips in a data center", "show": ["The model"], "do": "excite", "hold": 4 },
+		{ "at": "gate by gate", "show": ["gate"], "together": true, "hold": 3 }
+	]
+}

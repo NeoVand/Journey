@@ -1,0 +1,8 @@
+{
+	"cues": [
+		{ "at": "the files are put back from the checkpoint", "show": ["checkpoint-stand", "sign:Checkpoint"], "together": true, "hold": 3.4 },
+		{ "at": "You might put the code back", "show": ["files-tray"], "hold": 2.6 },
+		{ "at": "the conversation has wandered somewhere unhelpful", "show": ["sign:Today"], "hold": 2.6 },
+		{ "at": "anything that already left your machine", "show": ["Git host"], "hold": 3 }
+	]
+}

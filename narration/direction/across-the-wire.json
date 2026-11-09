@@ -1,0 +1,10 @@
+{
+	"cues": [
+		{ "at": "The harness opens a secure connection", "show": ["Harness"], "hold": 3.4 },
+		{ "at": "the padlock in your browser", "show": ["lock-body", "lock-shackle"], "together": true, "hold": 3 },
+		{ "at": "every machine along the way", "show": ["tunnel-frame"], "hold": 3 },
+		{ "at": "made at the other end", "show": ["Tokenizer"], "hold": 3 },
+		{ "at": "the keys stay home", "show": ["Laptop"], "hold": 3.4 },
+		{ "at": "sends small pieces as they're written", "show": ["The model"], "hold": 3.4 }
+	]
+}

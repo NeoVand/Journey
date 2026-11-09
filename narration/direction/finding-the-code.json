@@ -1,0 +1,9 @@
+{
+	"cues": [
+		{ "at": "It's in a data center", "show": ["The model"], "in": "Thousands more behind it", "hold": 3 },
+		{ "at": "turns it into a system call", "show": ["Harness"], "hold": 3.2 },
+		{ "at": "it searches the source folder for lock and schedule", "show": ["lens"], "hold": 3 },
+		{ "at": "Same idea, different tools", "show": ["drawer:Tools"], "do": "pull", "index": 2, "hold": 7 },
+		{ "at": "unless the harness writes it down", "show": ["drawer:Instructions"], "do": "pull", "index": 0, "hold": 4 }
+	]
+}

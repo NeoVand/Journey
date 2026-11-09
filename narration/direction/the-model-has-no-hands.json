@@ -1,0 +1,9 @@
+{
+	"cues": [
+		{ "at": "The model sits in a data center", "show": ["The model"], "in": "Thousands more behind it", "hold": 3 },
+		{ "at": "down a long tube that ends in the harness", "show": ["home-tube"], "hold": 2.4 },
+		{ "at": "which is why you see the agent typing", "show": ["Laptop"], "hold": 3 },
+		{ "at": "in the source folder", "show": ["Your repository"], "in": "Finding the code", "hold": 3.2 },
+		{ "at": "The harness writes an error into the conversation", "show": ["drawer:Conversation"], "do": "pull", "index": 3, "hold": 6 }
+	]
+}

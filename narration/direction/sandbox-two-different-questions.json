@@ -1,0 +1,9 @@
+{
+	"cues": [
+		{ "at": "Permission is your rules looking at that request", "show": ["check-Deny", "check-Ask", "check-Allow"], "together": true, "hold": 2.6 },
+		{ "at": "or ask the human", "show": ["you-desk"], "hold": 2.4 },
+		{ "at": "Think of it as glass around the commands", "show": ["glass-frame"], "hold": 3.4 },
+		{ "at": "when the process reaches for something outside", "show": ["home-tray"], "hold": 3.2 },
+		{ "at": "Claude Code's permission is a mode", "show": ["mode-dial"], "hold": 3 }
+	]
+}

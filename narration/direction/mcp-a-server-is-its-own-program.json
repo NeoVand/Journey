@@ -1,0 +1,7 @@
+{
+	"cues": [
+		{ "at": "Its own program, separate from the agent", "show": ["MCP"], "hold": 3.4 },
+		{ "at": "the harness, the agent program on your laptop", "show": ["Harness"], "hold": 3 },
+		{ "at": "A local server runs on your laptop", "show": ["Laptop"], "hold": 3.4 }
+	]
+}

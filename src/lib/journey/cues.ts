@@ -92,26 +92,3 @@ export function cuesOf(lines: Line[]) {
 	}
 	return cues;
 }
-
-/** Seconds of conversation between two things lighting up, at least. */
-export const SPOT_GAP = 8;
-/** Seconds of conversation before the same thing lights up again. */
-export const SPOT_AGAIN = 40;
-
-/**
- * Which of a conversation's mentions of things in the scene light up: never two close together, and not the same thing
- * again too soon. The player marks these on its timeline; the spotlight lights each one that's in view when it comes.
- */
-export function plan(spots: [number, string][]) {
-	const out: [number, string][] = [];
-	const seen: Record<string, number> = {};
-	let last = -Infinity;
-	for (const [at, key] of spots) {
-		if (at - last < SPOT_GAP) continue;
-		if (seen[key] !== undefined && at - seen[key] < SPOT_AGAIN) continue;
-		out.push([at, key]);
-		last = at;
-		seen[key] = at;
-	}
-	return out;
-}
