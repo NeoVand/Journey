@@ -6,7 +6,7 @@
  * The audio is made by scripts/narration/say.mjs from the scripts in narration/, with the words beside it, timed by
  * turn and by sentence: the player's lanes and the subtitles both come from them.
  */
-import { cuesOf, type Cue, type Line } from './cues';
+import { cuesOf, plan, type Cue, type Line } from './cues';
 import manifest from './narration.json';
 
 export const TALKS: Record<string, { title: string; seconds: number }> = manifest;
@@ -50,6 +50,8 @@ export class Narrator {
 	turns = $state.raw<Record<string, Turn[]>>({});
 	/** Each conversation's subtitles, fetched with its turns. */
 	cues = $state.raw<Record<string, Cue[]>>({});
+	/** When each conversation lights something in the scene: [seconds, what], already spaced out, for the spotlight and the player's marks. */
+	spots = $state.raw<Record<string, [number, string][]>>({});
 	/** Subtitles on screen while they talk, remembered between visits. Off until the reader asks. */
 	subtitles = $state(false);
 	readonly progress = $derived(this.duration ? Math.min(1, this.time / this.duration) : 0);
@@ -188,10 +190,11 @@ export class Narrator {
 		this.asked[id] = true;
 		fetch(this.url(`${id}.json`))
 			.then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-			.then(({ lines }: { lines: Line[] }) => {
+			.then(({ lines, spots }: { lines: Line[]; spots?: [number, string][] }) => {
 				const timed = lines.filter((l) => l.start !== null && l.end !== null);
 				this.turns = { ...this.turns, [id]: timed.map(({ who, start, end }) => ({ who, start, end })) };
 				this.cues = { ...this.cues, [id]: cuesOf(timed) };
+				this.spots = { ...this.spots, [id]: plan(spots ?? []) };
 			})
 			.catch(() => (this.asked[id] = false));
 	}

@@ -32,6 +32,10 @@
 	const playing = $derived(on && narrator.playing);
 	const now = $derived(on && time > 0 ? narrator.speaker(id, time) : null);
 	const turns = $derived(narrator.turns[id] ?? []);
+	/** The moments the conversation shows something in the scene: marked on the score, and a click near one goes there. */
+	const marks = $derived(narrator.spots[id] ?? []);
+	/** Where a press on the score began, to tell a click from a drag. */
+	let pressedAt = 0;
 	const lanes = [
 		['NORA', 'Nora'],
 		['THEO', 'Theo']
@@ -54,6 +58,17 @@
 	};
 
 	const span = (t: { start: number; end: number }) => `left: ${(t.start / seconds) * 100}%; width: max(2px, ${((t.end - t.start) / seconds) * 100}%)`;
+
+	/**
+	 * A click (not a drag) near a mark goes to just before it, so the thing is heard named as the camera goes to it.
+	 * Anywhere else, the slider has already gone where it was clicked.
+	 */
+	function snap(event: PointerEvent) {
+		if (Math.abs(event.clientX - pressedAt) > 4 || !seconds || !marks.length) return;
+		const strip = (event.currentTarget as HTMLElement).getBoundingClientRect();
+		const near = marks.find(([at]) => Math.abs(strip.left + (at / seconds) * strip.width - event.clientX) <= 7);
+		if (near) narrator.seek(id, Math.max(0, near[0] - 1.5));
+	}
 
 	/** The arrow keys move the playhead by five seconds, Page Up and Down by thirty. */
 	function scrub(event: KeyboardEvent) {
@@ -106,6 +121,9 @@
 							{/each}
 						</div>
 					{/each}
+					{#each marks as [at, key] (at)}
+						<i class={['mark', { past: at <= time }]} style:left="{(at / seconds) * 100}%" aria-hidden="true" data-spot={key}></i>
+					{/each}
 					<span class="head" aria-hidden="true"></span>
 					<input
 						type="range"
@@ -116,6 +134,8 @@
 						aria-label="Where in the conversation"
 						aria-valuetext="{clock(time)} of {clock(seconds)}"
 						oninput={(e) => narrator.seek(id, Number(e.currentTarget.value))}
+						onpointerdown={(e) => (pressedAt = e.clientX)}
+						onpointerup={snap}
 						onkeydown={scrub}
 					/>
 				</div>
@@ -377,6 +397,20 @@
 	}
 	.lanes.played .lane.theo i {
 		background: var(--theo);
+	}
+	/* Where the conversation shows something: a faint steady line across both lanes, a little warmer once it's been. */
+	.mark {
+		position: absolute;
+		top: -2px;
+		bottom: -2px;
+		width: 1.5px;
+		margin-left: -0.75px;
+		border-radius: 1px;
+		background: rgb(16 26 48 / 0.2);
+		pointer-events: none;
+	}
+	.mark.past {
+		background: rgb(176 104 0 / 0.38);
 	}
 	.head {
 		position: absolute;

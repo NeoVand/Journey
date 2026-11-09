@@ -337,6 +337,8 @@ export class HarnessRoom {
 			recess.position.set(0, HATCH_Y[i], BACK_Z + 0.01);
 			this.group.add(recess);
 			const hatch = new THREE.Group();
+			// Named as the drawer's front is, outside: from in here the hatch is the front.
+			hatch.name = `front:${name}`;
 			const hb = new Batch();
 			hb.add(extrude(roundedRect(3.4, 0.78, 0.12), 0.16, 0.04, 3, 8), m.creamLight);
 			hatch.add(hb.build('hatch'));

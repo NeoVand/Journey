@@ -685,8 +685,23 @@ export class Stage {
 		this.composer.setSize(width, height);
 	}
 
+	/**
+	 * How far the light on everything is lowered, 0 to 1, while the conversation shows one thing: that thing glows with
+	 * its own light, so it stays bright as the rest goes a little into shade. Only for the drawing; the lights' own
+	 * settings are put back after.
+	 */
+	dimmed = 0;
+
 	render() {
+		const d = 1 - 0.3 * this.dimmed;
+		if (d >= 1) return this.composer.render();
+		const was = [this.sun.intensity, this.fill.intensity, this.hemi.intensity, this.scene.environmentIntensity];
+		this.sun.intensity *= d;
+		this.fill.intensity *= d;
+		this.hemi.intensity *= d;
+		this.scene.environmentIntensity *= d;
 		this.composer.render();
+		[this.sun.intensity, this.fill.intensity, this.hemi.intensity, this.scene.environmentIntensity] = was;
 	}
 
 	/**

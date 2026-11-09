@@ -47,6 +47,8 @@ export class Laptop {
 	private status = 'Building the request';
 
 	constructor() {
+		// Its name lets the conversation point at it: see pointer.svelte.ts.
+		this.group.name = 'Laptop';
 		const m = mats();
 		const b = new Batch();
 

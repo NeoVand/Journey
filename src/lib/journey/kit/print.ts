@@ -164,6 +164,8 @@ export class Label {
 	}
 
 	set(text: string) {
+		// Named for its words, so the conversation can point at what it labels: see pointer.svelte.ts.
+		this.mesh.name = `label:${text}`;
 		const { px, style, surface } = this;
 		const fontStr = `${style.weight} ${px}px ${style.font}`;
 		const c = surface.ctx;

@@ -39,6 +39,8 @@ export class Gateway {
 	static SLOT_Y = 0.56;
 
 	constructor() {
+		// Its name lets the conversation point at it: see pointer.svelte.ts.
+		this.group.name = 'Front door';
 		const m = mats();
 		const b = new Batch();
 		plinth(b, GW + 0.34, GD + 0.34, 0.14);
