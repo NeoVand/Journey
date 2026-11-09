@@ -20,6 +20,8 @@ export class SkillShelf {
 	private folders: THREE.Group[] = [];
 
 	constructor() {
+		// Its name lets the conversation point at it: see pointer.svelte.ts.
+		this.group.name = 'Skills';
 		const m = mats();
 		const base = new Batch();
 		plinth(base, 1.5, 1.14, 0.08);

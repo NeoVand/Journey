@@ -3,7 +3,7 @@ NORA: Here's something that surprises people. The to-do list an agent shows you 
 THEO: I assumed the app made it. Like a progress bar.
 NORA: It's a tool call, like any other. The model writes a call with the list in it: each step, and for each one, whether it's waiting, under way, or done.
 THEO: And the harness runs what, exactly?
-NORA: Nothing. There's no command behind it. The harness keeps the list and draws it for you. Here, that's the board. In your agent, it's a list beside the conversation.
+NORA: Nothing. There's no command behind it. The harness keeps the list and draws it for you. Here, that's the checklist board. In your agent, it's a list beside the conversation.
 THEO: [skeptical] So the model calls a tool whose whole job is taking notes.
 NORA: Exactly that. Remember, the model only ever writes text. If it wants something written down where it'll see it again, it has to write it into the conversation. A to-do call is a tidy, structured way of doing that, and the harness can show it to you as a bonus.
 THEO: How does each agent do it?

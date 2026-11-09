@@ -63,6 +63,7 @@ class Drawer {
 	y: number;
 
 	constructor(public index: number, name: string, icon: string) {
+		this.group.name = `drawer:${name}`;
 		const m = mats();
 		const b = new Batch();
 		const fw = OPEN_W - 0.08;
@@ -128,6 +129,8 @@ class Drawer {
 		);
 		face.position.set(0, 0, 0.101);
 		face.renderOrder = 2;
+		// The front alone, without the tray behind it, is what the conversation points at.
+		face.name = `front:${name}`;
 		this.group.add(face);
 
 		// State lamp on the front's right end.
@@ -184,6 +187,8 @@ export class Harness {
 	private name: Label;
 
 	constructor() {
+		// Its name lets the conversation point at it: see pointer.svelte.ts.
+		this.group.name = 'Harness';
 		const m = mats();
 		const b = new Batch();
 		plinth(b, HW + 0.34, HD + 0.34, 0.14);

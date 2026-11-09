@@ -28,6 +28,7 @@ class McpDrawer {
 		name: string,
 		icon: string
 	) {
+		this.group.name = `mcp:${name}`;
 		const m = mats();
 		const b = new Batch();
 		// An open tray behind the front: floor, two sides and a back, so what's in it can be seen.
@@ -65,6 +66,8 @@ export class McpServer {
 	private body = new THREE.Group();
 
 	constructor() {
+		// Its name lets the conversation point at it: see pointer.svelte.ts.
+		this.group.name = 'MCP';
 		const m = mats();
 		const b = new Batch();
 		plinth(b, MCP_W + 0.22, MCP_D + 0.22, 0.1);

@@ -29,6 +29,8 @@ export function machine({ w, h, d, finish = 'cream', name, signH = 0.26, vent = 
 	if (vent && h > 1.6) ventX(b, w / 2 + 0.002, 0.14 + h * 0.46, 0, h * 0.5, d * 0.62, Math.round(h * 2.8));
 	group.add(b.build('machine'));
 	if (name) {
+		// Its sign's words are its name, so the conversation can point at it: see pointer.svelte.ts.
+		group.name = name;
 		// Kept inside the face: a short machine keeps its desktop-sized sign on a phone, and sits it clear of the plinth.
 		const fit = 2 * signH * SIGN_PHONE > h - 0.3;
 		const sign = createSign(name, signH, undefined, undefined, fit);

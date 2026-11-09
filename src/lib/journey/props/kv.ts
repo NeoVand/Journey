@@ -32,6 +32,8 @@ export class KvCache {
 	private made = [new THREE.Vector3(AX + 0.68, 1.82, 1.46), new THREE.Vector3(AX + 0.68, 0.94, 1.46)];
 
 	constructor() {
+		// Its name lets the conversation point at it: see pointer.svelte.ts.
+		this.group.name = 'KV cache';
 		const m = mats();
 		const b = new Batch();
 

@@ -28,6 +28,8 @@ export class Router {
 	private answers: THREE.Group[] = [];
 
 	constructor(railZ: number, railY: number) {
+		// Its name lets the conversation point at it: see pointer.svelte.ts.
+		this.group.name = 'Router';
 		const m = mats();
 
 		// The arch across the belt, the same kind of thing as the gate further along.

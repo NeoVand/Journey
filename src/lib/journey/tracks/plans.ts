@@ -338,6 +338,7 @@ export class PlansStage {
 			this.pages.push(card);
 		}
 		this.summary = new Card(PAGE_W, PAGE_H, 560, 0.02);
+		this.summary.mesh.name = 'summary-page';
 		drawPage(this.summary, 'summary', 'Everything before, in short');
 		this.summary.mesh.visible = false;
 		g.add(this.summary.mesh);
@@ -370,6 +371,8 @@ export class PlansStage {
 			this.sheetLamps.push(lamp);
 		});
 		this.barArm = new THREE.Group();
+		// Named so the conversation can point at it: see pointer.svelte.ts.
+		this.barArm.name = 'barrier';
 		const arm = new THREE.Mesh(rbox(0.08, 0.1, BAR_LEN, 0.03, 2), stripes('#f0473c', '#fbfaf5', 3));
 		arm.position.z = BAR_LEN / 2;
 		arm.castShadow = true;

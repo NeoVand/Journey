@@ -88,6 +88,8 @@ export class RequestDoc {
 	private rest: { pos: Float32Array; nor: Float32Array }[] = [];
 
 	constructor() {
+		// Its name lets the conversation point at it: see pointer.svelte.ts.
+		this.group.name = 'Request';
 		const m = mats();
 		const material = new THREE.MeshStandardMaterial({
 			map: this.surface.texture,

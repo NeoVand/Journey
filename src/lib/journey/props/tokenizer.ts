@@ -175,6 +175,8 @@ export class Gantry {
 	private lamp: Lamp;
 
 	constructor() {
+		// Its name lets the conversation point at it: see pointer.svelte.ts.
+		this.group.name = 'Tokenizer';
 		const m = mats();
 		const b = new Batch();
 		const REAR = GANTRY_REAR;

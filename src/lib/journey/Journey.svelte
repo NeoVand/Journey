@@ -4,6 +4,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import TripMap from './TripMap.svelte';
+	import { Pointer } from './pointer.svelte';
 	import Subtitles from './Subtitles.svelte';
 	import TalkPlayer from './TalkPlayer.svelte';
 	import Tour from './Tour.svelte';
@@ -58,6 +59,8 @@
 	let atTitle = $state(true);
 	/** Set while a card's words reach down into the corner the source key sits in. */
 	let crowded = $state(false);
+	/** What the conversation points at in the picture, as it's named. Made once the world is. */
+	let pointer = $state<Pointer | null>(null);
 	/** Where the subtitles have room: a stretch along the bottom, or with a top, a band under the header. */
 	let subtitlePlace = $state<{ top: number | null; left: number; right: number }>({ top: null, left: 0, right: 0 });
 	let driven = $state(false);
@@ -309,7 +312,7 @@
 	let toggleSound: () => void = () => {};
 	/** The sounds of the interface itself: a step, a flight, the map. Quiet until sound is on. */
 	/** The page's own sounds: the reader's steps and flights, and the controls they press. `n` and `m` say which, or how many. */
-	type CueKind = 'step' | 'flight' | 'drop' | 'rise' | 'map' | 'enter' | 'spin' | 'harness' | 'cache' | 'temperature' | 'turn' | 'tokens';
+	type CueKind = 'step' | 'flight' | 'drop' | 'rise' | 'map' | 'enter' | 'spin' | 'harness' | 'cache' | 'temperature' | 'turn' | 'tokens' | 'spot';
 	let cue: (kind: CueKind, n?: number, m?: number) => void = () => {};
 	let leaveTrack: (atOnce?: boolean) => void = () => {};
 	const trip = $derived(track ? TRACKS[track] : null);
@@ -322,6 +325,7 @@
 	/** A leap from the map lets the conversation go: the card it lands on waits for the talk key. */
 	function tripFromMap(id: TrackId) {
 		narrator.leave();
+		pointer?.clear();
 		takeTrip(id);
 	}
 
@@ -335,6 +339,7 @@
 	function jump(title: string) {
 		mapOpen = false;
 		narrator.leave();
+		pointer?.clear();
 		leaveTrack(true);
 		goto(resolve(`/#${slug(title)}`), { shallow: true, replace: true });
 		cutTo(title);
@@ -593,6 +598,7 @@
 			}
 			world = w;
 			w.setHarness(harness);
+			pointer = new Pointer(w, (key) => cue('spot', key.length));
 			{
 				const gl = w.stage.renderer.getContext();
 				const info = gl.getExtension('WEBGL_debug_renderer_info');
@@ -953,6 +959,8 @@
 				px += (mx - px) * (1 - Math.exp(-dt * 3));
 				py += (my - py) * (1 - Math.exp(-dt * 3));
 				w.update(track && tripT !== null ? tripT : T, reduced ? 0 : time, dt, reduced ? 0 : px, reduced ? 0 : py, reduced);
+				// After the picture is drawn, so what's named is found where it is now; the camera goes to it from the next frame.
+				pointer?.update(now / 1000, narrator, !reduced);
 				if (soundOn) playSound(dt);
 				publish();
 				if (now - cornered > 300) {
@@ -1467,6 +1475,9 @@
 				} else if (kind === 'turn') {
 					sound.voice(key(0.7), { gain: 0.22 });
 					sound.voice(porcelain(note(TURN_NOTES[n] ?? 0), 0.9), { gain: 0.26, delay: 0.03 });
+				} else if (kind === 'spot') {
+					// Something named lights up: one quiet porcelain note, under the voices.
+					sound.voice(porcelain(note([4, 7, 9, 11, 12][n % 5]), 0.9), { gain: 0.12, wet: 0.3 });
 				} else if (kind === 'tokens') {
 					// A tiny pop for each new token, a run of them for a whole new sentence, and a softer one when one goes.
 					if (n > m) {
@@ -1518,6 +1529,7 @@
 			if (params.has('debug')) {
 				(window as unknown as { __world: unknown; __head: unknown }).__world = w;
 				(window as unknown as { __world: unknown; __head: unknown }).__head = head;
+				(window as unknown as { __pointer: unknown }).__pointer = pointer;
 			}
 			if (still) {
 				const api = {

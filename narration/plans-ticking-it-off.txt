@@ -1,6 +1,6 @@
 # Ticking it off
 THEO: So the model has its list. Who ticks the boxes? The model, or the harness?
-NORA: The model, every time. It sends the list again with the step it just finished marked done and the next one marked as under way, and the harness redraws the board from the latest version.
+NORA: The model, every time. It sends the list again with the step it just finished marked done and the next one marked as under way, and the harness redraws the checklist board from the latest version.
 THEO: The whole list, again? Why not just say tick step two?
 NORA: Claude Code works closer to that. TaskUpdate changes one task at a time, and a task can even wait on another one, showing as blocked until that one's done. Codex sends the whole plan again each time. Either way, the board shows the latest state.
 THEO: And it does one step at a time?

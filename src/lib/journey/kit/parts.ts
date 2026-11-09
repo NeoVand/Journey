@@ -113,6 +113,8 @@ export function signWidth(sign: THREE.Group) {
 export function createSign(text: string, size = 0.2, ink = '#111a2e', material?: THREE.Material, fitted = false) {
 	const height = fitted ? size : size * SIGN_PHONE;
 	const group = new THREE.Group();
+	// Named for its words, so the conversation can point at it: see pointer.svelte.ts.
+	group.name = `sign:${text}`;
 	const label = new Label(text, height, { color: ink, weight: 700 });
 	const w = label.worldWidth + height * 1.2;
 	const h = height * 2;
