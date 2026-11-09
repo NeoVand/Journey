@@ -13,84 +13,22 @@
 // --dry   counts characters and estimates length and credits without calling the API.
 // --retake=<id>   asks for a new take of that script: its count in narration/takes.json goes up, which changes the seed.
 import { execFileSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { elevenKey } from '../sound/env.mjs';
+import { caption, chunks, config, GAP, out, parse, raw, request as voicesFor, root, scripts, seconds, sentences, spoken, spotsIn, takesFile } from './lib.mjs';
 
-const root = new URL('../../', import.meta.url);
-const scripts = new URL('narration/', root);
-const raw = new URL('narration-lab/raw/', root);
-const out = new URL('static/narration/', root);
 const manifestFile = new URL('src/lib/journey/narration.json', root);
 mkdirSync(raw, { recursive: true });
 mkdirSync(out, { recursive: true });
 
-const config = JSON.parse(readFileSync(new URL('voices.json', scripts), 'utf8'));
 const args = process.argv.slice(2);
 const dry = args.includes('--dry');
-const takesFile = new URL('takes.json', scripts);
 const takes = existsSync(takesFile) ? JSON.parse(readFileSync(takesFile, 'utf8')) : {};
 const retakes = new Set(args.filter((a) => a.startsWith('--retake=')).flatMap((a) => a.slice(9).split(',')));
 for (const id of retakes) takes[id] = (takes[id] ?? 0) + 1;
 if (!dry) writeFileSync(takesFile, JSON.stringify(takes, null, '\t') + '\n');
 const only = args.find((a) => !a.startsWith('--'))?.split(',');
-const LIMIT = 1900;
 const MAX_SECONDS = 300;
-const GAP = 0.35;
-
-/** Words the voices get wrong, spelled the way they should sound. Only the audio hears these; captions keep the real words. */
-const SAY = Object.entries(config.say ?? {}).sort((a, b) => b[0].length - a[0].length);
-function spoken(text) {
-	let t = text;
-	for (const [word, sound] of SAY) {
-		const esc = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-		t = t.replace(new RegExp(`(?<![\\w])${esc}(?![\\w])`, 'g'), sound);
-	}
-	return t;
-}
-
-function parse(id) {
-	const lines = readFileSync(new URL(`${id}.txt`, scripts), 'utf8').split('\n');
-	const title = lines.find((l) => l.startsWith('# '))?.slice(2).trim() ?? id;
-	const turns = [];
-	for (const line of lines) {
-		const m = line.match(/^([A-Z]+):\s*(.+)$/);
-		if (!m) continue;
-		if (!config.voices[m[1]]) throw new Error(`${id}: no voice for ${m[1]}`);
-		turns.push({ who: m[1], text: m[2].trim() });
-	}
-	return { id, title, turns };
-}
-
-/** The words a reader sees: cues out, spacing tidied. */
-const caption = (text) =>
-	text
-		.replace(/\[[^\]]*\]\s*/g, '')
-		.replace(/\s+/g, ' ')
-		.trim();
-
-/** A turn cut into sentences, which the captions show one at a time. Cues stay with the sentence they colour. */
-const sentences = (text) => text.split(/(?<=[.!?…])\s+(?=["“[A-Z0-9])/);
-
-/** Consecutive turns packed into requests that stay under the limit. */
-function chunks(turns) {
-	const groups = [];
-	let cur = [];
-	let size = 0;
-	for (const [i, t] of turns.entries()) {
-		const n = spoken(t.text).length;
-		if (n > LIMIT) throw new Error(`a turn of ${n} characters is too long for one request`);
-		if (size + n > LIMIT && cur.length) {
-			groups.push(cur);
-			cur = [];
-			size = 0;
-		}
-		cur.push(i);
-		size += n;
-	}
-	if (cur.length) groups.push(cur);
-	return groups;
-}
 
 const key = dry ? '' : elevenKey();
 
@@ -108,19 +46,14 @@ async function request(body, attempt = 0) {
 	return res.json();
 }
 
-const seconds = (file) => Number(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', file]).toString().trim());
-
 async function build(script) {
 	const { id, turns } = script;
 	const dir = new URL(`${id}/`, raw);
 	mkdirSync(dir, { recursive: true });
 	const groups = chunks(turns);
-	const seed = (config.seed ?? 4242) + 1000 * (takes[id] ?? 0);
 	const pieces = [];
 	for (const [g, group] of groups.entries()) {
-		const inputs = group.map((i) => ({ text: sentences(turns[i].text).map(spoken).join(' '), voice_id: config.voices[turns[i].who] }));
-		const body = { inputs, model_id: config.model, settings: config.settings, seed: seed + g };
-		const hash = createHash('sha1').update(JSON.stringify(body)).digest('hex').slice(0, 12);
+		const { inputs, body, hash } = voicesFor(script, g, group, takes[id] ?? 0);
 		const file = new URL(`${g}-${hash}.json`, dir);
 		if (!existsSync(file)) {
 			if (dry) {
@@ -164,6 +97,7 @@ async function build(script) {
 	let offset = 0;
 	const at = (v) => (v === null || v === undefined ? null : +(offset + v).toFixed(2));
 	for (const [i, p] of pieces.entries()) {
+		p.offset = offset;
 		let base = 0;
 		for (const [k, t] of p.group.entries()) {
 			const segs = p.segments.filter((s) => s.dialogue_input_index === k);
@@ -185,7 +119,8 @@ async function build(script) {
 	}
 	const length = seconds(final.pathname);
 	if (length > MAX_SECONDS) throw new Error(`${id} runs ${length.toFixed(0)} s, over five minutes: shorten the script`);
-	writeFileSync(new URL(`${id}.json`, out), JSON.stringify({ id, title: script.title, seconds: +length.toFixed(1), lines }));
+	// And where it names things in the scene, which the page lights up as they're said: see spots.mjs.
+	writeFileSync(new URL(`${id}.json`, out), JSON.stringify({ id, title: script.title, seconds: +length.toFixed(1), lines, spots: spotsIn(pieces) }));
 	return { seconds: +length.toFixed(1), parts: pieces.length };
 }
 
