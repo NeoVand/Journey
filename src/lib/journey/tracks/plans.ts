@@ -114,7 +114,7 @@ const LOOK = shot(6, 24, [-6.2, 0.7, -0.6], 3.5, 2.2, { tallTarget: [-6.4, 0.7, 
 const APPROVE = shot(-6, 30, [-4.0, 0.7, 1.2], 3.4, 2.0, { tallTarget: [-3.6, 0.7, 1.5], tallRadius: 2.6 });
 const LIST = shot(-6, 10, [BOARD.x, 2.15, BOARD.z], 2.45, 2.1, { tallRadius: 2.4 });
 const TICK = shot(8, 16, [3.0, 1.7, -1.4], 4.4, 2.5, { tallTarget: [BOARD.x - 0.3, 1.9, BOARD.z], tallRadius: 2.6 });
-const PROMISE = shot(-10, 14, [7.1, 1.8, -0.4], 4.5, 2.0, { tallTarget: [7.4, 1.8, -0.4], tallRadius: 4.0 });
+const PROMISE = shot(-10, 14, [7.35, 1.8, -0.4], 4.5, 2.0, { tallTarget: [7.4, 1.8, -0.4], tallRadius: 4.0 });
 const CONVO = shot(0, 20, [-0.3, 0.45, -3.4], 2.5, 1.0, { tallTarget: [-0.3, 0.45, -3.4], tallRadius: 2.3 });
 const ENDS = shot(-4, 20, [2.2, 1.5, -1.6], 5.0, 2.6, { tallTarget: [2.6, 1.6, -1.4], tallRadius: 4.4, tallRy: 3.0 });
 
@@ -251,6 +251,8 @@ export const PAGES: { kind: Kind; text: string; t: number; alt?: { kind: Kind; t
 	{ kind: 'tool', text: '12 passed', t: 4.62 },
 	{ kind: 'list', text: 'Five of six done', t: 4.76 }
 ];
+/** When the model sends its list, each time: the board lights as the harness draws it again. */
+const LIST_AT = PAGES.filter((p) => p.kind === 'list').map((p) => p.t);
 /** Everything before this page is folded into one summary when the conversation is compacted; the rest goes on as it is. */
 const KEEP_FROM = 9;
 /** The first page that lists the steps, which in Claude Code is made with a different tool from the updates after it. */
@@ -703,7 +705,8 @@ export class PlansStage {
 		/* ---- cards 4 and 5: it ticks the steps off, adds one when the tests fail, and the tests say what's true ---- */
 		const added = smooth(at(t, 4, 0.24, 0.34));
 		const clear = smooth(ended);
-		const redraw = Math.max(...PAGES.filter((p) => p.kind === 'list').map((p) => bell(t, p.t, p.t + 0.12)));
+		let redraw = 0;
+		for (const at of LIST_AT) redraw = Math.max(redraw, bell(t, at, at + 0.12));
 		const glow = Math.min(1, redraw * 1.4) * (1 - clear);
 		this.boardLamp.mix('#ffffff', color.amber, glow, 0.2 + glow * 2);
 		STEPS.forEach((_, i) => {

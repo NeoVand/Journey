@@ -1902,7 +1902,7 @@
 				<div class="trip-set">
 					<p class="trip-set-head" id="trip-set-head">Side trips <span>Short detours that bring you back</span></p>
 					<ul aria-labelledby="trip-set-head">
-						{#each ['harness', 'mcp', 'sandbox', 'memory', 'plans'] as const as id, n (id)}
+						{#each ['harness', 'mcp', 'sandbox', 'plans', 'memory'] as const as id, n (id)}
 							<li>{@render tripCloud(id, n)}</li>
 						{/each}
 					</ul>
