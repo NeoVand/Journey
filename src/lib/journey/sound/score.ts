@@ -6,12 +6,13 @@
  * Synthesized ones carry what has to follow the picture exactly: notes, ticks, the air of a flight.
  */
 import type { World } from '../world';
-import type { TrackId } from '../content';
+import type { HarnessId, TrackId } from '../content';
 import type { Bed, Cue, Where } from './conductor';
 import { chime, harp, key, low, note, porcelain, sweep, tick, whoosh } from './synth';
 import { PUCK_MOVES, puckPoint, roomPoint } from '../tracks/harness';
 import { STAGE_AT } from '../tracks/sandbox';
 import { MEMORY_AT } from '../tracks/memory';
+import { DONES, PAGES, PLANS_AT, PLANS_SPOTS, STARTS } from '../tracks/plans';
 import { TOKEN_PATHS } from '../chapters/transformer';
 
 /* ---------- the story ---------- */
@@ -743,8 +744,84 @@ function memoryAndRewinding(): { cues: Cue[]; beds: Bed[] } {
 	};
 }
 
+/* ---------- plans and to-do lists ---------- */
+
+const onPlans = (p: { x: number; y: number; z: number }): Where => [PLANS_AT.x + p.x, PLANS_AT.y + p.y, PLANS_AT.z + p.z];
+
+function plansAndLists(agent: HarnessId): { cues: Cue[]; beds: Bed[] } {
+	const cues: Cue[] = [];
+	const at = (T: number, sound: Cue['sound'], where?: Where, more: Partial<Cue> = {}) => cues.push({ T, sound, at: where, ...more });
+	const S = PLANS_SPOTS;
+
+	// The conversation, page by page: a soft card sound as each stands, and a note that climbs with it. The list's own
+	// pages ring brighter.
+	PAGES.forEach((p, i) => {
+		const where = onPlans(S.rail(i));
+		at(p.t + 0.03, 'paper-slide', where, { gain: 0.32, rate: 1.05 + i * 0.02, minor: true });
+		at(p.t + 0.034, p.kind === 'list' ? chime([7, 9], 0.06) : porcelain(note(i % 7)), where, { gain: 0.24 });
+	});
+
+	// Planning: three files read, each lifting with a tick. Claude's edit flies at the barrier and is turned back; the
+	// others don't reach for one.
+	[0.24, 0.28, 0.32].forEach((T, i) => at(T, tick(1.1 + i * 0.08), onPlans(S.files), { gain: 0.4 }));
+	if (agent === 'claude') {
+		at(0.5, whoosh(0.45, 2400), onPlans(S.bar), { gain: 0.24, minor: true });
+		at(0.6, 'nogo', onPlans(S.bar), { gain: 0.5, length: 0.14, dip: 0.3 });
+		at(0.6, 'clonk', onPlans(S.bar), { gain: 0.4, rate: 1.3 });
+	}
+
+	// The plan flies to your desk; the stamp comes down; the barrier lifts, and the mode sign turns over.
+	at(1.14, whoosh(0.6, 2200), onPlans(S.desk), { gain: 0.26 });
+	at(1.33, 'paper-land', onPlans(S.desk), { gain: 0.5 });
+	at(1.52, 'stamp', onPlans(S.desk), { gain: 0.7 });
+	at(1.53, chime([0, 4, 7]), onPlans(S.desk), { gain: 0.35, dip: 0.25 });
+	at(1.66, 'servo', onPlans(S.bar), { gain: 0.4 });
+	at(1.76, 'flap', onPlans(S.mode), { gain: 0.45 });
+
+	// The list goes up on the board, a row at a time, rising.
+	for (let i = 0; i < 5; i++) {
+		at(2.2 + i * 0.08 + 0.02, 'pop', onPlans(S.board(i)), { gain: 0.32, rate: 0.95 + i * 0.06, minor: true });
+		at(2.2 + i * 0.08 + 0.024, porcelain(note(2 + i)), onPlans(S.board(i)), { gain: 0.26 });
+	}
+
+	// Ticked off as it goes: each step started with a click, each done with a tick and a bright note. Each step ends on
+	// the row of its own number.
+	STARTS.forEach((T, i) => {
+		if (!Number.isFinite(T)) return;
+		at(T, 'peg', onPlans(S.board(i)), { gain: 0.35, rate: 1 + i * 0.03, minor: true });
+	});
+	DONES.forEach((T, i) => {
+		if (!Number.isFinite(T)) return;
+		at(T + 0.01, tick(1.2), onPlans(S.board(i)), { gain: 0.45 });
+		at(T + 0.014, porcelain(note(4 + i)), onPlans(S.board(i)), { gain: 0.32 });
+	});
+
+	// The tests fail; a step is added, the last one sliding down to make room; then they pass.
+	at(4.12, 'nogo', onPlans(S.tests), { gain: 0.45, length: 0.12 });
+	at(4.12, low(note(-5), 0.8), onPlans(S.tests), { gain: 0.3 });
+	at(4.26, 'paper-slide', onPlans(S.board(5)), { gain: 0.4, rate: 0.9 });
+	at(4.32, 'pop', onPlans(S.board(4)), { gain: 0.4 });
+	at(4.64, chime([0, 4, 7, 9]), onPlans(S.tests), { gain: 0.35 });
+
+	// Compacted: the older pages fold into one summary, which stands up. Then the session ends, and the list goes with it.
+	at(5.12, 'paper-roll', onPlans(S.rail(5)), { gain: 0.45, rate: 1.2 });
+	at(5.24, 'paper-slide', onPlans(S.rail(8)), { gain: 0.4 });
+	at(5.25, porcelain(note(0)), onPlans(S.rail(8)), { gain: 0.3 });
+	for (let i = 0; i < 5; i++) at(5.59 + i * 0.015, 'paper-land', onPlans(S.rail(i + 8)), { gain: 0.3, rate: 0.9 + i * 0.05, minor: true });
+	at(5.6, low(note(-3), 0.9), onPlans(S.board(2)), { gain: 0.25 });
+	at(5.72, 'pop', onPlans(S.board(0)), { gain: 0.3 });
+
+	return {
+		cues,
+		beds: [
+			{ sound: 'pad-sky', from: 0, to: 6.1, level: 1, fade: 0.05 },
+			{ sound: 'sky', from: 0, to: 6.1, level: 0.12, fade: 0.05 }
+		]
+	};
+}
+
 export function tripScore(id: TrackId, w: World): { cues: Cue[]; beds: Bed[] } {
-	void w;
+	if (id === 'plans') return plansAndLists(w.agent);
 	if (id === 'harness') return insideHarness();
 	if (id === 'sandbox') return permissionAndSandbox();
 	if (id === 'memory') return memoryAndRewinding();

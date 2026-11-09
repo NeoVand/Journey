@@ -1,0 +1,17 @@
+# Where the list lives
+THEO: So where does the list actually live? Is it saved somewhere?
+NORA: That depends on the agent, and it decides how long the list lasts. The simplest answer is: in the conversation. The calls that wrote it are messages like any others, and the list lasts exactly as long as they do.
+THEO: Which is how long?
+NORA: As long as the context does. Remember what happens when a long session nears the context window, the most the model can take in at once. Older turns are folded into a summary, and the latest turns go on as they were.
+THEO: So if the list was written recently...
+NORA: It survives untouched, because it's one of the latest turns. That's the scene: the old pages fold into one summary page, and the last list is still standing. An older list would be down to whatever the summary said about it.
+THEO: And when I close the session?
+NORA: Then a list that lives in the conversation goes with it. That's Codex: its plan is only update_plan calls in the conversation. In VS Code, each chat session has its own list, and the plan sits in the session's memory, so you'd save a copy to keep it with your project.
+THEO: And Claude Code?
+NORA: Claude Code keeps its tasks on disk, in a folder under your home directory, so they outlive compaction. Sessions can even share one list, if you point them at the same one by name. But a new session starts a new list unless you do.
+THEO: [curious] Earlier you said some agents leave the list out now. How does that fit with all this?
+NORA: A list costs context on every turn: the tool's description, and the reminders that come with it. Newer models keep track of a long task without writing a list down, so some harnesses have decided it isn't worth the cost by default.
+THEO: So the checklist was scaffolding, and the building's learning to stand without it.
+NORA: For some tasks, on some models. Here's where that breaks: the list was never only for the model. It was for you as well, so you could see where things stood.
+THEO: Then if I want a plan to last?
+NORA: [warmly] Put it in a file. A plan you can open tomorrow, in your repository or your notes, outlives any session, any summary and any model. Anything kept only in the context is gone the moment the context is.

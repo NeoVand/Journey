@@ -1,0 +1,17 @@
+# A plan for you to approve
+THEO: So the agent has done its looking. What do I actually get?
+NORA: A page of text. What it found, and the steps it means to take. In our case: find the scheduler code, read the test file, lock the queue, add a test with two workers, run the whole suite.
+THEO: That's a to-do list I could have written myself.
+NORA: [chuckles] Maybe. But now you know it's the same list as yours, before a single file has changed. That's the point of this card. You read the plan while it's still cheap to say no.
+THEO: And my choices are yes or no?
+NORA: More than that. You can approve it, change it, or send it back for another go. In Claude Code the plan is saved as a file in a folder under your home directory, and Ctrl+G opens it in your editor, so you can rewrite a step yourself. Then you choose: approve it and let auto mode carry on, approve it but look at each edit yourself, or keep planning.
+THEO: Auto mode being which one, again?
+NORA: The mode where a second model reviews each call and only brings the risky ones to you. Codex asks you a plain question: implement this plan? Yes, yes in a fresh context, or stay in Plan mode. Copilot shows a Review Plan card, where you can implement it, approve the plan only, or reject it, and open the whole plan to read it.
+THEO: Okay. So I say yes, and the agent's off.
+NORA: And here's the line on this card that matters most. Approving the plan isn't approving every step.
+THEO: [skeptical] Wait. I said yes to lock the queue. Doesn't that cover the edit that locks the queue?
+NORA: No. The plan is a description. The edit is a tool call, and every tool call still goes through the gates: your allow and deny rules, the mode you're in, the sandbox around commands. If your settings say an edit needs your okay, you'll still be asked for it.
+THEO: So the plan's like a builder's quote. Signing it doesn't hand them the keys to the house.
+NORA: [amused] Closer than most. Here's where it breaks, though. A builder's quote is a contract. This plan binds nobody, not even the model that wrote it, and that gets a card of its own.
+THEO: Fair. So in the scene, the stamp comes down.
+NORA: The stamp comes down, the barrier lifts, and the sign over your files turns over. Planning's done, and the agent goes to work. And the first thing it does at work is write itself a list.

@@ -282,6 +282,25 @@ test('the trip inside the harness goes in through the roof and comes back out', 
 	expect(await page.evaluate(() => scrollY)).toBe(before);
 });
 
+test('the trip into plans and to-do lists drops in through the laptop screen and comes back out', async ({ page }) => {
+	test.setTimeout(180_000);
+	type Debug = { __world: { trackIn: boolean; trackId: string | null } };
+	await page.goto('/?debug#around-the-loop');
+	await page.waitForFunction(() => document.querySelector('main.driven') && scrollY > innerHeight, null, { timeout: 90_000 });
+	const before = await page.evaluate(() => scrollY);
+	await page.getByRole('button', { name: 'Plans and to-do lists' }).first().click();
+	await expect(page.getByRole('region', { name: 'Side trip: Plans and to-do lists' })).toBeVisible();
+	await expect(page.locator('.spine p')).toContainText('Side trip 1 of 6');
+	await expect(page.getByRole('heading', { name: 'Look first, change nothing' })).toBeVisible();
+	// Close enough to fly: the camera goes to the laptop's screen, and only then is the world swapped for the trip's place.
+	await page.waitForFunction(() => (window as unknown as Debug).__world.trackIn, null, { timeout: 60_000 });
+	expect(await page.evaluate(() => (window as unknown as Debug).__world.trackId)).toBe('plans');
+	await page.keyboard.press('Escape');
+	await expect(page.locator('[data-trip]')).toHaveCount(0, { timeout: 90_000 });
+	expect(await page.evaluate(() => (window as unknown as Debug).__world.trackIn)).toBe(false);
+	expect(await page.evaluate(() => scrollY)).toBe(before);
+});
+
 test('the last chapter leaves nothing behind when the reader jumps back', async ({ page }) => {
 	test.setTimeout(120_000);
 	type Debug = { __journey: { seek(T: number): void }; __world: { finale: { group: { visible: boolean } } } };

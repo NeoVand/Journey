@@ -25,6 +25,7 @@ import { McpTrack, MCP_SHOTS, type HarnessPose } from './tracks/mcp';
 import { HarnessRoom, ROOF, ROOM_AT, ROOM_SHOTS, ROOM_SKY } from './tracks/harness';
 import { GLASS_ROOF, SandboxStage, STAGE_AT, STAGE_SHOTS, STAGE_SKY } from './tracks/sandbox';
 import { CABINET_ROOF, MemoryStage, MEMORY_AT, MEMORY_SHOTS, MEMORY_SKY } from './tracks/memory';
+import { PlansStage, PLANS_AT, PLANS_SHOTS, PLANS_SKY, SCREEN_ROOF } from './tracks/plans';
 import { hitBox } from './poke';
 import { Cluster, CLUSTER_SHOTS, DIVE_T } from './cluster';
 import { RETURN_POINTS } from './layout';
@@ -68,6 +69,16 @@ const REST_GAP = 0.54;
 const ROW_START = SLOT_X + 0.9;
 
 const HARNESS_POS = new THREE.Vector3(1.1, 0, -0.65);
+
+/** The trips that drop into a place of their own: where each place is, and its sky. */
+type Inside = 'harness' | 'sandbox' | 'memory' | 'plans';
+const INSIDE: Record<Inside, { at: THREE.Vector3; sky: { top: THREE.Color; mid: THREE.Color; low: THREE.Color } }> = {
+	harness: { at: ROOM_AT, sky: ROOM_SKY },
+	sandbox: { at: STAGE_AT, sky: STAGE_SKY },
+	memory: { at: MEMORY_AT, sky: MEMORY_SKY },
+	plans: { at: PLANS_AT, sky: PLANS_SKY }
+};
+const insideOf = (id: TrackId | null): Inside => (id && id !== 'mcp' ? id : 'harness');
 const DOC_POS = new THREE.Vector3(5.75, 0.2 + DOC_H / 2, LINE_Z);
 const DOC_TILT = -0.13;
 const ROLL_AXIS = 1.45; // how far below the page's centre the finished roll lies
@@ -186,9 +197,12 @@ export class World {
 	 * The places side trips drop into. Each is built the first time a reader goes there, not before: together they cost
 	 * tens of megabytes of textures and geometry, and a phone's browser closes a page that holds too much.
 	 */
-	private places: { harness?: HarnessRoom; sandbox?: SandboxStage; memory?: MemoryStage } = {};
-	/** Where an inside trip's way in is, in the story: the harness's roof hatch, the top of the glass, the memory cabinet. */
-	private roofRigs!: Record<'harness' | 'sandbox' | 'memory', Rig>;
+	private places: { harness?: HarnessRoom; sandbox?: SandboxStage; memory?: MemoryStage; plans?: PlansStage } = {};
+	/**
+	 * Where an inside trip's way in is, in the story: the harness's roof hatch, the top of the glass, the memory cabinet,
+	 * the laptop's screen.
+	 */
+	private roofRigs!: Record<Inside, Rig>;
 	private above = new THREE.Vector3();
 	private harnessPose: HarnessPose = { opens: [0, 0, 0, 0], filled: [0, 0, 0, 0], wake: 0.1 };
 	private camFrom = new THREE.Vector3();
@@ -295,7 +309,8 @@ export class World {
 			mcp: new Rig(this.stage.camera, MCP_SHOTS),
 			harness: new Rig(this.stage.camera, ROOM_SHOTS),
 			sandbox: new Rig(this.stage.camera, STAGE_SHOTS),
-			memory: new Rig(this.stage.camera, MEMORY_SHOTS)
+			memory: new Rig(this.stage.camera, MEMORY_SHOTS),
+			plans: new Rig(this.stage.camera, PLANS_SHOTS)
 		};
 		this.roofRigs = {
 			harness: new Rig(this.stage.camera, [
@@ -309,6 +324,10 @@ export class World {
 			memory: new Rig(this.stage.camera, [
 				{ T: 0, ...CABINET_ROOF },
 				{ T: 1, ...CABINET_ROOF }
+			]),
+			plans: new Rig(this.stage.camera, [
+				{ T: 0, ...SCREEN_ROOF },
+				{ T: 1, ...SCREEN_ROOF }
 			])
 		};
 		this.mcpHit.position.set(7.2, 0.7, -0.72);
@@ -1038,6 +1057,11 @@ export class World {
 		return { textureMB: Math.round(texture / 1e6), geometryMB: Math.round(geometry / 1e6) };
 	}
 
+	/** The agent the reader picked. */
+	get agent() {
+		return this.harnessId;
+	}
+
 	/** Starts or ends a side trip. The page moves trackT and trackBlend; this only says which trip. */
 	setTrack(id: TrackId | null) {
 		if (id) this.harness.pulled = -1;
@@ -1047,10 +1071,10 @@ export class World {
 	}
 
 	/** A side trip's place, built on first use, with its materials compiled before it is first seen. */
-	private place<K extends 'harness' | 'sandbox' | 'memory'>(id: K) {
+	private place<K extends Inside>(id: K) {
 		let made = this.places[id];
 		if (!made) {
-			const built = id === 'harness' ? new HarnessRoom() : id === 'sandbox' ? new SandboxStage() : new MemoryStage();
+			const built = id === 'harness' ? new HarnessRoom() : id === 'sandbox' ? new SandboxStage() : id === 'memory' ? new MemoryStage() : new PlansStage();
 			if (!(built instanceof HarnessRoom)) built.setHarness(this.harnessId);
 			built.group.visible = false;
 			this.stage.scene.add(built.group);
@@ -1137,6 +1161,7 @@ export class World {
 		this.harnessId = id;
 		this.places.sandbox?.setHarness(id);
 		this.places.memory?.setHarness(id);
+		this.places.plans?.setHarness(id);
 		this.cluster.setHarness(id);
 		this.back.setHarness(id);
 		const spec = HARNESSES[id];
@@ -1170,11 +1195,9 @@ export class World {
 		this.frameTrack(px, py, time);
 
 		// Inside a trip's own place, nothing else exists.
-		const inRoom = this.trackIn && this.trackId === 'harness';
-		const onStage = this.trackIn && this.trackId === 'sandbox';
-		const onMemory = this.trackIn && this.trackId === 'memory';
 		for (const [id, place] of Object.entries(this.places)) place.group.visible = this.trackIn && this.trackId === id;
 		if (this.trackIn) {
+			const id = insideOf(this.trackId);
 			this.root.visible = false;
 			this.cluster.group.visible = false;
 			this.state.inside = false;
@@ -1182,11 +1205,9 @@ export class World {
 			this.state.dusk = 0;
 			this.stage.setWarmth(0);
 			this.stage.holdShadows(false);
-			const sky = onStage ? STAGE_SKY : onMemory ? MEMORY_SKY : ROOM_SKY;
+			const sky = INSIDE[id].sky;
 			this.stage.setSky(sky.top, sky.mid, sky.low);
-			if (onStage) this.place('sandbox').update(this.trackT, time);
-			else if (onMemory) this.place('memory').update(this.trackT, time);
-			else if (inRoom) this.place('harness').update(this.trackT, time);
+			this.place(id).update(this.trackT, time);
 			this.stage.render();
 			return;
 		}
@@ -1323,9 +1344,9 @@ export class World {
 	private frameRoom(px: number, py: number, time: number) {
 		const cam = this.stage.camera;
 		const { width, height } = this.stage;
-		const id = this.trackId === 'sandbox' || this.trackId === 'memory' ? this.trackId : 'harness';
+		const id = insideOf(this.trackId);
 		const rig = this.trackRigs[id];
-		const place = id === 'sandbox' ? STAGE_AT : id === 'memory' ? MEMORY_AT : ROOM_AT;
+		const place = INSIDE[id].at;
 		rig.update(this.trackT, width, height, px, py, time, this.tripRoomAt?.(this.trackT), undefined, this.ceiling);
 		const k = this.trackArrive;
 		if (k >= 1) {

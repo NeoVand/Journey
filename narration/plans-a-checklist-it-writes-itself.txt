@@ -1,0 +1,18 @@
+# A checklist it writes itself
+NORA: Here's something that surprises people. The to-do list an agent shows you is written by the model, for itself.
+THEO: I assumed the app made it. Like a progress bar.
+NORA: It's a tool call, like any other. The model writes a call with the list in it: each step, and for each one, whether it's waiting, under way, or done.
+THEO: And the harness runs what, exactly?
+NORA: Nothing. There's no command behind it. The harness keeps the list and draws it for you. Here, that's the board. In your agent, it's a list beside the conversation.
+THEO: [skeptical] So the model calls a tool whose whole job is taking notes.
+NORA: Exactly that. Remember, the model only ever writes text. If it wants something written down where it'll see it again, it has to write it into the conversation. A to-do call is a tidy, structured way of doing that, and the harness can show it to you as a bonus.
+THEO: How does each agent do it?
+NORA: Claude Code has two tools for it, TaskCreate and TaskUpdate, and Ctrl+T shows the list. Codex has update_plan: a list of steps, each one pending, in progress or completed. Copilot in VS Code has a todos tool, and shows the list at the top of the Chat view.
+THEO: So I'll see a list every time.
+NORA: Not necessarily, and this part is recent. Claude Code leaves those tools out on its newest models, unless you switch them back on with a setting. And since September twenty twenty-six, Codex's update_plan is off until you turn it on in its config file.
+THEO: [surprised] They're switching it off? I thought the list was the clever part.
+NORA: A list isn't free. Every tool the model is offered costs tokens on every turn, just to describe it. And newer models keep track of a long task without writing one down. Where the list lives, and what it costs, is the last card of this trip.
+THEO: Okay. But when it is on, what's on the board for our fix?
+NORA: Five steps. Find the scheduler code, read the test file, lock the queue, add a two-worker test, run the whole suite. All five waiting, and one call put them all there.
+THEO: Five empty boxes. Satisfying, in a way I don't love admitting.
+NORA: [laughs] That's half the point of it. The other half is what happens to those boxes over the next few dozen turns.

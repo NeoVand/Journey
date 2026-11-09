@@ -82,6 +82,11 @@
 		"detokenizer": "dee-tokenizer",
 		"MXC": "M X C",
 		"macOS": "mac O S",
-		"sed": "said"
+		"sed": "said",
+		"TaskCreate": "Task Create",
+		"TaskUpdate": "Task Update",
+		"update_plan": "update plan",
+		"Ctrl+G": "Control G",
+		"Ctrl+T": "Control T"
 	}
 }

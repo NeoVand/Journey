@@ -1103,9 +1103,10 @@
 			const PLACES = {
 				harness: { cover: '#f4e2bd', tone: 'warm' },
 				sandbox: { cover: '#d6eafb', tone: 'sky' },
-				memory: { cover: '#d6eafb', tone: 'sky' }
+				memory: { cover: '#d6eafb', tone: 'sky' },
+				plans: { cover: '#d6eafb', tone: 'sky' }
 			} as const;
-			const placeOf = (id: TrackId | null) => PLACES[id === 'sandbox' || id === 'memory' ? id : 'harness'];
+			const placeOf = (id: TrackId | null) => PLACES[id && id !== 'mcp' ? id : 'harness'];
 			let comeBackTo: HTMLElement | null = null;
 			/** Set once the reader has gone past the last card, so the way home starts only once. */
 			let homeward = false;
@@ -1843,7 +1844,7 @@
 				<div class="trip-set">
 					<p class="trip-set-head" id="trip-set-head">Side trips <span>Short detours that bring you back</span></p>
 					<ul aria-labelledby="trip-set-head">
-						{#each ['harness', 'mcp', 'sandbox', 'memory'] as const as id (id)}
+						{#each ['harness', 'mcp', 'sandbox', 'memory', 'plans'] as const as id (id)}
 							<li>{@render tripButton(id, false)}</li>
 						{/each}
 					</ul>
@@ -2234,6 +2235,7 @@
 			<p>{@render rich('Remember the green pipe in the very first frame? This is what it carries. The result joins the [[transcript]], and the whole conversation goes back to the provider.')}</p>
 			<p>One trip around is a turn. A real fix takes five to thirty.</p>
 			<p class="note">{@render agent()} {@render rich(callouts.loop)}</p>
+			<p class="trips">{@render tripButton('plans')}</p>
 		</article>
 	</section>
 
@@ -4448,6 +4450,10 @@
 	.trip-go[data-place='memory'] {
 		--badge: #ff7f17;
 		--badge-ink: #fff;
+	}
+	.trip-go[data-place='plans'] {
+		--badge: #ffbc12;
+		--badge-ink: #111a2e;
 	}
 	.badge {
 		display: grid;

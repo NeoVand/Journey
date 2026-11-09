@@ -371,7 +371,7 @@ export const TRIP: { name: string; what: string }[] = [
 /* ---------- side trips ---------- */
 
 /** A detour off the main road, read card by card, that brings the reader back to where they left. */
-export type TrackId = 'mcp' | 'harness' | 'sandbox' | 'memory';
+export type TrackId = 'mcp' | 'harness' | 'sandbox' | 'memory' | 'plans';
 export interface TrackCard {
 	title: string;
 	body: string[];
@@ -396,7 +396,9 @@ export const TRACK_AT: Record<TrackId, { T: number; nearFrom?: number; nearBefor
 	// Into the glass on the sandbox island, from the gates and the lying page.
 	sandbox: { T: 21.62, nearFrom: 20.0, nearBefore: 22.06, inside: true },
 	// Down into the memory cabinet, from the chapters on memory and on lost answers.
-	memory: { T: 27.5, nearFrom: 26.9, nearBefore: 29.0, inside: true }
+	memory: { T: 27.5, nearFrom: 26.9, nearBefore: 29.0, inside: true },
+	// Into the laptop's screen at home, where the agent shows its list, from the chapter that goes round the loop.
+	plans: { T: 25.6, nearFrom: 25.3, nearBefore: 26.06, inside: true }
 };
 
 export const TRACKS: Record<TrackId, Track> = {
@@ -599,6 +601,84 @@ export const TRACKS: Record<TrackId, Track> = {
 					claude: 'It can retry a blocked command outside the sandbox, which asks you first. Setting allowUnsandboxedCommands to false rules that out.',
 					codex: 'The model asks again with a reason, as an escalation request, and you can save a rule so that command never asks again.',
 					copilot: 'VS Code asks whether to allow the command outside the sandbox.'
+				}
+			}
+		]
+	},
+	plans: {
+		name: 'Plans and to-do lists',
+		what: 'How an agent plans its steps, and keeps track of them.',
+		cards: [
+			{
+				title: 'Look first, change nothing',
+				body: [
+					'A big job can start with a plan. In a planning mode the agent may look but not touch: it searches and reads your code, and asks you what it needs to know.',
+					'Here it reads the scheduler and its test. Nothing gets past the barrier to your files until there’s a plan.'
+				],
+				note: {
+					claude: 'Shift+Tab or /plan enters plan mode. Claude reads and runs commands to explore, and its edits are blocked until you approve.',
+					codex: '/plan or Shift+Tab switches to Plan mode. Codex gathers context and asks questions, and is told not to change anything.',
+					copilot: 'The Plan agent researches with read-only tools, and asks clarifying questions before it drafts a plan.'
+				}
+			},
+			{
+				title: 'A plan for you to approve',
+				body: [
+					'The plan comes back as text: what it found, and the steps it means to take. You read it before anything changes, and approve it, change it, or send it back.',
+					'Approving the plan isn’t approving every step. Each edit and command still goes through the gates.'
+				],
+				note: {
+					claude: 'The plan is saved under ~/.claude/plans, and Ctrl+G opens it in your editor. Approve it with auto mode, approve each edit yourself, or keep planning.',
+					codex: 'Codex asks “Implement this plan?”: yes, yes in a fresh context, or stay in Plan mode.',
+					copilot: 'A Review Plan card offers Implement Plan, Approve Plan Only or Reject, and Open Full Plan shows all of it.'
+				}
+			},
+			{
+				title: 'A checklist it writes itself',
+				body: [
+					'Then, at work, the model can keep itself a to-do list. It’s a tool call like any other: the steps, each one waiting, under way, or done.',
+					'Nothing runs. The harness keeps the list and shows it to you, here on the board.'
+				],
+				note: {
+					claude: 'TaskCreate and TaskUpdate keep the list, and Ctrl+T shows it. On the newest models they’re left out unless you set CLAUDE_CODE_ENABLE_TODO_TOOLS=1.',
+					codex: 'update_plan sends the steps, each pending, in progress or completed. Since September 2026 it’s off until you turn it on in config.toml.',
+					copilot: 'The #todos tool keeps the list, and VS Code shows it at the top of the Chat view.'
+				}
+			},
+			{
+				title: 'Ticking it off',
+				body: [
+					'As it works, the model sends the list again: the step it finished ticked, the next one under way, usually one at a time.',
+					'Thirty turns in, your request is far back in what the model reads. The latest list is close to the end: what’s done, and what comes next.'
+				],
+				note: {
+					claude: 'TaskUpdate ticks each one off. A task can wait on another, and shows as blocked until that one is done.',
+					codex: 'Its instructions ask for exactly one step in progress until everything is done.',
+					copilot: 'At most one item is in progress, and the list ticks as the agent goes.'
+				}
+			},
+			{
+				title: 'A plan is not a promise',
+				body: [
+					'The list is text the model wrote, and nothing makes it keep to it. It can add a step, drop one, or tick one off too soon.',
+					'Here the tests fail, so it adds a step to fix the deadlock. A tick says what the model believes. The tests say what’s true.'
+				],
+				note: {
+					claude: 'TaskUpdate can change a task, make it wait on another, or delete one the plan no longer needs.',
+					codex: 'To change course it calls update_plan again, with an explanation of what changed.',
+					copilot: 'Its documentation says it plainly: approving a plan and approving tool actions are separate decisions.'
+				}
+			},
+			{
+				title: 'Where the list lives',
+				body: [
+					'Kept in the conversation, a list lasts as long as the context does. When older turns are folded into a summary, a recent list goes on as it was. When the session ends, it goes too.',
+					'A list also costs context on every turn, and newer models keep track without one, so some harnesses now leave it out. A plan worth keeping belongs in a file.'
+				],
+				note: {
+					claude: 'Tasks are saved under ~/.claude/tasks, so they outlive compaction, and sessions that set CLAUDE_CODE_TASK_LIST_ID share one list.',
+					codex: 'The plan is only update_plan calls in the conversation, so it lasts exactly as long as they do.',
+					copilot: 'Each chat session has its own list, and the plan sits in session memory. Save a copy to keep it with your project.'
 				}
 			}
 		]

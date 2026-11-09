@@ -1,0 +1,17 @@
+# Ticking it off
+THEO: So the model has its list. Who ticks the boxes? The model, or the harness?
+NORA: The model, every time. It sends the list again with the step it just finished marked done and the next one marked as under way, and the harness redraws the board from the latest version.
+THEO: The whole list, again? Why not just say tick step two?
+NORA: Claude Code works closer to that. TaskUpdate changes one task at a time, and a task can even wait on another one, showing as blocked until that one's done. Codex sends the whole plan again each time. Either way, the board shows the latest state.
+THEO: And it does one step at a time?
+NORA: Usually. Codex's instructions ask for exactly one step in progress until everything is done. In VS Code, at most one item is in progress. It's a good discipline: one thing under way, and everything else either finished or waiting.
+THEO: [thoughtful] Here's my sharp question, though. The model can read the whole conversation. Why does it need a list to know where it is?
+NORA: Because of where things sit in what it reads. Your request, fix the race condition in the job scheduler, is near the very start. Thirty turns in, there's a pile of tool results after it: search hits, a hundred lines of the scheduler, test output. Your sentence is still there, but it's a long way back.
+THEO: And the list sits at the other end.
+NORA: The recent end, yes. The latest list was written a turn or two ago, so it's close to the end of everything the model reads, saying plainly what's done and what comes next.
+THEO: Like a sticky note on the monitor, instead of the brief in a drawer.
+NORA: [amused] That's a good one. Where it breaks: the note doesn't stay on the monitor. Every turn piles more after it, so the model has to keep writing a fresh one to keep it close. That's what the ticking really is.
+THEO: And for me, watching?
+NORA: For you, it's about the best progress report you'll get. Three ticked, one amber, one waiting. You can glance over and know it's working on the test with two workers, without reading a single tool result.
+THEO: Which I was never going to read anyway.
+NORA: [laughs] Hardly anyone does. That's why the board is there. Just don't take a tick for proof that the work is right.

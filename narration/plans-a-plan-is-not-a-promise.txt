@@ -1,0 +1,18 @@
+# A plan is not a promise
+NORA: Here's an uncomfortable truth about that tidy board. Nothing makes the model keep to it.
+THEO: Nothing? It wrote the list.
+NORA: It wrote it, and that's all. The list is text the model produced, like any other reply. No part of the harness checks that step three was really done before its box goes green. The model can add a step, drop one, or tick one off too soon.
+THEO: [skeptical] Too soon, as in lying?
+NORA: Not lying. Believing. It made the edit, the edit went in, so it marks the step done. Whether that edit actually fixed anything is a different question, and the list can't answer it.
+THEO: Then what can?
+NORA: The tests. Watch the scene. The model adds the two-worker test and runs it, and it fails. One failed, a deadlock: the new lock gets taken again inside a method that already holds it, so a thread waits forever for itself.
+THEO: So the fix had a bug in it.
+NORA: Which is completely normal. And here's the useful part. The model reads that failure and changes its plan. It adds a step, fix the deadlock, right where it belongs, and the last step moves down to make room.
+THEO: So the plan bends.
+NORA: It should. A plan that can't change when the evidence does is worse than no plan. In Codex, changing course is just another update_plan call, with a short explanation of what changed. In Claude Code, TaskUpdate can change a task, make it wait on another, or delete one the plan no longer needs.
+THEO: And Copilot?
+NORA: VS Code's documentation says it plainly: approving a plan and approving tool actions are separate decisions. The plan guides the agent. Each action still has to get past the gates on its own.
+THEO: [thoughtful] So I should read the board as the model's opinion of where it is.
+NORA: That's exactly it. A tick says what the model believes. The tests say what's true. Here they finally pass, twelve of them, and only then does the fix deserve its tick.
+THEO: The board's the itinerary. The test results are the stamps in the passport.
+NORA: [chuckles] I'll allow it. And it goes for the very last box, too. An agent that says it's finished hasn't proved anything yet. The whole suite still has to run.

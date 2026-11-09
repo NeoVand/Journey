@@ -1,0 +1,18 @@
+# Look first, change nothing
+NORA: Here's a habit good engineers have, and agents can borrow it: don't touch anything until you've looked.
+THEO: [laughs] I know a few engineers who'd argue with that. Fine. What does it look like for an agent?
+NORA: A planning mode. You hand it the big job, fix the race condition in the job scheduler, and before a single edit it's allowed to look but not touch. It searches your code, reads the scheduler and its test, and asks you what it needs to know.
+THEO: Look but not touch. Who's enforcing that? The model?
+NORA: That's the right question, and the answer differs. Remember, the model only writes text. Every tool call it writes is a request, and the harness, the program you installed around the model, decides what runs. The strongest version is when the harness itself holds the edits back.
+THEO: That's the barrier in front of the files.
+NORA: That's the barrier. In Claude Code you press Shift-Tab until you reach plan mode, or start a prompt with slash plan. Claude can read files and run commands to explore, and its edits are blocked until you approve. If it reaches for an edit anyway, the barrier turns it back, and the refusal goes into the conversation like any other tool result.
+THEO: And the other two?
+NORA: Codex has a Plan mode as well, slash plan or Shift-Tab. It gathers context and asks you questions, and it's told not to change anything. Told, notice. That's an instruction, which isn't quite the same thing as a gate. Copilot in VS Code has a Plan agent that only gets read-only tools, so there's no edit for it to reach for at all.
+THEO: [thoughtful] So three ways of saying not yet. One's a lock, one's a promise, and one never hands over the keys.
+NORA: [amused] That's a fair way to put it.
+THEO: But why bother? The agent's going to find the bug either way.
+NORA: Because the expensive mistake isn't a wrong line. It's solving the wrong problem for a long stretch of turns. Planning puts the questions first. Is it the queue? Is it the lock? Should the public interface stay as it is? You answer them while nothing has changed.
+THEO: And looking is cheap. Nobody ever got hurt by a search.
+NORA: Reading can't break your files, and that's exactly what makes it safe to do freely. Here the agent searches for lock and schedule, reads about a hundred lines of the scheduler, looks at the test, and stops.
+THEO: Stops and does what?
+NORA: Writes. The only thing that comes out of planning is text: what it found, and what it means to do. And that text comes to you.
