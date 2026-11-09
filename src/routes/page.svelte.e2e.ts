@@ -206,7 +206,7 @@ test('a phone never has to scroll sideways on the title page', async ({ browser 
 	const [wide, room] = await page.evaluate(() => [document.documentElement.scrollWidth, innerWidth]);
 	expect(wide).toBeLessThanOrEqual(room);
 	// Every side trip's ticket sits wholly on the screen, with no row to swipe.
-	for (const box of await page.locator('.trip-set .trip-go').evaluateAll((els) => els.map((el) => el.getBoundingClientRect().toJSON()))) {
+	for (const box of await page.locator('.trip-set .trip-cloud').evaluateAll((els) => els.map((el) => el.getBoundingClientRect().toJSON()))) {
 		expect(box.left).toBeGreaterThanOrEqual(0);
 		expect(box.right).toBeLessThanOrEqual(360);
 	}
