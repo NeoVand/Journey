@@ -1,0 +1,7 @@
+{
+	"cues": [
+		{ "at": "The tests. Watch the scene.", "show": ["Tests"], "hold": 3.4 },
+		{ "at": "It adds a step, fix the deadlock", "show": ["checklist-board"], "hold": 3 },
+		{ "at": "changing course is just another update_plan call", "show": ["list-step-added"], "hold": 3 }
+	]
+}

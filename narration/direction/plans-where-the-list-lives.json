@@ -1,0 +1,6 @@
+{
+	"cues": [
+		{ "at": "the old pages fold into one summary page", "show": ["summary-page"], "hold": 3 },
+		{ "at": "Then a list that lives in the conversation goes with it", "show": ["checklist-board"], "hold": 3 }
+	]
+}

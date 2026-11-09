@@ -1,0 +1,8 @@
+{
+	"cues": [
+		{ "at": "out come the odds for every possible next token", "show": ["wheel"], "in": "One token is chosen", "hold": 3.4 },
+		{ "at": "asking you for permission, is the harness", "show": ["Harness"], "hold": 3 },
+		{ "at": "never saw the rest of the repository", "show": ["Your repository"], "in": "Finding the code", "hold": 3 },
+		{ "at": "dedicated tools for searching, reading and exact-string edits", "show": ["drawer:Tools"], "do": "pull", "index": 2, "hold": 5 }
+	]
+}

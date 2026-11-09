@@ -1,0 +1,10 @@
+{
+	"cues": [
+		{ "at": "One, the conversation history", "show": ["drawer:Conversation"], "do": "pull", "index": 3, "hold": 4 },
+		{ "at": "The inference cache", "show": ["KV cache", "kv-cabinet"], "in": "Its working memory", "hold": 3 },
+		{ "at": "That's on your laptop, or in a container", "show": ["Laptop"], "hold": 2.6 },
+		{ "at": "documents in other services", "show": ["MCP"], "hold": 2.6 },
+		{ "at": "Its weights, the learned numbers", "show": ["The model"], "in": "Thousands more behind it", "hold": 3.2 },
+		{ "at": "Your project's rules file goes into the request", "show": ["drawer:Instructions"], "do": "pull", "index": 0, "hold": 5 }
+	]
+}

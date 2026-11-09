@@ -33,7 +33,7 @@
 	const now = $derived(on && time > 0 ? narrator.speaker(id, time) : null);
 	const turns = $derived(narrator.turns[id] ?? []);
 	/** The moments the conversation shows something in the scene: marked on the score, and a click near one goes there. */
-	const marks = $derived(narrator.spots[id] ?? []);
+	const marks = $derived((narrator.direction[id] ?? []).map((m) => m.t));
 	/** Where a press on the score began, to tell a click from a drag. */
 	let pressedAt = 0;
 	const lanes = [
@@ -66,8 +66,8 @@
 	function snap(event: PointerEvent) {
 		if (Math.abs(event.clientX - pressedAt) > 4 || !seconds || !marks.length) return;
 		const strip = (event.currentTarget as HTMLElement).getBoundingClientRect();
-		const near = marks.find(([at]) => Math.abs(strip.left + (at / seconds) * strip.width - event.clientX) <= 7);
-		if (near) narrator.seek(id, Math.max(0, near[0] - 1.5));
+		const near = marks.find((at) => Math.abs(strip.left + (at / seconds) * strip.width - event.clientX) <= 7);
+		if (near !== undefined) narrator.seek(id, Math.max(0, near - 1.5));
 	}
 
 	/** The arrow keys move the playhead by five seconds, Page Up and Down by thirty. */
@@ -121,8 +121,8 @@
 							{/each}
 						</div>
 					{/each}
-					{#each marks as [at, key] (at)}
-						<i class={['mark', { past: at <= time }]} style:left="{(at / seconds) * 100}%" aria-hidden="true" data-spot={key}></i>
+					{#each marks as at (at)}
+						<i class={['mark', { past: at <= time }]} style:left="{(at / seconds) * 100}%" aria-hidden="true"></i>
 					{/each}
 					<span class="head" aria-hidden="true"></span>
 					<input

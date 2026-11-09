@@ -1,0 +1,9 @@
+{
+	"cues": [
+		{ "at": "where a project usually keeps its secrets", "show": ["project-tray"], "hold": 2.6 },
+		{ "at": "so reading it matches a deny", "show": ["check-Deny"], "hold": 3 },
+		{ "at": "The git push matches an ask", "show": ["check-Ask"], "hold": 2.4 },
+		{ "at": "And the tests match an allow", "show": ["check-Allow"], "hold": 2.6 },
+		{ "at": "it falls to the session's default", "show": ["mode-dial"], "hold": 3 }
+	]
+}

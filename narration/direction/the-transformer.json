@@ -1,0 +1,10 @@
+{
+	"cues": [
+		{ "at": "the agent's instructions, the tool descriptions", "show": ["front:Instructions", "front:Environment", "front:Tools", "front:Conversation"], "together": true, "in": "The harness wakes up", "hold": 3.2 },
+		{ "at": "each token's number becomes a long list of numbers", "show": ["sign:Embedding"], "hold": 3 },
+		{ "at": "Then come the layers", "show": ["sign:Layer 1", "sign:Layer 2", "sign:Layer 3"], "together": true, "hold": 3 },
+		{ "at": "Eighty is an example number", "show": ["sign:74 more layers"], "hold": 3 },
+		{ "at": "Only the last position matters", "show": ["sign:Layer 80"], "hold": 3 },
+		{ "at": "the only roll of the dice", "show": ["wheel"], "in": "One token is chosen", "hold": 3 }
+	]
+}

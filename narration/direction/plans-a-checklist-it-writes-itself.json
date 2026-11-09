@@ -1,0 +1,6 @@
+{
+	"cues": [
+		{ "at": "The model writes a call with the list in it", "show": ["first-list"], "hold": 3.4 },
+		{ "at": "it has to write it into the conversation", "show": ["sign:The conversation"], "hold": 3 }
+	]
+}

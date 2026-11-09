@@ -253,6 +253,14 @@ export const PAGES: { kind: Kind; text: string; t: number; alt?: { kind: Kind; t
 ];
 /** When the model sends its list, each time: the board lights as the harness draws it again. */
 const LIST_AT = PAGES.filter((p) => p.kind === 'list').map((p) => p.t);
+/** The pages the conversations can point at: your request, and the lists as they're sent. */
+const PAGE_NAMES: [number, string][] = [
+	[0, 'first-page'],
+	[6, 'first-list'],
+	[8, 'list-three-done'],
+	[10, 'list-step-added'],
+	[12, 'list-latest']
+];
 /** Everything before this page is folded into one summary when the conversation is compacted; the rest goes on as it is. */
 const KEEP_FROM = 9;
 /** The first page that lists the steps, which in Claude Code is made with a different tool from the updates after it. */
@@ -337,6 +345,8 @@ export class PlansStage {
 			g.add(card.mesh);
 			this.pages.push(card);
 		}
+		// The pages the conversations point at, by name: see narration/direction.
+		for (const [i, name] of PAGE_NAMES) this.pages[i].mesh.name = name;
 		this.summary = new Card(PAGE_W, PAGE_H, 560, 0.02);
 		this.summary.mesh.name = 'summary-page';
 		drawPage(this.summary, 'summary', 'Everything before, in short');
@@ -395,6 +405,7 @@ export class PlansStage {
 		// working on the back, upside down until it turns.
 		const modeSign = (plan: string, work: string) => {
 			const stand = new THREE.Group();
+			stand.name = 'mode-sign';
 			stand.position.set(MODE.x, MODE.y + MODE_AXLE, MODE.z);
 			const rotor = new THREE.Group();
 			const front = createSign(plan, MODE_SIZE, '#ffffff', m.cobalt);
@@ -443,6 +454,7 @@ export class PlansStage {
 		g.add(this.deskLamp.mesh);
 		this.plan = planSheet(STEPS.filter((_, i) => i !== ADDED));
 		this.plan.mesh.visible = false;
+		this.plan.mesh.name = 'plan-sheet';
 		g.add(this.plan.mesh);
 		this.stamp = new THREE.Group();
 		const stamp = new Batch();

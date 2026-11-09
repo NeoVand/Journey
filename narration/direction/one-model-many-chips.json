@@ -1,0 +1,10 @@
+{
+	"cues": [
+		{ "at": "A single accelerator", "show": ["label:Accelerator"], "hold": 2.6 },
+		{ "at": "of its own fast memory", "show": ["label:HBM"], "hold": 3 },
+		{ "at": "Chips in one server talk over NVLink", "show": ["nvlink"], "hold": 3 },
+		{ "at": "Servers talk to each other more slowly", "show": ["fabric", "sign:InfiniBand"], "together": true, "hold": 3.4 },
+		{ "at": "The internet your request came in on", "show": ["tunnel-frame"], "in": "Across the wire", "hold": 3 },
+		{ "at": "A copy of the model is set up", "show": ["Copy 1"], "hold": 3.4 }
+	]
+}

@@ -6,7 +6,8 @@
  * The audio is made by scripts/narration/say.mjs from the scripts in narration/, with the words beside it, timed by
  * turn and by sentence: the player's lanes and the subtitles both come from them.
  */
-import { cuesOf, plan, type Cue, type Line } from './cues';
+import { cuesOf, type Cue, type Line } from './cues';
+import type { Moment } from './pointer.svelte';
 import manifest from './narration.json';
 
 export const TALKS: Record<string, { title: string; seconds: number }> = manifest;
@@ -37,6 +38,8 @@ export class Narrator {
 	/** Waiting for the audio to arrive. */
 	waiting = $state(false);
 	time = $state(0);
+	/** Counts the reader's jumps within conversations, so what follows the words knows a leap from a slow frame. */
+	seeks = 0;
 	duration = $state(0);
 	/** Played to the end. */
 	done = $state(false);
@@ -50,8 +53,8 @@ export class Narrator {
 	turns = $state.raw<Record<string, Turn[]>>({});
 	/** Each conversation's subtitles, fetched with its turns. */
 	cues = $state.raw<Record<string, Cue[]>>({});
-	/** When each conversation lights something in the scene: [seconds, what], already spaced out, for the spotlight and the player's marks. */
-	spots = $state.raw<Record<string, [number, string][]>>({});
+	/** Each conversation's direction: the moments it shows something in the scene. For the pointer and the player's marks. */
+	direction = $state.raw<Record<string, Moment[]>>({});
 	/** Subtitles on screen while they talk, remembered between visits. Off until the reader asks. */
 	subtitles = $state(false);
 	readonly progress = $derived(this.duration ? Math.min(1, this.time / this.duration) : 0);
@@ -146,6 +149,7 @@ export class Narrator {
 		const at = Math.max(0, Math.min(end - 0.25, seconds));
 		audio.currentTime = at;
 		this.time = at;
+		this.seeks++;
 		this.done = false;
 	}
 
@@ -190,11 +194,11 @@ export class Narrator {
 		this.asked[id] = true;
 		fetch(this.url(`${id}.json`))
 			.then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-			.then(({ lines, spots }: { lines: Line[]; spots?: [number, string][] }) => {
+			.then(({ lines, direction }: { lines: Line[]; direction?: Moment[] }) => {
 				const timed = lines.filter((l) => l.start !== null && l.end !== null);
 				this.turns = { ...this.turns, [id]: timed.map(({ who, start, end }) => ({ who, start, end })) };
 				this.cues = { ...this.cues, [id]: cuesOf(timed) };
-				this.spots = { ...this.spots, [id]: plan(spots ?? []) };
+				this.direction = { ...this.direction, [id]: direction ?? [] };
 			})
 			.catch(() => (this.asked[id] = false));
 	}

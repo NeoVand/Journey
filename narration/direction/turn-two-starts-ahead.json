@@ -1,0 +1,8 @@
+{
+	"cues": [
+		{ "at": "the harness ran the search on your laptop", "show": ["Harness", "Laptop"], "together": true, "in": "How a coding agent works", "hold": 3 },
+		{ "at": "A router at the front reads the start", "show": ["Router"], "hold": 4.5 },
+		{ "at": "only the new part has to run through the model", "show": ["Prefill"], "hold": 2.6 },
+		{ "at": "twenty-one thousand tokens are already cached", "show": ["label:21,000 reused", "label:1,500 new"], "together": true, "hold": 4 }
+	]
+}

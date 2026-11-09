@@ -66,6 +66,7 @@ export class Rig {
 		const lift = aspect < 0.9 && !above && !below ? Math.max(0, Math.min(1, (aspect - 0.47) / 0.09)) * 0.035 : 0;
 		return {
 			dist,
+			fill: Math.min(region.h, region.w * aspect),
 			shiftX: region.x + region.w / 2 - 0.5,
 			shiftY: region.y + region.h / 2 - 0.5 - lift
 		};
@@ -112,5 +113,8 @@ export class Rig {
 		this.camera.aspect = aspect;
 		this.camera.setViewOffset(width, height, -sx * width, -sy * height, width, height);
 		this.camera.updateProjectionMatrix();
+		// How much of the screen's height the picture has to itself, beside or above the words: whatever else moves the
+		// camera for a moment (a visit, say) frames things to fit that, not the whole screen.
+		this.camera.userData.fill = lerp(A.fill, B.fill, k);
 	}
 }

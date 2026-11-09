@@ -1,0 +1,11 @@
+{
+	"cues": [
+		{ "at": "the same pile of text the model reads", "show": ["drawer:Conversation"], "do": "pull", "index": 3, "hold": 5 },
+		{ "at": "download a script from a stranger's server", "show": ["sign:evil.sh"], "hold": 3 },
+		{ "at": "File contents, commit messages", "show": ["Your repository"], "hold": 2.2 },
+		{ "at": "results from outside tools", "show": ["MCP"], "hold": 2.4 },
+		{ "at": "Then come the permission gates", "show": ["gate"], "together": true, "in": "Intent is not authority", "hold": 3.2 },
+		{ "at": "called a sandbox", "show": ["sandbox-frame"], "hold": 3.6 },
+		{ "at": "so the request for the stranger's script goes nowhere", "show": ["sign:curl evil.sh"], "hold": 3 }
+	]
+}

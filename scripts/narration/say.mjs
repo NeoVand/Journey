@@ -15,7 +15,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { elevenKey } from '../sound/env.mjs';
-import { caption, chunks, config, GAP, out, parse, raw, request as voicesFor, root, scripts, seconds, sentences, spoken, spotsIn, takesFile } from './lib.mjs';
+import { caption, chunks, config, directionOf, GAP, out, parse, raw, request as voicesFor, root, scripts, seconds, sentences, spoken, takesFile } from './lib.mjs';
 
 const manifestFile = new URL('src/lib/journey/narration.json', root);
 mkdirSync(raw, { recursive: true });
@@ -119,8 +119,10 @@ async function build(script) {
 	}
 	const length = seconds(final.pathname);
 	if (length > MAX_SECONDS) throw new Error(`${id} runs ${length.toFixed(0)} s, over five minutes: shorten the script`);
-	// And where it names things in the scene, which the page lights up as they're said: see spots.mjs.
-	writeFileSync(new URL(`${id}.json`, out), JSON.stringify({ id, title: script.title, seconds: +length.toFixed(1), lines, spots: spotsIn(pieces) }));
+	// And what the scene shows as it's said, from its direction, if it has one: see direct.mjs.
+	const { direction, missing } = directionOf(id, pieces);
+	if (missing.length) console.log(`  ${id}: direction phrases not found: ${missing.join(' | ')}`);
+	writeFileSync(new URL(`${id}.json`, out), JSON.stringify({ id, title: script.title, seconds: +length.toFixed(1), lines, direction }));
 	return { seconds: +length.toFixed(1), parts: pieces.length };
 }
 

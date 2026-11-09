@@ -1,0 +1,8 @@
+{
+	"cues": [
+		{ "at": "the download hits the wall", "show": ["glass-frame"], "hold": 3 },
+		{ "at": "a package from a domain", "show": ["sign:Proxy"], "hold": 2.2 },
+		{ "at": "or a file outside the project", "show": ["home-tray"], "hold": 2.4 },
+		{ "at": "that request goes through the rules like any other call", "show": ["check-Deny", "check-Ask", "check-Allow"], "together": true, "hold": 3 }
+	]
+}

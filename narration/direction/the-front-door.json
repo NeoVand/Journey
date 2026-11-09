@@ -1,0 +1,12 @@
+{
+	"cues": [
+		{ "at": "Check one: decrypt", "show": ["label:Decrypt"], "hold": 12 },
+		{ "at": "Check two: who are you?", "show": ["label:Who are you?"], "hold": 8.5 },
+		{ "at": "Check three is the rate limit", "show": ["label:Rate limit"], "hold": 8.5 },
+		{ "at": "Check four is the budget", "show": ["label:Budget"], "hold": 3.3 },
+		{ "at": "Capacity.", "show": ["label:Capacity"], "hold": 2.4 },
+		{ "at": "waits in a queue", "show": ["sign:Waiting"], "in": "Sharing the chips", "hold": 3 },
+		{ "at": "the harness quietly tries again", "show": ["Harness"], "hold": 3.4 },
+		{ "at": "is still further in", "show": ["The model"], "hold": 3.4 }
+	]
+}

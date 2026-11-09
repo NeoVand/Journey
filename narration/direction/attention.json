@@ -1,0 +1,7 @@
+{
+	"cues": [
+		{ "at": "The query is the question", "show": ["label:Q"], "hold": 3 },
+		{ "at": "Every token before it offers a key", "show": ["label:K", "label:V"], "together": true, "hold": 4 },
+		{ "at": "You'd expect \"race\" and \"condition\"", "show": ["sign:32%", "sign:46%"], "together": true, "hold": 3.6 }
+	]
+}

@@ -1,0 +1,9 @@
+{
+	"cues": [
+		{ "at": "the stop reason is end_turn", "show": ["label:end_turn"], "in": "A tool call is born", "hold": 3.2 },
+		{ "at": "first runs any stop hooks", "show": ["Harness"], "hold": 3 },
+		{ "at": "each with its own permission", "show": ["lock"], "together": true, "hold": 3 },
+		{ "at": "Committing goes through the same permission gate", "show": ["gate"], "together": true, "in": "Intent is not authority", "hold": 3 },
+		{ "at": "Claude Code shows the diff and the summary", "show": ["Laptop"], "hold": 3 }
+	]
+}

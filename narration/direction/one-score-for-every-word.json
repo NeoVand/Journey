@@ -1,0 +1,8 @@
+{
+	"cues": [
+		{ "at": "Their keys and values are what the last token looked back at", "show": ["KV cache", "kv-cabinet"], "in": "Its working memory", "hold": 3.2 },
+		{ "at": "A final step called the LM head", "show": ["sign:LM head: one logit for every word"], "hold": 3.6 },
+		{ "at": "In this example, \"The\", then \"I\"", "show": ["Logits: the highest scores"], "hold": 3.6 },
+		{ "at": "while I'm staring at the screen", "show": ["Laptop"], "in": "It starts as a sentence", "hold": 3 }
+	]
+}

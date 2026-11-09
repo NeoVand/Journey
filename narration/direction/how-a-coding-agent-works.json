@@ -1,0 +1,12 @@
+{
+	"cues": [
+		{ "at": "That program is called the harness", "show": ["Harness"] },
+		{ "at": "The harness wraps it in one big request", "show": ["Request"], "hold": 2.6 },
+		{ "at": "That request crosses the internet", "show": ["tunnel-frame"], "hold": 2.2 },
+		{ "at": "arrives at the provider's front door", "show": ["Front door"], "hold": 2.4 },
+		{ "at": "only there is it cut into tokens", "show": ["Tokenizer"], "hold": 3 },
+		{ "at": "onto thousands of chips", "show": ["label:Accelerator"], "together": true, "in": "One model, many chips", "hold": 3.4 },
+		{ "at": "Only the harness can act", "show": ["Harness"], "hold": 3 },
+		{ "at": "It sounds wasteful", "show": ["KV cache", "kv-cabinet"], "in": "Turn two starts ahead", "hold": 3.4 }
+	]
+}

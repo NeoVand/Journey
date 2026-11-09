@@ -1,0 +1,10 @@
+{
+	"cues": [
+		{ "at": "So the detokenizer waits", "show": ["sign:Detokenizer: IDs become text"], "hold": 3.6 },
+		{ "at": "Token numbers never leave the data center", "show": ["sign:Token IDs stay here"], "hold": 3 },
+		{ "at": "text goes in at the front door", "show": ["Front door"], "in": "The front door", "hold": 3 },
+		{ "at": "one long-lived connection", "show": ["tunnel-frame"], "in": "Across the wire", "hold": 3 },
+		{ "at": "At Anthropic it's called refusal", "show": ["label:refusal", "label:A safety check stopped it"], "together": true, "hold": 3 },
+		{ "at": "the slips going up that glass tube", "show": ["collar", "sign:Back to your laptop"], "together": true, "hold": 5 }
+	]
+}

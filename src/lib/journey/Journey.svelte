@@ -598,13 +598,28 @@
 			}
 			world = w;
 			w.setHarness(harness);
-			pointer = new Pointer(w, (key) => cue('spot', key.length));
+			// The conversation directs the picture: the camera goes to what it's talking about, here or in a peek at
+			// another part of the story, under a quick cover there and back. The card stays.
+			pointer = new Pointer(w, {
+				whenIs: (title) => {
+					const pin = pins.find((p) => (p.el.querySelector('h1, h2')?.textContent ?? '').trim() === title);
+					return pin ? pin.i + (pin.from + Math.min(0.97, pin.end)) / 2 : null;
+				},
+				peek: (to) =>
+					cover(to ?? T, () => {
+						peekT = to;
+						if (to === null) w.endVisit();
+					}),
+				note: () => cue('spot', Math.floor(Math.random() * 5))
+			});
 			{
 				const gl = w.stage.renderer.getContext();
 				const info = gl.getExtension('WEBGL_debug_renderer_info');
 				watch.note.gpu = info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL)) : String(gl.getParameter(gl.RENDERER));
 			}
 			let noted = 0;
+			/** A moment of the story the picture is showing instead of the card's own, for a peek. */
+			let peekT: number | null = null;
 			// The source key steps out of its corner while a card's words reach into it: a few cards run that low on a
 			// shorter screen, and the last one ends there.
 			const sourceEl = document.querySelector<HTMLElement>('a.source');
@@ -958,7 +973,7 @@
 				showGauge();
 				px += (mx - px) * (1 - Math.exp(-dt * 3));
 				py += (my - py) * (1 - Math.exp(-dt * 3));
-				w.update(track && tripT !== null ? tripT : T, reduced ? 0 : time, dt, reduced ? 0 : px, reduced ? 0 : py, reduced);
+				w.update(track && tripT !== null ? tripT : (peekT ?? T), reduced ? 0 : time, dt, reduced ? 0 : px, reduced ? 0 : py, reduced);
 				// After the picture is drawn, so what's named is found where it is now; the camera goes to it from the next frame.
 				pointer?.update(now / 1000, narrator, !reduced);
 				if (soundOn) playSound(dt);
@@ -1529,7 +1544,8 @@
 			if (params.has('debug')) {
 				(window as unknown as { __world: unknown; __head: unknown }).__world = w;
 				(window as unknown as { __world: unknown; __head: unknown }).__head = head;
-				(window as unknown as { __pointer: unknown }).__pointer = pointer;
+				(window as unknown as { __pointer: unknown; __narrator: unknown }).__pointer = pointer;
+				(window as unknown as { __pointer: unknown; __narrator: unknown }).__narrator = narrator;
 			}
 			if (still) {
 				const api = {

@@ -1,0 +1,6 @@
+{
+	"cues": [
+		{ "at": "Where it runs is the harness's business", "show": ["Harness"], "hold": 4 },
+		{ "at": "The method is tools/call", "show": ["mcp:Tools"], "hold": 3.2 }
+	]
+}

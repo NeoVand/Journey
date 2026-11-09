@@ -1,0 +1,8 @@
+{
+	"cues": [
+		{ "at": "attention needs two lists of numbers", "show": ["attention"], "hold": 6 },
+		{ "at": "cut into blocks", "show": ["tray"], "hold": 3 },
+		{ "at": "Eighty layers.", "show": ["sign:Layer 1", "sign:Layer 2", "sign:Layer 3", "sign:74 more layers", "sign:Layer 80"], "together": true, "in": "The transformer", "hold": 3.4 },
+		{ "at": "called HBM", "show": ["label:HBM"], "hold": 3.4 }
+	]
+}

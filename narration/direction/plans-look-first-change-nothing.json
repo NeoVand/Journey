@@ -1,0 +1,8 @@
+{
+	"cues": [
+		{ "at": "That's the barrier.", "show": ["barrier"], "hold": 3 },
+		{ "at": "the refusal goes into the conversation", "show": ["sign:The conversation"], "hold": 3 },
+		{ "at": "Here the agent searches for lock and schedule", "show": ["files-tray"], "hold": 3.4 },
+		{ "at": "The only thing that comes out of planning is text", "show": ["your-desk"], "hold": 3 }
+	]
+}

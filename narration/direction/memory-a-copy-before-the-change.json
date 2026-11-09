@@ -1,0 +1,9 @@
+{
+	"cues": [
+		{ "at": "That copy is a checkpoint", "show": ["checkpoint-stand", "sign:Checkpoint"], "together": true, "hold": 3.4 },
+		{ "at": "The agent edits the scheduler", "show": ["files-tray"], "hold": 2.2 },
+		{ "at": "It pushes a commit", "show": ["Git host"], "hold": 2.2 },
+		{ "at": "and that one breaks a test", "show": ["sign:Today"], "hold": 2.6 },
+		{ "at": "A checkpoint is a copy of files on your disk", "show": ["checkpoint-stand", "files-tray"], "together": true, "hold": 3.4 }
+	]
+}

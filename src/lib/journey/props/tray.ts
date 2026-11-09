@@ -145,6 +145,7 @@ export class BlockTray {
 		stand.add(extrude(roundedRect(TW + 0.2, TH + 0.2, 0.16), 0.14, 0.03, 3, 10), m.creamLight, { p: [0, TH / 2 + 0.22, 0] });
 		stand.add(rbox(TW + 0.5, 0.12, 0.8, 0.04, 2), m.steelSoft, { p: [0, 0.06, 0] });
 		const tableGroup = new THREE.Group();
+		tableGroup.name = 'block-table';
 		tableGroup.add(stand.build('table-stand'));
 		const face = new THREE.Mesh(new THREE.PlaneGeometry(TW, TH), new THREE.MeshStandardMaterial({ map: this.table.texture, roughness: 0.7 }));
 		face.position.set(0, TH / 2 + 0.22, 0.076);

@@ -27,14 +27,13 @@ import { GLASS_ROOF, SandboxStage, STAGE_AT, STAGE_SHOTS, STAGE_SKY } from './tr
 import { CABINET_ROOF, MemoryStage, MEMORY_AT, MEMORY_SHOTS, MEMORY_SKY } from './tracks/memory';
 import { PlansStage, PLANS_AT, PLANS_SHOTS, PLANS_SKY, SCREEN_ROOF } from './tracks/plans';
 import { hitBox } from './poke';
+import { Visits } from './visit';
 import { Cluster, CLUSTER_SHOTS, DIVE_T } from './cluster';
 import { RETURN_POINTS } from './layout';
 import { Back, BACK_SHOTS } from './chapters/back';
 import { Finale, FINALE_T } from './chapters/finale';
 
 export const EXIT_T = 19;
-/** What something glows while the conversation shows it: the token's amber. */
-const GLOW = new THREE.Color(color.amber);
 
 type V3 = [number, number, number];
 
@@ -213,19 +212,8 @@ export class World {
 	/** What the camera is looking at this frame, and a scratch point: where sounds are heard from. */
 	private ear = new THREE.Vector3();
 	private hear = new THREE.Vector3();
-	/**
-	 * What the conversation is showing: the things it names, how far the showing has got (0 to 1), and whether the
-	 * camera may go to them. Each lit mesh wears a copy of its material while it glows; the originals are kept here.
-	 */
-	private shown = { key: '', names: [] as string[], together: false, k: 0, move: true };
-	/** The clock the last frame was drawn at, for the glow's slow breath. */
-	private clock = 0;
-	private glowing = new Map<THREE.Mesh, THREE.Material | THREE.Material[]>();
-	private glowKey = '';
-	/** The things being shown, found once when the showing starts. */
-	private glowThings: THREE.Object3D[] = [];
-	private sphere = new THREE.Sphere();
-	private ahead = new THREE.Vector3();
+	/** The conversation's visits to things it names: see visit.ts. */
+	private visits!: Visits;
 	private bounds = new THREE.Box3();
 	private part = new THREE.Box3();
 	private piece = new THREE.Box3();
@@ -290,6 +278,7 @@ export class World {
 	private constructor(canvas: HTMLCanvasElement) {
 		this.stage = new Stage(canvas);
 		this.rig = new Rig(this.stage.camera, SHOTS);
+		this.visits = new Visits(this.stage, () => (this.trackIn && this.trackId ? [this.places[this.trackId as 'harness']?.group] : [this.root, this.cluster.group]));
 		this.clouds.lay(
 			[
 				{ shots: SHOTS, sky: (T) => T < DIVE_T || T >= EXIT_T },
@@ -1217,138 +1206,62 @@ export class World {
 	}
 
 	/**
-	 * Shows what the conversation names, k of the way: it glows amber, and unless move is false the camera goes to it,
-	 * framing it in the picture and turning a little round it. null, or k at 0, lets it go.
+	 * Takes the camera to something the conversation names, and does what it's doing there: pulls a drawer, flips the
+	 * tiles, wakes the brain, spins the wheel. False if there's nothing by those names in the scene now. cutBack is for a
+	 * peek at another moment of the story, which the page ends with a cut.
 	 */
-	show(spot: { key: string; names: string[]; together?: boolean } | null, k: number, move = true) {
-		if (!spot || k <= 0) {
-			this.shown.k = 0;
-			return;
-		}
-		this.shown = { key: spot.key, names: spot.names, together: !!spot.together, k: Math.min(1, k), move };
+	visit(cue: { names: string[]; together?: boolean; hold?: number; act?: string; index?: number; cutBack?: boolean; still?: boolean }) {
+		return this.visits.start({
+			names: cue.names,
+			together: cue.together,
+			hold: cue.hold,
+			cutBack: cue.cutBack,
+			still: cue.still,
+			act: this.actFor(cue.act, cue.index),
+			fly: !this.trackIn
+		});
 	}
 
-	/** The things a name finds in the scene showing now: the biggest one in view, or all of them in view together. */
-	private shownThings() {
-		const { names, together } = this.shown;
-		const scenes = this.trackIn && this.trackId ? [this.places[this.trackId as 'harness']?.group] : [this.root, this.cluster.group];
-		const found: { o: THREE.Object3D; size: number }[] = [];
-		for (const scene of scenes) {
-			if (!scene) continue;
-			for (const name of names) {
-				for (const o of scene.getObjectsByProperty('name', name)) {
-					let on = true;
-					for (let p: THREE.Object3D | null = o; p; p = p.parent) if (!p.visible) on = false;
-					if (!on) continue;
-					const box = this.part.makeEmpty();
-					o.traverseVisible((m) => {
-						const g = (m as THREE.Mesh).geometry;
-						if (!g) return;
-						if (!g.boundingBox) g.computeBoundingBox();
-						box.union(this.piece.copy(g.boundingBox!).applyMatrix4(m.matrixWorld));
-					});
-					if (!box.isEmpty()) found.push({ o, size: box.getSize(this.v4).length() });
-				}
-			}
-		}
-		if (together) return found.map((f) => f.o);
-		found.sort((a, b) => b.size - a.size);
-		return found.slice(0, 1).map((f) => f.o);
+	/** Whether something by one of these names is in the scene now, in the shot or not. */
+	hasThing(names: string[]) {
+		return this.visits.has(names);
 	}
 
-	/** Whether a thing and everything it hangs from is showing. */
-	private inView(o: THREE.Object3D) {
-		for (let p: THREE.Object3D | null = o; p; p = p.parent) if (!p.visible) return false;
-		return true;
+	/** Brings the camera back from a visit now; quick gives the shot back in a moment. */
+	leaveVisit(quick = false) {
+		this.visits.release(quick);
 	}
 
-	/** Puts every lit mesh back in its own material. */
-	private unglow() {
-		for (const [mesh, material] of this.glowing) {
-			const worn = mesh.material;
-			mesh.material = material;
-			for (const m of Array.isArray(worn) ? worn : [worn]) m.dispose();
-		}
-		this.glowing.clear();
-		this.glowKey = '';
-		this.glowThings = [];
+	/** Drops a visit at once: the page has cut away. */
+	endVisit() {
+		this.visits.end();
 	}
 
-	/** Called just before each picture is drawn: the glow and the camera's visit go on top of what the shot set up. */
-	private showIn() {
-		const s = this.shown;
-		this.stage.dimmed = 0;
-		if (s.k <= 0) {
-			if (this.glowing.size) this.unglow();
-			return;
-		}
-		// Found once as the showing starts; after that, only whether they're still in view.
-		const things = this.glowKey === s.key ? this.glowThings.filter((o) => this.inView(o)) : this.shownThings();
-		if (!things.length) {
-			if (this.glowing.size) this.unglow();
-			return;
-		}
-		// The rest of the picture goes a little into shade as it's shown.
-		this.stage.dimmed = smooth(s.k);
-		// A new thing to show: each of its meshes takes a copy of its material, to glow without lighting anything else.
-		if (this.glowKey !== s.key) {
-			this.unglow();
-			this.glowKey = s.key;
-			this.glowThings = things;
-			for (const t of things) {
-				t.traverseVisible((o) => {
-					const mesh = o as THREE.Mesh;
-					if (!mesh.isMesh || this.glowing.has(mesh)) return;
-					const own = mesh.material;
-					const copy = (m: THREE.Material) => {
-						const c = m.clone();
-						c.userData.glowFrom = (m as THREE.MeshStandardMaterial).emissive?.clone();
-						c.userData.glowAt = (m as THREE.MeshStandardMaterial).emissiveIntensity ?? 1;
-						return c;
-					};
-					this.glowing.set(mesh, own);
-					mesh.material = Array.isArray(own) ? own.map(copy) : copy(own);
-				});
-			}
-		}
-		// Breathing a little, so the eye finds it.
-		const glow = smooth(s.k) * (0.85 + 0.15 * Math.sin(this.clock * 4.2));
-		for (const mesh of this.glowing.keys()) {
-			for (const m of (Array.isArray(mesh.material) ? mesh.material : [mesh.material]) as THREE.MeshStandardMaterial[]) {
-				if (!m.emissive || !m.userData.glowFrom) continue;
-				// Things that already shine, a lamp or a screen, keep their light; the rest warm towards the token's amber.
-				const lit = m.userData.glowFrom.getHex() !== 0;
-				if (lit) continue;
-				m.emissive.copy(GLOW);
-				m.emissiveIntensity = 0.42 * glow;
-			}
-		}
-		if (!s.move) return;
-		// The camera goes to it: the same side it sees it from now, a little round, close enough to fill the picture.
-		const box = this.bounds.makeEmpty();
-		for (const t of things) {
-			t.traverseVisible((m) => {
-				const g = (m as THREE.Mesh).geometry;
-				if (!g) return;
-				if (!g.boundingBox) g.computeBoundingBox();
-				box.union(this.piece.copy(g.boundingBox!).applyMatrix4(m.matrixWorld));
-			});
-		}
-		box.getBoundingSphere(this.sphere);
-		const cam = this.stage.camera;
-		const centre = this.sphere.center;
-		const far = cam.position.distanceTo(centre);
-		// Always a good step closer, so it's a visit; never so close a small thing loses what's round it.
-		const fit = Math.min(far * 0.72, (Math.max(0.6, this.sphere.radius) / Math.tan((cam.fov * Math.PI) / 360)) * 3);
-		const k = smooth(s.k);
-		// Where the shot is looking now, at the thing's distance, so the turn towards it starts from there.
-		cam.getWorldDirection(this.ahead);
-		const look = this.v2.copy(cam.position).addScaledVector(this.ahead, far);
-		const away = this.v3.copy(cam.position).sub(centre).normalize().applyAxisAngle(this.yAxis, 0.12 * k);
-		cam.position.lerp(this.v1.copy(centre).addScaledVector(away, fit), k);
-		cam.lookAt(look.lerp(centre, k));
-		cam.updateMatrixWorld();
+	get visiting() {
+		return this.visits.busy;
 	}
+
+	/** A peek has stayed its time, and waits for the page to cut back. */
+	get visitDone() {
+		return this.visits.waiting;
+	}
+
+	/** What a visit does once it's there. */
+	private actFor(act: string | undefined, index = 0) {
+		if (act === 'pull') {
+			return () => {
+				this.harness.pull(index % 4);
+				this.pulledAtT = this.lastT;
+				const p = this.harness.group.getWorldPosition(this.v4);
+				this.onPoked('drawer', p.x, p.y, p.z);
+			};
+		}
+		if (act === 'flip') return () => this.tiles.forEach((_, i) => this.flipTile(i));
+		if (act === 'excite') return () => this.brain.excite();
+		if (act === 'spin') return () => this.onPress('wheel');
+		return undefined;
+	}
+
 
 
 	private tileShown(i: number, now: number) {
@@ -1403,7 +1316,6 @@ export class World {
 	/** Pure function of T (scroll) plus time (idle life). Any scroll position can be rendered directly. */
 	update(T: number, time: number, dt: number, px = 0, py = 0, introDone = false) {
 		this.lastT = T;
-		this.clock = time;
 		// The whole world is in frame and only tokens move, too small to change a shadow anyone can see.
 		this.stage.holdShadows(T >= HOLD_SHADOWS_T);
 		// Whatever the reader pulled out goes back as soon as they scroll on.
@@ -1434,7 +1346,7 @@ export class World {
 			const sky = INSIDE[id].sky;
 			this.stage.setSky(sky.top, sky.mid, sky.low);
 			this.place(id).update(this.trackT, time);
-			this.showIn();
+			this.visits.apply(dt, time);
 			this.stage.render();
 			return;
 		}
@@ -1526,7 +1438,7 @@ export class World {
 		if (!inside) this.mcpTrack.update(this.trackT, this.trackId === 'mcp' ? this.trackBlend : 0, time, this.harnessPose, seg(T, 1.86, 2.0));
 
 		this.state.form = formAt(T);
-		this.showIn();
+		this.visits.apply(dt, time);
 		this.stage.render();
 	}
 

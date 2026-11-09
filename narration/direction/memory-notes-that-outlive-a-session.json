@@ -1,0 +1,7 @@
+{
+	"cues": [
+		{ "at": "Today's request starts with the shelf's index", "show": ["sign:Today"], "hold": 3.4 },
+		{ "at": "The rest of the shelf waits until it's needed", "show": ["notes-shelf"], "hold": 3 },
+		{ "at": "they're shared with your collaborators", "show": ["Git host"], "hold": 3 }
+	]
+}

@@ -1,0 +1,10 @@
+{
+	"cues": [
+		{ "at": "they print onto a ticket", "show": ["ticket-slot"], "hold": 3.6 },
+		{ "at": "On the board here", "show": ["label:tool_use", "label:Run the tool, send back the result"], "together": true, "hold": 2.6 },
+		{ "at": "Other times it's", "show": ["label:end_turn", "label:Show the text, wait for you"], "together": true, "hold": 2.4 },
+		{ "at": "Or it ran out of room", "show": ["label:max_tokens", "label:Out of room: ask to continue", "label:refusal", "label:A safety check stopped it"], "together": true, "hold": 2.6 },
+		{ "at": "entirely up to the harness on your laptop", "show": ["Harness"], "in": "The model has no hands", "hold": 3 },
+		{ "at": "Those checks come later, on your machine", "show": ["gate-board"], "together": true, "in": "Intent is not authority", "hold": 3.2 }
+	]
+}

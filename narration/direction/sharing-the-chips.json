@@ -1,0 +1,9 @@
+{
+	"cues": [
+		{ "at": "the chip would sit mostly idle", "show": ["label:Accelerator"], "hold": 3 },
+		{ "at": "a waiting one takes its lane", "show": ["sign:Waiting"], "hold": 3 },
+		{ "at": "sitting in chip memory", "show": ["tray"], "hold": 3 },
+		{ "at": "mine's the amber one", "show": ["label:You"], "hold": 3 },
+		{ "at": "prefill being the model's first pass", "show": ["pool-Prefill pool", "sign:Prefill pool"], "together": true, "hold": 3 }
+	]
+}
