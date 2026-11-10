@@ -355,18 +355,23 @@ export const slug = (title: string) =>
 		.replace(/[^a-z0-9]+/g, '-')
 		.replace(/^-|-$/g, '');
 
-/** The loop on one page, in the words of the book's first poster. */
-export const TRIP: { name: string; what: string }[] = [
-	{ name: 'Ask', what: 'You type one sentence.' },
-	{ name: 'Assemble', what: 'The harness wraps it in your rules, your tools and everything said so far.' },
-	{ name: 'Cross', what: 'One JSON request crosses the internet, encrypted.' },
-	{ name: 'Encode', what: 'The front door checks it, and the tokenizer cuts it into numbers.' },
-	{ name: 'Compute', what: 'The model reads it all, and writes a reply one token at a time.' },
-	{ name: 'Stream', what: 'Text comes back, not numbers. The model has touched nothing.' },
-	{ name: 'Authorize', what: 'The harness checks what the reply asks for, gate by gate.' },
-	{ name: 'Act', what: 'The tools run on your machine, and what they find is real.' },
-	{ name: 'Loop', what: 'The results go back as context, and round it goes until the tests pass.' }
+/**
+ * The loop on one page: its nine stops, the card each one starts at, and from where in the story (in sections, as the
+ * scroll counts them) the reader is at it.
+ */
+export const TRIP: { name: string; what: string; card: string; from: number }[] = [
+	{ name: 'Ask', what: 'You type one sentence.', card: 'It starts as a sentence', from: 0 },
+	{ name: 'Assemble', what: 'The harness wraps it in your rules, your tools and everything said so far.', card: 'The harness wakes up', from: 2 },
+	{ name: 'Cross', what: 'One JSON request crosses the internet, encrypted.', card: 'Across the wire', from: 4 },
+	{ name: 'Encode', what: 'The front door checks it, and the tokenizer cuts it into numbers.', card: 'The front door', from: 5 },
+	{ name: 'Compute', what: 'The model reads it all, and writes a reply one token at a time.', card: 'Thousands more behind it', from: 7 },
+	{ name: 'Stream', what: 'Text comes back, not numbers. The model has touched nothing.', card: 'Text comes back, not numbers', from: 18 },
+	{ name: 'Authorize', what: 'The harness checks what the reply asks for, gate by gate.', card: 'Intent is not authority', from: 20 },
+	{ name: 'Act', what: 'The tools run on your machine, and what they find is real.', card: 'Finding the code', from: 22 },
+	{ name: 'Loop', what: 'The results go back as context, and round it goes until the tests pass.', card: 'Around the loop', from: 25 }
 ];
+/** From here on the story looks back at the whole trip: every stop has been passed. */
+export const TRIP_DONE = 31.9;
 
 /* ---------- side trips ---------- */
 

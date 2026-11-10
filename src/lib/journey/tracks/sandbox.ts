@@ -8,6 +8,7 @@ import { createSign, grown } from '../kit/parts';
 import { font } from '../kit/print';
 import { createIsland } from '../props/island';
 import { Cloudscape } from '../props/sky';
+import { LOWER } from '../layout';
 import type { HarnessId } from '../content';
 import type { Shot } from '../rig';
 
@@ -93,7 +94,7 @@ const ASKING = shot(4, 20, [1.6, 1.3, 1.0], 8.2, 3.4, { tallRadius: 8.4 });
 const DESK = shot(-10, 16, [YOU.x + 0.1, 1.0, YOU.z], 1.9, 1.1);
 
 /** Where the reader drops in: straight down into the glass on the story's sandbox island, in the story's coordinates. */
-export const GLASS_ROOF: Omit<Shot, 'T'> = { az: 6, el: 62, target: [-21.2, -11.4, 0.6], radius: 1.4, ry: 1.0, wide: box(0, 0, 1, 1), tall: box(0, 0, 1, 1) };
+export const GLASS_ROOF: Omit<Shot, 'T'> = { az: 6, el: 62, target: [-21.2 + LOWER[0], -11.4 + LOWER[1], 0.6 + LOWER[2]], radius: 1.4, ry: 1.0, wide: box(0, 0, 1, 1), tall: box(0, 0, 1, 1) };
 
 export const STAGE_SHOTS: Shot[] = [
 	{ T: 0, ...OVERVIEW },

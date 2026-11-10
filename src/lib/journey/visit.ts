@@ -129,9 +129,10 @@ export class Visits {
 		const dist = cue.wide ? fit : Math.max(fit * 0.8, Math.min(fit, away.length() * 0.85));
 		const toPos = new THREE.Vector3();
 		if (cue.fly && cue.wide) {
-			// High over it, from the side the camera is on: from up there nothing stands in the way of a whole.
-			const az = Math.atan2(away.x, away.z);
-			const el = 0.78;
+			// The loop stands upright in the sky, so a whole is seen from in front of it, nearly level, turned a little
+			// towards the side the camera is on: from there nothing stands in the way, and up and down read as they are.
+			const az = Math.max(-0.32, Math.min(0.32, Math.atan2(away.x, away.z)));
+			const el = 0.12;
 			toPos.set(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el)).multiplyScalar(dist).add(centre);
 		} else if (cue.fly) {
 			const el0 = Math.min(0.62, Math.max(0.24, Math.asin(Math.max(-1, Math.min(1, away.y / Math.max(1e-6, away.length()))))));
