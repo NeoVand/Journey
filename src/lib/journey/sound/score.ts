@@ -154,18 +154,18 @@ export function score(w: World): { cues: Cue[]; beds: Bed[] } {
 	at(11.2437, low(note(-4), 0.5), hall(43.75, 1), { gain: 0.35 });
 	at(11.287, chime([2, 4]), hall(43.75, 1), { gain: 0.35 });
 	at(11.3, 'servo', hall(45, 1), { gain: 0.5, rate: 0.9 });
-	[11.4535, 11.5115, 11.5695, 11.6275].forEach((T, i) => tone(T, i + 2, hall(45, 1), 0.4));
+	[11.4438, 11.4889, 11.5341, 11.5792].forEach((T, i) => tone(T, i + 2, hall(45, 1), 0.4));
 	// E isn't recognised: a hollow knock and two falling notes. Then it's computed, and pops out new.
-	at(11.6855, 'clonk', hall(45, 1), { gain: 0.6 });
-	at(11.6855, porcelain(note(2)), hall(45, 1), { gain: 0.3, delay: 0.04 });
-	at(11.6855, porcelain(note(0)), hall(45, 1), { gain: 0.3, delay: 0.2 });
-	at(11.7, 'servo', hall(46, 1), { gain: 0.35, rate: 1.2 });
-	at(11.745, 'tube', hall(46, 1), { gain: 0.45, rate: 1.2 });
-	at(11.75, 'relay', hall(46, 1), { gain: 0.45 });
-	at(11.806, 'pop', hall(46, 1), { gain: 0.6, rate: 1.1 });
-	at(11.806, porcelain(note(4)), hall(46, 1), { gain: 0.35, delay: 0.05 });
-	at(11.86, 'block', hall(60, 1), { gain: 0.6 });
-	at(11.86, porcelain(note(7)), hall(60, 1), { gain: 0.3, delay: 0.03 });
+	at(11.6243, 'clonk', hall(45, 1), { gain: 0.6 });
+	at(11.6243, porcelain(note(2)), hall(45, 1), { gain: 0.3, delay: 0.04 });
+	at(11.6243, porcelain(note(0)), hall(45, 1), { gain: 0.3, delay: 0.2 });
+	at(11.6356, 'servo', hall(46, 1), { gain: 0.35, rate: 1.2 });
+	at(11.6706, 'tube', hall(46, 1), { gain: 0.45, rate: 1.2 });
+	at(11.6744, 'relay', hall(46, 1), { gain: 0.45 });
+	at(11.718, 'pop', hall(46, 1), { gain: 0.6, rate: 1.1 });
+	at(11.718, porcelain(note(4)), hall(46, 1), { gain: 0.35, delay: 0.05 });
+	at(11.76, 'block', hall(60, 1), { gain: 0.6 });
+	at(11.76, porcelain(note(7)), hall(60, 1), { gain: 0.3, delay: 0.03 });
 
 	/*
 	 * 12. Sharing the chips: the shuttle sweeps across the lanes once per step, left then right, and every request
