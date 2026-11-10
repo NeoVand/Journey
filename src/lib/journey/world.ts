@@ -291,6 +291,14 @@ export class World {
 	private mat = new THREE.Matrix4();
 	private intro = 0;
 	private opened = 0;
+	/**
+	 * The page holds the opening (the lid shut, nothing typed) until the reader is there to hear it, when their sound
+	 * is on: a browser plays nothing before the first click or key.
+	 */
+	waitIntro = false;
+	/** The opening's own sounds: the lid starting to lift, and each letter of the sentence landing. */
+	onIntro: ((what: 'lid' | 'key', i: number) => void) | null = null;
+	private soundedKeys = 0;
 	/** T value of the last frame, for one-shot logic. */
 	state: WorldState = { form: 1, dive: 0, inside: false, dusk: 0 };
 
@@ -1389,8 +1397,16 @@ export class World {
 		this.stage.holdShadows(T >= HOLD_SHADOWS_T);
 		// Whatever the reader pulled out goes back as soon as they scroll on.
 		if (this.harness.pulled >= 0 && Math.abs(T - this.pulledAtT) > 0.06) this.harness.pulled = -1;
-		this.intro = introDone ? 1 : Math.min(1, this.intro + dt / 1.5);
-		this.opened = introDone ? Infinity : this.opened + dt;
+		const before = this.intro;
+		if (introDone || !this.waitIntro) {
+			this.intro = introDone ? 1 : Math.min(1, this.intro + dt / 1.5);
+			this.opened = introDone ? Infinity : this.opened + dt;
+		}
+		if (!introDone && this.onIntro) {
+			if (before < 0.28 && this.intro >= 0.28) this.onIntro('lid', 0);
+			const typed = Math.floor(this.selfTyped());
+			while (this.soundedKeys < typed) this.onIntro('key', this.soundedKeys++);
+		}
 		// The easel only stands while it has a page to hold: the request, then turn two.
 		const legs = inOut(seg(T, 2.02, 2.09)) * (1 - inOut(seg(T, 3.64, 3.74))) + outBack(seg(T, 25.38, 25.47), 1.2) * (1 - inOut(seg(T, 25.92, 26)));
 		this.easelLegs.visible = legs > 0.002;

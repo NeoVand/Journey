@@ -13,6 +13,7 @@
 	import Tokenizer from './Tokenizer.svelte';
 	import { Tween } from 'svelte/motion';
 	import { cubicOut } from 'svelte/easing';
+	import { fade } from 'svelte/transition';
 	import type { Attachment } from 'svelte/attachments';
 	import type { World } from './world';
 	import { Pace, PACE, Playhead, trackPace } from './playhead';
@@ -319,6 +320,8 @@
 		};
 	});
 	let toggleSound: () => void = () => {};
+	/** Starts counting how long the shut laptop waits for the reader, from the moment the world is there to see. */
+	let laptopPatience = () => {};
 
 	/* The sound key's mixer: open on hover, on keyboard focus, or on a tap, like the conversation's player. */
 	let soundBox = $state<HTMLElement>();
@@ -1996,17 +1999,39 @@
 				if (soundOn) begin(true);
 				else sound.stop();
 			};
+			// The laptop's opening has its own sounds: a soft unlatch and lift of the lid, and the keys as the sentence types itself.
+			w.onIntro = (what) => {
+				if (!sound.on) return;
+				if (what === 'lid') {
+					sound.voice(key(0.6), { gain: 0.22, pan: -0.25, wet: 0.08 });
+					sound.voice(whoosh(1.1, 900), { gain: 0.12, pan: -0.25, wet: 0.25, delay: 0.06 });
+				} else sound.voice(key(0.75 + Math.random() * 0.25), { gain: 0.12 + Math.random() * 0.05, pan: -0.3, wet: 0.06 });
+			};
 			try {
-				// On last time: the first press anywhere picks it up again, since nothing can play before one.
+				// On last time: the first press anywhere picks it up again, since nothing can play before one. Until then the
+				// laptop waits shut, so it opens and types where the reader can hear it; if they only look, it opens anyway.
 				if (localStorage.getItem('journey-sound') === 'on') {
 					soundOn = true;
+					w.waitIntro = !reduced && !still;
+					const open = () => {
+						clearTimeout(patience);
+						window.removeEventListener('wheel', open);
+						window.removeEventListener('touchmove', open);
+						w.waitIntro = false;
+					};
+					let patience = 0;
+					laptopPatience = () => (patience = window.setTimeout(open, 4500));
 					const wake = () => {
 						window.removeEventListener('pointerdown', wake);
 						window.removeEventListener('keydown', wake);
 						if (soundOn && !sound.on) begin();
+						// A moment for the sound to wake before the lid lifts.
+						setTimeout(open, 120);
 					};
 					window.addEventListener('pointerdown', wake);
 					window.addEventListener('keydown', wake);
+					window.addEventListener('wheel', open, { passive: true });
+					window.addEventListener('touchmove', open, { passive: true });
 				}
 			} catch {
 				// No storage: starts off.
@@ -2149,6 +2174,7 @@
 				w.dispose();
 			};
 			driven = true;
+			laptopPatience();
 			// A first visit is shown around once the world is there to show. A browser driven by a script isn't; ?tour asks.
 			let seen = true;
 			try {
@@ -2329,12 +2355,9 @@
 	</aside>
 {/if}
 {#if !driven && !failed}
-	<div class="loader" aria-hidden="true">
-		<div class="hops">
-			{#each [46, 30, 60, 38, 52] as width, i (i)}
-				<i style:--w="{width}px" style:--i={i}></i>
-			{/each}
-		</div>
+	<!-- A quiet line of light gliding while the world is built, and gone with a fade as the world fades in. -->
+	<div class="loader" aria-hidden="true" out:fade={{ duration: 220 }}>
+		<span class="glide"><i></i></span>
 		<p>Warming up the machines</p>
 	</div>
 {/if}
@@ -3752,39 +3775,38 @@
 		color: var(--ink-soft);
 		font-size: 14.5px;
 		pointer-events: none;
-		animation: loader-in 0.3s 0.25s both;
+		/* Only on a load slow enough to need it: a quick one never shows it at all. */
+		animation: loader-in 0.6s 0.35s both;
 	}
 	.loader p {
 		margin: 0;
+		font-size: 13.5px;
+		letter-spacing: 0.01em;
 	}
-	.hops {
-		display: flex;
-		align-items: flex-end;
-		gap: 5px;
-	}
-	.hops i {
+	/* A hairline with a soft bead of amber gliding along it. Transform only, so it keeps moving while the world is built. */
+	.glide {
+		position: relative;
 		display: block;
-		width: var(--w);
-		height: 26px;
-		border-radius: 6px;
-		background: var(--amber);
-		box-shadow:
-			inset 0 2px 0 rgb(255 255 255 / 0.5),
-			inset 0 -5px 0 rgb(176 104 0 / 0.5);
-		/* Transform only, so it keeps hopping while the main thread is busy building the world. */
-		animation: hop 1.1s calc(var(--i) * 0.09s) infinite cubic-bezier(0.3, 0.7, 0.4, 1);
+		width: 132px;
+		height: 3px;
+		overflow: hidden;
+		border-radius: 2px;
+		background: rgb(16 26 48 / 0.1);
 	}
-	@keyframes hop {
-		0%,
-		55%,
-		100% {
-			transform: none;
+	.glide i {
+		position: absolute;
+		inset: 0 auto 0 0;
+		width: 46px;
+		border-radius: 2px;
+		background: linear-gradient(90deg, rgb(255 185 33 / 0), var(--amber) 40%, var(--amber) 60%, rgb(255 185 33 / 0));
+		animation: glide 1.5s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
+	}
+	@keyframes glide {
+		from {
+			transform: translateX(-30px);
 		}
-		22% {
-			transform: translateY(-22px) scaleY(1.04);
-		}
-		46% {
-			transform: scale(1.06, 0.9);
+		to {
+			transform: translateX(116px);
 		}
 	}
 	@keyframes loader-in {
@@ -3847,8 +3869,9 @@
 		}
 	}
 	@media (prefers-reduced-motion: reduce) {
-		.hops i {
+		.glide i {
 			animation: none;
+			transform: translateX(43px);
 		}
 	}
 	/* No 3D: just the story, read straight down. */
@@ -4004,6 +4027,12 @@
 		height: 100vh;
 		height: 100lvh;
 		display: block;
+		opacity: 0;
+		transition: opacity 0.9s ease-out;
+	}
+	/* The world fades in once it's built, as the loader fades away: one arrival, not a pop. */
+	.stage:global([data-ready='true']) {
+		opacity: 1;
 	}
 
 	.upright {
@@ -4332,7 +4361,7 @@
 			0 1px 2px rgb(60 40 10 / 0.14),
 			0 10px 26px rgb(20 60 130 / 0.16);
 		opacity: 0;
-		transition: opacity 0.4s;
+		transition: opacity 0.9s ease;
 	}
 	.stepper.show {
 		opacity: 1;
@@ -4575,9 +4604,10 @@
 		.stepper .talk.playing :global(svg),
 		.stepper .talk.waiting :global(svg),
 		.spine li.now,
+		.begin::after,
 		.begin.live,
-		.tour-key.live {
-			animation: none;
+		.stage {
+			transition: none;
 		}
 	}
 
@@ -5141,28 +5171,42 @@
 			0 1px 0 #d18b00,
 			0 4px 9px rgb(150 90 0 / 0.3);
 	}
-	/* While the machines warm up, the key waits unlit, in cream; it lights up amber as it drops into place. */
+	/*
+	 * While the machines warm up, the key waits unlit, in cream: a cream skin over its amber. When the world is ready
+	 * the skin fades away and the key warms where it stands. Nothing drops or bounces; it only lights.
+	 */
+	.begin {
+		position: relative;
+		isolation: isolate;
+	}
+	.begin::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		z-index: -1;
+		border-radius: inherit;
+		background: linear-gradient(#fffaf0, #fbefd6);
+		box-shadow: inset 0 1px 0 #fff;
+		pointer-events: none;
+		transition: opacity 0.9s ease;
+	}
+	.begin.live::after {
+		opacity: 0;
+	}
 	.begin:disabled {
 		cursor: default;
-		background: linear-gradient(#fffaf0, #fbefd6);
 		color: #8a93a6;
 		box-shadow:
 			inset 0 1px 0 #fff,
 			0 6px 0 #e4cfa6,
 			0 12px 24px rgb(20 60 130 / 0.12);
 	}
-	/* The world is ready: the key drops into place like the token on the map, squashes, and settles. */
 	.begin.live {
-		animation: land 0.62s 0.1s cubic-bezier(0.2, 1.5, 0.4, 1) backwards;
-	}
-	@keyframes land {
-		from {
-			opacity: 0;
-			transform: translateY(-30px) scale(0.8, 1.12);
-		}
-		40% {
-			opacity: 1;
-		}
+		transition:
+			transform 0.08s,
+			box-shadow 0.9s ease,
+			filter 0.15s,
+			color 0.9s ease;
 	}
 	.begin :global(svg) {
 		transition: transform 0.2s cubic-bezier(0.2, 1.6, 0.4, 1);
@@ -5228,9 +5272,6 @@
 		outline-offset: 3px;
 	}
 	/* It drops into place just after Begin does. */
-	.tour-key.live {
-		animation: land 0.62s 0.22s cubic-bezier(0.2, 1.5, 0.4, 1) backwards;
-	}
 
 	.told {
 		display: flex;
@@ -5395,6 +5436,12 @@
 	}
 	.trip-cloud:disabled svg {
 		opacity: 0.6;
+	}
+	.trip-cloud:not(:disabled) svg {
+		transition:
+			transform 0.4s cubic-bezier(0.3, 1.5, 0.4, 1),
+			filter 0.4s,
+			opacity 0.9s ease;
 	}
 	@media (prefers-reduced-motion: reduce) {
 		.trip-cloud svg {
