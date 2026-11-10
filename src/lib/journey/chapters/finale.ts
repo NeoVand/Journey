@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { TRIP } from '../content';
-import { LOWER, MODEL_FLANK, MODEL_ISLAND_Y, MODEL_X } from '../layout';
+import { AXIS_X, LOWER, MODEL_ISLAND_Y, MODEL_X } from '../layout';
 import { rbox } from '../kit/geometry';
 import { createSign } from '../kit/parts';
 import { curve } from '../kit/machines';
@@ -53,9 +53,8 @@ interface Leg {
 /** The pipes and places the token really rides, from the rest of the world. */
 export interface Route {
 	cable: THREE.Curve<THREE.Vector3>;
+	/** From the harness to the foot of the wire. */
 	out: THREE.Curve<THREE.Vector3>;
-	/** From the edge of your island up to the foot of the wire. */
-	up: THREE.Curve<THREE.Vector3>;
 	down: THREE.Curve<THREE.Vector3>;
 	flow: THREE.Curve<THREE.Vector3>;
 	flowLip: number;
@@ -64,6 +63,8 @@ export interface Route {
 	dock: V3;
 	trackEnd: V3;
 	slotX: number;
+	/** Where the belt ends and the glass lift begins, along the token path. */
+	beltEnd: number;
 	beltY: number;
 	lineZ: number;
 	/** The glass of the wire: where it starts and ends along x, and its height. */
@@ -105,7 +106,8 @@ export class Finale {
 		const above = (p: V3, h: number): V3 => [p[0], p[1] + h, p[2]];
 		const [tunnelFrom, tunnelTo, tunnelY] = r.tunnel;
 		// Where the green loop comes out of the sandbox's wall, on its way back up to the harness.
-		const wall = v(low([-10.6, -13, 2.2]));
+		const wall = v(low([-10.6, -14.69, 3.6]));
+		const belt = (r.beltEnd - r.slotX) / r.flow.getLength();
 		let backFrom = 0;
 		for (let i = 0, best = Infinity; i <= 400; i++) {
 			const d = r.back.getPointAt(i / 400, this.p).distanceTo(wall);
@@ -117,21 +119,22 @@ export class Finale {
 			{ path: curve([[-3.3, 0.85, 1], [-2.4, 1.3, 0.5], [-1.5, 0.62, -0.3], above(end(r.cable, 0.28), 0.22), above(end(r.cable, 0.34), 0.2)]), time: 1, ride: 0, step: 0, size: 0.5 },
 			{ path: new Part(r.cable, 0.34, 1), time: 0.6, ride: 0.2, step: 0, size: 0.5, shrink: 2.5 },
 			{ path: line([0, 2, -0.65], [1.8, 2, -0.65]), time: 1.1, ride: 0, step: 1, hidden },
-			// Along the pipe past the easel, riding high enough to clear the easel's foot, and up the pipe into the sky.
-			{ path: r.out, time: 1.5, ride: 0.3, step: 2 },
-			{ path: r.up, time: 1.2, ride: 0.2, step: 2 },
-			{ path: line(end(r.up, 1), [tunnelFrom + 0.1, tunnelY, z]), time: 0.1, ride: 0, step: 2, hidden },
+			// Along the pipe past the easel, riding high enough to clear the easel's foot, and across to the wire.
+			{ path: r.out, time: 2.2, ride: 0.3, step: 2 },
+			{ path: line(end(r.out, 1), [tunnelFrom + 0.1, tunnelY, z]), time: 0.1, ride: 0, step: 2, hidden },
 			{ path: line([tunnelFrom + 0.1, tunnelY, z], [tunnelTo - 0.1, tunnelY, z]), time: 0.9, ride: 0, step: 2 },
-			// Through the gateway, and out of its back wall up to the tokenizer.
+			// Through the gateway, and out of its back wall along to the tokenizer.
 			{ path: line([tunnelTo - 0.1, tunnelY, z], end(r.down, 0.03)), time: 1, ride: 0, step: 3, hidden },
 			{ path: new Part(r.down, 0.03, 1), time: 1.6, ride: 0.2, step: 3 },
 			{ path: line(end(r.down, 1), [r.slotX, beltY, z]), time: 0.4, ride: 0, step: 3, hidden },
-			{ path: new Part(r.flow, 0, r.flowLip), time: 2.4, ride: 0.24, step: 3, size: 0.72 },
-			// Through the model, and out of the side of its pedestal into the glass.
+			{ path: new Part(r.flow, 0, belt), time: 1.2, ride: 0.24, step: 3, size: 0.72 },
+			// Up the glass lift and along the top, small enough to ride inside it.
+			{ path: new Part(r.flow, belt, r.flowLip), time: 2, ride: 0, step: 4, size: 0.6 },
+			// Through the model, and out of the bottom of its island into the glass column.
 			{ path: line(flowEnd, end(r.stream, 0)), time: 1.9, ride: 0, step: 4, hidden },
 			{ path: r.stream, time: 2.5, ride: 0, step: 5 },
 			{ path: line([1.1, 3.6, -0.75], [0.4, 3.2, -1.76]), time: 0.25, ride: 0, step: 6, hidden },
-			{ path: r.gatePath, time: 2, ride: 0.2, step: 6 },
+			{ path: r.gatePath, time: 2.6, ride: 0.2, step: 6 },
 			{ path: line(r.dock, [r.dock[0] + 1.6, r.dock[1], r.dock[2]]), time: 0.2, ride: 0, step: 6, hidden },
 			{ path: line([r.dock[0] + 1.6, r.dock[1], r.dock[2]], r.trackEnd), time: 2.1, ride: 0, step: 6 },
 			{ path: curve([r.trackEnd, low([-40.4, -12.1, 0.7]), low([-38.2, -13, 0.7]), low([-36.3, -14.46, 0.7])]), time: 0.6, ride: 0, step: 7 },
@@ -182,14 +185,14 @@ export class Finale {
 		const size = isPhone ? 1.6 : 0.8;
 		const where: V3[] = [
 			[-5.2, 3.6, 0.6],
-			[5.4, 5.4, -0.75],
-			[tunnelFrom - 0.2, tunnelY + 3.3, z],
-			[tunnelTo + 6.2, tunnelY + 1.2, z],
-			[MODEL_X - 9.4, MODEL_ISLAND_Y + 9.6, 1.2],
-			[MODEL_FLANK[0] - 18.4, 15.6, -0.5],
+			[5.6, 5.2, -0.75],
+			[tunnelFrom + 2.4, tunnelY + 2.4, z],
+			[r.slotX + 1.2, beltY + 3.6, z],
+			[MODEL_X - 9, MODEL_ISLAND_Y + 11.4, 1.2],
+			[AXIS_X - 3.8, 10.6, -0.75],
 			low([-52, -7, 0.7]),
 			low([-27, -5.7, 1]),
-			[23.4, -7.4, -1]
+			[AXIS_X + 3, -12, -4.4]
 		];
 		TRIP.forEach((stop, i) => {
 			// Already sized for phones above, so it opts out of the general phone enlargement.

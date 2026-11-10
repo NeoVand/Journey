@@ -54,6 +54,12 @@
 	let form = $state(1);
 	/** Where the reader is in the story, for the map of the loop in the corner. */
 	let loopT = $state(0);
+	/** Where the reader's token is on that map's picture, and where its nine stops are. */
+	let loopMark = $state<{ x: number; y: number } | null>(null);
+	let loopStops = $state<{ x: number; y: number }[]>([]);
+	/** The map's canvas, which the world draws the real scene into once it's running. */
+	let mapCanvas: HTMLCanvasElement | null = null;
+	let lendMap: (c: HTMLCanvasElement | null) => void = (c) => (mapCanvas = c);
 	let drawer = $state(-1);
 	/** A drawer the reader has pulled out takes over from the story's. */
 	let pulled = $state(-1);
@@ -741,6 +747,13 @@
 				failed = true;
 				return;
 			}
+			// The map in the corner: the world draws itself into it, now and then, and says where things are in it.
+			lendMap = (c) => {
+				mapCanvas = c;
+				w.setMapCanvas(c, matchMedia('(max-aspect-ratio: 9/10)').matches);
+				loopStops = w.mapStops();
+			};
+			lendMap(mapCanvas);
 			if (disposed) {
 				w.dispose();
 				return;
@@ -1101,6 +1114,9 @@
 				// colours go with the picture.
 				if (peekT === null) form = w.state.form;
 				loopT = Math.round(T * 1000) / 1000;
+				const mark = w.mapMark(T);
+				if (!mark) loopMark = null;
+				else if (!loopMark || Math.abs(mark.x - loopMark.x) + Math.abs(mark.y - loopMark.y) > 0.002) loopMark = mark;
 				// Only the header follows this. It switches while the screen is black, so nobody sees it happen.
 				const seen = peekT ?? T;
 				dark = veilThick > 0.5 ? veilDark : seen >= 7.96 && seen < 19.02;
@@ -3124,7 +3140,7 @@
 <!-- Where the reader is in the whole loop, steady in the corner. The last card shows the whole loop itself. -->
 {#if driven}
 	<div class={['loop-key', { away: !!trip || tourOpen || mapCrowded || loopT >= 31.97 }]}>
-		<LoopMap T={loopT} onjump={jump} onopen={openMap} />
+		<LoopMap T={loopT} mark={loopMark} stops={loopStops} onjump={jump} onopen={openMap} oncanvas={(c) => lendMap(c)} />
 	</div>
 {/if}
 <!-- What Nora and Theo are saying, when the player's subtitle key is on. -->

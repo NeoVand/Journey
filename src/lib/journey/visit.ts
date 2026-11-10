@@ -142,7 +142,7 @@ export class Visits {
 		if (cue.fly && cue.wide) {
 			// The loop stands upright in the sky, so a whole is seen from in front of it, nearly level, turned a little
 			// towards the side the camera is on: from there nothing stands in the way, and up and down read as they are.
-			const az = Math.max(-0.32, Math.min(0.32, Math.atan2(away.x, away.z)));
+			const az = Math.max(-0.1, Math.min(0.1, Math.atan2(away.x, away.z)));
 			const el = 0.12;
 			toPos.set(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el)).multiplyScalar(dist).add(centre);
 		} else if (cue.fly) {

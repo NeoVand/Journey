@@ -6,69 +6,47 @@ export const PAD_Y = 0.3;
 export const RAIL_Y = 0.56;
 export const RAIL_Z = 6.3;
 
-/**
- * The ring below your laptop: the gates and the workshop were drawn far off to the left, and stand here instead,
- * centred under the harness. Everything built for them is moved by this.
+/*
+ * The loop, seen from in front, is a pinwheel turning about your laptop: two rings of the same size, one above and to
+ * the right, one below and to the left. A vertical axis runs through the harness: the model at the top of it, the
+ * reply's glass column coming down it, the green results going up it from the workshop at the bottom. The request
+ * leaves to the right along your laptop's level and climbs to the model; the calls leave to the left and go down to the
+ * gates. Every pipe is straight runs and circular bends.
  */
-export const LOWER: [number, number, number] = [37, -9, 0];
+
+/** Where the harness takes the reply in, through its roof, and gives the results back, through its back: the axis. */
+export const AXIS_X = 1.1;
+
+/**
+ * The ring below and to the left: the gates and the workshop were drawn far off to the left, and stand here instead,
+ * with the sandbox wall the results leave through just left of the axis. Everything built for them is moved by this.
+ */
+export const LOWER: [number, number, number] = [10.4, -13.8, 0];
 const low = (p: [number, number, number]): [number, number, number] => [p[0] + LOWER[0], p[1] + LOWER[1], p[2] + LOWER[2]];
 
-/** The model, crowning the ring above your laptop: where its brain stands, and the top of the island under it. */
-export const MODEL_X = 1.4;
-export const MODEL_Z = 1.2;
-export const MODEL_ISLAND_Y = 22;
-/** The left side of the model's pedestal, where the reply leaves. The pedestal sits 1.4 left of the brain, 8.2 wide. */
-export const MODEL_FLANK: [number, number, number] = [MODEL_X - 1.4 - 4.1, MODEL_ISLAND_Y + 0.95, MODEL_Z];
+/** The model, at the top of the axis: its brain, and the top of the island under it. The pedestal sits 1.4 left of the brain. */
+export const MODEL_X = AXIS_X + 1.4;
+export const MODEL_Z = 0.9;
+export const MODEL_ISLAND_Y = 17;
+
+/** The reply's glass column: out of the underside of the model's island, straight down into the harness's roof. */
+export const STREAM_TOP: [number, number, number] = [AXIS_X, MODEL_ISLAND_Y - 1.42, -0.75];
+export const STREAM_BOTTOM: [number, number, number] = [AXIS_X, 3.9, -0.75];
 
 /**
- * The reply's way home: out of the left of the model's pedestal, off its island, down the left of the ring above your
- * laptop, and in over the top of it, straight down into the harness's roof. Model end first.
+ * The green loop, harness end first: back out of the harness, straight down the axis behind your island, along the
+ * workshop's floor, and level through the sandbox wall into the hopper. It is in the very first frame, and only
+ * explained much later.
  */
-export const STREAM_POINTS: [number, number, number][] = [
-	MODEL_FLANK,
-	[MODEL_FLANK[0] - 2.4, MODEL_FLANK[1] + 0.05, MODEL_Z],
-	// Level over the island's edge before it turns down: the island reaches 10.5 left of the pedestal's middle.
-	[-10.4, MODEL_FLANK[1] + 0.12, 1.0],
-	[-13.4, MODEL_FLANK[1] - 1.0, 0.6],
-	[-17.4, 19.6, 0.1],
-	[-18.6, 15.4, -0.45],
-	[-15.6, 12.4, -0.7],
-	[-9.6, 11.5, -0.75],
-	[-3.6, 11.4, -0.75],
-	[-0.6, 10.9, -0.75],
-	[0.85, 9.6, -0.75],
-	[1.1, 7.8, -0.75],
-	[1.1, 5.6, -0.75],
-	[1.1, 3.9, -0.75]
-];
-
-/** The green loop, harness end first. It is in the very first frame, and only explained much later. */
-export const RETURN_POINTS: [number, number, number][] = [
+export const RETURN_Y = low([0, -14.69, 0])[1];
+export const RETURN_CORNERS: [number, number, number][] = [
 	[0.4, 1.3, -1.75],
-	[0.4, 1.3, -2.17],
-	[0.43, 1.25, -2.6],
-	[0.9, 0.2, -3.9],
-	[2.6, -1.5, -4.5],
-	[7, -2.6, -4.4],
-	[13, -5.2, -3.2],
-	[19.5, -9.6, -1.4],
-	[25.3, -15.6, -0.3],
-	// Down into the workshop from above, as it was drawn: level through the fitting in the sandbox wall, then down to
-	// the hopper the results go into.
-	...(
-		[
-			[-10.4, -12.4, 1.2],
-			[-10.62, -13.72, 2.92],
-			[-10.98, -14.25, 3.42],
-			[-11.5, -14.3, 3.45],
-			[-12.06, -14.32, 3.47],
-			[-12.5, -14.56, 3.56],
-			[-12.796, -14.69, 3.6],
-			[-13.086, -14.69, 3.6],
-			[-13.5, -14.69, 3.6]
-		] as [number, number, number][]
-	).map(low)
+	[0.4, 1.3, -4.4],
+	[0.4, RETURN_Y, -4.4],
+	[0.4, RETURN_Y, 3.6],
+	low([-13.5, -14.69, 3.6])
 ];
+export const RETURN_RADII = [1, 1.2, 0.8];
 
 export const EASEL_POS = new THREE.Vector3(5.75, 0.2 + 3.1 / 2, 0.9);
 export const EASEL_TILT = -0.13;
