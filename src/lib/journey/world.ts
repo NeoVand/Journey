@@ -357,7 +357,7 @@ export class World {
 	 * loader can show how far it has got: `progress` hears 0 to 1.
 	 */
 	static async create(canvas: HTMLCanvasElement, progress: (k: number) => void = () => {}) {
-		await loadFonts();
+		await Promise.all([loadFonts(), Brain.load()]);
 		const w = new World(canvas);
 		let done = 0;
 		for (const [share, step] of w.steps()) {
