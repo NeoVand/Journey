@@ -444,11 +444,22 @@ test("the film's rail scrubs the story either way, and the picture goes with it"
 			.toBe(true);
 		return box;
 	};
+	const scrubbing = () => page.evaluate(() => (window as unknown as { __film: { state(): { scrubbing: boolean } } }).__film.state().scrubbing);
 	const drag = async (from: number, to: number) => {
-		const box = await rail();
-		const y = box.y + box.height / 2;
+		let box = await rail();
+		let y = box.y + box.height / 2;
 		await page.mouse.move(box.x + box.width * from, y);
 		await page.mouse.down();
+		// On a busy machine the header can still settle between measuring and pressing: a press that missed the rail
+		// starts no scrub, so let go, find the rail again and press once more.
+		if (!(await scrubbing())) {
+			await page.mouse.up();
+			box = await rail();
+			y = box.y + box.height / 2;
+			await page.mouse.move(box.x + box.width * from, y);
+			await page.mouse.down();
+		}
+		expect(await scrubbing(), 'the press lands on the rail').toBe(true);
 		for (let i = 1; i <= 12; i++) {
 			await page.mouse.move(box.x + box.width * (from + ((to - from) * i) / 12), y);
 			await page.waitForTimeout(40);
