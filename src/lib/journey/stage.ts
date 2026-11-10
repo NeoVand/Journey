@@ -388,6 +388,10 @@ class SoftBloomPass extends UnrealBloomPass {
 				varying vec2 vUv;
 				vec3 bright(vec2 at) {
 					vec3 c = texture2D(tDiffuse, at * sourceTexel).rgb;
+					// One pixel that isn't a number, from anywhere in the scene, would be blurred over the whole frame and
+					// take every pixel with it: the picture would vanish for that frame. It counts as black instead.
+					if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
+					c = min(max(c, vec3(0.0)), vec3(64.0));
 					return c * smoothstep(threshold - knee, threshold + knee, luminance(c));
 				}
 				// Four taps, each on a pixel corner so linear filtering averages four pixels: the whole 4×4 block, once.
@@ -427,7 +431,7 @@ class SoftBloomPass extends UnrealBloomPass {
 							vec2 at = base + vec2(float(x), float(y)) * 2.0 + 1.0;
 							vec2 tent = max(vec2(0.0), 1.0 - abs(at - centre) / span);
 							float w = tent.x * tent.y;
-							sum += textureLod(tQuarter, at * sourceTexel, 0.0).rgb * w;
+							sum += min(max(textureLod(tQuarter, at * sourceTexel, 0.0).rgb, vec3(0.0)), vec3(64.0)) * w;
 							total += w;
 						}
 					}
