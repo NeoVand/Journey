@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { Batch } from '../kit/batch';
 import { extrude, rbox, roundedRect, ring } from '../kit/geometry';
 import { color, Lamp, mats } from '../kit/materials';
-import { archBlock, arcPoint, Card, curve, hazard, islandAt, machine, panel, shadowOn, stripes, tube } from '../kit/machines';
+import { archBlock, arcPoint, Card, hazard, islandAt, machine, panel, shadowOn, stripes, tube } from '../kit/machines';
 import { drawPageIcon, font, Label, Surface, type IconData } from '../kit/print';
 import { FINALE_T } from './finale';
 import { gearShape } from '../props/brain';
@@ -11,7 +11,8 @@ import { bell, bounceDown, clamp, hash, inOut, lerp, outBack, outCubic, seg, smo
 import { createCastShadow } from '../props/island';
 import { TEN_AT, TEN_STEP, TEN_TURNS, CALL_IDS, CALLS, HARNESSES, type HarnessId } from '../content';
 import { GATE_ICON } from '../icons';
-import { EASEL_POS, EASEL_TILT, LOWER, RETURN_CORNERS, RETURN_RADII, STREAM_BOTTOM } from '../layout';
+import { EASEL_POS, EASEL_TILT, LOWER, STREAM_BOTTOM } from '../layout';
+import { callPath, RETURN_ROLLER, returnPath } from '../cables';
 import { bends } from '../kit/geometry';
 import type { Shot } from '../rig';
 
@@ -28,6 +29,9 @@ const TRACK_Z = 0.7;
 const CARTY = GY + 0.2;
 const DOCK_X = -60.6;
 const DOCK_H = 2.3;
+/** A steel riser on the dock's roof, standing clear above the gates, with an elbow at the top the calls' cable plugs into. */
+const RISER: V3 = [DOCK_X + 0.9, GY + 7, TRACK_Z - 0.85];
+const RISER_END: V3 = [RISER[0] + 0.55, RISER[1], RISER[2]];
 /** The dock's mouth: tall enough for a call card on its cart, even leaning as the cart sets off. */
 const DOCK_ARCH = 2.0;
 /** Where the carts run, from inside the dock to the end of the rail, and how far short of a gate they wait: far
@@ -135,7 +139,7 @@ const S_FIN = { az: 9, el: 14, target: rel(F_POS, 0, 2.5, 0.8), radius: 10.8, ry
 /** What the test monitor shows once the whole suite is green. */
 const PASSED = 99;
 /** The whole pinwheel, from in front and a little to its right: the model at the top of the axis, your laptop at its middle, your tools at the bottom. */
-const S_WHOLE = { az: 6, el: 5, target: [-3.6, 1.8, 0] as V3, radius: 50, ry: 32, wide: box(0.42, 0.1, 0.56, 0.84), tall: box(0, 0.06, 1, 0.43), tallTarget: [-3.6, 1.8, 0] as V3, tallRadius: 50, tallRy: 32 };
+const S_WHOLE = { az: 6, el: 5, target: [-5.5, 4.2, 0] as V3, radius: 48, ry: 28, wide: box(0.42, 0.1, 0.56, 0.84), tall: box(0, 0.06, 1, 0.43), tallTarget: [-5.5, 3.5, 0] as V3, tallRadius: 60, tallRy: 34 };
 const S_END = { az: 29, el: 17, target: [1.9, 1.35, 0.4] as V3, radius: 6.25, ry: 6.25, wide: box(0.4, 0.02, 0.61, 0.94), tall: box(0, 0.05, 1, 0.42) };
 
 export const BACK_SHOTS: Shot[] = [
@@ -413,19 +417,15 @@ export class Back {
 	private rain: THREE.Mesh[] = [];
 	private topCard = new Card(2.7, 1.68, 300);
 	/**
-	 * The calls' way to the gates: back out of the harness, along behind your island to the left, level, as far as the
-	 * dock, forward over it, and straight down into it. Straight runs and round bends.
+	 * The calls' way to the gates: back out of the harness, behind the green pipe, down to just under your island's
+	 * level, along behind it to the left, level, as far as the dock, forward over it, and straight down into it. Straight
+	 * runs and round bends; from in front, a level arm to the left that mirrors the request's row to the right.
 	 */
-	private gatePath = bends(
-		[
-			[0.4, 3.2, -1.75],
-			[0.4, 3.2, -3.0],
-			[DOCK_X + LOWER[0], 3.2, -3.0],
-			[DOCK_X + LOWER[0], 3.2, TRACK_Z],
-			[DOCK_X + LOWER[0], GY + LOWER[1] + DOCK_H, TRACK_Z]
-		],
-		[0.8, 1.2, 1.2]
-	);
+	private gatePath = callPath(low(RISER_END));
+	/** The calls' cable, for the map. */
+	get callCurve() {
+		return this.gatePath;
+	}
 	/** The last of the reply's glass column, above the harness's roof: what the stream drops through. */
 	private streamEnd = new THREE.LineCurve3(new THREE.Vector3(STREAM_BOTTOM[0], STREAM_BOTTOM[1] + 9, STREAM_BOTTOM[2]), new THREE.Vector3(...STREAM_BOTTOM));
 	private carrier = new THREE.Group();
@@ -476,7 +476,7 @@ export class Back {
 	private termKey = -1;
 	private exitLamp!: Lamp;
 	private result = new Card(2.5, 1.5, 300);
-	private returnCurve = bends(RETURN_CORNERS, RETURN_RADII);
+	private returnCurve = returnPath();
 	private slug!: THREE.Mesh;
 
 	private page = new Card(2.3, 3.1, 330);
@@ -593,7 +593,8 @@ export class Back {
 		shade.position.set(-51, GY - 8, 0.4);
 		g.add(shade);
 
-		// Where the pipe lands: calls arrive through the roof and leave on carts through the open end.
+		// Where the cable lands: calls come down a riser through the roof, clear over the gates, and leave on carts
+		// through the open end.
 		const dock = archBlock({ w: 3, d: 3.2, h: DOCK_H, archZ: 0, archD: 1.5, archH: DOCK_ARCH, closedLeft: true });
 		dock.position.set(DOCK_X, GY, TRACK_Z);
 		g.add(dock);
@@ -602,8 +603,13 @@ export class Back {
 		dockSign.position.set(DOCK_X, GY + DOCK_H - 0.4, TRACK_Z + 1.63);
 		g.add(dockSign);
 		const socket = new Batch();
-		fitting(socket, [DOCK_X, GY + DOCK_H, TRACK_Z], [0, 1, 0], 0.09);
+		const [rx, ry, rz] = RISER;
+		socket.add(rbox(0.5, 0.06, 0.5, 0.02, 2), m.steelSoft, { p: [rx, GY + DOCK_H + 0.03, rz] });
+		fitting(socket, RISER_END, [1, 0, 0], 0.09);
 		g.add(socket.build('dock-socket'));
+		const riser = tube(bends([[rx, GY + DOCK_H, rz], [rx, ry, rz], RISER_END], [0.4]), 0.11, m.steel, 40);
+		riser.name = 'dock-riser';
+		g.add(riser);
 
 		const b = new Batch();
 		b.add(rbox(21.4, 0.1, 1.1, 0.03, 2), m.rubber, { p: [-51.3, GY + 0.05, TRACK_Z] });
@@ -1792,7 +1798,7 @@ export class Back {
 				this.carrier.position.copy(this.a);
 				if (go > 0) {
 					// Up and over the machine's roof, and down onto the pipe behind it, riding high enough to clear it.
-					const JOIN = 2.4 / this.gatePath.getLength();
+					const JOIN = 4.6 / this.gatePath.getLength();
 					// Lifted off the pipe square to it, not straight up: where it drops steeply to the gates, straight up would
 					// put the card back against it.
 					const at = Math.max(go, JOIN);
@@ -1802,13 +1808,13 @@ export class Back {
 					if (lift.y < 0) lift.negate();
 					// Where it runs straight down into the dock, straight up is clear of it again.
 					lift.lerp(UP, smooth(seg(Math.abs(along.y), 0.75, 0.95))).normalize();
-					this.b.addScaledVector(lift, 0.9);
+					this.b.addScaledVector(lift, 1.15);
 					if (go < JOIN) {
 						const k = inOut(go / JOIN);
 						const u = 1 - k;
 						const [ax, ay, az] = [this.a.x, this.a.y, this.a.z];
 						this.carrier.position.set(
-							u * u * u * ax + 3 * u * u * k * 4.6 + 3 * u * k * k * 2.2 + k * k * k * this.b.x,
+							u * u * u * ax + 3 * u * u * k * 4.6 + 3 * u * k * k * -1.2 + k * k * k * this.b.x,
 							u * u * u * ay + 3 * u * u * k * 6.4 + 3 * u * k * k * 6.6 + k * k * k * this.b.y,
 							u * u * u * az + 3 * u * u * k * 0.4 + 3 * u * k * k * -5 + k * k * k * this.b.z
 						);
@@ -2076,10 +2082,19 @@ export class Back {
 			const u = 1 - inOut(home);
 			this.slug.position.copy(this.returnCurve.getPointAt(u));
 			this.slug.quaternion.setFromUnitVectors(up, this.returnCurve.getTangentAt(u));
-			// It swells the pipe wherever the pipe is free, and squeezes through the wall and the fitting at each end.
-			const free = Math.min(this.slug.position.distanceTo(this.a.set(...low([-11.5, WY + 0.31, 3.6]))), this.slug.position.distanceTo(this.a.set(0.4, 1.3, -1.75)), this.slug.position.distanceTo(this.a.set(...low([-13.5, -14.69, 3.6]))));
-			const thin = lerp(0.54, 1, smooth(seg(free, 0.55, 1.5)));
-			this.slug.scale.set(thin, 1, thin);
+			// It swells the pipe wherever the pipe hangs free, and squeezes through the wall and the fitting at each end, over
+			// the roller, and where the pipe lies on a floor.
+			const at = this.slug.position;
+			const free = Math.min(
+				at.distanceTo(this.a.set(...low([-11.5, WY + 0.31, 3.6]))),
+				at.distanceTo(this.a.set(0.4, 1.3, -1.75)),
+				at.distanceTo(this.a.set(...low([-13.5, -14.69, 3.6]))),
+				at.distanceTo(this.a.set(...RETURN_ROLLER.c)) - 0.25
+			);
+			const floor = Math.min(Math.abs(at.y), Math.abs(at.y - low([0, WY, 0])[1]));
+			const room = Math.min(smooth(seg(free, 0.9, 1.8)), smooth(seg(floor, 0.3, 0.7)));
+			// Short as well as thin there: a long straight slug can't follow the pipe round the roller.
+			this.slug.scale.set(lerp(0.42, 1, room), lerp(0.3, 1, room), lerp(0.42, 1, room));
 		}
 
 		/* ---- turn two ---- */

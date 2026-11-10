@@ -31,7 +31,9 @@ import { Visits } from './visit';
 import { MiniMap } from './minimap';
 import { Voyage, type Flight } from './voyage';
 import { Cluster, CLUSTER_SHOTS, DIVE_T } from './cluster';
-import { AXIS_X, LOWER, MODEL_ISLAND_Y, MODEL_X, MODEL_Z, RETURN_CORNERS, RETURN_RADII, RETURN_Y, STREAM_BOTTOM, STREAM_TOP } from './layout';
+import { AXIS_X, LOWER, MODEL_ISLAND_Y, MODEL_X, MODEL_Z, STREAM_BOTTOM, STREAM_TOP } from './layout';
+import { CALL_ROLLER, HOME, HOME_OUTLINE, RETURN_ROLLER, returnPath, slab } from './cables';
+import { buildRoller, buildWheel, hang, type Solid } from './kit/cable';
 import { Back, BACK_SHOTS } from './chapters/back';
 import { Finale, FINALE_T } from './chapters/finale';
 
@@ -56,6 +58,35 @@ const TUNNEL_Y = 2.4;
 const ISLET_Y = -0.175;
 const ISLAND_B_Y = 0;
 const GATEWAY_X = TUNNEL_X + TUNNEL_L + 0.04 + GW / 2;
+/** The islands of the row, from above, each about its own position. */
+const ISLET_OUTLINE: [number, number][] = [
+	[8.0, 0.2],
+	[8.6, -2.0],
+	[10.6, -2.3],
+	[11.4, -0.8],
+	[11.2, 1.0],
+	[9.6, 1.7]
+];
+const B_OUTLINE: [number, number][] = [
+	[13.2, 1.4],
+	[13.0, -2.2],
+	[15.4, -3.3],
+	[18.8, -3.1],
+	[19.9, -1.2],
+	[19.8, 1.6],
+	[17.8, 3.0],
+	[14.8, 2.9]
+];
+const C_OUTLINE: [number, number][] = [
+	[-5.9, 0.4],
+	[-5.3, -2.0],
+	[-1.0, -3.2],
+	[8.2, -3.2],
+	[13.5, -2.4],
+	[13.7, 1.3],
+	[9.2, 3.1],
+	[-2.0, 3.2]
+];
 /** The tokenizer's island, next along the row. Everything on it is measured from here. */
 const C_X = 28.8;
 const ISLAND_C_Y = 0.25;
@@ -71,10 +102,20 @@ const MODEL_ROOF = MODEL_ISLAND_Y + BRAIN_FOOT + BRAIN_SEAT;
 const INTAKE_HALF = 1.15;
 const INTAKE_H = 1.45;
 const INTAKE_TOP = MODEL_ROOF + INTAKE_H;
-/** The glass lift: its tube's radius, the corner where it turns up past the tokenizer, and the height it runs back along. */
+/**
+ * The token hose: its radius, and where it climbs, clamped up a mast at the end of the row. At the top it goes over a
+ * wheel, hangs across the sky to a second wheel over the model's intake, and drops off that into a nozzle above the well.
+ */
 const LIFT_R = 0.42;
 const LIFT_X = C_X + 13.65;
-const LIFT_TOP = INTAKE_TOP + 1;
+const WHEEL_R = 0.6;
+const WRAP = WHEEL_R + LIFT_R;
+const MODEL_WHEEL: V3 = [MODEL_X + WRAP, INTAKE_TOP + 2.4, LINE_Z];
+const MAST_WHEEL: V3 = [LIFT_X - WRAP, MODEL_WHEEL[1] + 0.8, LINE_Z];
+const LIFT_TOP = MAST_WHEEL[1] - 0.3;
+const NOZZLE_Y = INTAKE_TOP + 0.95;
+/** Where the tokens leave the nozzle and fall free into the well. */
+const LIP_Y = INTAKE_TOP + 0.5;
 /** The token path lies in one upright plane, so its side is always the same: what a token shows faces you all the way up. */
 const FLOW_SIDE = new THREE.Vector3(0, 0, -1);
 const GANTRY_SCALE = 1.18;
@@ -154,7 +195,9 @@ const CUT = {
 const NEXT = { az: 8, el: 3, target: [LIFT_X - 3, BELT_Y + 9, 0.9] as [number, number, number], radius: 10, ry: 11, wide: box(0.38, 0.06, 0.6, 0.88), tall: box(0, 0.06, 1, 0.5) };
 const INTAKE = { az: 26, el: 38, target: [MODEL_X, MODEL_ROOF + 1.2, MODEL_Z - 0.2] as [number, number, number], radius: 3.3, ry: 2.3, wide: box(0.38, 0.08, 0.62, 0.84), tall: box(0, 0.08, 1, 0.48) };
 // The model from outside, at the top of the axis: the lift coming along the top into it, and the glass column going down from it.
-const ARRIVE = { az: 16, el: 8, target: [MODEL_X + 6.5, MODEL_ROOF - 2.6, MODEL_Z] as [number, number, number], radius: 13.5, ry: 10.5, wide: box(0.38, 0.03, 0.62, 0.92), tall: box(0, 0.05, 1, 0.5) };
+const ARRIVE = { az: 16, el: 8, target: [MODEL_X + 7, MODEL_ROOF - 1.4, MODEL_Z] as [number, number, number], radius: 15, ry: 12, wide: box(0.38, 0.03, 0.62, 0.92), tall: box(0, 0.05, 1, 0.5) };
+/** The hose's whole span, from the mast's wheel to the model's, with the tokens riding across. */
+const GARLAND = { az: 9, el: 5, target: [(MODEL_X + LIFT_X) / 2, MODEL_ROOF - 0.5, MODEL_Z] as [number, number, number], radius: 27, ry: 20, wide: box(0.38, 0.06, 0.62, 0.88), tall: box(0, 0.06, 1, 0.5) };
 
 const SHOTS: Shot[] = [
 	...hold(0, 0.5, HERO),
@@ -168,7 +211,8 @@ const SHOTS: Shot[] = [
 	{ T: 6.56, ...CUT, target: [C_X + 7.1, ISLAND_C_Y + 0.9, 0.9], az: 7, tallTarget: [C_X + 8.2, C_TOP, 0.9] },
 	...hold(6.68, 6.8, TOKENS_SHOT, { az: 1 }),
 	{ T: 7, ...NEXT },
-	{ T: 7.2, ...ARRIVE },
+	{ T: 7.14, ...GARLAND },
+	{ T: 7.3, ...ARRIVE },
 	{ T: 7.68, ...ARRIVE, az: 21 },
 	{ T: 7.81, ...INTAKE },
 	{ T: 7.89, ...INTAKE, az: 18, el: 50, radius: 2.5, ry: 1.9 },
@@ -264,11 +308,13 @@ export class World {
 	private bulges: THREE.Mesh[] = [];
 	private easelLegs!: THREE.Object3D;
 	private downCurve!: THREE.Curve<THREE.Vector3>;
+	private downLen = 1;
 	private downTight: THREE.Vector3[] = [];
 	private beltTicks!: THREE.CanvasTexture;
 	private flow!: THREE.Curve<THREE.Vector3>;
 	private flowLen = 1;
 	private lipS = 1e9;
+	private sagAt: V3 = [0, Infinity, 0];
 	private rest!: THREE.InstancedMesh;
 	private chevron!: THREE.Texture;
 	private loopMeshes: THREE.Mesh[] = [];
@@ -393,53 +439,18 @@ export class World {
 		const r = this.root;
 
 		// Islands, stepping up through the sky: your laptop, the far end of the wire, the tokenizer. The model's is its own.
-		const islandA = createIsland([
-			[-6.1, 0.2],
-			[-4.6, -2.7],
-			[0.4, -3.3],
-			[5.6, -3.0],
-			[8.2, -1.2],
-			[8.2, 1.3],
-			[5.0, 3.2],
-			[-1.2, 3.7],
-			[-5.2, 2.7]
-		]);
+		const islandA = createIsland(HOME_OUTLINE);
 		r.add(islandA);
 
-		const islet = createIsland([
-			[8.0, 0.2],
-			[8.6, -2.0],
-			[10.6, -2.3],
-			[11.4, -0.8],
-			[11.2, 1.0],
-			[9.6, 1.7]
-		], 0.46);
+		const islet = createIsland(ISLET_OUTLINE, 0.46);
 		islet.position.set(WIRE_X, ISLET_Y, 0);
 		r.add(islet);
 
-		const islandB = createIsland([
-			[13.2, 1.4],
-			[13.0, -2.2],
-			[15.4, -3.3],
-			[18.8, -3.1],
-			[19.9, -1.2],
-			[19.8, 1.6],
-			[17.8, 3.0],
-			[14.8, 2.9]
-		]);
+		const islandB = createIsland(B_OUTLINE);
 		islandB.position.set(WIRE_X, ISLAND_B_Y, 0);
 		r.add(islandB);
 
-		const islandC = createIsland([
-			[-5.9, 0.4],
-			[-5.3, -2.0],
-			[-1.0, -3.2],
-			[8.2, -3.2],
-			[12.2, -2.0],
-			[12.4, 1.2],
-			[9.2, 3.1],
-			[-2.0, 3.2]
-		]);
+		const islandC = createIsland(C_OUTLINE);
 		islandC.position.set(C_X, ISLAND_C_Y, 0);
 		r.add(islandC);
 
@@ -574,18 +585,34 @@ export class World {
 		const m = mats();
 		const y = BELT_Y + TILE_H / 2;
 		const z = LINE_Z;
-		this.flow = bends(
-			[
-				[SLOT_X, y, z],
-				[LIFT_X, y, z],
-				[LIFT_X, LIFT_TOP, z],
-				[MODEL_X, LIFT_TOP, z],
-				[MODEL_X, INTAKE_TOP - 3, z]
-			],
-			[1.6, 2.4, 1]
-		);
+		// Rigid along the belt and up the mast, where it's clamped; free from the top of the mast to the nozzle, hanging
+		// over the two wheels under its own weight; then the fall into the well.
+		const climb = bends([[SLOT_X, y, z], [LIFT_X, y, z], [LIFT_X, LIFT_TOP, z]], [1.6]);
+		const top = (w: V3): V3 => [w[0], w[1] + WRAP, w[2]];
+		const wheel = (w: V3): Solid => ({ roller: w, axis: [0, 0, 1], radius: WHEEL_R, half: 1 });
+		const hose = hang({
+			from: { at: [LIFT_X, LIFT_TOP, z], out: [0, 1, 0], bare: true },
+			to: { at: [MODEL_X, NOZZLE_Y, z], out: [0, 1, 0], bare: true },
+			via: [{ at: top(MAST_WHEEL), slack: 1.12 }, { at: top(MODEL_WHEEL), slack: 1.008 }],
+			r: LIFT_R,
+			slack: 1.14,
+			bend: WRAP,
+			on: [wheel(MAST_WHEEL), wheel(MODEL_WHEEL)]
+		});
+		const fall = new THREE.LineCurve3(new THREE.Vector3(MODEL_X, NOZZLE_Y, z), new THREE.Vector3(MODEL_X, INTAKE_TOP - 3, z));
+		const flow = new THREE.CurvePath<THREE.Vector3>();
+		flow.add(climb);
+		flow.add(hose);
+		flow.add(fall);
+		this.flow = flow;
 		this.flow.arcLengthDivisions = 3000;
 		this.flowLen = this.flow.getLength();
+		const nozzleS = climb.getLength() + hose.getLength();
+		// The lowest the hose hangs between the wheels, for the map's mark.
+		for (let i = 0; i <= 200; i++) {
+			const p = hose.getPointAt(i / 200);
+			if (p.x < MAST_WHEEL[0] && p.x > MODEL_WHEEL[0] && p.y < this.sagAt[1]) this.sagAt = p.toArray() as V3;
+		}
 
 		// The safety check stands where the path is about to leave the island, square to it.
 		const archU = (SAFETY_X - SLOT_X) / this.flowLen;
@@ -594,11 +621,11 @@ export class World {
 		this.root.add(this.safety.group);
 		this.safetyS = archU * this.flowLen;
 
-		// The lift: warm glass from just past the arch to just over the intake's mouth, where the tokens drop out of it.
+		// The hose: warm clear vinyl from just past the arch to the nozzle over the intake's mouth.
 		const mouth = (SAFETY_X + 0.75 - SLOT_X) / this.flowLen;
 		const lip = this.flowLipU();
 		this.lipS = lip * this.flowLen;
-		const tube = new PartOf(this.flow, mouth, lip);
+		const tube = new PartOf(this.flow, mouth, nozzleS / this.flowLen);
 		const glass = new THREE.Mesh(
 			new THREE.TubeGeometry(tube, Math.ceil(tube.getLength() / 0.07), LIFT_R, 28),
 			new THREE.MeshPhysicalMaterial({ color: '#ffb466', transparent: true, opacity: 0.34, roughness: 0.08, clearcoat: 1, depthWrite: false, side: THREE.DoubleSide })
@@ -617,11 +644,32 @@ export class World {
 			e.setFromQuaternion(q);
 			hoops.add(geo, m.steel, { p: tube.getPointAt(u).toArray() as V3, r: [e.x, e.y, e.z] });
 		};
-		for (let d = 1.6; d < len - 1; d += 2.6) at(d / len, hoop);
+		// Clamped up the mast: a ring round the hose every so often, on an arm back to the mast.
+		const upFrom = LIFT_X - 1.6 - (SAFETY_X + 0.75) + Math.PI * 0.8;
+		const climbFrom = (upFrom + 0.8) / len;
+		const climbTo = (upFrom + LIFT_TOP - y - 1.6 - 0.4) / len;
+		const poleZ = z - 1.15;
+		const n = Math.round((climbTo - climbFrom) * len / 2.4);
+		for (let i = 0; i <= n; i++) {
+			const u = climbFrom + ((climbTo - climbFrom) * i) / n;
+			at(u, hoop);
+			const p = tube.getPointAt(u);
+			hoops.add(rbox(0.08, 0.08, z - LIFT_R - 0.1 - poleZ, 0.02, 1), m.steelSoft, { p: [p.x, p.y, (z - LIFT_R - 0.1 + poleZ) / 2] });
+			hoops.add(rbox(p.x - MAST_WHEEL[0], 0.08, 0.08, 0.02, 1), m.steelSoft, { p: [(p.x + MAST_WHEEL[0]) / 2, p.y, poleZ] });
+		}
 		const collar = ring(LIFT_R + 0.22, LIFT_R + 0.02, 0.24);
 		at(0, collar);
-		at(1, collar);
 		this.root.add(hoops.build('lift-hoops'));
+
+		// The mast: a pole behind the hose from the island to the wheel's axle, and the wheel.
+		const mast = new Batch();
+		const mastTop = MAST_WHEEL[1] + 0.25;
+		mast.add(new THREE.CylinderGeometry(0.13, 0.16, mastTop - ISLAND_C_Y, 16), m.steel, { p: [MAST_WHEEL[0], (mastTop + ISLAND_C_Y) / 2, poleZ] });
+		mast.add(rbox(0.9, 0.12, 0.9, 0.04, 2), m.steelSoft, { p: [MAST_WHEEL[0], ISLAND_C_Y + 0.06, poleZ] });
+		const axle = new THREE.CylinderGeometry(0.09, 0.09, z + 0.75 - poleZ, 14);
+		mast.add(axle, m.steelSoft, { p: [MAST_WHEEL[0], MAST_WHEEL[1], (z + 0.75 + poleZ) / 2], r: [Math.PI / 2, 0, 0] });
+		buildWheel(mast, MAST_WHEEL, WHEEL_R, 1.0);
+		this.root.add(mast.build('mast'));
 
 		// A steel trough from the end of the belt over the arch's floor to the mouth of the lift, so nothing crosses the gap
 		// on air, and a stand linking it to the island.
@@ -643,11 +691,11 @@ export class World {
 		this.root.add(this.rest);
 	}
 
-	/** Where the lift ends: just over the intake's mouth, where the tokens drop out of the glass into the well. */
+	/** Where the tokens leave the nozzle over the intake's mouth and fall free into the well. */
 	private flowLipU() {
 		for (let i = 0; i <= 2000; i++) {
 			const u = 0.7 + (i / 2000) * 0.3;
-			if (this.flow.getPointAt(u).y < INTAKE_TOP + 0.15 && Math.abs(this.flow.getPointAt(u).x - MODEL_X) < 0.01) return u;
+			if (this.flow.getPointAt(u).y < LIP_Y && Math.abs(this.flow.getPointAt(u).x - MODEL_X) < 0.01) return u;
 		}
 		return 1;
 	}
@@ -660,11 +708,28 @@ export class World {
 		const LINE_R = 0.078;
 		const port: V3 = [HARNESS_POS.x + HW / 2, PORT_Y, HARNESS_POS.z + PORT_OUT_Z];
 		const standFace: V3 = [TUNNEL_X + 0.1 - 0.25, ISLET_Y + 0.26, LINE_Z];
-		const floor = ISLET_Y + 0.26;
-		const out = bends(
-			[port, [port[0] + 0.5, port[1], port[2]], [port[0] + 0.5, floor, port[2]], [port[0] + 0.5, floor, 1.46], [6.9, floor, 1.46], [6.9, floor, LINE_Z], standFace],
-			[0.16, 0.16, 0.35, 0.25, 0.25]
-		);
+		const islet = slab(ISLET_OUTLINE, ISLET_Y, 0.46, [WIRE_X, 0]);
+		const B = slab(B_OUTLINE, ISLAND_B_Y, 0.62, [WIRE_X, 0]);
+		const C = slab(C_OUTLINE, ISLAND_C_Y, 0.62, [C_X, 0]);
+		const harness: Solid = { min: [-0.42, 0, -1.92], max: [2.62, 3.9, 0.62] };
+		const easel: Solid = { min: [4.45, 0, 0.17], max: [7.05, 3.4, 1.27] };
+		const server: Solid = { min: [6.49, 0, -1.33], max: [7.91, 1.45, -0.11] };
+		const R = LINE_R;
+		// Lying on the floor round the front of the easel, then off your island's edge, across the gap, and up onto the
+		// islet into the foot of the wire.
+		const out = hang({
+			from: { at: port, out: [1, 0, 0] },
+			to: { at: standFace, out: [-1, 0, 0] },
+			via: [
+				{ at: [3.7, R, 0.9], slack: 1.03 },
+				{ at: [5.75, R, 1.6], slack: 1.0 },
+				{ at: [7.8, R, 1.2], slack: 1.0 }
+			],
+			r: R,
+			slack: 1.015,
+			bend: 0.5,
+			on: [HOME, islet, harness, easel, server]
+		});
 		this.routeOut = out;
 		const outTube = new THREE.Mesh(new THREE.TubeGeometry(out, Math.ceil(out.getLength() / 0.05), LINE_R, 16), m.orangeGlow);
 		outTube.castShadow = true;
@@ -681,12 +746,25 @@ export class World {
 		const templateRear: V3 = [TEMPLATE_X, ISLAND_C_Y + 0.45, LINE_Z - 0.95];
 		fittings((b) => fitting(b, gateRear, [0, 0, -1], LINE_R));
 		fittings((b) => fitting(b, templateRear, [0, 0, -1], LINE_R));
-		const behind = -2.4;
-		const down = bends([gateRear, [GATEWAY_X, gateRear[1], behind], [TEMPLATE_X, gateRear[1], behind], templateRear], 0.6);
+		// Down off the back of the gateway onto the floor, along behind it, across the gap between the islands, and up into
+		// the template's back.
+		const down = hang({
+			from: { at: gateRear, out: [0, 0, -1] },
+			to: { at: templateRear, out: [0, 0, -1] },
+			via: [
+				{ at: [GATEWAY_X + 1.2, ISLAND_B_Y + R, -1.35], slack: 1.03 },
+				{ at: [TEMPLATE_X - 1.2, ISLAND_C_Y + R, -1.3], slack: 1.012 }
+			],
+			r: R,
+			slack: 1.03,
+			bend: 0.5,
+			on: [B, C]
+		});
 		const downTube = new THREE.Mesh(new THREE.TubeGeometry(down, Math.ceil(down.getLength() / 0.05), LINE_R, 16), m.orangeGlow);
 		downTube.castShadow = true;
 		this.root.add(downTube);
 		this.downCurve = down;
+		this.downLen = down.getLength();
 		this.downTight = [gateRear, templateRear].map((p) => new THREE.Vector3(...p));
 
 		// What travels down that pipe: a slug of request, swelling the tube as it goes.
@@ -774,7 +852,11 @@ export class World {
 		this.chevron = new THREE.CanvasTexture(canvas);
 		this.chevron.wrapS = THREE.RepeatWrapping;
 		this.chevron.wrapT = THREE.RepeatWrapping;
-		const ret = bends(RETURN_CORNERS, RETURN_RADII);
+		const ret = returnPath();
+		const rollers = new Batch();
+		buildRoller(rollers, RETURN_ROLLER);
+		buildRoller(rollers, CALL_ROLLER);
+		this.root.add(rollers.build('rollers'));
 		const len = ret.getLength();
 		const retMat = (m.greenGlow as THREE.MeshPhysicalMaterial).clone();
 		retMat.emissiveMap = this.chevron;
@@ -807,11 +889,19 @@ export class World {
 		this.brain.group.position.set(x, MODEL_ROOF - BRAIN_SEAT, z);
 		this.root.add(this.brain.group);
 		this.buildIntake(x, MODEL_ROOF, z);
-		// A steel post on the roof, beside the intake, carrying the lift where it turns down into it.
+		// A gantry on the intake's rim: two legs, an axle across them with the hose's wheel on it, and a nozzle on an arm
+		// below the wheel, where the hose ends and the tokens fall out into the well.
 		const post = new Batch();
-		const leg = LIFT_TOP - LIFT_R - 0.06 - MODEL_ROOF;
-		post.add(rbox(0.34, 0.08, 1.4, 0.03, 2), m.steel, { p: [x + 1.7, MODEL_ROOF + leg + 0.02, z] });
-		for (const s of [-0.58, 0.58]) post.add(rbox(0.12, leg, 0.12, 0.03, 2), m.steelSoft, { p: [x + 1.7, MODEL_ROOF + leg / 2, z + s] });
+		const [wx, wy] = MODEL_WHEEL;
+		const leg = wy + 0.2 - INTAKE_TOP;
+		for (const s of [-1.48, 1.48]) post.add(rbox(0.14, leg, 0.14, 0.03, 2), m.steelSoft, { p: [wx, INTAKE_TOP + leg / 2, z + s] });
+		post.add(new THREE.CylinderGeometry(0.08, 0.08, 3.1, 14), m.steelSoft, { p: [wx, wy, z], r: [Math.PI / 2, 0, 0] });
+		buildWheel(post, MODEL_WHEEL, WHEEL_R, 1.0);
+		const armY = NOZZLE_Y - 0.25;
+		post.add(rbox(0.1, 0.1, 2.96, 0.03, 1), m.steelSoft, { p: [wx, armY, z] });
+		post.add(rbox(wx - x - 0.45, 0.1, 0.1, 0.03, 1), m.steelSoft, { p: [(wx + x + 0.45) / 2, armY, z] });
+		post.add(new THREE.CylinderGeometry(LIFT_R + 0.1, LIFT_R + 0.06, NOZZLE_Y - LIP_Y + 0.1, 28, 1, true), m.steel, { p: [x, (NOZZLE_Y + LIP_Y) / 2, z] });
+		post.add(ring(LIFT_R + 0.2, LIFT_R + 0.02, 0.18), m.steel, { p: [x, NOZZLE_Y + 0.02, z] });
 		this.root.add(post.build('chute-post'));
 
 		const stream = new THREE.LineCurve3(new THREE.Vector3(...STREAM_TOP), new THREE.Vector3(...STREAM_BOTTOM));
@@ -1627,14 +1717,19 @@ export class World {
 	private updateBulges(T: number) {
 		const k = seg(T, 5.6, 6.02);
 		this.bulges.forEach((slug, i) => {
-			const u = inOut(k) * 1.18 - i * 0.05;
+			// A slug's length apart, however long the pipe is.
+			const u = inOut(k) * 1.18 - (i * 0.95) / this.downLen;
 			slug.visible = u > 0 && u < 1;
 			if (!slug.visible) return;
 			slug.position.copy(this.downCurve.getPointAt(u));
 			slug.quaternion.setFromUnitVectors(this.yAxis, this.downCurve.getTangentAt(u));
-			// It swells the pipe where the pipe is free, and squeezes thin to get through a fitting or an island.
+			// It swells the pipe where the pipe is free, and squeezes thin to get through a fitting, or where the pipe lies on
+			// an island's floor.
 			const free = Math.min(...this.downTight.map((at) => slug.position.distanceTo(at)));
-			const thin = THREE.MathUtils.lerp(0.078 / (slug.geometry as THREE.CapsuleGeometry).parameters.radius, 1, smooth(seg(free, 0.5, 1.4)));
+			const { x, y } = slug.position;
+			const floor = x > 14.7 && x < 22.1 ? ISLAND_B_Y : x > 22.75 ? ISLAND_C_Y : -Infinity;
+			const room = Math.min(smooth(seg(free, 0.5, 1.4)), smooth(seg(y - floor, 0.1, 0.24)));
+			const thin = THREE.MathUtils.lerp(0.078 / (slug.geometry as THREE.CapsuleGeometry).parameters.radius, 1, room);
 			slug.scale.set(thin, 1, thin);
 		});
 	}
@@ -1714,7 +1809,8 @@ export class World {
 			frame(s, tile.group, rest * low * size + (1 - size) * 0.08 + pop + hop + bounce + idle + leap);
 			tile.group.rotateX((flip + turned) * Math.PI);
 			tile.group.scale.set((1 + squash * 0.04) * size, low * size, (1 + squash * 0.12) * size);
-			tile.group.visible = feed > 0 && !this.fallenIn(s, tile.group.position.y);
+			// Behind the slot it's still inside the template, and drawn nowhere: it isn't anywhere either.
+			tile.group.visible = feed > 0 && s + tile.width / 2 > 0 && !this.fallenIn(s, tile.group.position.y);
 		});
 
 		// The gantry walks from one boundary to the next, then stamps.
@@ -1782,7 +1878,7 @@ export class World {
 	mapCanvas: HTMLCanvasElement | null = null;
 	/** A phone draws its map only when the reader reaches another stop, not on a clock. */
 	mapSeldom = false;
-	private map = new MiniMap(new THREE.Vector3(-3.6, 1.8, 0), { x: 51, y: 33 }, 6, 5);
+	private map = new MiniMap(new THREE.Vector3(-5.5, 4, 0), { x: 51, y: 28 }, 6, 5);
 	private mapAt = -Infinity;
 	private mapStop = -1;
 	/** The loop's thin pipes again, as thick as the glass, drawn only into the map: at its size the real ones are hairs. */
@@ -1827,18 +1923,19 @@ export class World {
 			[6, [TEMPLATE_X, 0.9, LINE_Z]],
 			[6.86, [BELT_END, 0.9, LINE_Z]],
 			[7.25, [LIFT_X, LIFT_TOP, LINE_Z]],
-			[7.75, [MODEL_X, LIFT_TOP, LINE_Z]],
+			[7.5, this.sagAt],
+			[7.75, [MODEL_WHEEL[0], MODEL_WHEEL[1] + WRAP, LINE_Z]],
 			[7.95, [MODEL_X, MODEL_ROOF - 2, MODEL_Z]],
 			[18.6, [MODEL_X, MODEL_ROOF - 2, MODEL_Z]],
 			[18.95, [AXIS_X, STREAM_TOP[1], STREAM_TOP[2]]],
 			[19.3, [AXIS_X, 3.5, -0.75]],
-			[19.6, [0.4, 3.2, -3]],
-			[19.9, [dock[0], 3.2, -3]],
+			[19.6, this.back.callCurve.getPointAt(0.12).toArray() as V3],
+			[19.9, this.back.callCurve.getPointAt(0.6).toArray() as V3],
 			[20.04, dock],
 			[21.3, low([-41.4, -12.5, 0.7])],
 			[22.4, low([-24.5, -13.5, 0.7])],
 			[24.6, low([-13.5, -14.69, 3.6])],
-			[25.1, [0.4, RETURN_Y, -4.4]],
+			[25.1, returnPath().getPointAt(0.45).toArray() as V3],
 			[25.42, [HARNESS_POS.x, 1.6, HARNESS_POS.z]]
 		];
 		let i = 0;

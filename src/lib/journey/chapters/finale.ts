@@ -63,7 +63,7 @@ export interface Route {
 	dock: V3;
 	trackEnd: V3;
 	slotX: number;
-	/** Where the belt ends and the glass lift begins, along the token path. */
+	/** Where the belt ends and the hose begins, along the token path. */
 	beltEnd: number;
 	beltY: number;
 	lineZ: number;
@@ -117,10 +117,10 @@ export class Finale {
 		this.legs = [
 			// Up from the keys and down onto the cable, which is thin and short, so it travels small.
 			{ path: curve([[-3.3, 0.85, 1], [-2.4, 1.3, 0.5], [-1.5, 0.62, -0.3], above(end(r.cable, 0.28), 0.22), above(end(r.cable, 0.34), 0.2)]), time: 1, ride: 0, step: 0, size: 0.5 },
-			{ path: new Part(r.cable, 0.34, 1), time: 0.6, ride: 0.2, step: 0, size: 0.5, shrink: 2.5 },
+			{ path: new Part(r.cable, 0.34, 1), time: 0.6, ride: 0.26, step: 0, size: 0.5, shrink: 2.5 },
 			{ path: line([0, 2, -0.65], [1.8, 2, -0.65]), time: 1.1, ride: 0, step: 1, hidden },
 			// Along the pipe past the easel, riding high enough to clear the easel's foot, and across to the wire.
-			{ path: r.out, time: 2.2, ride: 0.3, step: 2 },
+			{ path: r.out, time: 2.2, ride: 0.3, step: 2, shrink: 2.5 },
 			{ path: line(end(r.out, 1), [tunnelFrom + 0.1, tunnelY, z]), time: 0.1, ride: 0, step: 2, hidden },
 			{ path: line([tunnelFrom + 0.1, tunnelY, z], [tunnelTo - 0.1, tunnelY, z]), time: 0.9, ride: 0, step: 2 },
 			// Through the gateway, and out of its back wall along to the tokenizer.
@@ -128,13 +128,14 @@ export class Finale {
 			{ path: new Part(r.down, 0.03, 1), time: 1.6, ride: 0.2, step: 3 },
 			{ path: line(end(r.down, 1), [r.slotX, beltY, z]), time: 0.4, ride: 0, step: 3, hidden },
 			{ path: new Part(r.flow, 0, belt), time: 1.2, ride: 0.24, step: 3, size: 0.72 },
-			// Up the glass lift and along the top, small enough to ride inside it.
+			// Up the hose on the mast, over its wheel, across the sky and over the model's wheel, small enough to ride inside it.
 			{ path: new Part(r.flow, belt, r.flowLip), time: 2, ride: 0, step: 4, size: 0.6 },
 			// Through the model, and out of the bottom of its island into the glass column.
 			{ path: line(flowEnd, end(r.stream, 0)), time: 1.9, ride: 0, step: 4, hidden },
 			{ path: r.stream, time: 2.5, ride: 0, step: 5 },
 			{ path: line([1.1, 3.6, -0.75], [0.4, 3.2, -1.76]), time: 0.25, ride: 0, step: 6, hidden },
-			{ path: r.gatePath, time: 2.6, ride: 0.2, step: 6 },
+			// Higher on the calls' cable: it sags, so a flat token's ends come down to meet it.
+			{ path: r.gatePath, time: 2.6, ride: 0.3, step: 6 },
 			{ path: line(r.dock, [r.dock[0] + 1.6, r.dock[1], r.dock[2]]), time: 0.2, ride: 0, step: 6, hidden },
 			{ path: line([r.dock[0] + 1.6, r.dock[1], r.dock[2]], r.trackEnd), time: 2.1, ride: 0, step: 6 },
 			{ path: curve([r.trackEnd, low([-40.4, -12.1, 0.7]), low([-38.2, -13, 0.7]), low([-36.3, -14.46, 0.7])]), time: 0.6, ride: 0, step: 7 },
@@ -186,7 +187,7 @@ export class Finale {
 		const where: V3[] = [
 			[-5.2, 3.6, 0.6],
 			[5.6, 5.2, -0.75],
-			[tunnelFrom + 2.4, tunnelY + 2.4, z],
+			[tunnelFrom + 3.4, tunnelY + 3.3, z],
 			[r.slotX + 1.2, beltY + 3.6, z],
 			[MODEL_X - 9, MODEL_ISLAND_Y + 11.4, 1.2],
 			[AXIS_X - 3.8, 10.6, -0.75],
