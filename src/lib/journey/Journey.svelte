@@ -408,7 +408,7 @@
 	}
 	/** The sounds of the interface itself: a step, a flight, the map. Quiet until sound is on. */
 	/** The page's own sounds: the reader's steps and flights, and the controls they press. `n` and `m` say which, or how many. */
-	type CueKind = 'step' | 'flight' | 'drop' | 'rise' | 'map' | 'enter' | 'spin' | 'harness' | 'cache' | 'temperature' | 'turn' | 'tokens' | 'spot' | 'drawer' | 'check' | 'gate';
+	type CueKind = 'step' | 'flight' | 'drop' | 'rise' | 'map' | 'enter' | 'spin' | 'harness' | 'cache' | 'temperature' | 'turn' | 'tokens' | 'spot' | 'drawer' | 'check' | 'gate' | 'stop';
 	let cue: (kind: CueKind, n?: number, m?: number) => void = () => {};
 	let leaveTrack: (atOnce?: boolean) => void = () => {};
 	const trip = $derived(track ? TRACKS[track] : null);
@@ -824,7 +824,10 @@
 							cue('gate', i);
 						}
 					} else if (what === 'attention') attentionSaid = i;
-					else if (what === 'stop') w.tellStop(i);
+					else if (what === 'stop') {
+						w.tellStop(i);
+						cue('stop', i);
+					}
 				}
 			});
 			{
@@ -2267,6 +2270,11 @@
 					// One of the front door's checks named: a relay clicks, and the five climb a little scale.
 					sound.play('relay', { gain: 0.22, rate: 1 + n * 0.05 });
 					sound.voice(porcelain(note([0, 2, 4, 5, 7][n] ?? 0), 0.7), { gain: 0.12, delay: 0.04, wet: 0.3 });
+				} else if (kind === 'stop') {
+					// One of the last chapter's nine stops told: the same note it rings when Enter sends a token round, and home's
+					// chord when the lap is done.
+					if (n >= 9) sound.voice(chime([0, 2, 4, 7, 9]), { gain: 0.2, wet: 0.3 });
+					else sound.voice(porcelain(note([0, 2, 4, 5, 7, 9, 7, 5, 4][n] ?? 0), 1.2), { gain: 0.16, wet: 0.3 });
 				} else if (kind === 'gate') {
 					// A gate named: its beacon rings once.
 					sound.voice(porcelain(note([2, 4, 7, 9][n] ?? 0), 1), { gain: 0.14, wet: 0.35 });
