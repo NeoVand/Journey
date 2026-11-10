@@ -1115,12 +1115,14 @@
 				// Never below zero. A frame's timestamp is when it began, which can be well before a long warm-up finished,
 				// and a negative step would hold the opening back by however long that took.
 				const dt = Math.max(0, Math.min(0.05, (now - last) / 1000));
+				// The film's holds are reading and listening time, which the clock keeps however slowly the frames come.
+				const clock = Math.max(0, Math.min(1, (now - last) / 1000));
 				last = now;
 				time += dt;
 				// Once the reader's hands are still, the scroll bar goes to where the story is.
 				if (gestures.still(now)) (track ? alignTrip : align)();
 				play(dt);
-				runFilm(dt);
+				runFilm(clock);
 				steppable();
 				playTrip(dt);
 				showGauge();

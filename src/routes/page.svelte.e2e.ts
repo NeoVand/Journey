@@ -360,7 +360,7 @@ test('without the voices, the film holds each card long enough to read it, then 
 });
 
 test('a step back plays the scene backwards, however long it is, with no cut', async ({ page }) => {
-	test.setTimeout(180_000);
+	test.setTimeout(300_000);
 	await page.goto('/?debug#turn-two-starts-ahead');
 	await page.waitForFunction(
 		() => {
@@ -374,8 +374,11 @@ test('a step back plays the scene backwards, however long it is, with no cut', a
 	);
 	const from = await page.evaluate(() => (window as unknown as Film).__film.state().T);
 	await page.keyboard.press('ArrowLeft');
+	const to = await page.evaluate(() => (window as unknown as Film).__film.director.target);
+	expect(to).toBeLessThan(from - 0.2);
+	// Every frame until it gets there: without a GPU a frame can take half a second, and the scene never skips ahead.
 	const run = await page.evaluate(
-		() =>
+		(to) =>
 			new Promise<{ Ts: number[]; covered: boolean }>((done) => {
 				const Ts: number[] = [];
 				let covered = false;
@@ -384,15 +387,16 @@ test('a step back plays the scene backwards, however long it is, with no cut', a
 					Ts.push((window as unknown as Film).__film.state().T);
 					const veil = document.querySelector<HTMLElement>('[data-veil]');
 					if (document.querySelector('[data-cut]')?.classList.contains('on') || (veil && +veil.style.opacity > 0)) covered = true;
-					if (performance.now() - t0 < 8000 && (Ts.length < 10 || Ts.at(-1) !== Ts.at(-10))) requestAnimationFrame(tick);
+					if (performance.now() - t0 < 120_000 && Math.abs(Ts.at(-1)! - to) > 1e-4) requestAnimationFrame(tick);
 					else done({ Ts, covered });
 				};
 				requestAnimationFrame(tick);
-			})
+			}),
+		to
 	);
 	expect(run.covered).toBe(false);
 	// All the way back to the card before, through the moments between: never forwards, and never in one leap.
-	expect(run.Ts.at(-1)!).toBeLessThan(from - 0.5);
+	expect(run.Ts.at(-1)!).toBeCloseTo(to, 4);
 	for (let i = 1; i < run.Ts.length; i++) expect(run.Ts[i]).toBeLessThanOrEqual(run.Ts[i - 1] + 1e-9);
 	expect(new Set(run.Ts.map((t) => t.toFixed(3))).size).toBeGreaterThan(4);
 });
