@@ -84,7 +84,12 @@
 	let section = $state(0);
 	let part = $state<Stage>(null);
 	let attention = $state(-1);
-	/** The attention step the conversation is on, while it plays: Theo's "Compare first", "Then weigh", "And mix". */
+	/**
+	 * What the conversation is naming, while it plays, for the card's own list to follow: the front door's check, the gate,
+	 * the attention step. Past the last one, the whole list is done again, as the story has it.
+	 */
+	let checkSaid = -1;
+	let gateSaid = -1;
 	let attentionSaid = -1;
 	let world: World | undefined;
 
@@ -807,11 +812,17 @@
 						w.nameMemory(i);
 						cue('drawer', i);
 					} else if (what === 'check') {
-						w.nameCheck(i);
-						cue('check', i);
+						checkSaid = i;
+						if (i < 5) {
+							w.nameCheck(i);
+							cue('check', i);
+						}
 					} else if (what === 'gate') {
-						w.nameGate(i);
-						cue('gate', i);
+						gateSaid = i;
+						if (i < 4) {
+							w.nameGate(i);
+							cue('gate', i);
+						}
 					} else if (what === 'attention') attentionSaid = i;
 				}
 			});
@@ -1168,9 +1179,9 @@
 				});
 				drawer = T > 2.74 ? 4 : dr;
 				pulled = w.pulledDrawer;
-				check = T < 5 ? -1 : Math.min(5, Math.floor(((T - 5.04) / 0.58) * 5));
+				check = checkSaid >= 0 && narrator.playing ? checkSaid : T < 5 ? -1 : Math.min(5, Math.floor(((T - 5.04) / 0.58) * 5));
 				// The first call stops at the second gate, and the list has to say so.
-				gate = T < 20.04 ? -1 : T < 20.4 ? 1 : Math.min(4, Math.floor(((T - 20.4) / 0.58) * 5));
+				gate = gateSaid >= 0 && narrator.playing ? gateSaid : T < 20.04 ? -1 : T < 20.4 ? 1 : Math.min(4, Math.floor(((T - 20.4) / 0.58) * 5));
 				section = Math.min(sections.length - 1, Math.floor(T));
 				part = T < 14.15 ? null : T < 14.3 ? 'embed' : T < 14.625 ? 'attn' : T < 14.7 ? 'ffn' : T < 14.865 ? 'stack' : 'head';
 				attention = attentionSaid >= 0 && narrator.playing ? attentionSaid : T < 14.358 ? -1 : T < 14.4 ? 0 : T < 14.43 ? 1 : T < 14.5 ? 2 : 3;

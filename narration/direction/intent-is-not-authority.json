@@ -5,6 +5,7 @@
 		{ "at": "Allowed path.", "show": [], "do": "gate", "index": 1 },
 		{ "at": "gate three, policy", "show": [], "do": "gate", "index": 2 },
 		{ "at": "You, if asked.", "show": [], "do": "gate", "index": 3 },
+		{ "at": "This is where the three agents really differ", "show": [], "do": "gate", "index": 4 },
 		{ "at": "inside a fence the operating system puts around it", "show": ["sandbox-frame"], "hold": 3.6 }
 	]
 }
