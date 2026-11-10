@@ -189,8 +189,8 @@ export class Cluster {
 		this.forward.setTemperature(temperature);
 	}
 
-	spinWheel(reduced: boolean) {
-		return this.forward.spinWheel(reduced);
+	spinWheel(reduced: boolean, want?: number) {
+		return this.forward.spinWheel(reduced, want);
 	}
 
 	get wheelDisc() {

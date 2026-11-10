@@ -203,12 +203,27 @@
 	/** As the reader sees them: whole numbers that always add up to 100. */
 	const percents = $derived(wholePercents(odds));
 
-	async function spinIt() {
+	/** Nora turns the dial in the conversation: it runs there a tenth at a time, one tick of the ratchet each. */
+	let dialTimer = 0;
+	function turnDial(to: number) {
+		clearInterval(dialTimer);
+		const step = () => {
+			const gap = to - temperature;
+			temperature = Math.abs(gap) <= 0.1 ? to : Math.round((temperature + Math.sign(gap) * 0.1) * 10) / 10;
+			world?.setTemperature(temperature);
+			cue('temperature', temperature);
+			if (temperature === to) clearInterval(dialTimer);
+		};
+		step();
+		dialTimer = window.setInterval(step, 45);
+	}
+
+	async function spinIt(want?: number) {
 		if (!world || spinning) return;
 		spinning = true;
 		landed = -1;
 		cue('spin');
-		const pick = await world.spinWheel(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+		const pick = await world.spinWheel(window.matchMedia('(prefers-reduced-motion: reduce)').matches, want);
 		wins[pick]++;
 		landed = pick;
 		spinning = false;
@@ -785,6 +800,7 @@
 				act: (what, i) => {
 					if (what === 'turn') pinTurn(i);
 					else if (what === 'cache') setCache(i === 1);
+					else if (what === 'temperature') turnDial(i / 10);
 				}
 			});
 			{
@@ -986,8 +1002,8 @@
 			};
 			window.addEventListener('pointerdown', down, { passive: true });
 			window.addEventListener('pointerup', up, { passive: true });
-			w.onPress = (what) => {
-				if (what === 'wheel') spinIt();
+			w.onPress = (what, want) => {
+				if (what === 'wheel') spinIt(want);
 				else pressEnter();
 			};
 			// With a mouse, the cursor says what can be pressed. A few times a second is plenty for that.
@@ -3056,7 +3072,7 @@
 						</li>
 					{/each}
 				</ol>
-				<button type="button" class="spin" disabled={spinning} onclick={spinIt}>
+				<button type="button" class="spin" disabled={spinning} onclick={() => spinIt()}>
 					<Icon icon={SPIN} size={18} stroke={1.8} />
 					{spinning ? 'Round it goes' : 'Spin it yourself'}
 				</button>

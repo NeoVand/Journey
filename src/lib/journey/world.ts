@@ -1089,7 +1089,8 @@ export class World {
 	}
 
 	/** What the reader can press, and when. Tell the page about anything that belongs to it. */
-	onPress: (what: 'wheel' | 'enter') => void = () => {};
+	/** A press on the wheel or the finale's Enter; a conversation's spin can say which slice it lands in. */
+	onPress: (what: 'wheel' | 'enter', want?: number) => void = () => {};
 	/** On a phone, how far down the screen the words begin at this point in the story. The page measures it. */
 	roomAt: ((T: number) => number) | null = null;
 	/** During a peek at another moment of the story, the moment the reader is at: its card decides where the picture goes. */
@@ -1386,7 +1387,7 @@ export class World {
 		}
 		if (act === 'flip') return () => this.tiles.forEach((_, i) => this.flipTile(i));
 		if (act === 'excite') return () => this.brain.excite();
-		if (act === 'spin') return () => this.onPress('wheel');
+		if (act === 'spin') return () => this.onPress('wheel', index);
 		return undefined;
 	}
 
@@ -1419,8 +1420,8 @@ export class World {
 		this.cluster.setTemperature(temperature);
 	}
 
-	spinWheel(reduced: boolean) {
-		return this.cluster.spinWheel(reduced);
+	spinWheel(reduced: boolean, want?: number) {
+		return this.cluster.spinWheel(reduced, want);
 	}
 
 	setHarness(id: HarnessId) {

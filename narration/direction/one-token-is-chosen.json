@@ -1,6 +1,13 @@
 {
 	"cues": [
 		{ "at": "That's top-k or top-p", "show": ["sign:Sampler"], "hold": 3 },
-		{ "at": "another spin might start with", "show": ["wheel"], "do": "spin", "hold": 5 }
+		{ "at": "Turn it down and the gaps grow", "show": [], "do": "temperature", "index": 2 },
+		{ "at": "Turn it up and the gaps shrink", "show": [], "do": "temperature", "index": 20 },
+		{ "at": "At a temperature of one", "show": [], "do": "temperature", "index": 10 },
+		{ "at": "Drag the dial right down", "show": [], "do": "temperature", "index": 2 },
+		{ "at": "Push it up to two", "show": [], "do": "temperature", "index": 20 },
+		{ "at": "Usually cool", "show": [], "do": "temperature", "index": 2 },
+		{ "at": "So the same prompt could start differently", "show": [], "do": "temperature", "index": 10 },
+		{ "at": "another spin might start with", "show": ["wheel"], "do": "spin", "index": 1, "hold": 5 }
 	]
 }
