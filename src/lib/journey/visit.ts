@@ -139,7 +139,8 @@ export class Visits {
 		// To fit the part of the screen the picture has beside the words. A small thing wants room round it to be read
 		// in its place; a whole machine can fill more of it.
 		const fill = Math.min(1, Math.max(0.25, cam.userData.fill ?? 1));
-		const margin = 2.2 - 0.9 * Math.min(1, Math.max(0, (radius - 1) / 1.5));
+		// A whole is fitted by the sphere round it, which already leaves room at a long shape's ends: it needs no more.
+		const margin = cue.wide ? 1 : 2.2 - 0.9 * Math.min(1, Math.max(0, (radius - 1) / 1.5));
 		const fit = (radius / (fill * Math.tan((cam.fov * Math.PI) / 360))) * margin;
 		const away = this.v1.copy(fromPos).sub(centre);
 		// Coming closer than the shot, but never so close the thing overflows the picture: a shot already near it stays.
