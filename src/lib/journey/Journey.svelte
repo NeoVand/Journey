@@ -1112,12 +1112,20 @@
 				const shownKey: number[] = [];
 				const inAt = (n: number, at: number) => (n === 0 ? 1 : seg(at - pins[n].i, pins[n].from - pins[n].fade * 0.3, pins[n].from + pins[n].fade * 0.7));
 				const outAt = (n: number, at: number) => (n === lastPin ? 0 : seg(at - pins[n].i, pins[n].end, pins[n].end + pins[n].fade));
+				/** Cards on the same side of the screen: two of them half there at once would be words over words. */
+				const sameSide = (a: number, b: number) => pins[a].el.classList.contains('right') === pins[b].el.classList.contains('right');
+				const cardUp: number[] = [];
 				const fade = () => {
+					for (let n = 0; n < pins.length; n++) cardUp[n] = Math.min(inAt(n, T), 1 - outAt(n, T));
 					// Cards belong to the playhead, not the scroll bar, so text and scene can never drift apart.
 					pins.forEach(({ el }, n) => {
 						const inK = inAt(n, T);
 						const outK = outAt(n, T);
-						const k = Math.min(inK, 1 - outK) * cardsK;
+						// Where one card's way out meets the next one's way in, in the same place, they hand over one after the other:
+						// the one going fades as the one coming waits, and they meet at nothing rather than both at half.
+						const before = n > 0 && sameSide(n - 1, n) ? cardUp[n - 1] : 0;
+						const after = n < lastPin && sameSide(n, n + 1) ? cardUp[n + 1] : 0;
+						const k = Math.max(0, cardUp[n] - Math.max(before, after)) * cardsK;
 						const key = k <= 0 ? -1 : Math.round(k * 200) + (outK > 0 ? 1000 : 0);
 						if (shownKey[n] === key) return;
 						shownKey[n] = key;
