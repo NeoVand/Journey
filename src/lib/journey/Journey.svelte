@@ -344,7 +344,7 @@
 		mapOpen = false;
 		// A film keeps playing from wherever it lands; otherwise the conversation goes.
 		if (!filming) narrator.leave();
-		pointer?.clear();
+		pointer?.release();
 		leaveTrack(true);
 		goto(resolve(`/#${slug(title)}`), { shallow: true, replace: true });
 		cutTo(title);
@@ -396,6 +396,18 @@
 	let filmTalk = $state(true);
 	let toggleFilm: () => void = () => {};
 	let setFilmTalk: (on: boolean) => void = (on) => (filmTalk = on);
+	/**
+	 * The film's other two layers: the music and air of each place, and the sounds of the machines. They're the sound
+	 * mixer's own two faders, at nothing or back where they were; turning either on turns the sound on.
+	 */
+	let hearAmbience = $state(true);
+	let hearEffects = $state(true);
+	function setLayer(layer: 'talk' | 'ambience' | 'effects', on: boolean) {
+		if (layer === 'talk') return setFilmTalk(on);
+		if (on && !soundOn) toggleSound();
+		if (layer === 'ambience') hearAmbience = on;
+		else hearEffects = on;
+	}
 	let scrubFilm: (u: number, phase: 'start' | 'move' | 'end') => void = () => {};
 	let filmOpen = $state(false);
 	let filmByTouch = $state(false);
@@ -1058,7 +1070,8 @@
 				w.homeT = peekT !== null && !track ? T : null;
 				w.update(track && tripT !== null ? tripT : (peekT ?? T), reduced ? 0 : time, dt, reduced ? 0 : px, reduced ? 0 : py, reduced);
 				// After the picture is drawn, so what's named is found where it is now; the camera goes to it from the next frame.
-				pointer?.update(now / 1000, narrator, !reduced);
+				// Not while flying: the flight has the camera, and what the voices name waits for the new card.
+				if (!voyage) pointer?.update(now / 1000, narrator, !reduced);
 				if (soundOn) playSound(dt);
 				publish();
 				if (now - cornered > 300) {
@@ -1119,8 +1132,6 @@
 			const FALL = 1.35;
 			const VEIL_IN = 0.42;
 			const VEIL_OUT = 0.6;
-			/** Where the model stands, seen from outside: going in, and coming up out of it, the flight sees it from above. */
-			const MODEL: [number, number, number] = [1.2, -27, 1.1];
 			const easeIn = (k: number) => k * k * (3 - 2 * k);
 			const clamp01 = (k: number) => Math.min(1, Math.max(0, k));
 			let voyage: {
@@ -1141,7 +1152,13 @@
 			/** How thick the veil is, and whether it's the dark one: the header's words take its tone while it covers the world. */
 			let veilThick = 0;
 			let veilDark = false;
+			/** A leap asked for while a flight is under way: it sets off from where that one lands. */
+			let queued: { to: number; then: () => void } | null = null;
 			const fly = (to: number, then: () => void) => {
+				if (voyage) {
+					queued = { to, then };
+					return;
+				}
 				if (reduced || still) {
 					return cover(to, () => {
 						head.jump(to);
@@ -1155,7 +1172,7 @@
 				const b = partOf(to);
 				const veil = a === b ? null : insidePart(a) || insidePart(b) ? 'dark' : 'cloud';
 				const lapse = veil ? 0 : Math.min(1.25, Math.max(0.55, 0.45 + pace.seconds(from, to) * 0.012));
-				pointer?.clear();
+				pointer?.release();
 				frozen = false;
 				cue('rise');
 				const out = veil === 'dark' && b === 0;
@@ -1163,7 +1180,7 @@
 				flightId++;
 				// Over the both of them, unless the dark divides the inside from the outside: then over this side first, and
 				// going into the model from the first half of the trip, down onto it as the dark comes, the way the story dives in.
-				w.flight = { id: flightId, over: veil === 'dark' ? [from, from] : [from, to], rise: 0, fall: 0, near: veil === 'dark' && a === 0 ? MODEL : undefined };
+				w.flight = { id: flightId, over: veil === 'dark' ? [from, from] : [from, to], rise: 0, fall: 0, near: veil === 'dark' && a === 0 ? w.modelTop() : undefined };
 				veilEl.classList.toggle('dark', veil === 'dark');
 				veilDark = veil === 'dark';
 			};
@@ -1181,7 +1198,7 @@
 					if (v.veil === 'dark') {
 						f.id = ++flightId;
 						f.over = [v.to, v.to];
-						f.near = partOf(v.to) === 0 ? MODEL : undefined;
+						f.near = partOf(v.to) === 0 ? w.modelTop() : undefined;
 					}
 				}
 				head.jump(T);
@@ -1202,6 +1219,9 @@
 				veilThick = 0;
 				veilEl.style.opacity = '0';
 				veilEl.style.visibility = 'hidden';
+				const next = queued;
+				queued = null;
+				if (next) return fly(next.to, next.then);
 				v.then();
 			};
 
@@ -1323,9 +1343,11 @@
 			const resting = () => Math.abs(T - director.target) < 1e-4;
 			/** How far into the hold at stop k the film is: by the voices, once they've begun. */
 			const intoHold = (k: number) => {
-				if (held === k) return heldFor;
+				if (held === k && filming) return heldFor;
+				// Not playing the film, the voices may still be going from the talk key: the rail goes with them.
 				const id = talkFor(k);
-				return id && narrator.id === id && narrator.time > 0 ? LEAD_IN + narrator.time / narrator.rate : 0;
+				if (id && narrator.id === id && narrator.time > 0) return LEAD_IN + (narrator.done ? TALKS[id].seconds : narrator.time) / narrator.rate;
+				return held === k ? heldFor : 0;
 			};
 			const stopFilm = () => {
 				filming = false;
@@ -2379,8 +2401,8 @@
 					playing={filming}
 					open={filmOpen}
 					anchor={filmKey}
-					talk={filmTalk}
-					ontalk={(on) => setFilmTalk(on)}
+					layers={{ talk: filmTalk, ambience: soundOn && hearAmbience, effects: soundOn && hearEffects }}
+					onlayer={(layer, on) => setLayer(layer, on)}
 					onscrub={(u, phase) => scrubFilm(u, phase)}
 					ontoggle={() => toggleFilm()}
 					onjump={(title) => {

@@ -1137,6 +1137,13 @@ export class World {
 		};
 	}
 
+	/** The top of the model, wherever the world has it: a flight into it or up out of it looks down on it from there. */
+	modelTop(): [number, number, number] {
+		const box = this.part.setFromObject(this.brain.group);
+		const c = box.getCenter(this.v4);
+		return [c.x, box.max.y, c.z];
+	}
+
 	get pulledDrawer() {
 		return this.harness.pulled;
 	}

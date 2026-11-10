@@ -2,10 +2,10 @@
 	/**
 	 * The plate that drops from the Play key: the whole story as one rail, a share for every card, its scene and then its
 	 * conversation, under the nine stops of the trip. Dragging it moves the picture through every moment between, either
-	 * way, and the voices follow; a stop's mark goes there the way the map does. And what plays: the conversations, or
-	 * just the scenes, with time to read.
+	 * way, and the voices follow; a stop's mark goes there the way the map does. And what plays: the conversations (or,
+	 * without them, time to read each card), the music of each place, and the sounds of the machines.
 	 */
-	import { ConversationIcon } from '@hugeicons/core-free-icons';
+	import { ConversationIcon, MusicNote03Icon, SparklesIcon } from '@hugeicons/core-free-icons';
 	import type { Attachment } from 'svelte/attachments';
 	import { STOPS } from './content';
 	import type { ReelCard } from './film';
@@ -20,8 +20,8 @@
 		playing,
 		open,
 		anchor,
-		talk,
-		ontalk,
+		layers,
+		onlayer,
 		onscrub,
 		ontoggle,
 		onjump
@@ -35,14 +35,21 @@
 		open: boolean;
 		/** The Play key, which the plate's notch points at. */
 		anchor?: HTMLElement;
-		/** Whether the film plays the conversations. */
-		talk: boolean;
-		ontalk: (on: boolean) => void;
+		/** What plays: the conversations, the ambience, the effects. */
+		layers: Record<Layer, boolean>;
+		onlayer: (layer: Layer, on: boolean) => void;
 		onscrub: (u: number, phase: 'start' | 'move' | 'end') => void;
 		ontoggle: () => void;
 		/** To the first card of a stop on the trip, the way the map goes there. */
 		onjump: (title: string) => void;
 	} = $props();
+
+	type Layer = 'talk' | 'ambience' | 'effects';
+	const LAYERS: { layer: Layer; name: string; icon: typeof ConversationIcon; on: string; off: string }[] = [
+		{ layer: 'talk', name: 'Voices', icon: ConversationIcon, on: 'Nora and Theo talk each card through', off: 'Just the scenes, with time to read each card' },
+		{ layer: 'ambience', name: 'Ambience', icon: MusicNote03Icon, on: 'The music and air of each place', off: 'No music or air' },
+		{ layer: 'effects', name: 'Effects', icon: SparklesIcon, on: 'The sounds of the machines', off: 'No sounds from the machines' }
+	];
 
 	const count = $derived(Math.max(1, cards.length));
 	/** The card the film is on, and the one under the pointer, if it's over the rail. */
@@ -85,14 +92,14 @@
 		return () => removeEventListener('resize', place);
 	};
 
-	let strip = $state<HTMLElement>();
 	let holding = false;
-	const along = (x: number) => {
-		const r = strip?.getBoundingClientRect();
-		return r && r.width ? Math.max(0, Math.min(1, (x - r.left) / r.width)) : 0;
+	/** How far along the rail the pointer is, 0 to 1. The handlers are the rail's own, so it measures itself. */
+	const along = (e: PointerEvent) => {
+		const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+		return r.width ? Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) : 0;
 	};
 	function point(e: PointerEvent) {
-		const u = along(e.clientX);
+		const u = along(e);
 		hover = Math.min(count - 1, Math.floor(u * count));
 		hoverX = u;
 		if (holding) onscrub(u, 'move');
@@ -106,7 +113,7 @@
 		} catch {
 			// A pointer the browser no longer knows about: the drag works as long as it stays on the rail.
 		}
-		const u = along(e.clientX);
+		const u = along(e);
 		hoverX = u;
 		onscrub(u, 'start');
 		e.preventDefault();
@@ -114,7 +121,7 @@
 	function release(e: PointerEvent) {
 		if (!holding) return;
 		holding = false;
-		onscrub(along(e.clientX), 'end');
+		onscrub(along(e), 'end');
 		if (e.pointerType !== 'mouse') hover = null;
 	}
 
@@ -157,15 +164,6 @@
 				<small>{stopOf(shown)?.name ?? 'The whole story'}</small>
 				<span>{cards[shown]?.title ?? ''}</span>
 			</p>
-			<button
-				type="button"
-				class={['layer', { on: talk }]}
-				aria-pressed={talk}
-				title={talk ? 'Nora and Theo talk each card through' : 'Just the scenes, with time to read'}
-				onclick={() => ontalk(!talk)}
-			>
-				<Icon icon={ConversationIcon} size={16} stroke={1.8} />Voices
-			</button>
 		</div>
 
 		<div class="stops" aria-hidden="true">
@@ -184,7 +182,6 @@
 		</div>
 		<div
 			class="strip"
-			bind:this={strip}
 			style:--p={rail}
 			role="presentation"
 			onpointermove={point}
@@ -225,9 +222,16 @@
 				}}
 			/>
 		</div>
-		<div class="times">
-			<span>{clock(at)}</span>
-			<span>{clock(total)}</span>
+		<div class="foot">
+			<span class="time">{clock(at)}</span>
+			<div class="layers" role="group" aria-label="What plays">
+				{#each LAYERS as l (l.layer)}
+					<button type="button" class={['layer', { on: layers[l.layer] }]} aria-pressed={layers[l.layer]} title={layers[l.layer] ? l.on : l.off} onclick={() => onlayer(l.layer, !layers[l.layer])}>
+						<Icon icon={l.icon} size={15} stroke={1.8} />{l.name}
+					</button>
+				{/each}
+			</div>
+			<span class="time">{clock(total)}</span>
 		</div>
 	</div>
 </div>
@@ -358,13 +362,13 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 5px;
-		height: 28px;
-		padding: 0 9px 0 7px;
+		height: 26px;
+		padding: 0 7px 0 6px;
 		border: 0;
 		border-radius: 9px;
 		background: transparent;
 		color: #7d879a;
-		font: 650 12px/1 var(--sans);
+		font: 650 11.5px/1 var(--sans);
 		cursor: pointer;
 		transition:
 			background 0.2s,
@@ -556,13 +560,24 @@
 		outline-offset: 4px;
 		border-radius: 4px;
 	}
-	.times {
+	.foot {
 		display: flex;
-		justify-content: space-between;
-		margin-top: 6px;
+		align-items: center;
+		gap: 6px;
+		margin-top: 8px;
+	}
+	.time {
+		flex: 1;
 		font: 600 11px/1 var(--sans);
 		font-variant-numeric: tabular-nums;
 		color: #7d879a;
+	}
+	.time:last-child {
+		text-align: right;
+	}
+	.layers {
+		display: flex;
+		gap: 2px;
 	}
 
 	@media (max-aspect-ratio: 9/10) {

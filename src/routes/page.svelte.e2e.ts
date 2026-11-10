@@ -340,6 +340,25 @@ test('Play runs the story like a film: the scene, then its conversation, on to t
 	await page.waitForFunction(() => !(window as unknown as Film).__narrator.playing, null, { timeout: 5_000 });
 });
 
+test('without the voices, the film holds each card long enough to read it, then moves on by itself', async ({ page }) => {
+	test.setTimeout(180_000);
+	await page.goto('/?debug');
+	const key = page.locator('header button.film');
+	await expect(key).toBeEnabled({ timeout: 120_000 });
+	await page.waitForFunction(() => document.querySelector('main.driven'), null, { timeout: 90_000 });
+	await key.hover();
+	const plate = page.getByRole('group', { name: 'The whole story, as a film' });
+	const voices = plate.getByRole('button', { name: 'Voices' });
+	await expect(voices).toHaveAttribute('aria-pressed', 'true');
+	await voices.click();
+	await expect(voices).toHaveAttribute('aria-pressed', 'false');
+	await plate.getByRole('button', { name: 'Play the whole story' }).click();
+	// The title card is read, then the first scene plays: nobody talks.
+	await page.waitForFunction(() => scrollY > innerHeight * 0.5, null, { timeout: 60_000 });
+	expect(await page.evaluate(() => (window as unknown as Film).__narrator.playing)).toBe(false);
+	await expect(key).toHaveAttribute('aria-pressed', 'true');
+});
+
 test('a step back plays the scene backwards, however long it is, with no cut', async ({ page }) => {
 	test.setTimeout(180_000);
 	await page.goto('/?debug#turn-two-starts-ahead');
