@@ -689,12 +689,20 @@
 			const sourceEl = document.querySelector<HTMLElement>('a.source');
 			const WORDS = 'h1, h2, p, li, dt, dd, button, pre, table, figure, .dial, .ticket';
 			let cornered = 0;
-			/** Whether any card's words on screen now reach into this part of it. */
+			/**
+			 * Whether any card's words on screen now reach into this part of it. A paragraph or a heading counts by its
+			 * words, not its box: a row of two buttons is a paragraph as wide as the card.
+			 */
+			const span = document.createRange();
 			const wordsIn = (left: number, top: number, right: number, bottom: number) => {
 				for (const pin of document.querySelectorAll<HTMLElement>('.pin')) {
 					if (pin.style.visibility === 'hidden') continue;
 					for (const el of pin.querySelectorAll<HTMLElement>(WORDS)) {
-						const q = el.getBoundingClientRect();
+						let q = el.getBoundingClientRect();
+						if (/^(P|LI|DT|DD|H1|H2)$/.test(el.tagName)) {
+							span.selectNodeContents(el);
+							q = span.getBoundingClientRect();
+						}
 						if (!q.width || q.bottom <= top || q.top >= bottom || q.left >= right || q.right <= left) continue;
 						if (el.checkVisibility({ opacityProperty: true, visibilityProperty: true })) return true;
 					}
