@@ -84,6 +84,8 @@
 	let section = $state(0);
 	let part = $state<Stage>(null);
 	let attention = $state(-1);
+	/** The attention step the conversation is on, while it plays: Theo's "Compare first", "Then weigh", "And mix". */
+	let attentionSaid = -1;
 	let world: World | undefined;
 
 	const spec = $derived(HARNESSES[harness]);
@@ -810,7 +812,7 @@
 					} else if (what === 'gate') {
 						w.nameGate(i);
 						cue('gate', i);
-					}
+					} else if (what === 'attention') attentionSaid = i;
 				}
 			});
 			{
@@ -1171,7 +1173,7 @@
 				gate = T < 20.04 ? -1 : T < 20.4 ? 1 : Math.min(4, Math.floor(((T - 20.4) / 0.58) * 5));
 				section = Math.min(sections.length - 1, Math.floor(T));
 				part = T < 14.15 ? null : T < 14.3 ? 'embed' : T < 14.625 ? 'attn' : T < 14.7 ? 'ffn' : T < 14.865 ? 'stack' : 'head';
-				attention = T < 14.358 ? -1 : T < 14.4 ? 0 : T < 14.43 ? 1 : T < 14.5 ? 2 : 3;
+				attention = attentionSaid >= 0 && narrator.playing ? attentionSaid : T < 14.358 ? -1 : T < 14.4 ? 0 : T < 14.43 ? 1 : T < 14.5 ? 2 : 3;
 				tripStep = w.trip.step;
 				tripLaps = w.trip.laps;
 				tripDone = T >= 32.88;

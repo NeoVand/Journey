@@ -1,6 +1,10 @@
 {
 	"cues": [
 		{ "at": "The query is the question", "show": ["label:Q"], "hold": 6.5 },
-		{ "at": "You'd expect \"race\" and \"condition\"", "show": ["sign:32%", "sign:46%"], "together": true, "hold": 3.6 }
+		{ "at": "Compare first.", "show": [], "do": "attention", "index": 0 },
+		{ "at": "Then weigh.", "show": [], "do": "attention", "index": 1 },
+		{ "at": "You'd expect \"race\" and \"condition\"", "show": ["sign:32%", "sign:46%"], "together": true, "hold": 3.6 },
+		{ "at": "And mix.", "show": [], "do": "attention", "index": 2 },
+		{ "at": "That's one layer's worth", "show": [], "do": "attention", "index": 3 }
 	]
 }
