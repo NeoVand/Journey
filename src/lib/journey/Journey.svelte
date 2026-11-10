@@ -401,7 +401,7 @@
 	}
 	/** The sounds of the interface itself: a step, a flight, the map. Quiet until sound is on. */
 	/** The page's own sounds: the reader's steps and flights, and the controls they press. `n` and `m` say which, or how many. */
-	type CueKind = 'step' | 'flight' | 'drop' | 'rise' | 'map' | 'enter' | 'spin' | 'harness' | 'cache' | 'temperature' | 'turn' | 'tokens' | 'spot';
+	type CueKind = 'step' | 'flight' | 'drop' | 'rise' | 'map' | 'enter' | 'spin' | 'harness' | 'cache' | 'temperature' | 'turn' | 'tokens' | 'spot' | 'drawer' | 'check' | 'gate';
 	let cue: (kind: CueKind, n?: number, m?: number) => void = () => {};
 	let leaveTrack: (atOnce?: boolean) => void = () => {};
 	const trip = $derived(track ? TRACKS[track] : null);
@@ -801,9 +801,16 @@
 					if (what === 'turn') pinTurn(i);
 					else if (what === 'cache') setCache(i === 1);
 					else if (what === 'temperature') turnDial(i / 10);
-					else if (what === 'memory') w.nameMemory(i);
-					else if (what === 'check') w.nameCheck(i);
-					else if (what === 'gate') w.nameGate(i);
+					else if (what === 'memory') {
+						w.nameMemory(i);
+						cue('drawer', i);
+					} else if (what === 'check') {
+						w.nameCheck(i);
+						cue('check', i);
+					} else if (what === 'gate') {
+						w.nameGate(i);
+						cue('gate', i);
+					}
 				}
 			});
 			{
@@ -2226,6 +2233,21 @@
 				} else if (kind === 'turn') {
 					sound.voice(key(0.7), { gain: 0.22 });
 					sound.voice(porcelain(note(TURN_NOTES[n] ?? 0), 0.9), { gain: 0.26, delay: 0.03 });
+				} else if (kind === 'drawer') {
+					// A kind of memory named: its drawer slides out on a note that climbs with the count. The weights' drawer is
+					// locked, and only thuds.
+					if (n === 6) sound.play('clonk', { gain: 0.3, rate: 0.72 });
+					else {
+						sound.play('drawer-out', { gain: 0.28, rate: 1.05 + n * 0.03 });
+						sound.voice(porcelain(note([0, 2, 4, 5, 7, 9][n] ?? 0), 0.8), { gain: 0.13, delay: 0.08, wet: 0.3 });
+					}
+				} else if (kind === 'check') {
+					// One of the front door's checks named: a relay clicks, and the five climb a little scale.
+					sound.play('relay', { gain: 0.22, rate: 1 + n * 0.05 });
+					sound.voice(porcelain(note([0, 2, 4, 5, 7][n] ?? 0), 0.7), { gain: 0.12, delay: 0.04, wet: 0.3 });
+				} else if (kind === 'gate') {
+					// A gate named: its beacon rings once.
+					sound.voice(porcelain(note([2, 4, 7, 9][n] ?? 0), 1), { gain: 0.14, wet: 0.35 });
 				} else if (kind === 'spot') {
 					// Something named lights up: one quiet porcelain note, under the voices.
 					sound.voice(porcelain(note([4, 7, 9, 11, 12][n % 5]), 0.9), { gain: 0.12, wet: 0.3 });
