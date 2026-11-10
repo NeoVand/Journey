@@ -38,6 +38,11 @@ export type Hang = {
  * A real cable: held at its ends square to its fittings and by any clips, and free between them to hang under its own
  * weight, resting on what it meets. Settled once, as a rope of short links, and handed back as a smooth curve.
  */
+/** How many links a cable is settled as, and for how long: few and short enough to cost little as the page opens. */
+const LINKS = 48;
+const STEPS = 350;
+const ITERATIONS = 20;
+
 export function hang(h: Hang) {
 	const r = h.r;
 	// A bare end is where the cable carries on as something rigid: no fitting, just the way it's pointing.
@@ -52,7 +57,7 @@ export function hang(h: Hang) {
 	// Short links where it's short, longer where it's long: a long rope of tiny links stretches before it settles.
 	let total = 0;
 	for (let i = 0; i < holds.length - 1; i++) total += holds[i].distanceTo(holds[i + 1]) * slacks[i];
-	const link = Math.min(0.5, Math.max(0.07, total / 140));
+	const link = Math.min(0.8, Math.max(0.07, total / LINKS));
 
 	// The rope: links of about one length, as many to each span as its share of the length needs.
 	const p: THREE.Vector3[] = [];
@@ -82,54 +87,75 @@ export function hang(h: Hang) {
 	pinned.add(1);
 	pinned.add(N - 2);
 
-	const q = p.map((v) => v.clone());
-	const pin = p.map((v) => v.clone());
-	const g = new THREE.Vector3(0, -0.0016, 0);
-	const v = new THREE.Vector3();
+	// Settled in flat arrays: this runs once per cable while the page opens, so it has to be quick.
+	const P = new Float64Array(N * 3);
+	const Q = new Float64Array(N * 3);
+	const inv = new Float64Array(N);
+	for (let i = 0; i < N; i++) {
+		P[i * 3] = Q[i * 3] = p[i].x;
+		P[i * 3 + 1] = Q[i * 3 + 1] = p[i].y;
+		P[i * 3 + 2] = Q[i * 3 + 2] = p[i].z;
+		inv[i] = pinned.has(i) ? 0 : 1;
+	}
 	const bend = h.bend ?? 0.5;
-	const on = h.on ?? [];
-	for (let step = 0; step < 700; step++) {
+	const least = rest.map((l) => 2 * l * Math.cos(Math.min(1.2, l / (2 * bend))));
+	const on = (h.on ?? []).map((s) => ({ s, box: bounds(s, r) }));
+	const at = new THREE.Vector3();
+	// Pulls two points of the rope to a distance, or apart to at least it, each as far as it is free to move.
+	const pair = (i: number, j: number, length: number, apartOnly: boolean) => {
+		const w = inv[i] + inv[j];
+		if (!w) return;
+		const dx = P[j * 3] - P[i * 3];
+		const dy = P[j * 3 + 1] - P[i * 3 + 1];
+		const dz = P[j * 3 + 2] - P[i * 3 + 2];
+		const d = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1e-6;
+		if (apartOnly && d >= length) return;
+		const k = (d - length) / (d * w);
+		P[i * 3] += dx * k * inv[i];
+		P[i * 3 + 1] += dy * k * inv[i];
+		P[i * 3 + 2] += dz * k * inv[i];
+		P[j * 3] -= dx * k * inv[j];
+		P[j * 3 + 1] -= dy * k * inv[j];
+		P[j * 3 + 2] -= dz * k * inv[j];
+	};
+	for (let step = 0; step < STEPS; step++) {
 		for (let i = 0; i < N; i++) {
-			if (pinned.has(i)) continue;
-			v.subVectors(p[i], q[i]).multiplyScalar(0.94);
-			q[i].copy(p[i]);
-			p[i].add(v).add(g);
+			if (!inv[i]) continue;
+			for (let c = 0; c < 3; c++) {
+				const o = i * 3 + c;
+				const vel = (P[o] - Q[o]) * 0.94;
+				Q[o] = P[o];
+				P[o] += vel + (c === 1 ? -0.0016 : 0);
+			}
 		}
-		for (let it = 0; it < 40; it++) {
+		for (let it = 0; it < ITERATIONS; it++) {
 			for (let j = 0; j < N - 1; j++) {
 				const i = it % 2 ? N - 2 - j : j;
-				const A = p[i];
-				const B = p[i + 1];
-				v.subVectors(B, A);
-				const d = v.length() || 1e-6;
-				const diff = (d - rest[i]) / d;
-				const fa = pinned.has(i) ? 0 : pinned.has(i + 1) ? 1 : 0.5;
-				const fb = pinned.has(i + 1) ? 0 : pinned.has(i) ? 1 : 0.5;
-				A.addScaledVector(v, diff * fa);
-				B.addScaledVector(v, -diff * fb);
+				pair(i, i + 1, rest[i], false);
 			}
 			// It bends freely, but no tighter than its bend radius: the links either side of one can't fold closer than that.
-			for (let i = 0; i < N - 2; i++) {
-				const A = p[i];
-				const B = p[i + 2];
-				v.subVectors(B, A);
-				const d = v.length() || 1e-6;
-				const least = 2 * rest[i] * Math.cos(Math.min(1.2, rest[i] / (2 * bend)));
-				if (d >= least) continue;
-				const diff = (d - least) / d;
-				const fa = pinned.has(i) ? 0 : pinned.has(i + 2) ? 1 : 0.5;
-				const fb = pinned.has(i + 2) ? 0 : pinned.has(i) ? 1 : 0.5;
-				A.addScaledVector(v, diff * fa);
-				B.addScaledVector(v, -diff * fb);
+			for (let i = 0; i < N - 2; i++) pair(i, i + 2, least[i], true);
+			for (let i = 0; i < N; i++) {
+				if (!inv[i]) continue;
+				const x = P[i * 3];
+				const y = P[i * 3 + 1];
+				const z = P[i * 3 + 2];
+				for (const { s, box } of on) {
+					if (x < box[0] || x > box[3] || y < box[1] || y > box[4] || z < box[2] || z > box[5]) continue;
+					at.set(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]);
+					push(at, s, r);
+					P[i * 3] = at.x;
+					P[i * 3 + 1] = at.y;
+					P[i * 3 + 2] = at.z;
+				}
 			}
-			for (let i = 0; i < N; i++) if (!pinned.has(i)) for (const s of on) push(p[i], s, r);
-			for (const i of pinned) p[i].copy(pin[i]);
 		}
 	}
+	for (let i = 0; i < N; i++) p[i].set(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]);
 
-	// Every other link for a first curve; the fittings' own points keep the ends square.
+	// A first curve through the links; the fittings' own points keep the ends square.
 	const pts: THREE.Vector3[] = h.from.bare ? [] : [new THREE.Vector3(...a[0]), new THREE.Vector3(...a[1])];
-	for (let i = 0; i < N; i++) if (i === 0 || i === N - 1 || i % 2 === 0) pts.push(p[i]);
+	for (let i = 0; i < N; i++) pts.push(p[i]);
 	if (!h.to.bare) pts.push(new THREE.Vector3(...b[1]), new THREE.Vector3(...b[2]));
 	const rough = new THREE.CatmullRomCurve3(pts, false, 'centripetal');
 
@@ -148,7 +174,7 @@ export function hang(h: Hang) {
 			if (keep(i)) continue;
 			mid.addVectors(fine[i - 1], fine[i + 1]).multiplyScalar(0.5);
 			fine[i].lerp(mid, 0.5);
-			for (const s of on) push(fine[i], s, r);
+			for (const { s } of on) push(fine[i], s, r);
 		}
 	}
 	const c = new THREE.CatmullRomCurve3(fine.filter((_, i) => i % 2 === 0 || i === n), false, 'centripetal');
@@ -157,6 +183,18 @@ export function hang(h: Hang) {
 }
 
 const TMP = new THREE.Vector3();
+
+/** A box round a solid, grown by the cable's radius: a point outside it can't touch the solid. */
+function bounds(s: Solid, r: number): number[] {
+	if ('roller' in s) {
+		const e = s.radius + r + s.half;
+		return [s.roller[0] - e, s.roller[1] - e, s.roller[2] - e, s.roller[0] + e, s.roller[1] + e, s.roller[2] + e];
+	}
+	if ('min' in s) return [s.min[0] - r, s.min[1] - r, s.min[2] - r, s.max[0] + r, s.max[1] + r, s.max[2] + r];
+	const xs = s.outline.map((o) => o[0]);
+	const zs = s.outline.map((o) => o[1]);
+	return [Math.min(...xs) - r, s.bottom - r, Math.min(...zs) - r, Math.max(...xs) + r, s.top + r, Math.max(...zs) + r];
+}
 
 /**
  * A roller on a bracket at an island's edge, for a cable to go over instead of round the rim: `rim` is a point on the
@@ -167,9 +205,10 @@ export function roller(rim: V3, out: [number, number], radius = 0.22, r = 0.1) {
 	const c: V3 = [rim[0] + o.x * (radius + 0.06), rim[1] - radius, rim[2] + o.y * (radius + 0.06)];
 	const axis: V3 = [-o.y, 0, o.x];
 	const hold: V3 = [rim[0] - o.x * 0.25, rim[1] + r, rim[2] - o.y * 0.25];
-	/** The roller's far side, level with its axle: where a cable that hangs straight down leaves it. */
+	/** The roller's crown, and its far side level with its axle: where a cable that hangs straight down leaves it. */
+	const top: V3 = [c[0], c[1] + radius + r, c[2]];
 	const past: V3 = [c[0] + o.x * (radius + r), c[1], c[2] + o.y * (radius + r)];
-	return { c, axis, o, radius, hold, past, solid: { roller: c, axis, radius, half: 0.3 } as Solid };
+	return { c, axis, o, radius, hold, top, past, solid: { roller: c, axis, radius, half: 0.3 } as Solid };
 }
 
 /** Builds a roller: the wheel on its axle, two cheeks bolted to the island's edge, and a plate on its top. */
@@ -256,30 +295,30 @@ function push(p: THREE.Vector3, s: Solid, r: number) {
 /** Whether a point is inside an outline, how far it is from its edge, and the edge's outward normal there. */
 function edge(o: [number, number][], x: number, z: number) {
 	let inside = false;
-	let dist = Infinity;
-	let nx = 0;
-	let nz = 0;
+	let best = Infinity;
+	let cx = 0;
+	let cz = 0;
 	for (let i = 0, j = o.length - 1; i < o.length; j = i++) {
-		const [x1, z1] = o[j];
-		const [x2, z2] = o[i];
+		const x1 = o[j][0];
+		const z1 = o[j][1];
+		const x2 = o[i][0];
+		const z2 = o[i][1];
 		if (z2 > z !== z1 > z && x < ((x1 - x2) * (z - z2)) / (z1 - z2) + x2) inside = !inside;
 		const ex = x2 - x1;
 		const ez = z2 - z1;
 		const t = Math.max(0, Math.min(1, ((x - x1) * ex + (z - z1) * ez) / (ex * ex + ez * ez)));
-		const cx = x1 + ex * t;
-		const cz = z1 + ez * t;
-		const d = Math.hypot(x - cx, z - cz);
-		if (d < dist) {
-			dist = d;
-			const l = Math.hypot(x - cx, z - cz) || 1;
-			nx = (x - cx) / l;
-			nz = (z - cz) / l;
+		const px = x1 + ex * t;
+		const pz = z1 + ez * t;
+		const d = (x - px) * (x - px) + (z - pz) * (z - pz);
+		if (d < best) {
+			best = d;
+			cx = px;
+			cz = pz;
 		}
 	}
-	// The normal points from the edge to the point: outward when it's outside, inward when inside.
-	if (inside) {
-		nx = -nx;
-		nz = -nz;
-	}
-	return { inside, dist, nx, nz };
+	const dist = Math.sqrt(best);
+	const l = dist || 1;
+	// The normal points from the edge to the point: outward when it's outside, inward when inside, so flip it inside.
+	const sign = inside ? -1 : 1;
+	return { inside, dist, nx: ((x - cx) / l) * sign, nz: ((z - cz) / l) * sign };
 }

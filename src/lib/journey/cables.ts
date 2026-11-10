@@ -52,7 +52,7 @@ const WORKSHOP = slab(superellipse(32, 15, low([-24.5, 0, 0])[0], 0.4), WORKSHOP
 const HARNESS: Solid = { min: [-0.3, 0, -1.78], max: [2.5, 3.9, 0.5] };
 
 /** Rollers on your island's edge, where the cables go over: the green one behind the harness, the calls' further left. */
-export const RETURN_ROLLER = roller([0.6, 0, -3.27], [0.05, -1], 0.24, 0.115);
+export const RETURN_ROLLER = roller([0.4, 0, -3.32], [0, -1], 0.24, 0.115);
 export const CALL_ROLLER = roller([-4.1, 0, -2.95], [-0.45, -0.89], 0.24, 0.09);
 
 let returnCable: THREE.CatmullRomCurve3 | null = null;
@@ -67,7 +67,8 @@ export function returnPath() {
 		to: { at: low([-13.5, -14.69, 3.6]), out: [1, 0, 0] },
 		via: [
 			{ at: RETURN_ROLLER.hold, slack: 1.12 },
-			{ at: RETURN_ROLLER.past, slack: 1.2 },
+			{ at: RETURN_ROLLER.top, slack: 1.02 },
+			{ at: RETURN_ROLLER.past, slack: 1.11 },
 			{ at: low([-10.7, -14.69, 3.6]), slack: 1.03 },
 			{ at: low([-11.5, -14.69, 3.6]), slack: 1 }
 		],
@@ -85,10 +86,11 @@ export function callPath(dock: V3) {
 		to: { at: dock, out: [1, 0, 0] },
 		via: [
 			{ at: [-1.5, 0.09, -2.45], slack: 1.12 },
-			{ at: CALL_ROLLER.hold, slack: 1.04 }
+			{ at: CALL_ROLLER.hold, slack: 1.04 },
+			{ at: CALL_ROLLER.top, slack: 1.02 }
 		],
 		r: 0.09,
-		slack: 1.022,
+		slack: 1.017,
 		bend: 0.8,
 		on: [HOME, HARNESS, CALL_ROLLER.solid]
 	});
