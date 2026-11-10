@@ -413,7 +413,7 @@
 	.stops {
 		position: relative;
 		height: 18px;
-		margin: 0 0 3px;
+		margin: 0 0 7px;
 	}
 	.stops button {
 		position: absolute;

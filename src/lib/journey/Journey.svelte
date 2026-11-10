@@ -453,15 +453,20 @@
 	let setFilmTalk: (on: boolean) => void = (on) => (filmTalk = on);
 	/**
 	 * The film's other two layers: the music and air of each place, and the sounds of the machines. They're the sound
-	 * mixer's own two faders, at nothing or back where they were; turning either on turns the sound on.
+	 * mixer's own two faders: off puts one at nothing, and on puts it back where it was. Turning either on turns the
+	 * sound on, if it's off.
 	 */
-	let hearAmbience = $state(true);
-	let hearEffects = $state(true);
+	const heard = $derived({ talk: filmTalk, ambience: soundOn && mix.ambience > 0, effects: soundOn && mix.effects > 0 });
+	/** Where each fader was before its layer went off. */
+	const keptMix: Mix = { ...MIX };
 	function setLayer(layer: 'talk' | 'ambience' | 'effects', on: boolean) {
 		if (layer === 'talk') return setFilmTalk(on);
-		if (on && !soundOn) toggleSound();
-		if (layer === 'ambience') hearAmbience = on;
-		else hearEffects = on;
+		if (!on) {
+			if (mix[layer] > 0) keptMix[layer] = mix[layer];
+			return setMix({ ...mix, [layer]: 0 });
+		}
+		if (mix[layer] <= 0) setMix({ ...mix, [layer]: keptMix[layer] || MIX[layer] });
+		if (!soundOn) toggleSound();
 	}
 	let scrubFilm: (u: number, phase: 'start' | 'move' | 'end') => void = () => {};
 	let filmOpen = $state(false);
@@ -2501,7 +2506,7 @@
 					playing={filming}
 					open={filmOpen}
 					anchor={filmKey}
-					layers={{ talk: filmTalk, ambience: soundOn && hearAmbience, effects: soundOn && hearEffects }}
+					layers={heard}
 					onlayer={(layer, on) => setLayer(layer, on)}
 					onscrub={(u, phase) => scrubFilm(u, phase)}
 					ontoggle={() => toggleFilm()}
