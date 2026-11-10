@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { TRIP } from '../content';
-import { rbox, ring } from '../kit/geometry';
+import { LOWER, MODEL_FLANK, MODEL_ISLAND_Y, MODEL_X } from '../layout';
+import { rbox } from '../kit/geometry';
 import { createSign } from '../kit/parts';
 import { curve } from '../kit/machines';
 import { mats } from '../kit/materials';
@@ -9,7 +10,6 @@ import { isPhone } from '../kit/print';
 
 /** The last section: the camera pulls back, and for the first time the whole world is in one frame. */
 export const FINALE_T = 31.97;
-const TUBE_ON = [32.16, 32.33];
 const STORY = [32.34, 32.92];
 const LAP_MS = 14000;
 const MOST = 5;
@@ -17,6 +17,8 @@ const MOST = 5;
 type V3 = [number, number, number];
 const v = (p: V3) => new THREE.Vector3(...p);
 const line = (a: V3, b: V3) => new THREE.LineCurve3(v(a), v(b));
+/** Where something drawn for the gates or the workshop stands now, in the ring below your laptop. */
+const low = (p: V3): V3 => [p[0] + LOWER[0], p[1] + LOWER[1], p[2] + LOWER[2]];
 
 /** A stretch of a curve, in either direction. */
 class Part extends THREE.Curve<THREE.Vector3> {
@@ -52,7 +54,8 @@ interface Leg {
 export interface Route {
 	cable: THREE.Curve<THREE.Vector3>;
 	out: THREE.Curve<THREE.Vector3>;
-	under: THREE.Curve<THREE.Vector3>;
+	/** From the edge of your island up to the foot of the wire. */
+	up: THREE.Curve<THREE.Vector3>;
 	down: THREE.Curve<THREE.Vector3>;
 	flow: THREE.Curve<THREE.Vector3>;
 	flowLip: number;
@@ -60,15 +63,13 @@ export interface Route {
 	gatePath: THREE.Curve<THREE.Vector3>;
 	dock: V3;
 	trackEnd: V3;
-	gatewayX: number;
-	templateX: number;
 	slotX: number;
 	beltY: number;
 	lineZ: number;
-	/** The underside of the island the gateway stands on, which the line down passes through. */
-	islandUnder: number;
-	/** The right-hand side of the model's pedestal, where the reply leaves. */
-	flank: V3;
+	/** The glass of the wire: where it starts and ends along x, and its height. */
+	tunnel: [number, number, number];
+	/** The reply's glass tube, from the model down to the harness's roof. */
+	stream: THREE.Curve<THREE.Vector3>;
 }
 
 export class Finale {
@@ -88,10 +89,6 @@ export class Finale {
 	private tokens: THREE.Mesh[] = [];
 	private halos: THREE.Sprite[] = [];
 	private runs: number[] = [];
-	private glass: THREE.Mesh;
-	private tubeSegments = 300;
-	private tubeRadial = 28;
-	private tubeRings: { mesh: THREE.Mesh; at: number }[] = [];
 	private signs: { group: THREE.Group; at: number }[] = [];
 	private stepStarts: number[] = [];
 	private mat = new THREE.Matrix4();
@@ -102,83 +99,46 @@ export class Finale {
 
 	constructor(r: Route) {
 		const m = mats();
-		const [fx, fy, fz] = r.flank;
-		// The way home: from the model's pedestal, wide around the right of everything, and down into the harness.
-		const home = curve([
-			[fx, fy, fz],
-			[fx + 2.4, fy + 0.05, fz],
-			[fx + 9, fy + 1.4, fz - 0.4],
-			[24, -24, -0.6],
-			[28, -10, -2.2],
-			[24, 5.4, -3.2],
-			[13, 11.2, -2.6],
-			[5, 11.6, -1.4],
-			[1.9, 10.9, -0.85],
-			[1.1, 9, -0.75]
-		]);
-		// Modelled from the harness end, because that's the end it grows from: out of the stub, and away to find the model.
-		const grown = new Part(home, 1, 0);
-		this.glass = new THREE.Mesh(
-			new THREE.TubeGeometry(grown, this.tubeSegments, 0.5, this.tubeRadial),
-			new THREE.MeshPhysicalMaterial({ color: '#7fb4ea', transparent: true, opacity: 0.42, roughness: 0.08, clearcoat: 1, depthWrite: false, side: THREE.DoubleSide })
-		);
-		this.glass.renderOrder = 4;
-		this.group.add(this.glass);
-		const hoop = ring(0.6, 0.52, 0.08);
-		const Y = new THREE.Vector3(0, 1, 0);
-		for (let i = 1; i < 12; i++) {
-			const at = i / 12;
-			const mesh = new THREE.Mesh(hoop, m.steel);
-			home.getPointAt(at, mesh.position);
-			mesh.quaternion.setFromUnitVectors(Y, home.getTangentAt(at));
-			mesh.castShadow = true;
-			this.group.add(mesh);
-			this.tubeRings.push({ mesh, at: 1 - at });
-		}
-		const collar = new THREE.Mesh(ring(0.74, 0.52, 0.26), m.steel);
-		collar.position.set(fx + 0.1, fy, fz);
-		collar.rotation.z = Math.PI / 2;
-		this.group.add(collar);
-		this.tubeRings.push({ mesh: collar, at: 1 });
-
 		const hidden = true;
 		const { lineZ: z, beltY } = r;
 		const end = (path: THREE.Curve<THREE.Vector3>, u: number) => path.getPointAt(u).toArray() as V3;
-		const firstWhere = (path: THREE.Curve<THREE.Vector3>, test: (p: THREE.Vector3) => boolean) => {
-			for (let i = 0; i <= 400; i++) if (test(path.getPointAt(i / 400, this.p))) return i / 400;
-			return 1;
-		};
-		const outEnd = firstWhere(r.out, (p) => p.x > 7);
 		const above = (p: V3, h: number): V3 => [p[0], p[1] + h, p[2]];
-		const downStart = firstWhere(r.down, (p) => p.y < r.islandUnder - 0.5);
+		const [tunnelFrom, tunnelTo, tunnelY] = r.tunnel;
+		// Where the green loop comes out of the sandbox's wall, on its way back up to the harness.
+		const wall = v(low([-10.6, -13, 2.2]));
+		let backFrom = 0;
+		for (let i = 0, best = Infinity; i <= 400; i++) {
+			const d = r.back.getPointAt(i / 400, this.p).distanceTo(wall);
+			if (d < best) [best, backFrom] = [d, i / 400];
+		}
+		const flowEnd = end(r.flow, 1);
 		this.legs = [
 			// Up from the keys and down onto the cable, which is thin and short, so it travels small.
 			{ path: curve([[-3.3, 0.85, 1], [-2.4, 1.3, 0.5], [-1.5, 0.62, -0.3], above(end(r.cable, 0.28), 0.22), above(end(r.cable, 0.34), 0.2)]), time: 1, ride: 0, step: 0, size: 0.5 },
 			{ path: new Part(r.cable, 0.34, 1), time: 0.6, ride: 0.2, step: 0, size: 0.5, shrink: 2.5 },
 			{ path: line([0, 2, -0.65], [1.8, 2, -0.65]), time: 1.1, ride: 0, step: 1, hidden },
-			// Above the pipe, high enough to clear the foot of the easel, and off it before the pipe turns down into the floor.
-			{ path: new Part(r.out, 0, outEnd), time: 1.5, ride: 0.3, step: 2 },
-			{ path: line(end(r.out, outEnd), end(r.under, 0)), time: 0.06, ride: 0, step: 2, hidden },
-			{ path: r.under, time: 1, ride: 0.2, step: 2 },
-			{ path: line(end(r.under, 1), [9.7, -6, z]), time: 0.1, ride: 0, step: 2, hidden },
-			{ path: line([9.7, -6, z], [14.3, -6, z]), time: 0.9, ride: 0, step: 2 },
-			// Through the gateway, and out of the bottom of its island. The token only reappears once it's clear of it.
-			{ path: line([14.3, -6, z], end(r.down, downStart)), time: 1, ride: 0, step: 3, hidden },
-			{ path: new Part(r.down, downStart, 1), time: 1.6, ride: 0.2, step: 3 },
+			// Along the pipe past the easel, riding high enough to clear the easel's foot, and up the pipe into the sky.
+			{ path: r.out, time: 1.5, ride: 0.3, step: 2 },
+			{ path: r.up, time: 1.2, ride: 0.2, step: 2 },
+			{ path: line(end(r.up, 1), [tunnelFrom + 0.1, tunnelY, z]), time: 0.1, ride: 0, step: 2, hidden },
+			{ path: line([tunnelFrom + 0.1, tunnelY, z], [tunnelTo - 0.1, tunnelY, z]), time: 0.9, ride: 0, step: 2 },
+			// Through the gateway, and out of its back wall up to the tokenizer.
+			{ path: line([tunnelTo - 0.1, tunnelY, z], end(r.down, 0.03)), time: 1, ride: 0, step: 3, hidden },
+			{ path: new Part(r.down, 0.03, 1), time: 1.6, ride: 0.2, step: 3 },
 			{ path: line(end(r.down, 1), [r.slotX, beltY, z]), time: 0.4, ride: 0, step: 3, hidden },
-			{ path: new Part(r.flow, 0, r.flowLip), time: 2.2, ride: 0.24, step: 3, size: 0.72 },
-			{ path: line([fx - 4, fy + 8, fz], [fx - 1, fy, fz]), time: 1.9, ride: 0, step: 4, hidden },
-			{ path: home, time: 2.5, ride: 0, step: 5 },
-			{ path: line([1.1, 9, -0.75], [1.1, 4.1, -0.75]), time: 0.3, ride: 0, step: 5 },
+			{ path: new Part(r.flow, 0, r.flowLip), time: 2.4, ride: 0.24, step: 3, size: 0.72 },
+			// Through the model, and out of the side of its pedestal into the glass.
+			{ path: line(flowEnd, end(r.stream, 0)), time: 1.9, ride: 0, step: 4, hidden },
+			{ path: r.stream, time: 2.5, ride: 0, step: 5 },
 			{ path: line([1.1, 3.6, -0.75], [0.4, 3.2, -1.76]), time: 0.25, ride: 0, step: 6, hidden },
 			{ path: r.gatePath, time: 2, ride: 0.2, step: 6 },
 			{ path: line(r.dock, [r.dock[0] + 1.6, r.dock[1], r.dock[2]]), time: 0.2, ride: 0, step: 6, hidden },
 			{ path: line([r.dock[0] + 1.6, r.dock[1], r.dock[2]], r.trackEnd), time: 2.1, ride: 0, step: 6 },
-			{ path: curve([r.trackEnd, [-40.4, -12.1, 0.7], [-38.2, -13, 0.7], [-36.3, -14.46, 0.7]]), time: 0.6, ride: 0, step: 7 },
-			{ path: line([-36.3, -14.46, 0.7], [-34, -14.7, 1]), time: 0.1, ride: 0, step: 7, hidden },
-			{ path: curve([[-34, -14.7, 1], [-30, -14.7, 2.4], [-24, -14.7, 3.7], [-14.4, -14.7, 3.6]]), time: 1, ride: 0, step: 7 },
-			{ path: line([-14.4, -14.36, 3.6], [-10.6, -13, 2.2]), time: 0.1, ride: 0, step: 8, hidden },
-			{ path: new Part(r.back, 0.86, 0), time: 2, ride: 0.22, step: 8 }
+			{ path: curve([r.trackEnd, low([-40.4, -12.1, 0.7]), low([-38.2, -13, 0.7]), low([-36.3, -14.46, 0.7])]), time: 0.6, ride: 0, step: 7 },
+			{ path: line(low([-36.3, -14.46, 0.7]), low([-34, -14.7, 1])), time: 0.1, ride: 0, step: 7, hidden },
+			{ path: curve([low([-34, -14.7, 1]), low([-30, -14.7, 2.4]), low([-24, -14.7, 3.7]), low([-14.4, -14.7, 3.6])]), time: 1, ride: 0, step: 7 },
+			{ path: line(low([-14.4, -14.36, 3.6]), end(r.back, backFrom)), time: 0.1, ride: 0, step: 8, hidden },
+			{ path: new Part(r.back, backFrom, 0), time: 2, ride: 0.22, step: 8 }
 		];
 		this.total = this.legs.reduce((sum, leg) => sum + leg.time, 0);
 		let sum = 0;
@@ -223,13 +183,13 @@ export class Finale {
 		const where: V3[] = [
 			[-5.2, 3.6, 0.6],
 			[5.4, 5.4, -0.75],
-			[9.4, -2.7, z],
-			[20.6, -2.2, z],
-			[11.4, -29.6, 1.2],
-			[23.6, -11.8, -2.2],
-			[-52, -7, 0.7],
-			[-27, -5.7, 1],
-			[-5.2, -7.2, -1]
+			[tunnelFrom - 0.2, tunnelY + 3.3, z],
+			[tunnelTo + 6.2, tunnelY + 1.2, z],
+			[MODEL_X - 9.4, MODEL_ISLAND_Y + 9.6, 1.2],
+			[MODEL_FLANK[0] - 18.4, 15.6, -0.5],
+			low([-52, -7, 0.7]),
+			low([-27, -5.7, 1]),
+			[23.4, -7.4, -1]
 		];
 		TRIP.forEach((stop, i) => {
 			// Already sized for phones above, so it opts out of the general phone enlargement.
@@ -283,15 +243,6 @@ export class Finale {
 		this.group.visible = on;
 		if (!on) return;
 		const now = performance.now();
-
-		const drawn = smooth(seg(T, TUBE_ON[0], TUBE_ON[1]));
-		this.glass.visible = drawn > 0;
-		this.glass.geometry.setDrawRange(0, Math.floor(drawn * this.tubeSegments) * this.tubeRadial * 6);
-		this.tubeRings.forEach(({ mesh, at }) => {
-			const k = seg(drawn, at - 0.02, at + 0.02);
-			mesh.visible = k > 0;
-			mesh.scale.setScalar(Math.max(0.001, outBack(k, 2)));
-		});
 
 		const story = seg(T, STORY[0], STORY[1]);
 		this.signs.forEach(({ group, at }) => {
