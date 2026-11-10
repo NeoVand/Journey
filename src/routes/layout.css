@@ -1,4 +1,7 @@
 @import 'tailwindcss';
+/* Scratch scripts and the side sessions' worktrees are not the site: a change there mustn't restyle the page while it's open. */
+@source not '../../tmp';
+@source not '../../.claude';
 @plugin '@tailwindcss/typography';
 @import '@fontsource-variable/bricolage-grotesque/index.css';
 @import '@fontsource-variable/instrument-sans/index.css';

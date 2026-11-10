@@ -424,10 +424,29 @@ test("the film's rail scrubs the story either way, and the picture goes with it"
 	await key.hover();
 	const plate = page.getByRole('group', { name: 'The whole story, as a film' });
 	await expect(plate).toBeVisible();
-	const box = (await plate.locator('.strip').boundingBox())!;
-	const y = box.y + box.height / 2;
+	const strip = plate.locator('.strip');
 	const T = () => page.evaluate(() => (window as unknown as Film).__film.state().T);
+	/**
+	 * Where the rail is now, once it has come to rest: the plate drops open with a little spring, settling several pixels
+	 * lower, and a drag aimed where it was a moment ago misses it by a pixel and scrubs nothing.
+	 */
+	const rail = async () => {
+		let box = (await strip.boundingBox())!;
+		await expect
+			.poll(
+				async () => {
+					const was = box;
+					box = (await strip.boundingBox())!;
+					return Math.abs(box.x - was.x) + Math.abs(box.y - was.y) + Math.abs(box.width - was.width) < 0.25;
+				},
+				{ intervals: [150], timeout: 20_000 }
+			)
+			.toBe(true);
+		return box;
+	};
 	const drag = async (from: number, to: number) => {
+		const box = await rail();
+		const y = box.y + box.height / 2;
 		await page.mouse.move(box.x + box.width * from, y);
 		await page.mouse.down();
 		for (let i = 1; i <= 12; i++) {
