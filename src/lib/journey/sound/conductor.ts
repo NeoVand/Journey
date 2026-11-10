@@ -3,7 +3,7 @@
  * a jump plays nothing in between, scrolling back is quiet, and a fast scroll keeps only the moments that matter.
  * Ambiences rise and fall with the stretch of the story they belong to.
  */
-import type { Sound, Voice } from './engine';
+import type { Playing, Sound, Voice } from './engine';
 
 export type Where = readonly [number, number, number];
 
@@ -24,6 +24,11 @@ export interface Cue {
 	delay?: number;
 	offset?: number;
 	length?: number;
+	/**
+	 * Story time a recording belongs to until: if the picture gets there before the sound is over, or goes back before
+	 * it began, the sound fades out then, so it never outlasts what it shows, however fast the story plays.
+	 */
+	until?: number;
 }
 
 export interface Bed {
@@ -42,6 +47,8 @@ export type Hear = (x: number, y: number, z: number) => { pan: number; gain: num
 export class Conductor {
 	private last: number | null = null;
 	private cues: Cue[];
+	/** Sounds still playing that must be over by a point in the story. */
+	private held: { cue: Cue; playing: Playing }[] = [];
 
 	constructor(
 		private sound: Sound,
@@ -72,11 +79,23 @@ export class Conductor {
 	/** Forget where the reader was, so the next frame plays nothing that came before it. */
 	reset() {
 		this.last = null;
+		this.letGo(NaN);
 	}
 
 	/** The story was cut to T: whatever it skipped wasn't seen, so it isn't heard either, however short the skip. */
 	cut(T: number) {
 		this.last = T;
+		this.letGo(T);
+	}
+
+	/** Stops the sounds whose stretch of the story T is outside of. */
+	private letGo(T: number) {
+		if (!this.held.length) return;
+		this.held = this.held.filter((h) => {
+			const inside = T >= h.cue.T && T < (h.cue.until ?? Infinity);
+			if (!inside) h.playing.stop();
+			return inside;
+		});
 	}
 
 	/**
@@ -86,6 +105,7 @@ export class Conductor {
 	frame(T: number, dt: number, hurried = false) {
 		const prev = this.last;
 		this.last = T;
+		this.letGo(T);
 		if (prev === null || T <= prev || !this.sound.on) return;
 		const moved = T - prev;
 		// A cut lands somewhere new: nothing in between was seen, so nothing is heard.
@@ -96,6 +116,7 @@ export class Conductor {
 			if (c.T <= prev) continue;
 			if (c.T > T) break;
 			if (fast && c.minor) continue;
+			if (c.until !== undefined && T >= c.until) continue;
 			if (played++ >= 6) break;
 			this.fire(c, fast ? 0.7 : 1);
 		}
@@ -107,7 +128,9 @@ export class Conductor {
 		const gain = (c.gain ?? 1) * heard.gain * scale;
 		if (gain < 0.02) return;
 		if (c.dip) this.sound.dip(c.dip);
-		if (typeof c.sound === 'string') this.sound.play(c.sound, { gain, pan: heard.pan, rate: c.rate, wet: c.wet, delay: c.delay, offset: c.offset, length: c.length });
-		else this.sound.voice(c.sound, { gain, pan: heard.pan, wet: c.wet, delay: c.delay });
+		if (typeof c.sound === 'string') {
+			const playing = this.sound.play(c.sound, { gain, pan: heard.pan, rate: c.rate, wet: c.wet, delay: c.delay, offset: c.offset, length: c.length });
+			if (playing && c.until !== undefined) this.held.push({ cue: c, playing });
+		} else this.sound.voice(c.sound, { gain, pan: heard.pan, wet: c.wet, delay: c.delay });
 	}
 }

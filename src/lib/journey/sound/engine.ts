@@ -31,9 +31,15 @@ export interface Play {
 	delay?: number;
 	/** How much goes to the room's echo, 0 to 1. */
 	wet?: number;
-	/** Where in the sound to start, and how long to play, in seconds. */
+	/** Where in the sound to start, and how long to play, in seconds: the start in the recording, the length by the clock. */
 	offset?: number;
 	length?: number;
+}
+
+/** A recording on its way or playing, which can be let go before its end. */
+export interface Playing {
+	/** Fades it out now, quickly enough to be over at once, slowly enough never to click. */
+	stop(): void;
 }
 
 /** A synthesized voice: builds its nodes into `out`, starting at time `at`, and says when it ends. */
@@ -200,7 +206,7 @@ export class Sound {
 	 * Plays a recorded sound. One that hasn't loaded yet is skipped rather than played late, and the same sound
 	 * twice within 40 ms plays once, so a fast scroll never machine-guns.
 	 */
-	play(name: string, o: Play = {}) {
+	play(name: string, o: Play = {}): Playing | undefined {
 		const ctx = this.ctx;
 		if (!ctx || !this.on) return;
 		const buffer = this.buffers.get(name);
@@ -218,13 +224,28 @@ export class Sound {
 		const g = this.strip(o.gain ?? 1, o.pan ?? 0, o.wet ?? 0.18, at);
 		src.connect(g);
 		const offset = o.offset ?? 0;
+		// Starting partway into a recording, it comes in over a few milliseconds instead of with a click.
+		if (offset > 0) {
+			g.gain.setValueAtTime(0, at);
+			g.gain.linearRampToValueAtTime(o.gain ?? 1, at + 0.008);
+		}
 		if (o.length) {
-			// A short fade at the cut, so stopping early never clicks.
+			// A short fade at the cut, so stopping early never clicks. The source counts its length in the recording's own
+			// seconds, which go by faster when it plays faster.
 			const end = at + o.length;
 			g.gain.setValueAtTime(o.gain ?? 1, end - 0.04);
 			g.gain.linearRampToValueAtTime(0, end);
-			src.start(at, offset, o.length + 0.01);
+			src.start(at, offset, (o.length + 0.01) * (o.rate ?? 1));
 		} else src.start(at, offset);
+		return {
+			stop: () => {
+				const now = ctx.currentTime;
+				g.gain.cancelScheduledValues(now);
+				g.gain.setValueAtTime(now < at ? 0 : g.gain.value, now);
+				g.gain.linearRampToValueAtTime(0, now + 0.09);
+				src.stop(Math.max(now, at) + 0.1);
+			}
+		};
 	}
 
 	/** Plays a synthesized voice. */
