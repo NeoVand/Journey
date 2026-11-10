@@ -2407,7 +2407,8 @@
 				<rect class="mist" width="168" height="96" fill="url(#cloud-mist-{id})" />
 			</g>
 		</svg>
-		<span class="trip-name">{TRACKS[id].name}</span>
+		<!-- A hyphenated word such as to-do wraps as a whole: never "to-" at the end of one line and "do" on the next. -->
+		<span class="trip-name">{#each TRACKS[id].name.split(/(\S+-\S+)/) as part, i (i)}{#if i % 2}<span class="whole">{part}</span>{:else}{part}{/if}{/each}</span>
 	</button>
 {/snippet}
 
@@ -5554,6 +5555,9 @@
 	.trip-cloud .mist {
 		transition: opacity 0.4s;
 	}
+	.trip-name .whole {
+		white-space: nowrap;
+	}
 	.trip-name {
 		max-width: 100%;
 		font-family: var(--display);
@@ -5563,11 +5567,14 @@
 		letter-spacing: -0.005em;
 		text-align: center;
 		text-wrap: pretty;
-		/* A glow of the sky round the letters, so a name stays clear where the world rises behind it, as on a short phone. */
+		/* A glow of the sky round the letters, so a name stays clear where the world rises behind it, as on a short phone,
+		   and a cable passing behind it fades out at the letters instead of striking through them. */
 		text-shadow:
-			0 0 2px rgb(214 234 251),
-			0 0 6px rgb(214 234 251 / 0.95),
-			0 0 12px rgb(214 234 251 / 0.85);
+			0 0 1px rgb(214 234 251),
+			0 0 3px rgb(214 234 251),
+			0 0 3px rgb(214 234 251),
+			0 0 7px rgb(214 234 251 / 0.95),
+			0 0 14px rgb(214 234 251 / 0.85);
 	}
 	@media (hover: hover) {
 		.trip-cloud:hover:not(:disabled) svg {
