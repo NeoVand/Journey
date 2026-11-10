@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { GLOSSARY, HARNESSES, FORMS, LOGITS, RUN_WITH_CACHE, RUN_WITHOUT_CACHE, slug, TEN_AT, TEN_STEP, TEN_TURNS, TOP_K, TRACK_AT, TRACKS, TRIP, wheelOdds, wholePercents, type HarnessId, type TrackId } from './content';
+	import { GLOSSARY, HARNESSES, FORMS, LOGITS, RUN_WITH_CACHE, RUN_WITHOUT_CACHE, slug, STOPS, TEN_AT, TEN_STEP, TEN_TURNS, TOP_K, TRACK_AT, TRACKS, TRIP, wheelOdds, wholePercents, type HarnessId, type TrackId } from './content';
 	import { onDestroy, tick } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
@@ -15,6 +15,8 @@
 	import type { World } from './world';
 	import { Pace, PACE, Playhead, trackPace } from './playhead';
 	import { DESK, Director, PHONE } from './beats';
+	import { Reel, readingTime, type ReelCard } from './film';
+	import FilmPlayer from './FilmPlayer.svelte';
 	import { Gestures } from './gestures';
 	import { Sharpness } from './sharpness';
 	import { SvelteSet } from 'svelte/reactivity';
@@ -340,7 +342,8 @@
 	/** A chapter picked on the map. The conversation goes, as it does for a trip taken from there. */
 	function jump(title: string) {
 		mapOpen = false;
-		narrator.leave();
+		// A film keeps playing from wherever it lands; otherwise the conversation goes.
+		if (!filming) narrator.leave();
 		pointer?.clear();
 		leaveTrack(true);
 		goto(resolve(`/#${slug(title)}`), { shallow: true, replace: true });
@@ -377,6 +380,65 @@
 	let canBack = $state(false);
 	let canOn = $state(true);
 
+	/**
+	 * The film: Play runs the whole story by itself, card after card, each scene and then its conversation, and the rail
+	 * under the Play key scrubs it either way, voices and all. Set going once the page has measured itself.
+	 */
+	let filming = $state(false);
+	/** Where the film is, in seconds, how long it is, and where that is along its rail, 0 to 1. */
+	let filmAt = $state(0);
+	let filmTotal = $state(0);
+	let filmRail = $state(0);
+	let scrubbing = $state(false);
+	/** Each card's share of the rail, to draw it. */
+	let reelCards = $state.raw<ReelCard[]>([]);
+	/** The film plays each card's conversation, or, without them, holds each card long enough to read. */
+	let filmTalk = $state(true);
+	let toggleFilm: () => void = () => {};
+	let setFilmTalk: (on: boolean) => void = (on) => (filmTalk = on);
+	let scrubFilm: (u: number, phase: 'start' | 'move' | 'end') => void = () => {};
+	let filmOpen = $state(false);
+	let filmByTouch = $state(false);
+	let filmTimer = 0;
+	let filmHover = false;
+	let filmTapped = false;
+	let filmBox = $state<HTMLElement>();
+	let filmKey = $state<HTMLButtonElement>();
+	/** The Play key's plate, which holds the film's rail: opened and closed the way the talk key's player is. */
+	function showFilm(on: boolean, wait = on ? 140 : 300) {
+		clearTimeout(filmTimer);
+		filmTimer = window.setTimeout(() => {
+			filmOpen = on && driven && !track;
+			if (!filmOpen) filmByTouch = false;
+		}, wait);
+	}
+	/** A click plays and pauses. A tap shows the plate first and plays; with the plate showing, a tap is a click. */
+	function pressFilm() {
+		if (filmTapped && !filmOpen) {
+			filmByTouch = true;
+			showFilm(true, 0);
+			if (!filming) toggleFilm();
+			return;
+		}
+		toggleFilm();
+	}
+	$effect(() => {
+		if (!filmOpen || !filmByTouch) return;
+		let idle = window.setTimeout(() => showFilm(false, 0), 6000);
+		const touch = (e: PointerEvent) => {
+			clearTimeout(idle);
+			if (!filmBox?.contains(e.target as Node)) showFilm(false, 0);
+			else idle = window.setTimeout(() => showFilm(false, 0), 6000);
+		};
+		window.addEventListener('pointerdown', touch, true);
+		window.addEventListener('pointerup', touch, true);
+		return () => {
+			clearTimeout(idle);
+			window.removeEventListener('pointerdown', touch, true);
+			window.removeEventListener('pointerup', touch, true);
+		};
+	});
+
 	/** The arrow keys step through the story, unless something on the page wants them for itself. */
 	function arrowKey(event: KeyboardEvent) {
 		if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
@@ -387,6 +449,15 @@
 		event.preventDefault();
 		step(event.key === 'ArrowRight' ? 1 : -1, 'key');
 		if (event.key === 'ArrowRight') pressBegin();
+	}
+
+	/** K plays and pauses the film, as it does on most video players, unless something being typed in wants it. */
+	function filmShortcut(event: KeyboardEvent) {
+		if (event.key.toLowerCase() !== 'k' || event.altKey || event.ctrlKey || event.metaKey || event.defaultPrevented || !driven || track) return;
+		const target = event.target as HTMLElement | null;
+		if (target?.closest('input:not([type="range"]), textarea, select, [contenteditable]') || document.querySelector('dialog[open]')) return;
+		event.preventDefault();
+		toggleFilm();
 	}
 
 	/** Inside a tray of choices the arrow keys move the choice, as they do in any set of radio buttons, not the story. */
@@ -892,7 +963,7 @@
 					pins.forEach(({ el }, n) => {
 						const inK = inAt(n, T);
 						const outK = outAt(n, T);
-						const k = Math.min(inK, 1 - outK);
+						const k = Math.min(inK, 1 - outK) * cardsK;
 						const key = k <= 0 ? -1 : Math.round(k * 200) + (outK > 0 ? 1000 : 0);
 						if (shownKey[n] === key) return;
 						shownKey[n] = key;
@@ -940,7 +1011,7 @@
 				if (peekT === null) form = w.state.form;
 				// Only the header follows this. It switches while the screen is black, so nobody sees it happen.
 				const seen = peekT ?? T;
-				dark = seen >= 7.96 && seen < 19.02;
+				dark = veilThick > 0.5 ? veilDark : seen >= 7.96 && seen < 19.02;
 				atTitle = T < 0.45;
 				fade();
 				const starts = [2.04, 2.2, 2.36, 2.52];
@@ -977,6 +1048,7 @@
 				// Once the reader's hands are still, the scroll bar goes to where the story is.
 				if (gestures.still(now)) (track ? alignTrip : align)();
 				play(dt);
+				runFilm(dt);
 				steppable();
 				playTrip(dt);
 				showGauge();
@@ -1035,30 +1107,125 @@
 			};
 
 			/*
-			 * Every frame, the playhead does what the director asks: plays the beat under way at its authored pace,
-			 * finishes one on the way briskly, or, where even briskly would take too long, cuts.
+			 * A voyage: the long way between far-apart moments of the story, flown instead of cut; voyage.ts places the
+			 * camera. Up and away. Then, in the same part of the world, the story plays through quickly underneath; between
+			 * parts that can't be drawn at once it changes behind a veil, cloud in the sky, the machine's dark inside. Then down.
 			 */
-			let cutting = false;
+			const veilEl = document.querySelector<HTMLElement>('[data-veil]')!;
+			/** The parts of the world that can't be drawn together: the first half of the trip, the hall of chips, the model's inside, the second half. */
+			const partOf = (t: number) => (t < 7.93 ? 0 : t < 13.97 ? 1 : t < 18.9 ? 2 : 3);
+			const insidePart = (n: number) => n === 1 || n === 2;
+			const RISE = 1.05;
+			const FALL = 1.35;
+			const VEIL_IN = 0.42;
+			const VEIL_OUT = 0.6;
+			/** Where the model stands, seen from outside: going in, and coming up out of it, the flight sees it from above. */
+			const MODEL: [number, number, number] = [1.2, -27, 1.1];
+			const easeIn = (k: number) => k * k * (3 - 2 * k);
+			const clamp01 = (k: number) => Math.min(1, Math.max(0, k));
+			let voyage: {
+				from: number;
+				to: number;
+				t: number;
+				lapse: number;
+				veil: 'cloud' | 'dark' | null;
+				swapAt: number;
+				swapped: boolean;
+				/** A moment's pause on the far side of the veil before coming down: coming out of the model, to see it from outside. */
+				linger: number;
+				then: () => void;
+			} | null = null;
+			let flightId = 0;
+			/** How much of the cards can be seen during a flight: they go as it lifts off, and the new one comes as it lands. */
+			let cardsK = 1;
+			/** How thick the veil is, and whether it's the dark one: the header's words take its tone while it covers the world. */
+			let veilThick = 0;
+			let veilDark = false;
+			const fly = (to: number, then: () => void) => {
+				if (reduced || still) {
+					return cover(to, () => {
+						head.jump(to);
+						T = to;
+						heardCut(to);
+						then();
+					});
+				}
+				const from = T;
+				const a = partOf(from);
+				const b = partOf(to);
+				const veil = a === b ? null : insidePart(a) || insidePart(b) ? 'dark' : 'cloud';
+				const lapse = veil ? 0 : Math.min(1.25, Math.max(0.55, 0.45 + pace.seconds(from, to) * 0.012));
+				pointer?.clear();
+				frozen = false;
+				cue('rise');
+				const out = veil === 'dark' && b === 0;
+				voyage = { from, to, t: 0, lapse, veil, swapAt: RISE + (veil ? VEIL_IN * 0.6 : lapse), swapped: false, linger: out ? 0.45 : 0, then };
+				flightId++;
+				// Over the both of them, unless the dark divides the inside from the outside: then over this side first, and
+				// going into the model from the first half of the trip, down onto it as the dark comes, the way the story dives in.
+				w.flight = { id: flightId, over: veil === 'dark' ? [from, from] : [from, to], rise: 0, fall: 0, near: veil === 'dark' && a === 0 ? MODEL : undefined };
+				veilEl.classList.toggle('dark', veil === 'dark');
+				veilDark = veil === 'dark';
+			};
+			const voyaging = (dt: number) => {
+				const v = voyage!;
+				const f = w.flight!;
+				v.t += dt;
+				f.rise = clamp01(v.t / RISE);
+				if (!v.veil) T = v.from + (v.to - v.from) * easeIn(clamp01((v.t - RISE) / v.lapse));
+				if (!v.swapped && v.t >= v.swapAt) {
+					v.swapped = true;
+					T = v.to;
+					cue('drop');
+					// The other side of the dark: a top of its own, over where it's going; coming up out of the model, above it.
+					if (v.veil === 'dark') {
+						f.id = ++flightId;
+						f.over = [v.to, v.to];
+						f.near = partOf(v.to) === 0 ? MODEL : undefined;
+					}
+				}
+				head.jump(T);
+				heardCut(T);
+				const down = v.swapped ? clamp01((v.t - v.swapAt - v.linger) / FALL) : 0;
+				f.fall = v.swapped ? Math.max(1e-4, down) : 0;
+				const thick = !v.veil ? 0 : v.swapped ? 1 - easeIn(clamp01((v.t - v.swapAt) / VEIL_OUT)) : easeIn(clamp01((v.t - (v.swapAt - VEIL_IN)) / VEIL_IN));
+				veilThick = thick;
+				veilEl.style.opacity = thick.toFixed(3);
+				veilEl.style.visibility = thick > 0 ? 'visible' : 'hidden';
+				// Clouds stream down past a camera climbing through them, and up past one coming down.
+				veilEl.style.setProperty('--drift', (v.swapped ? -0.35 * (1 - down) : 0.35 * f.rise).toFixed(3));
+				cardsK = v.swapped ? easeIn(clamp01((down - 0.55) / 0.45)) : 1 - easeIn(clamp01(v.t / (RISE * 0.45)));
+				if (down < 1) return;
+				voyage = null;
+				w.flight = null;
+				cardsK = 1;
+				veilThick = 0;
+				veilEl.style.opacity = '0';
+				veilEl.style.visibility = 'hidden';
+				v.then();
+			};
+
+			/*
+			 * Every frame, the playhead does what the director asks: plays the beat under way at its authored pace, finishes
+			 * one on the way briskly, plays one backwards on the way back, or, for somewhere further, flies there.
+			 */
+			/** Paused from the Play key part way through a scene: the picture holds there until something moves it. */
+			let frozen = false;
 			/** How fast the story is playing this frame, times the authored pace: above 1 on the way past a card. */
 			let speed = 1;
 			/** Tells the sound the story was cut, once the sound exists. */
 			let heardCut: (to: number) => void = () => {};
 			const play = (dt: number) => {
-				if (cutting) return;
+				if (voyage) return voyaging(dt);
+				if (frozen || scrubbing) return;
 				const m = director.move(head.T);
 				speed = m.speed;
 				if (m.cut === undefined) {
 					T = head.step(director.target, dt, m.speed);
 					return;
 				}
-				const to = m.cut;
-				cutting = true;
-				cover(to, () => {
-					head.jump(to);
-					T = to;
-					heardCut(to);
-					cutting = false;
-				});
+				// Too far to play the way there: a flight, and the beat the reader asked for plays from where it lands.
+				fly(m.cut, () => {});
 			};
 
 			// A cut, not a flight: the long way round would be minutes of scenery the reader didn't ask for. It lands where
@@ -1073,16 +1240,19 @@
 					head.jump(nextT);
 					T = nextT;
 					heardCut(nextT);
+					frozen = false;
 					director.go(pins.indexOf(pin));
 					align();
 				};
 				if (reduced || still || at) return land();
-				cover(nextT, land);
+				fly(nextT, land);
 			};
 
 			// One card at a time, from the buttons, the keys, a flick of the wheel or a swipe: see Director.
 			step = (dir, how = 'button') => {
 				if (track) return stepTrip(dir);
+				if (scrubbing || voyage) return;
+				frozen = false;
 				const moved = dir === 1 ? director.next(head.T) : director.back(head.T);
 				if (!moved) return;
 				if (how === 'button' || how === 'key') cue('step');
@@ -1099,6 +1269,265 @@
 			};
 
 			/*
+			 * The film. Each card's scene plays as the Director plays any beat; then, resting at the card's stop, the picture
+			 * holds while its conversation plays, or, with the conversations off, while the card is read; then on to the next.
+			 * A step, the map or the rail can move it anywhere at any time, and it carries on from there.
+			 */
+			/** A breath once a scene has landed, before the voices start, and one after they finish, before the next scene. */
+			const LEAD_IN = 0.7;
+			const LEAD_OUT = 1.1;
+			const talks = pins.map((p) => talkOf(p.el));
+			const words = pins.map((p) => (p.el.textContent ?? '').trim().split(/\s+/).filter(Boolean).length);
+			const talkFor = (k: number) => {
+				const id = talks[k];
+				return filmTalk && id && TALKS[id] ? id : null;
+			};
+			const holdFor = (k: number) => {
+				const id = talkFor(k);
+				return id ? LEAD_IN + TALKS[id].seconds / narrator.rate + LEAD_OUT : readingTime(words[k]);
+			};
+			const cardsOf = () => pins.map((_, k) => ({ talk: talkFor(k), hold: holdFor(k) }));
+			const reel = new Reel(stops, pace, cardsOf());
+			const chapterOf = (title: string) => STOPS.findIndex((c) => c.parts.includes(title));
+			let reelKey = '';
+			/** Again whenever what the holds are made of changes: the conversations turned off, or played faster. */
+			const remeasureReel = () => {
+				const key = `${filmTalk}:${narrator.rate}:${w.typedAhead.toFixed(2)}`;
+				if (key === reelKey) return;
+				reelKey = key;
+				reel.cards = cardsOf();
+				reel.measure();
+				filmTotal = reel.total;
+				reelCards = pins.map((p, k) => {
+					const title = p.el.querySelector('h1, h2')?.textContent ?? '';
+					return { title, split: reel.split(k), talk: !!reel.cards[k].talk, chapter: chapterOf(title) };
+				});
+			};
+			/** The hold under way: whose card, how long it has held, whether its voices have begun, and how long since they finished. */
+			let held = -1;
+			let heldFor = 0;
+			let voiced = false;
+			let doneFor = 0;
+			/** How long the voices have been asked for without playing: past a few seconds, the card is read instead. */
+			let silent = 0;
+			/** Where the reader is dragging the film to, whether they've let go, and whether the voices were on when they took hold. */
+			let scrubF = 0;
+			let letGo = false;
+			let scrubTalking = false;
+			/** Where the press began, whether it has moved since, and how long it has been held: a click is flown, a drag followed. */
+			let scrubFrom = 0;
+			let scrubMoved = false;
+			let scrubHeld = 0;
+			/** Further than a beat or two apart: too far to drag the picture through. */
+			const far = (a: number, b: number) => stops.filter((s) => s > Math.min(a, b) + 1e-4 && s < Math.max(a, b) - 1e-4).length >= 2;
+			const resting = () => Math.abs(T - director.target) < 1e-4;
+			/** How far into the hold at stop k the film is: by the voices, once they've begun. */
+			const intoHold = (k: number) => {
+				if (held === k) return heldFor;
+				const id = talkFor(k);
+				return id && narrator.id === id && narrator.time > 0 ? LEAD_IN + narrator.time / narrator.rate : 0;
+			};
+			const stopFilm = () => {
+				filming = false;
+				narrator.led = false;
+			};
+			const advance = (k: number) => {
+				held = -1;
+				if (k >= director.last) return stopFilm();
+				director.next(T);
+				align();
+			};
+			/** The voices of a hold, from `at` seconds into its conversation. */
+			const voice = (id: string, at: number, play: boolean) => {
+				if (narrator.id !== id || Math.abs(narrator.time - at) > 0.6 || narrator.done) narrator.seek(id, at);
+				if (play) narrator.play(id);
+			};
+			const runFilm = (dt: number) => {
+				remeasureReel();
+				if (track) {
+					if (filming) stopFilm();
+					return;
+				}
+				if (scrubbing) return scrub(dt);
+				if (voyage) {
+					filmAt = reel.when(T);
+					filmRail = reel.rail(filmAt);
+					return;
+				}
+				const k = director.goal;
+				const still = resting() && director.hold === null;
+				if (!still) held = -1;
+				filmAt = still ? reel.when(T, intoHold(k)) : reel.when(T);
+				filmRail = reel.rail(filmAt);
+				if (!filming || frozen) return;
+				// Let go part way through a scene, from the rail: it plays on from there.
+				if (director.hold !== null && resting()) {
+					director.next(T);
+					return;
+				}
+				if (!still) return;
+				const id = talkFor(k);
+				if (held !== k) {
+					held = k;
+					heldFor = 0;
+					voiced = false;
+					doneFor = 0;
+					silent = 0;
+				}
+				if (!id) {
+					heldFor += dt;
+					if (heldFor >= reel.hold(k)) advance(k);
+					return;
+				}
+				if (!voiced) {
+					heldFor += dt;
+					if (heldFor < LEAD_IN) return;
+					voiced = true;
+					voice(id, 0, true);
+					return;
+				}
+				if (doneFor > 0 || (narrator.id === id && narrator.done)) {
+					doneFor += dt;
+					heldFor = LEAD_IN + TALKS[id].seconds / narrator.rate + doneFor;
+					if (doneFor >= LEAD_OUT) advance(k);
+					return;
+				}
+				if (narrator.id === id && narrator.playing) {
+					heldFor = LEAD_IN + narrator.time / narrator.rate;
+					silent = 0;
+					return;
+				}
+				// The reader paused the voices themselves, from the talk key or the lock screen: the film pauses with them.
+				if (!narrator.listening) return stopFilm();
+				// Still waiting for them to arrive. If they can't come, the card is read instead, and the film goes on.
+				silent += dt;
+				if (silent > 8) advance(k);
+			};
+			toggleFilm = () => {
+				if (track || !driven) return;
+				if (filming) {
+					stopFilm();
+					// Part way through a scene, the picture stops where it is; a step or Play sets it going again.
+					if (!resting()) frozen = true;
+					if (narrator.playing && narrator.id === talkFor(director.goal)) narrator.pause();
+					return;
+				}
+				filming = true;
+				narrator.led = true;
+				frozen = false;
+				const k = director.goal;
+				const id = talkFor(k);
+				// Over at the end: the film starts again from the top.
+				if (k === director.last && resting() && (doneFor > 0 || (!!id && narrator.id === id && narrator.done))) {
+					held = -1;
+					director.go(0);
+					align();
+					return;
+				}
+				// Paused in a hold, or already listening to this card from its own key: on from where the voices are.
+				if (id && resting() && director.hold === null && narrator.id === id && !narrator.done && narrator.time > 0) {
+					held = k;
+					voiced = true;
+					doneFor = 0;
+					silent = 0;
+					heldFor = LEAD_IN + narrator.time / narrator.rate;
+					narrator.play(id);
+				}
+			};
+			/** The voices on or off. Off, a card being talked through is read instead; on again, they pick up where they were. */
+			setFilmTalk = (on) => {
+				if (on === filmTalk) return;
+				filmTalk = on;
+				held = -1;
+				if (!on) {
+					if (narrator.playing) narrator.pause();
+					return;
+				}
+				const k = director.goal;
+				const id = talkFor(k);
+				if (filming && id && resting() && director.hold === null && narrator.id === id && !narrator.done && narrator.time > 0) {
+					held = k;
+					voiced = true;
+					doneFor = 0;
+					silent = 0;
+					heldFor = LEAD_IN + narrator.time / narrator.rate;
+					narrator.play(id);
+				}
+			};
+			/** Dragging the film: the picture follows the finger closely, through every moment between, and the voices wait. */
+			scrubFilm = (u, phase) => {
+				if (track || !driven) return;
+				scrubF = reel.fromRail(u);
+				filmAt = scrubF;
+				filmRail = u;
+				if (phase === 'start' && !scrubbing) {
+					if (voyage) return;
+					scrubbing = true;
+					scrubTalking = narrator.playing;
+					narrator.led = true;
+					if (narrator.playing) narrator.suspend();
+					frozen = false;
+					held = -1;
+					scrubFrom = u;
+					scrubMoved = false;
+					scrubHeld = 0;
+				}
+				if (!scrubbing) return;
+				if (Math.abs(u - scrubFrom) > 0.004) scrubMoved = true;
+				letGo = phase === 'end';
+				// A click somewhere far from where the film is: flown there, the way the map goes, then on from that moment.
+				if (letGo && !scrubMoved && far(T, reel.at(scrubF).T)) {
+					scrubbing = false;
+					letGo = false;
+					fly(reel.at(scrubF).T, land);
+				}
+			};
+			const scrub = (dt: number) => {
+				scrubHeld += dt;
+				// A press that hasn't moved yet may only be a click: the picture waits a moment to see.
+				if (!scrubMoved && !letGo && scrubHeld < 0.2) return;
+				const to = reel.at(scrubF).T;
+				const next = Math.abs(to - T) < 2e-4 ? to : T + (to - T) * (1 - Math.exp(-dt * 16));
+				head.jump(next);
+				T = next;
+				// What the drag passes isn't heard, only the place it's at.
+				heardCut(T);
+				director.rest(T);
+				if (letGo && next === to) land();
+			};
+			const land = () => {
+				scrubbing = false;
+				letGo = false;
+				const p = reel.at(scrubF);
+				head.jump(p.T);
+				T = p.T;
+				narrator.led = filming;
+				if (!p.holding) {
+					// Part way through a scene: it rests here, or plays on from here if the film is playing.
+					director.rest(p.T);
+					align();
+					return;
+				}
+				director.go(p.k);
+				align();
+				const id = talkFor(p.k);
+				held = p.k;
+				heldFor = p.into;
+				doneFor = 0;
+				silent = 0;
+				voiced = !!id && p.into >= LEAD_IN;
+				if (!id || !voiced) return;
+				const at = (p.into - LEAD_IN) * narrator.rate;
+				// In the breath after the voices: the film moves on in a moment.
+				if (at >= TALKS[id].seconds - 0.3) {
+					doneFor = Math.max(0.001, Math.min(LEAD_OUT, (at - TALKS[id].seconds) / narrator.rate));
+					return;
+				}
+				// The voices follow the picture: from the same moment of the conversation, and playing if they were.
+				voice(id, at, filming || scrubTalking);
+			};
+
+			/*
 			 * The step buttons show the beat under way: the way it's going fills up as it plays, by the clock, so the reader
 			 * can see how long is left. When it's done, the next button gives a small nudge: your turn.
 			 */
@@ -1107,7 +1536,13 @@
 			let gaugeKey = '';
 			let wasPlaying = false;
 			const showGauge = () => {
-				const g = track ? (tripDirector && tripHead ? tripDirector.gauge(tripHead.T) : { dir: 0 as const, done: 1 }) : director.gauge(T);
+				const g = track
+					? tripDirector && tripHead
+						? tripDirector.gauge(tripHead.T)
+						: { dir: 0 as const, done: 1 }
+					: frozen || scrubbing
+						? { dir: 0 as const, done: 1 }
+						: director.gauge(T);
 				const shown = reduced ? { dir: 0 as const, done: 1 } : g;
 				const key = `${shown.dir}:${Math.round(shown.done * 500)}`;
 				if (key === gaugeKey) return;
@@ -1557,6 +1992,12 @@
 				(window as unknown as { __world: unknown; __head: unknown }).__head = head;
 				(window as unknown as { __pointer: unknown; __narrator: unknown }).__pointer = pointer;
 				(window as unknown as { __pointer: unknown; __narrator: unknown }).__narrator = narrator;
+				(window as unknown as { __film: unknown }).__film = {
+					reel,
+					director,
+					jump: (title: string) => cutTo(title),
+					state: () => ({ T, flying: !!voyage, filming, frozen, scrubbing, held, heldFor, voiced, doneFor, at: filmAt, rail: filmRail, goal: director.goal, hold: director.hold })
+				};
 			}
 			if (still) {
 				const api = {
@@ -1748,6 +2189,7 @@
 		if (e.key === 'Escape' && track && !document.querySelector('dialog[open]')) leaveTrack();
 		enterKey(e);
 		arrowKey(e);
+		filmShortcut(e);
 	}}
 />
 
@@ -1784,6 +2226,9 @@
 <div class="edge" data-edge aria-hidden="true"></div>
 <div class="dive" data-dive aria-hidden="true"></div>
 <div class="cut" data-cut aria-hidden="true"></div>
+<!-- What a long flight passes through where the world it leaves can't be drawn with the one it's going to: cloud in
+     the sky, the machine's own dark inside the model. -->
+<div class="veil" data-veil aria-hidden="true"></div>
 
 <div class={['journey', { dark: dark && !track, words: failed, tripping: !!track, pointing: !!pointer?.lit }]}>
 <header class={['bar', { 'at-title': atTitle && !trip }]}>
@@ -1880,6 +2325,70 @@
 			<button type="button" data-step="back" aria-label="Previous step" aria-keyshortcuts="ArrowLeft" title="Previous step (←)" disabled={!canBack} onclick={() => step(-1)}>
 				<Icon icon={ArrowLeft01Icon} size={20} stroke={2} />
 			</button>
+			<!-- The whole story as a film: Play runs it, and the plate under the key scrubs it either way. -->
+			<div
+				class="film-box"
+				role="presentation"
+				bind:this={filmBox}
+				onpointerenter={(e) => {
+					if (e.pointerType === 'touch') return;
+					filmHover = true;
+					showFilm(true);
+				}}
+				onpointerleave={(e) => {
+					if (e.pointerType === 'touch' || scrubbing) return;
+					filmHover = false;
+					if (!filmBox?.contains(document.activeElement) || !document.activeElement?.matches(':focus-visible')) showFilm(false);
+				}}
+				onfocusin={(e) => (e.target as HTMLElement).matches(':focus-visible') && showFilm(true, 0)}
+				onfocusout={(e) => !filmHover && !filmBox?.contains(e.relatedTarget as Node) && showFilm(false, 0)}
+				onkeydown={(e) => {
+					if (e.key !== 'Escape' || !filmOpen) return;
+					e.preventDefault();
+					e.stopPropagation();
+					showFilm(false, 0);
+					filmKey?.focus();
+				}}
+			>
+				<button
+					type="button"
+					bind:this={filmKey}
+					class={['film', { playing: filming }]}
+					style:--done={filmRail}
+					aria-pressed={filming}
+					aria-label={filming ? 'Pause the film' : 'Play the whole story, like a film'}
+					aria-keyshortcuts="K"
+					onpointerdown={(e) => (filmTapped = e.pointerType === 'touch')}
+					onkeydown={() => (filmTapped = false)}
+					onclick={pressFilm}
+				>
+					<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
+						{#if filming}
+							<rect x="6" y="5" width="4.4" height="14" rx="1.5" />
+							<rect x="13.6" y="5" width="4.4" height="14" rx="1.5" />
+						{:else}
+							<path d="M8 6.1v11.8a1.3 1.3 0 0 0 2 1.1l9.3-5.9a1.3 1.3 0 0 0 0-2.2L10 5a1.3 1.3 0 0 0-2 1.1z" />
+						{/if}
+					</svg>
+				</button>
+				<FilmPlayer
+					cards={reelCards}
+					rail={filmRail}
+					at={filmAt}
+					total={filmTotal}
+					playing={filming}
+					open={filmOpen}
+					anchor={filmKey}
+					talk={filmTalk}
+					ontalk={(on) => setFilmTalk(on)}
+					onscrub={(u, phase) => scrubFilm(u, phase)}
+					ontoggle={() => toggleFilm()}
+					onjump={(title) => {
+						showFilm(false, 0);
+						jump(title);
+					}}
+				/>
+			</div>
 			<button type="button" data-step="next" aria-label="Next step" aria-keyshortcuts="ArrowRight" title="Next step (→)" disabled={!canOn} onclick={() => step(1)}>
 				<Icon icon={ArrowRight01Icon} size={20} stroke={2} />
 			</button>
@@ -3576,6 +4085,64 @@
 		visibility: visible;
 		transition: opacity 0.13s ease-in;
 	}
+	/*
+	 * A bank of cloud, high over the world: soft white masses over a pale sky that stream past as the camera climbs
+	 * through them. Inside the model, the same flight goes through the machine's own dark instead.
+	 */
+	.veil {
+		position: fixed;
+		z-index: 5;
+		inset: 0;
+		overflow: hidden;
+		opacity: 0;
+		visibility: hidden;
+		pointer-events: none;
+		--drift: 0;
+		background: linear-gradient(#cfe4fa, #e4f0fd 55%, #f2f8ff);
+	}
+	/* Two banks of puffs, the nearer moving faster: soft white heads with a faint blue under them, like the world's own clouds. */
+	.veil::before,
+	.veil::after {
+		content: '';
+		position: absolute;
+		inset: -60% -10%;
+		--puff: #fff 0 52%, rgb(255 255 255 / 0) 71%;
+		--under: rgb(196 218 242 / 0.7) 0 50%, rgb(196 218 242 / 0) 72%;
+	}
+	.veil::before {
+		transform: translateY(calc(var(--drift) * 38%));
+		background:
+			radial-gradient(closest-side, var(--puff)) 8% 24% / 34% 22% no-repeat,
+			radial-gradient(closest-side, var(--puff)) 26% 20% / 28% 20% no-repeat,
+			radial-gradient(closest-side, var(--under)) 18% 27% / 40% 20% no-repeat,
+			radial-gradient(closest-side, var(--puff)) 70% 40% / 36% 22% no-repeat,
+			radial-gradient(closest-side, var(--puff)) 88% 36% / 26% 18% no-repeat,
+			radial-gradient(closest-side, var(--under)) 78% 43% / 42% 20% no-repeat,
+			radial-gradient(closest-side, var(--puff)) 30% 62% / 40% 24% no-repeat,
+			radial-gradient(closest-side, var(--puff)) 50% 58% / 30% 20% no-repeat,
+			radial-gradient(closest-side, var(--under)) 40% 65% / 46% 20% no-repeat,
+			radial-gradient(closest-side, var(--puff)) 84% 80% / 34% 22% no-repeat,
+			radial-gradient(closest-side, var(--puff)) 12% 84% / 30% 20% no-repeat;
+	}
+	.veil::after {
+		transform: translateY(calc(var(--drift) * 70%));
+		opacity: 0.85;
+		background:
+			radial-gradient(closest-side, var(--puff)) 52% 16% / 48% 28% no-repeat,
+			radial-gradient(closest-side, var(--puff)) 4% 46% / 40% 26% no-repeat,
+			radial-gradient(closest-side, var(--puff)) 96% 60% / 44% 26% no-repeat,
+			radial-gradient(closest-side, var(--puff)) 60% 76% / 52% 30% no-repeat,
+			radial-gradient(closest-side, var(--puff)) 22% 96% / 46% 26% no-repeat;
+	}
+	.veil:global(.dark) {
+		background:
+			radial-gradient(60% 50% at 50% calc(60% + var(--drift) * 40%), rgb(30 70 160 / 0.28), rgb(6 15 38 / 0) 70%),
+			linear-gradient(#060f26, #0a1a3c);
+	}
+	.veil:global(.dark)::before,
+	.veil:global(.dark)::after {
+		display: none;
+	}
 
 	.bar-end {
 		grid-column: 3;
@@ -3722,6 +4289,40 @@
 		border-radius: 1px;
 		background: #ecdcbb;
 		box-shadow: 1px 0 0 #fff;
+	}
+	/*
+	 * Play, between the steps, as on any player: the whole story as a film. While it plays, a thin amber line along its
+	 * foot shows how far through the whole film it is.
+	 */
+	.film-box {
+		display: flex;
+	}
+	.stepper .film {
+		position: relative;
+	}
+	.stepper .film svg {
+		display: block;
+		fill: currentColor;
+	}
+	.stepper .film::after {
+		content: '';
+		position: absolute;
+		left: 9px;
+		right: 9px;
+		bottom: 4px;
+		height: 2px;
+		border-radius: 1px;
+		background: linear-gradient(90deg, #ffb921 calc(var(--done, 0) * 100%), rgb(217 191 149 / 0.45) 0);
+		opacity: 0;
+		transition: opacity 0.3s;
+	}
+	.stepper .film.playing {
+		background: #fff0c7;
+		color: #101a30;
+		box-shadow: inset 0 1px 2px rgb(150 100 10 / 0.2);
+	}
+	.stepper .film.playing::after {
+		opacity: 1;
 	}
 	/* Next, at rest: a little amber key. */
 	.stepper button[data-step='next']:not(:disabled) {

@@ -28,6 +28,7 @@ import { CABINET_ROOF, MemoryStage, MEMORY_AT, MEMORY_SHOTS, MEMORY_SKY } from '
 import { PlansStage, PLANS_AT, PLANS_SHOTS, PLANS_SKY, SCREEN_ROOF } from './tracks/plans';
 import { hitBox } from './poke';
 import { Visits } from './visit';
+import { Voyage, type Flight } from './voyage';
 import { Cluster, CLUSTER_SHOTS, DIVE_T } from './cluster';
 import { RETURN_POINTS } from './layout';
 import { Back, BACK_SHOTS } from './chapters/back';
@@ -278,6 +279,7 @@ export class World {
 	private constructor(canvas: HTMLCanvasElement) {
 		this.stage = new Stage(canvas);
 		this.rig = new Rig(this.stage.camera, SHOTS);
+		this.voyage = new Voyage(this.rig);
 		this.visits = new Visits(this.stage, () => (this.trackIn && this.trackId ? [this.places[this.trackId as 'harness']?.group] : [this.root, this.cluster.group]));
 		this.clouds.lay(
 			[
@@ -1007,6 +1009,9 @@ export class World {
 	tripRoomAt: ((t: number) => number) | null = null;
 	private poker = new Poker();
 	private lastT = 0;
+	/** A flight between far-apart moments of the story, while the page has one under way: see voyage.ts. */
+	flight: Flight | null = null;
+	private voyage!: Voyage;
 	/** Which way up each tile has been turned by hand, and how far along that is. */
 	private tileSide = TOKENS.map(() => 0);
 	private tileFrom = TOKENS.map(() => 0);
@@ -1444,6 +1449,10 @@ export class World {
 
 		this.state.form = formAt(T);
 		this.visits.apply(dt, time);
+		if (this.flight) {
+			const seen = this.voyage.apply(this.stage.camera, this.flight, this.stage.width, this.stage.height);
+			this.stage.focusLight(seen.look, seen.reach);
+		}
 		this.stage.render();
 	}
 

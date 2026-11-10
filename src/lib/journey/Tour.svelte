@@ -43,11 +43,18 @@
 			body: 'You’re about to follow one sentence from your keyboard to the model and back. Here’s how to find your way. It takes half a minute.'
 		},
 		{
-			at: '.stepper [data-step]',
+			at: '.stepper [data-step="next"]',
 			title: 'One card at a time',
 			body: 'Next moves the story on by one card. While a scene plays, amber fills the key, and once it’s full, it’s your turn again.',
 			mouse: 'The → and ← keys work too, and so does your scroll wheel.',
 			touch: 'A swipe up works too, and a swipe down goes back.'
+		},
+		{
+			at: '.stepper .film',
+			title: 'Or watch it like a film',
+			body: 'Play runs the whole story by itself: each scene, then Nora and Theo talking it over, card after card. Pause stops it all at once, and you can step or scroll either way at any moment.',
+			mouse: 'Rest the pointer on it for the timeline: drag it either way, go to any stop of the trip, or play the scenes without the voices. K plays and pauses.',
+			touch: 'Tap it to play, and the timeline opens under it: drag it either way.'
 		},
 		{
 			at: '.stepper .talk',
