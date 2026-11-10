@@ -1,5 +1,6 @@
 {
 	"cues": [
-		{ "at": "That's the harness, the part you actually installed", "show": ["Harness"] }
+		{ "at": "That's the harness, the part you actually installed", "show": ["Harness"] },
+		{ "at": "the real brain is upstairs", "show": ["brain", "The model"], "together": true, "hold": 7 }
 	]
 }
