@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Reel, readingTime } from './film';
+import { READ_PACE, Reel, readingHold, readingPace } from './film';
 import { Pace, type Span } from './playhead';
 
 // Three cards after the title: scenes of 2, 10 and 2 seconds.
@@ -62,10 +62,19 @@ describe('Reel', () => {
 		expect(r.total).toBeCloseTo(20 + 2 + 10 + 10 + 6 + 2 + 50, 6);
 	});
 
-	it('reads a short card in a few seconds and a long one in longer, but not forever', () => {
-		expect(readingTime(5)).toBe(4.5);
-		expect(readingTime(60)).toBeGreaterThan(15);
-		expect(readingTime(500)).toBe(18);
+	it('holds a card without the voices only for what is left to read once its scene has played, and a breath', () => {
+		// Sixty-three words at the calm pace is fifteen seconds; a scene that showed the card for twelve leaves three.
+		expect(readingHold(63, 12)).toBeCloseTo(63 / READ_PACE - 12 + 1.2, 6);
+		// A short card on a long scene hardly stops.
+		expect(readingHold(10, 30)).toBeCloseTo(1.8, 6);
+		// The title page has no scene before it: all of its words.
+		expect(readingHold(17, 0)).toBeCloseTo(17 / READ_PACE + 1.2, 6);
+	});
+
+	it('never keeps a long card waiting more than a few seconds past its scene: it unfolds quicker instead', () => {
+		expect(readingPace(30, 5)).toBe(READ_PACE);
+		expect(readingPace(160, 4)).toBeCloseTo(10, 6);
+		expect(readingHold(160, 4)).toBeCloseTo(12 + 1.2, 6);
 	});
 });
 
