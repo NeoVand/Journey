@@ -40,8 +40,22 @@ export interface Place {
 	into: number;
 }
 
-/** About how long a card takes to read, from how many words it has. */
-export const readingTime = (words: number) => Math.min(18, Math.max(4.5, 1.6 + words / 3.4));
+/** A calm reading pace, in words a second: about two hundred and fifty words a minute. */
+export const READ_PACE = 4.2;
+/** However quickly a card was read, the picture rests a moment on it before the next scene. */
+const BREATH = 1.2;
+/** The longest a card waits to be read once its scene has played: a longer card unfolds a little quicker instead. */
+const LONGEST = 12;
+
+/** How fast a card's words unfold, in words a second, once it has been on screen `seen` seconds of its scene. */
+export const readingPace = (words: number, seen: number) => Math.max(READ_PACE, words / (seen + LONGEST));
+
+/**
+ * How long a card holds still once its scene has played, without the voices. Its words unfold at a reading pace from
+ * the moment the card arrives, while the scene is still playing, so the hold is only what's left to read after the
+ * scene has spent `seen` seconds of it, and a breath: a short card on a long scene hardly stops at all.
+ */
+export const readingHold = (words: number, seen: number) => Math.max(0.6, words / readingPace(words, seen) - seen) + BREATH;
 
 export class Reel {
 	/** Film seconds at which each card's scene begins, and its hold. */

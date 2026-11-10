@@ -318,7 +318,10 @@ test('the last chapter leaves nothing behind when the reader jumps back', async 
 	expect(await shownAt(3.5)).toBe(false);
 });
 
-type Film = { __film: { state(): { T: number; flying: boolean; filming: boolean }; director: { target: number } }; __narrator: { id: string | null; playing: boolean } };
+type Film = {
+	__film: { state(): { T: number; flying: boolean; filming: boolean }; director: { target: number; go(k: number): void } };
+	__narrator: { id: string | null; playing: boolean };
+};
 
 test('Play runs the story like a film: the scene, then its conversation, on to the next, and Pause stops it all', async ({ page }) => {
 	test.setTimeout(180_000);
@@ -361,17 +364,18 @@ test('without the voices, the film holds each card long enough to read it, then 
 
 test('a step back plays the scene backwards, however long it is, with no cut', async ({ page }) => {
 	test.setTimeout(300_000);
-	await page.goto('/?debug#turn-two-starts-ahead');
-	await page.waitForFunction(
-		() => {
-			const f = (window as unknown as Film).__film;
-			if (!f) return false;
-			const s = f.state();
-			return !s.flying && Math.abs(s.T - f.director.target) < 1e-4 && s.T > 11;
-		},
-		null,
-		{ timeout: 150_000 }
-	);
+	await page.goto('/?debug');
+	await page.waitForFunction(() => '__film' in window && document.querySelector('main.driven'), null, { timeout: 150_000 });
+	// Straight to the stop after turn two's long scene, without waiting for it to play there: slow without a GPU.
+	await page.evaluate(() => {
+		const { __film, __head } = window as unknown as Film & { __head: { jump(T: number): void } };
+		__film.director.go(11);
+		__head.jump(__film.director.target);
+	});
+	await page.waitForFunction(() => {
+		const f = (window as unknown as Film).__film;
+		return Math.abs(f.state().T - f.director.target) < 1e-4;
+	});
 	const from = await page.evaluate(() => (window as unknown as Film).__film.state().T);
 	await page.keyboard.press('ArrowLeft');
 	const to = await page.evaluate(() => (window as unknown as Film).__film.director.target);
