@@ -16,7 +16,7 @@
 	import type { World } from './world';
 	import { Pace, PACE, Playhead, trackPace } from './playhead';
 	import { DESK, Director, PHONE } from './beats';
-	import { Reel, readingTime, type ReelCard } from './film';
+	import { Reel, readingHold, readingPace, type ReelCard } from './film';
 	import FilmPlayer from './FilmPlayer.svelte';
 	import { Gestures } from './gestures';
 	import { Sharpness } from './sharpness';
@@ -1123,6 +1123,7 @@
 				if (gestures.still(now)) (track ? alignTrip : align)();
 				play(dt);
 				runFilm(clock);
+				unfold(clock);
 				steppable();
 				playTrip(dt);
 				showGauge();
@@ -1359,14 +1360,31 @@
 			const LEAD_IN = 0.7;
 			const LEAD_OUT = 1.1;
 			const talks = pins.map((p) => talkOf(p.el));
-			const words = pins.map((p) => (p.el.textContent ?? '').trim().split(/\s+/).filter(Boolean).length);
+			/*
+			 * Without the voices, a card's words unfold at a calm reading pace instead, a line at a time, from the moment the
+			 * card arrives, while its scene is still playing. What's read: its heading, and each paragraph and list row, the
+			 * outermost of them only. A list that lights up row by row with its scene is read but left to its own life.
+			 */
+			const READ = 'h1, h2, p, li, dt, dd, pre, figcaption';
+			/** Words to read, the asides (an agent's note, small print) and the lists that light up with their scene counting half. */
+			const countWords = (el: Element) =>
+				(el.textContent ?? '').trim().split(/\s+/).filter(Boolean).length * (el.matches('.note, small, .steps *') || el.querySelector(':scope > small') ? 0.5 : 1);
+			const reads = pins.map((p) =>
+				[...p.el.querySelectorAll<HTMLElement>(READ)].filter((el) => !el.parentElement?.closest(READ) && !el.closest('.begin-row, .told, .trip-set, .fallback'))
+			);
+			/** The blocks that unfold: all but the heading, which is there as the card arrives, and the lists with lives of their own. */
+			const unfolds = reads.map((blocks) => blocks.filter((el) => !/^H[12]$/.test(el.tagName) && !el.closest('.steps')));
+			let words = reads.map((blocks) => blocks.reduce((n, el) => n + countWords(el), 0));
+			/** When each card arrives, in story time: its words start then. And how long its scene shows it, before the hold. */
+			const arrives = pins.map((p, k) => (k === 0 ? 0 : Math.min(stops[k], Math.max(stops[k - 1], p.i + p.from - p.fade * 0.3))));
+			const seenFor = (k: number) => (k === 0 ? 0 : pace.seconds(arrives[k], stops[k]));
 			const talkFor = (k: number) => {
 				const id = talks[k];
 				return filmTalk && id && TALKS[id] ? id : null;
 			};
 			const holdFor = (k: number) => {
 				const id = talkFor(k);
-				return id ? LEAD_IN + TALKS[id].seconds / narrator.rate + LEAD_OUT : readingTime(words[k]);
+				return id ? LEAD_IN + TALKS[id].seconds / narrator.rate + LEAD_OUT : readingHold(words[k], seenFor(k));
 			};
 			const cardsOf = () => pins.map((_, k) => ({ talk: talkFor(k), hold: holdFor(k) }));
 			const reel = new Reel(stops, pace, cardsOf());
@@ -1374,9 +1392,13 @@
 			let reelKey = '';
 			/** Again whenever what the holds are made of changes: the conversations turned off, or played faster. */
 			const remeasureReel = () => {
-				const key = `${filmTalk}:${narrator.rate}:${w.typedAhead.toFixed(2)}`;
+				const key = `${filmTalk}:${narrator.rate}:${w.typedAhead.toFixed(2)}:${harness}`;
 				if (key === reelKey) return;
 				reelKey = key;
+				// Each agent's notes say different things, at different lengths, and wrap to different heights.
+				words = reads.map((blocks) => blocks.reduce((n, el) => n + countWords(el), 0));
+				if (wordsBefore) wordsBefore = countBlocks();
+				if (lines) lines = new WeakMap();
 				reel.cards = cardsOf();
 				reel.measure();
 				filmTotal = reel.total;
@@ -1518,15 +1540,89 @@
 					narrator.play(id);
 				}
 			};
+			/*
+			 * The unfolding itself. Where a card's words have got to is a matter of film time, so it plays, pauses, rewinds and
+			 * scrubs with the picture. Each block shows its lines one after another, each easing in under a soft edge, with the
+			 * lines still to come faintly there, so the card keeps its shape.
+			 */
+			/** The card that was up when the voices went off: it was already there to read, so it stays whole. */
+			let whole = -1;
+			/** Where each card's words start, in film time. */
+			const wordsFrom = (n: number) => (n === 0 ? 0 : reel.sceneStart(n) + pace.seconds(stops[n - 1], arrives[n]));
+			/** How many words come before each unfolding block, and how many it has: counted again when the agent changes. */
+			const countBlocks = () =>
+				unfolds.map((blocks, n) =>
+					blocks.map((el) => {
+						let before = 0;
+						for (const r of reads[n]) {
+							if (r === el) break;
+							before += countWords(r);
+						}
+						return { before, words: Math.max(1, countWords(el)) };
+					})
+				);
+			let wordsBefore = countBlocks();
+			const shown = unfolds.map((blocks) => blocks.map(() => 1));
+			// Caches, not state: what each block was last drawn with, and its lines as last measured.
+			const drawn = new WeakMap<HTMLElement, string>();
+			let lines = new WeakMap<HTMLElement, { h: number; lh: number; at: number }>();
+			const lineOf = (el: HTMLElement) => {
+				let m = lines.get(el);
+				if (!m || m.at !== innerWidth) {
+					const css = getComputedStyle(el);
+					const lh = parseFloat(css.lineHeight) || parseFloat(css.fontSize) * 1.35 || 20;
+					m = { h: el.offsetHeight, lh, at: innerWidth };
+					lines.set(el, m);
+				}
+				return m;
+			};
+			const unfold = (dt: number) => {
+				const on = filming && !filmTalk && !track && !reduced;
+				const k = Math.min(director.last, director.ahead(T));
+				const ease = 1 - Math.exp(-dt * 9);
+				unfolds.forEach((blocks, n) => {
+					const live = on && n === k && n !== whole;
+					const read = live ? (filmAt - wordsFrom(n)) * readingPace(words[n], seenFor(n)) : Infinity;
+					blocks.forEach((el, j) => {
+						const { before, words: count } = wordsBefore[n][j];
+						const target = Math.min(1, Math.max(0, (read - before) / count));
+						// Only the card being read moves; the rest are whole, at once while they can't be seen.
+						const now = n === k ? shown[n][j] + (target - shown[n][j]) * ease : 1;
+						shown[n][j] = Math.abs(now - target) < 0.002 ? target : now;
+						const d = shown[n][j];
+						if (d >= 0.999) {
+							if (drawn.has(el)) {
+								drawn.delete(el);
+								el.removeAttribute('data-unfold');
+								el.style.removeProperty('--shown');
+							}
+							return;
+						}
+						const { h, lh } = lineOf(el);
+						const L = Math.max(1, Math.round(h / lh));
+						const x = d * (L + 1);
+						const f = x - Math.floor(x);
+						const px = `${((Math.floor(x) + f * f * (3 - 2 * f)) * lh).toFixed(1)}px`;
+						if (drawn.get(el) === px) return;
+						drawn.set(el, px);
+						el.dataset.unfold = '';
+						el.style.setProperty('--shown', px);
+						el.style.setProperty('--edge', `${lh}px`);
+					});
+				});
+			};
 			/** The voices on or off. Off, a card being talked through is read instead; on again, they pick up where they were. */
 			setFilmTalk = (on) => {
 				if (on === filmTalk) return;
 				filmTalk = on;
 				held = -1;
 				if (!on) {
+					// The card up now was already there to read: it stays whole, and the cards after it unfold.
+					whole = Math.min(director.last, director.ahead(T));
 					if (narrator.playing) narrator.pause();
 					return;
 				}
+				whole = -1;
 				const k = director.goal;
 				const id = talkFor(k);
 				if (filming && id && resting() && director.hold === null && narrator.id === id && !narrator.done && narrator.time > 0) {
@@ -4262,6 +4358,14 @@
 			radial-gradient(closest-side, var(--puff)) 96% 60% / 44% 26% no-repeat,
 			radial-gradient(closest-side, var(--puff)) 60% 76% / 52% 30% no-repeat,
 			radial-gradient(closest-side, var(--puff)) 22% 96% / 46% 26% no-repeat;
+	}
+	/*
+	 * Words unfolding while the film plays without the voices: shown down to --shown, the line at the edge easing in,
+	 * and the lines still to come faintly there.
+	 */
+	:global([data-unfold]) {
+		-webkit-mask-image: linear-gradient(to bottom, #000 calc(var(--shown) - var(--edge)), rgb(0 0 0 / 0.1) var(--shown));
+		mask-image: linear-gradient(to bottom, #000 calc(var(--shown) - var(--edge)), rgb(0 0 0 / 0.1) var(--shown));
 	}
 	.veil:global(.dark) {
 		background:
