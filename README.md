@@ -41,4 +41,7 @@ The content follows the book in `reference/`. Harness details come from public d
 
 MIT, in [`LICENSE`](LICENSE), © 2026 Neo Mohsenvand: the code, the words, the book in `reference/`, the narration
 and the sounds. The two typefaces in `static/fonts/`, Bricolage Grotesque and Instrument Sans, are their authors' work
-under the SIL Open Font License 1.1. Stars, issues and pull requests are all welcome.
+under the SIL Open Font License 1.1. The model's brain in `static/models/brain.glb` is the left hemisphere of a real
+MRI from the UCSF Neuroscape lab's Glass Brain project ([NIH 3D, 3DPX-000757](https://3d.nih.gov/entries/3dpx-000757)),
+which they released into the public domain (CC0 1.0); it was smoothed, thinned and mirrored here, with a brainstem added.
+Stars, issues and pull requests are all welcome.

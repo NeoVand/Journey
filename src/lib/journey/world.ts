@@ -303,7 +303,7 @@ export class World {
 	state: WorldState = { form: 1, dive: 0, inside: false, dusk: 0 };
 
 	static async create(canvas: HTMLCanvasElement) {
-		await loadFonts();
+		await Promise.all([loadFonts(), Brain.load()]);
 		return new World(canvas);
 	}
 
