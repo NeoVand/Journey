@@ -1,7 +1,7 @@
 {
 	"cues": [
 		{ "at": "That program is called the harness", "show": ["Harness"] },
-		{ "at": "arrives at the provider's front door", "show": ["Front door"], "hold": 3.4 },
+		{ "at": "arrives at the provider's front door", "show": ["Front door", "lock-body"], "together": true, "hold": 3.4 },
 		{ "at": "So it's a loop.", "show": ["brain", "token-lift", "stream", "call-pipe", "return-loop", "Laptop", "Front door"], "together": true, "wide": true, "hold": 7 }
 	]
 }

@@ -575,6 +575,8 @@ export class Back {
 			g.add(slip);
 			this.rain.push(slip);
 		}
+		// The call the harness has just parsed, by name, so a conversation can show it beside the drawer its result goes to.
+		this.topCard.mesh.name = 'call-card';
 		this.carrier.add(this.topCard.mesh);
 		g.add(this.carrier);
 		this.gatePipe = tube(this.gatePath, 0.09, m.orangeGlow, 200);

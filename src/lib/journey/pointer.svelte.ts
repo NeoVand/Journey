@@ -10,7 +10,7 @@ import type { Narrator } from './narrator.svelte';
 import type { World } from './world';
 
 /** One moment: when, what to show, what to do there, and where in the story it lives if not here. wide pulls back to see a whole. */
-export type Moment = { t: number; show: string[]; together?: boolean; do?: string; index?: number; in?: string; hold?: number; wide?: boolean };
+export type Moment = { t: number; show: string[]; together?: boolean; do?: string; index?: number; in?: string; hold?: number; wide?: boolean; front?: boolean };
 
 /** What the page does for it. */
 export interface Stagehand {
@@ -75,7 +75,7 @@ export class Pointer {
 		// The cut has covered the change: go and look in the other place, once it has been drawn there.
 		if (this.pending && now >= this.pending.at) {
 			const { m, still } = this.pending;
-			if (this.world.visit({ names: m.show, together: m.together, hold: m.hold, act: m.do, index: m.index, wide: m.wide, cutBack: true, still })) this.pending = null;
+			if (this.world.visit({ names: m.show, together: m.together, hold: m.hold, act: m.do, index: m.index, wide: m.wide, front: m.front, cutBack: true, still })) this.pending = null;
 			else if (now >= this.pending.at + PATIENCE) this.home();
 		}
 		// A peek has stayed its time: home.
@@ -95,7 +95,7 @@ export class Pointer {
 	 * laptop as it was in the very first frame, say); otherwise here, if the thing is in the picture's world now.
 	 */
 	private start(m: Moment, now: number, move: boolean) {
-		const visit = { names: m.show, together: m.together, hold: m.hold, act: m.do, index: m.index, wide: m.wide, still: !move };
+		const visit = { names: m.show, together: m.together, hold: m.hold, act: m.do, index: m.index, wide: m.wide, front: m.front, still: !move };
 		const T = move && m.in ? this.hand.whenIs(m.in) : null;
 		if (T === null) {
 			if (!this.world.hasThing(m.show)) return false;

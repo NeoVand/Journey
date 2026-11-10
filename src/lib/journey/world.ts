@@ -160,7 +160,9 @@ const LAPTOP_SAYS: [number, string][] = [
 	[19.0, 'Reading the reply'],
 	[19.62, 'Checking the tool call'],
 	[25.04, 'Sending the result back'],
-	[25.9, 'On to the next turn']
+	[25.9, 'On to the next turn'],
+	// The tenth turn ends with a summary and no call: two files changed, the fix and its new test, and the whole suite green.
+	[30, 'Done: 2 files changed, 418 passed']
 ];
 const laptopSays = (T: number) => LAPTOP_SAYS.findLast(([from]) => T >= from)![1];
 
@@ -1316,7 +1318,7 @@ export class World {
 	 * tiles, wakes the brain, spins the wheel. False if there's nothing by those names in the scene now. cutBack is for a
 	 * peek at another moment of the story, which the page ends with a cut.
 	 */
-	visit(cue: { names: string[]; together?: boolean; hold?: number; act?: string; index?: number; cutBack?: boolean; still?: boolean; wide?: boolean }) {
+	visit(cue: { names: string[]; together?: boolean; hold?: number; act?: string; index?: number; cutBack?: boolean; still?: boolean; wide?: boolean; front?: boolean }) {
 		return this.visits.start({
 			names: cue.names,
 			together: cue.together,
@@ -1324,6 +1326,7 @@ export class World {
 			cutBack: cue.cutBack,
 			still: cue.still,
 			wide: cue.wide,
+			front: cue.front,
 			act: this.actFor(cue.act, cue.index),
 			fly: !this.trackIn
 		});

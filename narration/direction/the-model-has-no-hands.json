@@ -1,6 +1,6 @@
 {
 	"cues": [
 		{ "at": "The model sits in a data center", "show": ["brain", "The model"], "together": true, "in": "Thousands more behind it", "hold": 3 },
-		{ "at": "The harness writes an error into the conversation", "show": ["drawer:Conversation"], "do": "pull", "index": 3, "hold": 6 }
+		{ "at": "The harness writes an error into the conversation", "show": ["drawer:Conversation", "call-card"], "together": true, "do": "pull", "index": 3, "hold": 6 }
 	]
 }

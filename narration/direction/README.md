@@ -35,8 +35,10 @@ it feels like a friend with a pointer who knows when to use it. Done badly, it's
 - `in` (optional): the title of a card to show the thing at, when it isn't in this card's world or is meant to be seen
   as it was there. The picture cuts there, the camera shows it, and it cuts back while the card stays. This is a peek.
   Only on the main road, never from inside a side trip, and rare: two in the whole story at the moment.
-- `wide` (optional): pulls back, high, to show a whole: the loop from laptop down to the model and back. The one kind of
+- `wide` (optional): pulls back to show a whole: the loop from your laptop up to the model and back. The one kind of
   moment that goes further away than the card's shot. Frame it with several names and `"together": true`.
+- `front` (optional): sees the thing from the side it faces, for a screen or a sign whose words are the point, however
+  the card's own shot looks at it. A far flight takes a little longer by itself, so it never lurches.
 
 ## Names
 

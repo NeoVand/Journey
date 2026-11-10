@@ -1,5 +1,5 @@
 {
 	"cues": [
-		{ "at": "it searches the source folder for lock and schedule", "show": ["lens"], "hold": 3 }
+		{ "at": "it searches the source folder for lock and schedule", "show": ["lens", "folders"], "together": true, "hold": 3 }
 	]
 }

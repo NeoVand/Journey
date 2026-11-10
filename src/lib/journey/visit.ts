@@ -31,6 +31,8 @@ export interface VisitCue {
 	 * high to see the shape of it, takes its time, and lights nothing in particular, since the whole is the point.
 	 */
 	wide?: boolean;
+	/** Seen from the side it faces, like a screen or a sign that has to be read, rather than from where the camera is. */
+	front?: boolean;
 }
 
 /** Seconds to get there, and to come back; a pull back to see a whole takes longer, so the reveal can be read. */
@@ -39,6 +41,10 @@ const BACK = 1.3;
 const WIDE_GO = 2.6;
 const WIDE_BACK = 2.1;
 const QUICK = 0.6;
+/** A flight further than this takes longer, by a second for every so many units more, so a far one never lurches. */
+const NEAR = 40;
+const FAR_GO = 90;
+const FAR_BACK = 100;
 /** How far the camera drifts round the thing while it stays, in radians. */
 const DRIFT = 0.16;
 /** Seconds for a glow left behind to die away, when a visit hands over to the next. */
@@ -146,8 +152,9 @@ export class Visits {
 			const el = 0.12;
 			toPos.set(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el)).multiplyScalar(dist).add(centre);
 		} else if (cue.fly) {
-			const el0 = Math.min(0.62, Math.max(0.24, Math.asin(Math.max(-1, Math.min(1, away.y / Math.max(1e-6, away.length()))))));
-			const az0 = Math.atan2(away.x, away.z) + 0.2 * this.turn;
+			const facing = cue.front ? things[0].getWorldDirection(this.v2) : null;
+			const el0 = facing ? 0.3 : Math.min(0.62, Math.max(0.24, Math.asin(Math.max(-1, Math.min(1, away.y / Math.max(1e-6, away.length()))))));
+			const az0 = facing ? Math.atan2(facing.x, facing.z) : Math.atan2(away.x, away.z) + 0.2 * this.turn;
 			const at = (az: number, el: number) => toPos.set(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el)).multiplyScalar(dist).add(centre);
 			let found = false;
 			for (const el of [el0, Math.min(0.85, el0 + 0.3)]) {
@@ -172,9 +179,9 @@ export class Visits {
 			centre,
 			phase: 'go',
 			t: 0,
-			go: cue.wide ? WIDE_GO : GO,
+			go: cue.wide ? WIDE_GO : GO + Math.max(0, fromPos.distanceTo(toPos) - NEAR) / FAR_GO,
 			hold: cue.hold ?? 3.6,
-			back: cue.wide ? WIDE_BACK : BACK,
+			back: cue.wide ? WIDE_BACK : BACK + Math.max(0, fromPos.distanceTo(toPos) - NEAR) / FAR_BACK,
 			fromPos,
 			fromLook,
 			toPos,
@@ -195,7 +202,7 @@ export class Visits {
 		v.leftLook.copy(this.lastLook);
 		v.phase = 'back';
 		v.t = 0;
-		v.back = quick ? QUICK : v.cue.wide ? WIDE_BACK : BACK;
+		v.back = quick ? QUICK : v.cue.wide ? WIDE_BACK : BACK + Math.max(0, this.lastPos.distanceTo(v.fromPos) - NEAR) / FAR_BACK;
 	}
 
 	/** Drops the visit at once, with nothing to animate: the page has cut away, so nobody sees the jump. */

@@ -1,6 +1,6 @@
 {
 	"cues": [
 		{ "at": "each with its own permission", "show": ["lock"], "together": true, "hold": 3 },
-		{ "at": "Claude Code shows the diff and the summary", "show": ["Laptop"], "hold": 3 }
+		{ "at": "Claude Code shows the diff and the summary", "show": ["laptop-lid"], "front": true, "hold": 7 }
 	]
 }
