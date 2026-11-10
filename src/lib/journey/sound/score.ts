@@ -8,7 +8,7 @@
 import type { World } from '../world';
 import type { HarnessId, TrackId } from '../content';
 import type { Bed, Cue, Where } from './conductor';
-import { chime, harp, key, low, note, porcelain, sweep, tick, whoosh } from './synth';
+import { chime, harp, key, low, note, porcelain, tick, whoosh } from './synth';
 import { PUCK_MOVES, puckPoint, roomPoint } from '../tracks/harness';
 import { STAGE_AT } from '../tracks/sandbox';
 import { MEMORY_AT } from '../tracks/memory';
@@ -364,7 +364,11 @@ export function score(w: World): { cues: Cue[]; beds: Bed[] } {
 		const result = i % 3 === 1;
 		at(26.08 + (0.38 / 36) * (i + 1), 'paper-land', P.compaction, { gain: result ? 0.36 : 0.26, rate: 0.9 + i * 0.007, minor: !result });
 	}
-	at(26.08, sweep(note(-5), note(5), 5.5), P.compaction, { gain: 0.5 });
+	// The window fills like a glass under a tap, from the moment the first message falls to the moment the last one lands
+	// (26.46), about two seconds: the top of the recording's climb, a little quicker than it was poured, with the
+	// instructions and your prompt already in the glass. It's over by then, however fast the story plays, and the press
+	// comes down on a full glass, not on running water.
+	at(26.08, 'fill', P.compaction, { gain: 0.4, rate: 1.2, offset: 2.43, length: 2.0, until: 26.47 });
 	at(26.48, 'servo', P.compaction, { gain: 0.45, rate: 0.85 });
 	at(26.53, 'press', P.compaction, { gain: 1, dip: 0.5 });
 	at(26.64, 'servo', P.compaction, { gain: 0.4, rate: 1.05 });

@@ -163,28 +163,6 @@ const synthLow =
 		return at + seconds + 0.05;
 	};
 
-/** A tone gliding from one pitch to another: something filling up. */
-const synthSweep =
-	(from: number, to: number, seconds: number): Voice =>
-	(ctx, out, at) => {
-		const o = ctx.createOscillator();
-		o.type = 'triangle';
-		o.frequency.setValueAtTime(from, at);
-		o.frequency.exponentialRampToValueAtTime(to, at + seconds);
-		const lp = ctx.createBiquadFilter();
-		lp.type = 'lowpass';
-		lp.frequency.value = 1400;
-		const g = ctx.createGain();
-		g.gain.setValueAtTime(0.0001, at);
-		g.gain.exponentialRampToValueAtTime(0.16, at + 0.2);
-		g.gain.setValueAtTime(0.16, at + seconds - 0.15);
-		g.gain.exponentialRampToValueAtTime(0.0001, at + seconds);
-		o.connect(lp).connect(g).connect(out);
-		o.start(at);
-		o.stop(at + seconds + 0.05);
-		return at + seconds + 0.05;
-	};
-
 /* ---------- the recordings behind the voices ---------- */
 
 let recording: (name: string) => AudioBuffer | undefined = () => undefined;
@@ -195,7 +173,7 @@ export function useRecordings(get: (name: string) => AudioBuffer | undefined) {
 }
 
 /** Every recording the voices can use, to load as soon as sound is on. */
-export const VOICE_SOUNDS = ['kalimba', 'marimba', 'musicbox', 'harp', 'peg', 'key', 'swoosh', 'clonk', 'fill'];
+export const VOICE_SOUNDS = ['kalimba', 'marimba', 'musicbox', 'harp', 'peg', 'key', 'swoosh', 'clonk'];
 
 /** Plays a recording into `out`: at a speed, with a fade if it should stop early. Returns its end, or -1 if missing. */
 function recorded(ctx: AudioContext, out: AudioNode, at: number, name: string, rate: number, gain = 1, ring = 0) {
@@ -273,13 +251,4 @@ export const low =
 		const knock = recorded(ctx, out, at, 'clonk', Math.max(0.6, Math.min(1.3, Math.sqrt(freq / 147))), 0.8);
 		const tone = recorded(ctx, out, at + 0.015, 'marimba', freq / 293.66, 0.7);
 		return knock >= 0 || tone >= 0 ? Math.max(knock, tone) : synthLow(freq, seconds)(ctx, out, at);
-	};
-
-/** Something filling up: water rising in a glass tube, for as long as it takes. */
-export const sweep =
-	(from: number, to: number, seconds: number): Voice =>
-	(ctx, out, at) => {
-		const buffer = recording('fill');
-		const end = buffer ? recorded(ctx, out, at, 'fill', Math.max(0.6, Math.min(1.6, buffer.duration / seconds)), 0.8) : -1;
-		return end >= 0 ? end : synthSweep(from, to, seconds)(ctx, out, at);
 	};
