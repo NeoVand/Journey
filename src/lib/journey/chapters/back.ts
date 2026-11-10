@@ -531,17 +531,28 @@ export class Back {
 	private a2 = new THREE.Vector3();
 	private zones: { g: THREE.Object3D; from: number; to: number; home: boolean; whole: boolean; at: V3 }[] = [];
 
-	constructor() {
-		this.buildHatch();
-		this.buildGates();
-		this.buildSandbox();
-		this.buildHome();
-		this.buildCompact();
-		this.buildMemory();
-		this.buildUnknown();
-		this.buildTen();
-		this.buildFinish();
-		this.setHarness('claude');
+	/** Its parts, to be built in this order: a few at a time, so the page can draw a frame between them as it opens. */
+	steps(): (() => void)[] {
+		return [
+			() => {
+				this.buildHatch();
+				this.buildGates();
+			},
+			() => this.buildSandbox(),
+			() => {
+				this.buildHome();
+				this.buildCompact();
+			},
+			() => {
+				this.buildMemory();
+				this.buildUnknown();
+			},
+			() => {
+				this.buildTen();
+				this.buildFinish();
+				this.setHarness('claude');
+			}
+		];
 	}
 
 	/** A part of the world that's only there in its own chapters. at moves it from where it was drawn. */

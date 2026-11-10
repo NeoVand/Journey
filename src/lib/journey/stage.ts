@@ -500,6 +500,20 @@ const HEMI_SKY = new THREE.Color('#dbeeff');
 const HEMI_LATE = new THREE.Color('#ffd9c0');
 
 /** Renderer, studio lighting, sky and post. Knows nothing about what is on the stage. */
+/**
+ * Lets the page draw a frame and answer the reader before going on with long work. A hidden page draws no frames, so
+ * it goes on after a moment anyway.
+ */
+export function breathe() {
+	return new Promise<void>((done) => {
+		const late = setTimeout(done, 120);
+		requestAnimationFrame(() => {
+			clearTimeout(late);
+			setTimeout(done, 0);
+		});
+	});
+}
+
 export class Stage {
 	renderer: THREE.WebGLRenderer;
 	scene = new THREE.Scene();
@@ -708,23 +722,53 @@ export class Stage {
 	 * Draws everything the journey will ever show, once, into a tiny frame, behind the loading screen. The first time the GPU
 	 * meets a mesh it has to upload it and build a pipeline for it, and that is what used to stall a frame in the middle of a scene.
 	 */
-	warmUp() {
+	/**
+	 * Draws everything once, small, so no shader is compiled and no texture sent to the GPU the first time it comes into
+	 * view. A share of the world at a time, with a frame between, so the page stays alive: `progress` hears 0 to 1.
+	 */
+	async warmUp(progress: (k: number) => void = () => {}) {
 		const saved: [THREE.Object3D, boolean, boolean][] = [];
-		this.scene.traverse((o) => {
-			saved.push([o, o.visible, o.frustumCulled]);
-			o.visible = true;
-			o.frustumCulled = false;
-		});
+		this.scene.traverse((o) => saved.push([o, o.visible, o.frustumCulled]));
+		// The pieces: what the scene's groups hold, a level further down where one holds a great many. Lights stay on
+		// throughout, since every shader is compiled for the lights it will really have.
+		const pieces: THREE.Object3D[] = [];
+		const holders = new Set<THREE.Object3D>([this.scene]);
+		const open = (o: THREE.Object3D, depth: number) => {
+			for (const c of o.children) {
+				if ((c as THREE.Light).isLight) continue;
+				if (depth < 2 && c.children.length > 8) {
+					holders.add(c);
+					open(c, depth + 1);
+				} else pieces.push(c);
+			}
+		};
+		open(this.scene, 0);
+		const share = Math.ceil(pieces.length / 6);
+		const textures = Surface.all.length;
+		const chunks = Math.ceil(pieces.length / share);
 		this.composer.setPixelRatio(1);
 		this.composer.setSize(80, 50);
-		this.composer.render();
-		for (const surface of Surface.all) this.renderer.initTexture(surface.texture);
+		for (let i = 0; i < chunks; i++) {
+			const now = new Set(pieces.slice(i * share, (i + 1) * share));
+			for (const p of pieces) p.visible = false;
+			for (const h of holders) h.visible = true;
+			for (const p of now)
+				p.traverse((o) => {
+					o.visible = true;
+					o.frustumCulled = false;
+				});
+			this.composer.render();
+			// The printed surfaces go up alongside, a share each time.
+			for (const surface of Surface.all.slice(Math.floor((i * textures) / chunks), Math.floor(((i + 1) * textures) / chunks))) this.renderer.initTexture(surface.texture);
+			for (const [o, visible, culled] of saved) {
+				o.visible = visible;
+				o.frustumCulled = culled;
+			}
+			progress((i + 1) / chunks);
+			await breathe();
+		}
 		const gl = this.renderer.getContext();
 		gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4)); // waits for the GPU to finish all of it
-		for (const [o, visible, culled] of saved) {
-			o.visible = visible;
-			o.frustumCulled = culled;
-		}
 	}
 
 	setOcclusion(on: boolean) {

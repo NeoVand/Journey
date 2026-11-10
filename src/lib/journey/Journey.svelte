@@ -79,6 +79,8 @@
 	let subtitlePlace = $state<{ top: number | null; left: number; right: number }>({ top: null, left: 0, right: 0 });
 	let driven = $state(false);
 	let failed = $state(false);
+	/** How far the world has got with building itself and warming up, 0 to 1: the loader's line fills with it. */
+	let built = $state(0);
 	let section = $state(0);
 	let part = $state<Stage>(null);
 	let attention = $state(-1);
@@ -743,7 +745,7 @@
 			if (disposed) return;
 			let w: World;
 			try {
-				w = await World.create(canvas);
+				w = await World.create(canvas, (k) => (built = k * 0.6));
 			} catch (error) {
 				// Without WebGL the page is still the whole explanation, over the plain sky.
 				console.warn('The 3D scene could not start:', error);
@@ -948,7 +950,8 @@
 				w.resize(drawnW, drawnH, dpr);
 			};
 			performance.mark('journey:built');
-			w.stage.warmUp();
+			await w.stage.warmUp((k) => (built = 0.6 + k * 0.4));
+			if (disposed) return;
 			performance.mark('journey:warm');
 			resize();
 			window.addEventListener('resize', resize);
@@ -2475,7 +2478,7 @@
 {#if !driven && !failed}
 	<!-- A quiet line of light gliding while the world is built, and gone with a fade as the world fades in. -->
 	<div class="loader" aria-hidden="true" out:fade={{ duration: 220 }}>
-		<span class="glide"><i></i></span>
+		<span class="glide"><b style:transform="scaleX({built})"></b><i></i></span>
 		<p>Warming up the machines</p>
 	</div>
 {/if}
@@ -3910,6 +3913,14 @@
 		overflow: hidden;
 		border-radius: 2px;
 		background: rgb(16 26 48 / 0.1);
+	}
+	/* How much is built: a soft amber fill behind the bead, from the left. */
+	.glide b {
+		position: absolute;
+		inset: 0;
+		transform-origin: left;
+		background: rgb(255 185 33 / 0.42);
+		transition: transform 0.3s ease-out;
 	}
 	.glide i {
 		position: absolute;

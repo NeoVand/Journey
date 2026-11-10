@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Stage } from './stage';
+import { breathe, Stage } from './stage';
 import { Rig, type Shot } from './rig';
 import { bell, inOut, lerp, outBack, outCubic, seg, smooth, smoother, spring, inCubic } from './kit/math';
 import { contactShadow, Label, loadFonts, Surface } from './kit/print';
@@ -291,20 +291,21 @@ export class World {
 	private piece = new THREE.Box3();
 	root = new THREE.Group();
 
-	private laptop = new Laptop();
-	private harness = new Harness();
-	private brain = new Brain();
-	private skills = new SkillShelf();
-	private doc = new RequestDoc();
-	private strips = [0, 1, 2, 3].map((i) => new Strip(i));
-	private tunnel = new Tunnel(TUNNEL_L);
-	private gateway = new Gateway();
-	private gantry = new Gantry();
-	private tiles: Tile[] = TOKENS.map((t) => new Tile(t));
-	private mcp = new McpServer();
+	// The machines, built a few at a time as the page opens: see create().
+	private laptop!: Laptop;
+	private harness!: Harness;
+	private brain!: Brain;
+	private skills!: SkillShelf;
+	private doc!: RequestDoc;
+	private strips!: Strip[];
+	private tunnel!: Tunnel;
+	private gateway!: Gateway;
+	private gantry!: Gantry;
+	private tiles!: Tile[];
+	private mcp!: McpServer;
 	private upstairs = new THREE.Group();
-	private cluster = new Cluster();
-	private back = new Back();
+	private cluster!: Cluster;
+	private back!: Back;
 	private bulges: THREE.Mesh[] = [];
 	private easelLegs!: THREE.Object3D;
 	private downCurve!: THREE.Curve<THREE.Vector3>;
@@ -351,9 +352,21 @@ export class World {
 	/** T value of the last frame, for one-shot logic. */
 	state: WorldState = { form: 1, dive: 0, inside: false, dusk: 0 };
 
-	static async create(canvas: HTMLCanvasElement) {
+	/**
+	 * Builds the world a piece at a time, with a frame between pieces, so the page stays alive while it's built and the
+	 * loader can show how far it has got: `progress` hears 0 to 1.
+	 */
+	static async create(canvas: HTMLCanvasElement, progress: (k: number) => void = () => {}) {
 		await loadFonts();
-		return new World(canvas);
+		const w = new World(canvas);
+		let done = 0;
+		for (const [share, step] of w.steps()) {
+			await breathe();
+			step();
+			done += share;
+			progress(Math.min(1, done / 100));
+		}
+		return w;
 	}
 
 	private constructor(canvas: HTMLCanvasElement) {
@@ -361,6 +374,44 @@ export class World {
 		this.rig = new Rig(this.stage.camera, SHOTS);
 		this.voyage = new Voyage(this.rig);
 		this.visits = new Visits(this.stage, () => (this.trackIn && this.trackId ? [this.places[this.trackId as 'harness']?.group] : [this.root, this.cluster.group]));
+	}
+
+	/**
+	 * The pieces of the world in the order they're built, each with its share of a hundred of the time it takes, for
+	 * the loader. Each is built before the next is asked for, so a piece can hand on its own parts.
+	 */
+	private *steps(): Generator<[number, () => void]> {
+		yield [
+			9,
+			() => {
+				this.laptop = new Laptop();
+				this.harness = new Harness();
+				this.brain = new Brain();
+				this.skills = new SkillShelf();
+				this.doc = new RequestDoc();
+			}
+		];
+		yield [
+			8,
+			() => {
+				this.strips = [0, 1, 2, 3].map((i) => new Strip(i));
+				this.tunnel = new Tunnel(TUNNEL_L);
+				this.gateway = new Gateway();
+				this.gantry = new Gantry();
+				this.tiles = TOKENS.map((t) => new Tile(t));
+				this.mcp = new McpServer();
+			}
+		];
+		yield [27, () => (this.cluster = new Cluster())];
+		yield [3, () => (this.back = new Back())];
+		const back = this.back.steps();
+		for (const step of back) yield [25 / back.length, step];
+		yield [20, () => this.buildSky()];
+		yield [8, () => this.finish()];
+	}
+
+	/** The sky and the islands in it, with everything that stands on them and the cables between. */
+	private buildSky() {
 		this.clouds.lay(
 			[
 				{ shots: SHOTS, sky: (T) => T < DIVE_T || T >= EXIT_T },
@@ -370,6 +421,10 @@ export class World {
 		);
 		this.stage.scene.add(this.root, this.cluster.group);
 		this.assemble();
+	}
+
+	/** What needs the whole world standing: the upstairs split, the finale's route, the map, the side trips' rigs. */
+	private finish() {
 		this.splitUpstairs();
 		this.root.add(this.back.group);
 		// Its route is the pipes already standing, so it can only be built once they all are.
