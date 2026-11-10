@@ -7,7 +7,7 @@
  */
 import type { World } from '../world';
 import type { HarnessId, TrackId } from '../content';
-import type { Bed, Cue, Where } from './conductor';
+import type { Bed, Cue, Heard, Where } from './conductor';
 import { chime, harp, key, low, note, porcelain, tick, whoosh } from './synth';
 import { PUCK_MOVES, puckPoint, roomPoint } from '../tracks/harness';
 import { STAGE_AT } from '../tracks/sandbox';
@@ -27,33 +27,36 @@ const CALL = [5, 7, 9, 7, 10, 9, 7, 9, 10, 12, 10, 9, 7, 9, 12];
 /** One note per turn of the whole fix: the red one, turn seven, low; the last two bright. Its buttons play them too. */
 export const TURN_NOTES = [0, 2, 4, 2, 5, 4, -2, 5, 7, 9];
 
-/** Places along the way, in the story's coordinates, for left and right and distance. */
-const P = {
-	laptop: [-3.3, 0.8, 0.5],
-	harness: [1.1, 1.6, -0.65],
-	server: [7.2, 0.8, -0.72],
-	easel: [5.75, 1.75, 0.9],
-	tunnel: [12, -6, 0.9],
-	gateway: [15.94, -8.4, 0.9],
-	template: [-3.4, -17, 0.9],
-	belt: [4, -16.5, 0.9],
-	arch: [11.45, -16.5, 0.9],
-	brain: [1.4, -31, 1.2],
-	gates: [-51, -13, 0],
-	sandbox: [-24.5, -15, 0],
-	compaction: [-20, 6, -4],
-	memory: [-48, 9, -4],
-	turns: [-110, 15, -4],
-	finish: [-144, 18, -4]
-} satisfies Record<string, Where>;
+/**
+ * Places along the way, by the thing that stands there. Where each one is, for left and right and distance, is asked of
+ * the world as the sound plays, so a sound comes from its thing wherever the world has put it.
+ */
+const PLACES = {
+	laptop: 'Laptop',
+	harness: 'Harness',
+	server: 'MCP',
+	easel: 'easel',
+	tunnel: 'tunnel-frame',
+	gateway: 'Front door',
+	template: 'chat-template',
+	belt: 'belt',
+	arch: 'safety-arch',
+	brain: 'brain',
+	gates: 'gate-board',
+	sandbox: 'sandbox-frame',
+	compaction: 'press-frame',
+	memory: 'memory-cabinet',
+	turns: 'turn-cursor',
+	finish: 'steps'
+} as const;
 /** Somewhere inside the cluster, by how far along its hall it is. */
 const hall = (x: number, y = 0): Where => [1.4 + x, -46 + y, 1.2];
 
 export function score(w: World): { cues: Cue[]; beds: Bed[] } {
-	void w;
+	const P = Object.fromEntries(Object.entries(PLACES).map(([k, name]) => [k, () => w.placeOf(name)])) as Record<keyof typeof PLACES, Heard>;
 	const cues: Cue[] = [];
-	const at = (T: number, sound: Cue['sound'], where?: Where, more: Partial<Cue> = {}) => cues.push({ T, sound, at: where, ...more });
-	const tone = (T: number, i: number, where?: Where, gain = 0.4, ring = 1) => at(T, porcelain(note(i), ring), where, { gain, minor: true });
+	const at = (T: number, sound: Cue['sound'], where?: Where | Heard, more: Partial<Cue> = {}) => cues.push({ T, sound, at: where, ...more });
+	const tone = (T: number, i: number, where?: Where | Heard, gain = 0.4, ring = 1) => at(T, porcelain(note(i), ring), where, { gain, minor: true });
 
 	/* 1. It starts as a sentence: Return, the slip flies to the harness, which wakes up; the server connects. */
 	at(1.56, key(1.6), P.laptop, { gain: 0.8 });

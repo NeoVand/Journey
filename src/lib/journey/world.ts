@@ -1230,6 +1230,24 @@ export class World {
 		};
 	}
 
+	private placed = new Map<string, [number, number, number]>();
+	private placeBox = new THREE.Box3();
+	/**
+	 * The middle of a named thing on the story's road, for a sound to come from: found once, then remembered. Null if
+	 * there's nothing by that name yet.
+	 */
+	placeOf(name: string): [number, number, number] | null {
+		const known = this.placed.get(name);
+		if (known) return known;
+		const o = this.root.getObjectByName(name) ?? this.cluster.group.getObjectByName(name);
+		if (!o) return null;
+		o.updateWorldMatrix(true, true);
+		const c = this.placeBox.setFromObject(o).getCenter(new THREE.Vector3());
+		const p: [number, number, number] = [c.x, c.y, c.z];
+		this.placed.set(name, p);
+		return p;
+	}
+
 	/** The top of the model, wherever the world has it: a flight into it or up out of it looks down on it from there. */
 	modelTop(): [number, number, number] {
 		const box = this.part.setFromObject(this.brain.group);

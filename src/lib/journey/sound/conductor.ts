@@ -6,6 +6,8 @@
 import type { Playing, Sound, Voice } from './engine';
 
 export type Where = readonly [number, number, number];
+/** A place asked for as the sound plays; null if there's nothing there, and then it sounds from the middle. */
+export type Heard = () => Where | null;
 
 export interface Cue {
 	T: number;
@@ -15,7 +17,7 @@ export interface Cue {
 	rate?: number;
 	wet?: number;
 	/** Where in the world it happens, for left and right and distance. Fixed, or asked for when it plays. */
-	at?: Where | (() => Where);
+	at?: Where | Heard;
 	/** Dropped when the reader is scrolling fast: per-item detail, not the story's beats. */
 	minor?: boolean;
 	/** Lets the ambiences make room. */
