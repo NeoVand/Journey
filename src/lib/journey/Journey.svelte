@@ -7,6 +7,7 @@
 	import { Pointer } from './pointer.svelte';
 	import Subtitles from './Subtitles.svelte';
 	import TalkPlayer from './TalkPlayer.svelte';
+	import SoundMixer from './SoundMixer.svelte';
 	import Tour from './Tour.svelte';
 	import Tokenizer from './Tokenizer.svelte';
 	import { Tween } from 'svelte/motion';
@@ -24,7 +25,7 @@
 	import Icon from './Icon.svelte';
 	import { ArrowLeft01Icon, ArrowRight01Icon, ConversationIcon, GithubIcon, SignpostIcon, VolumeHighIcon, VolumeOffIcon } from '@hugeicons/core-free-icons';
 	import { Narrator, TALKS, spoken } from './narrator.svelte';
-	import { Sound } from './sound/engine';
+	import { MIX, Sound, type Mix } from './sound/engine';
 	import { Conductor } from './sound/conductor';
 	import { score, tripScore, TURN_NOTES } from './sound/score';
 	import { chime, key, low, note, porcelain, tick as tickSound, VOICE_SOUNDS, whoosh } from './sound/synth';
@@ -314,6 +315,60 @@
 		};
 	});
 	let toggleSound: () => void = () => {};
+
+	/* The sound key's mixer: open on hover, on keyboard focus, or on a tap, like the conversation's player. */
+	let soundBox = $state<HTMLElement>();
+	let soundKey = $state<HTMLButtonElement>();
+	let mixerOpen = $state(false);
+	let mixerByTouch = false;
+	let mixerTimer = 0;
+	let mixerHover = false;
+	let soundTapped = false;
+	function showMixer(on: boolean, wait = on ? 140 : 300) {
+		clearTimeout(mixerTimer);
+		mixerTimer = window.setTimeout(() => {
+			mixerOpen = on;
+			if (!on) mixerByTouch = false;
+		}, wait);
+	}
+	/** A click turns sound on and off. A tap opens the mixer first, and turns sound on if it was off; with the mixer showing, a tap is a click. */
+	function pressSound() {
+		if (soundTapped && !mixerOpen) {
+			mixerByTouch = true;
+			showMixer(true, 0);
+			if (!soundOn) toggleSound();
+			return;
+		}
+		toggleSound();
+	}
+	$effect(() => {
+		if (!mixerOpen || !mixerByTouch) return;
+		let idle = window.setTimeout(() => showMixer(false, 0), 6000);
+		const touch = (e: PointerEvent) => {
+			clearTimeout(idle);
+			if (!soundBox?.contains(e.target as Node)) showMixer(false, 0);
+			else idle = window.setTimeout(() => showMixer(false, 0), 6000);
+		};
+		window.addEventListener('pointerdown', touch, true);
+		window.addEventListener('pointerup', touch, true);
+		return () => {
+			clearTimeout(idle);
+			window.removeEventListener('pointerdown', touch, true);
+			window.removeEventListener('pointerup', touch, true);
+		};
+	});
+	/** The reader's levels for the ambience and the effects: remembered, and heard as they move. */
+	let mix = $state<Mix>({ ...MIX });
+	let hearMix: (levels: Mix) => void = () => {};
+	function setMix(levels: Mix) {
+		mix = levels;
+		hearMix(levels);
+		try {
+			localStorage.setItem('journey-sound-mix', JSON.stringify(levels));
+		} catch {
+			// Private browsing: it just isn't remembered.
+		}
+	}
 	/** The sounds of the interface itself: a step, a flight, the map. Quiet until sound is on. */
 	/** The page's own sounds: the reader's steps and flights, and the controls they press. `n` and `m` say which, or how many. */
 	type CueKind = 'step' | 'flight' | 'drop' | 'rise' | 'map' | 'enter' | 'spin' | 'harness' | 'cache' | 'temperature' | 'turn' | 'tokens' | 'spot';
@@ -1875,6 +1930,15 @@
 			// Under the site's own address, wherever it's hosted.
 			const sound = new Sound((name) => `${resolve('/')}sound/${name}.mp3`);
 			hush = (on) => sound.hush(on);
+			try {
+				const kept = JSON.parse(localStorage.getItem('journey-sound-mix') ?? 'null');
+				if (kept && typeof kept.ambience === 'number' && typeof kept.effects === 'number') mix = { ambience: kept.ambience, effects: kept.effects };
+			} catch {
+				// Nothing kept: the quiet defaults.
+			}
+			hearMix = (levels) => sound.mix(levels);
+			sound.mix(mix);
+			if (new URLSearchParams(location.search).has('debug')) (window as unknown as { __sound: unknown }).__sound = sound;
 			const hear = (x: number, y: number, z: number) => w.heard(x, y, z);
 			const story = score(w);
 			const main = new Conductor(sound, story.cues, story.beds, hear);
@@ -2295,9 +2359,45 @@
 			{/if}
 		</div>
 		<div class={['stepper', { show: driven }]} role="group" aria-label="Sound, a conversation about this card, and steps through the story" inert={!driven}>
-			<button type="button" class="sound" aria-pressed={soundOn} aria-label="Sound" title={soundOn ? 'Sound is on' : 'Sound is off'} onclick={() => toggleSound()}>
-				<Icon icon={soundOn ? VolumeHighIcon : VolumeOffIcon} size={19} stroke={1.8} />
-			</button>
+			<!-- Sound on and off; its mixer, for the ambience and the effects, hangs under it. -->
+			<div
+				class="sound-box"
+				role="presentation"
+				bind:this={soundBox}
+				onpointerenter={(e) => {
+					if (e.pointerType === 'touch') return;
+					mixerHover = true;
+					showMixer(true);
+				}}
+				onpointerleave={(e) => {
+					if (e.pointerType === 'touch') return;
+					mixerHover = false;
+					if (!soundBox?.contains(document.activeElement) || !document.activeElement?.matches(':focus-visible')) showMixer(false);
+				}}
+				onfocusin={(e) => (e.target as HTMLElement).matches(':focus-visible') && showMixer(true, 0)}
+				onfocusout={(e) => !mixerHover && !soundBox?.contains(e.relatedTarget as Node) && showMixer(false, 0)}
+				onkeydown={(e) => {
+					if (e.key !== 'Escape' || !mixerOpen) return;
+					e.preventDefault();
+					e.stopPropagation();
+					showMixer(false, 0);
+				}}
+			>
+				<button
+					type="button"
+					class="sound"
+					bind:this={soundKey}
+					aria-pressed={soundOn}
+					aria-label="Sound"
+					title={soundOn ? 'Sound is on' : 'Sound is off'}
+					onpointerdown={(e) => (soundTapped = e.pointerType === 'touch')}
+					onkeydown={() => (soundTapped = false)}
+					onclick={pressSound}
+				>
+					<Icon icon={soundOn ? VolumeHighIcon : VolumeOffIcon} size={19} stroke={1.8} />
+				</button>
+				<SoundMixer open={mixerOpen} on={soundOn} levels={mix} anchor={soundKey} onmix={setMix} ontoggle={() => toggleSound()} />
+			</div>
 			<!-- Nora and Theo talk the card through. Playing, amber fills the key as the conversation goes; the player hangs under it. -->
 			<div
 				class="talk-box"
@@ -4246,7 +4346,8 @@
 	 * the clock, the way Next fills while a card plays, so the reader can see how much is left. Paused, the amber stays,
 	 * paler. A seam after it, pressed into the panel, keeps the listening apart from the steps.
 	 */
-	.talk-box {
+	.talk-box,
+	.sound-box {
 		display: flex;
 	}
 	.stepper .talk {

@@ -9,6 +9,8 @@ const gitignorePath = path.resolve(import.meta.dirname, '.gitignore');
 
 export default defineConfig(
 	includeIgnoreFile(gitignorePath),
+	// Agents' worktrees live under .claude/, each a copy of everything: they lint their own.
+	{ ignores: ['.claude/'] },
 	js.configs.recommended,
 	ts.configs.recommended,
 	svelte.configs.recommended,
