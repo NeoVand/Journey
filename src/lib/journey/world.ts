@@ -252,7 +252,7 @@ export class World {
 	private gantry = new Gantry();
 	private tiles: Tile[] = TOKENS.map((t) => new Tile(t));
 	private mcp = new McpServer();
-	private lower = new THREE.Group();
+	private upstairs = new THREE.Group();
 	private cluster = new Cluster();
 	private back = new Back();
 	private bulges: THREE.Mesh[] = [];
@@ -311,7 +311,7 @@ export class World {
 		);
 		this.stage.scene.add(this.root, this.cluster.group);
 		this.assemble();
-		this.splitLower();
+		this.splitUpstairs();
 		this.root.add(this.back.group);
 		// Its route is the pipes already standing, so it can only be built once they all are.
 		this.finale = new Finale({
@@ -365,22 +365,22 @@ export class World {
 	}
 
 	/**
-	 * Everything upstairs, from the wire to the model, in a group of its own: it waits outside while the story is inside
-	 * the model, and comes down out of the sky into the last look at the whole trip.
+	 * Everything upstairs, from the wire to the model, in a group of its own: the provider's side of the loop, which
+	 * stands at rest outside the model once the request has gone through it.
 	 */
-	private splitLower() {
+	private splitUpstairs() {
 		this.root.updateMatrixWorld(true);
 		const box = new THREE.Box3();
 		const centre = new THREE.Vector3();
 		[...this.root.children].forEach((child) => {
-			if ((child as THREE.Sprite).isSprite || child === this.lower || child === this.clouds.group) return;
+			if ((child as THREE.Sprite).isSprite || child === this.upstairs || child === this.clouds.group) return;
 			if (this.loopMeshes.includes(child as THREE.Mesh)) return;
 			box.setFromObject(child);
 			if (box.isEmpty()) return;
 			box.getCenter(centre);
-			if (centre.y > 4.5 || centre.x > 9) this.lower.add(child);
+			if (centre.y > 4.5 || centre.x > 9) this.upstairs.add(child);
 		});
-		this.root.add(this.lower);
+		this.root.add(this.upstairs);
 	}
 
 	private assemble() {
@@ -576,10 +576,11 @@ export class World {
 			[SLOT_X + 7.6, y, z],
 			[SLOT_X + 10.6, y, z],
 			[BELT_END - 0.4, y, z],
-			[BELT_END + 0.5, y + 0.005, z + 0.14],
-			[BELT_END + 1.3, y + 0.2, z + 0.62],
-			[BELT_END + 2.1, y + 0.75, z + 1.6],
-			[BELT_END + 3.1, y + 2.1, z + 3.6],
+			// Level until the longest token's tail is off the belt, so it can't tip back into it as the climb begins.
+			[BELT_END + 0.5, y, z + 0.14],
+			[BELT_END + 1.2, y + 0.02, z + 0.55],
+			[BELT_END + 2.0, y + 0.3, z + 1.5],
+			[BELT_END + 3.0, y + 1.5, z + 3.5],
 			[BELT_END + 2.9, y + 3.9, z + 5.9],
 			[BELT_END + 1.2, y + 5.6, z + 7.4],
 			[BELT_END - 1.8, y + 7.2, z + 7.6],
@@ -1445,7 +1446,6 @@ export class World {
 
 			this.root.position.y = (1 - outCubic(seg(intro, 0, 0.8))) * -0.9;
 
-			const whole = T >= FINALE_T;
 			// Upstairs is always there, outside the model. Your tools' ring below stands from the first frame too, at rest
 			// until the reply comes down and its chapters start.
 			this.back.group.visible = true;

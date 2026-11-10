@@ -63,6 +63,7 @@ const F_POS: V3 = [-174, 18, -4];
 const STEP_H = [1.3, 1.9, 2.5, 3.1, 3.7];
 
 const rel = (o: V3, x: number, y: number, z: number): V3 => [o[0] + x, o[1] + y, o[2] + z];
+const UP = new THREE.Vector3(0, 1, 0);
 /** Where something drawn for the gates or the workshop stands now, in the ring below your laptop. */
 const low = (p: V3): V3 => [p[0] + LOWER[0], p[1] + LOWER[1], p[2] + LOWER[2]];
 
@@ -133,7 +134,7 @@ const S_FIN = { az: 9, el: 14, target: rel(F_POS, 0, 2.5, 0.8), radius: 10.8, ry
 /** What the test monitor shows once the whole suite is green. */
 const PASSED = 99;
 /** The whole figure-eight, upright, from a little to its right: the model on top, your laptop at the waist, your tools below. */
-const S_WHOLE = { az: 7, el: 8, target: [2.2, 5.2, 0] as V3, radius: 32, ry: 35.5, wide: box(0.42, 0.09, 0.56, 0.89), tall: box(0, 0.24, 1, 0.74), tallTarget: [2.2, 5.2, 0] as V3, tallRadius: 32, tallRy: 35.5 };
+const S_WHOLE = { az: 7, el: 8, target: [2.2, 5.2, 0] as V3, radius: 32, ry: 35.5, wide: box(0.42, 0.09, 0.56, 0.89), tall: box(0, 0.06, 1, 0.43), tallTarget: [2.2, 5.2, 0] as V3, tallRadius: 31, tallRy: 35 };
 const S_END = { az: 29, el: 17, target: [1.9, 1.35, 0.4] as V3, radius: 6.25, ry: 6.25, wide: box(0.4, 0.02, 0.61, 0.94), tall: box(0, 0.05, 1, 0.42) };
 
 export const BACK_SHOTS: Shot[] = [
@@ -415,13 +416,15 @@ export class Back {
 		[0.4, 3.2, -2.07],
 		[0.38, 3.22, -2.4],
 		[-0.6, 3.3, -3.4],
-		// Behind your island and down the left of the ring below it, to the dock at the head of the gates.
+		// Behind your island and down the left of the ring below it, wide and gently enough for the card riding it, round
+		// to the dock at the head of the gates, and down into it.
 		[-6, 0.4, -6.4],
-		[-13, -5.8, -7.6],
-		[-19, -11.6, -7.4],
+		[-13, -4.6, -8.4],
+		[-20, -9.6, -9],
+		[-25, -13.4, -7.6],
+		[-26.6, -15.6, -5.2],
 		...(
 			[
-				[-58, -8, -6.8],
 				[DOCK_X - 0.2, GY + 3.9, TRACK_Z - 2.6],
 				[DOCK_X, GY + DOCK_H + 0.85, TRACK_Z - 0.42],
 				[DOCK_X, GY + DOCK_H + 0.55, TRACK_Z],
@@ -532,6 +535,7 @@ export class Back {
 	private d = new THREE.Object3D();
 	private c = new THREE.Color();
 	private v = new THREE.Vector3();
+	private a2 = new THREE.Vector3();
 	private zones: { g: THREE.Object3D; from: number; to: number; home: boolean; whole: boolean; at: V3 }[] = [];
 
 	constructor() {
@@ -1785,8 +1789,16 @@ export class Back {
 				if (go > 0) {
 					// Up and over the machine's roof, and down onto the pipe behind it, riding high enough to clear it.
 					const JOIN = 0.14;
-					this.b.copy(this.gatePath.getPointAt(Math.max(go, JOIN)));
-					this.b.y += 0.82;
+					// Lifted off the pipe square to it, not straight up: where it drops steeply to the gates, straight up would
+					// put the card back against it.
+					const at = Math.max(go, JOIN);
+					this.b.copy(this.gatePath.getPointAt(at));
+					const along = this.gatePath.getTangentAt(at, this.v);
+					const lift = this.a2.crossVectors(along, UP).cross(along).normalize();
+					if (lift.y < 0) lift.negate();
+					// Where it runs straight down into the dock, straight up is clear of it again.
+					lift.lerp(UP, smooth(seg(Math.abs(along.y), 0.75, 0.95))).normalize();
+					this.b.addScaledVector(lift, 0.9);
 					if (go < JOIN) {
 						const k = inOut(go / JOIN);
 						const u = 1 - k;

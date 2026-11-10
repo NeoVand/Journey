@@ -183,10 +183,10 @@ export class Finale {
 		const where: V3[] = [
 			[-5.2, 3.6, 0.6],
 			[5.4, 5.4, -0.75],
-			[tunnelFrom + 1.6, tunnelY + 2.5, z],
+			[tunnelFrom - 0.2, tunnelY + 3.3, z],
 			[tunnelTo + 6.2, tunnelY + 1.2, z],
 			[MODEL_X - 9.4, MODEL_ISLAND_Y + 9.6, 1.2],
-			[MODEL_FLANK[0] - 12.2, 15.4, -0.5],
+			[MODEL_FLANK[0] - 18.4, 15.6, -0.5],
 			low([-52, -7, 0.7]),
 			low([-27, -5.7, 1]),
 			[23.4, -7.4, -1]
