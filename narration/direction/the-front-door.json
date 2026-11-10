@@ -1,6 +1,16 @@
 {
 	"cues": [
+		{ "at": "Check one: decrypt", "show": [], "do": "check", "index": 0 },
+		{ "at": "Check two: who are you?", "show": [], "do": "check", "index": 1 },
+		{ "at": "Check three is the rate limit", "show": [], "do": "check", "index": 2 },
+		{ "at": "Check four is the budget", "show": [], "do": "check", "index": 3 },
 		{ "at": "Capacity.", "show": ["label:Capacity"], "hold": 3.4 },
-		{ "at": "the harness quietly tries again", "show": ["Harness"], "hold": 3.4 }
+		{ "at": "If every chip in the cluster is busy", "show": [], "do": "check", "index": 4 },
+		{ "at": "the harness quietly tries again", "show": ["Harness"], "hold": 3.4 },
+		{ "at": "Decrypt", "show": [], "do": "check", "index": 0 },
+		{ "at": "who are you", "show": [], "do": "check", "index": 1 },
+		{ "at": "rate limit", "show": [], "do": "check", "index": 2 },
+		{ "at": "budget", "show": [], "do": "check", "index": 3 },
+		{ "at": "capacity. Not a single", "show": [], "do": "check", "index": 4 }
 	]
 }

@@ -42,7 +42,8 @@ it feels like a friend with a pointer who knows when to use it. Done badly, it's
   `"turn"` with `index` 0 to 9 shows that turn of "The whole fix, in ten turns" (and plays its note); `"cache"` with
   `index` 1 or 0 switches its cache on or off; `"temperature"` turns the wheel's dial to `index` tenths (2 to 20) on
   "One token is chosen", a tick at a time; `"memory"` with `index` 0 to 6 brings out that drawer of the memory
-  cabinet on "Seven things called memory" (the red one, 6, rattles and stays shut). Beats can be as many as the words need: they move nothing but the card.
+  cabinet on "Seven things called memory" (the red one, 6, rattles and stays shut); `"check"` with `index` 0 to 4 nods
+  that check out of the front door's gateway, its lamp flaring (named quickly in a row, they ripple). Beats can be as many as the words need: they move nothing but the card.
   Landing part way through a conversation, the card catches up with the latest beat of each kind.
 - `front` (optional): sees the thing from the side it faces, for a screen or a sign whose words are the point, however
   the card's own shot looks at it. A far flight takes a little longer by itself, so it never lurches.

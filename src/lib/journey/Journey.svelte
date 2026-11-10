@@ -802,6 +802,7 @@
 					else if (what === 'cache') setCache(i === 1);
 					else if (what === 'temperature') turnDial(i / 10);
 					else if (what === 'memory') w.nameMemory(i);
+					else if (what === 'check') w.nameCheck(i);
 				}
 			});
 			{

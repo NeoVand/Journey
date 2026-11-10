@@ -105,14 +105,27 @@ export class Gateway {
 		});
 	}
 
+	/** When a conversation last named each check (the clock's seconds): named one after another, they ripple. */
+	private namedAt = CHECKS.map(() => -10);
+	private clock = 0;
+
+	/** A conversation names one of the checks: its blade nods out and back, and its lamp flares. */
+	name(i: number) {
+		if (i >= 0 && i < this.namedAt.length) this.namedAt[i] = this.clock;
+	}
+
 	/** checks: 0..N, how far the sequence has progressed. Each blade pops out while it runs. */
 	update(checks: number, time: number) {
+		this.clock = time;
 		this.blades.forEach((blade, i) => {
+			const since = time - this.namedAt[i];
 			const active = seg(checks, i, i + 0.5);
 			const done = seg(checks, i + 0.5, i + 1);
 			const pop = active < 1 ? outBack(active, 3) : 1 - done;
-			blade.group.position.z = GD / 2 - 0.1 + Math.max(0, pop) * 0.26;
-			if (checks >= i + 0.5) blade.lamp.set(color.green, 2.0);
+			const nod = since >= 0 && since < 1.1 ? Math.sin((since / 1.1) * Math.PI) : 0;
+			blade.group.position.z = GD / 2 - 0.1 + Math.max(0, pop, nod) * 0.26;
+			if (nod > 0) blade.lamp.set(checks >= i + 0.5 ? color.green : color.amber, 2.0 + nod * 2.5);
+			else if (checks >= i + 0.5) blade.lamp.set(color.green, 2.0);
 			else if (checks >= i) blade.lamp.set(color.amber, 1.6 + Math.sin(time * 14) * 0.9);
 			else blade.lamp.set(color.amber, 0.3);
 		});
