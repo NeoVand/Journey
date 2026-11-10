@@ -1,7 +1,5 @@
 {
 	"cues": [
-		{ "at": "Your prompt has already been cut into tokens", "show": ["Tokenizer"], "in": "Now it is a token", "hold": 3 },
-		{ "at": "That's called an embedding", "show": ["sign:Embedding"], "hold": 3.6 },
-		{ "at": "they live on the chip now", "show": ["label:Accelerator"], "in": "One model, many chips", "hold": 3 }
+		{ "at": "That's called an embedding", "show": ["sign:Embedding"], "hold": 3.6 }
 	]
 }

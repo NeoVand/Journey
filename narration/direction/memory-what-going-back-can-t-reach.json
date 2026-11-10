@@ -1,8 +1,5 @@
 {
 	"cues": [
-		{ "at": "A rewind puts back files on your disk", "show": ["files-tray"], "hold": 3 },
-		{ "at": "nothing on your laptop can rewind that", "show": ["sign:A rewind can’t reach this"], "hold": 3 },
-		{ "at": "after the rewind, your side looks", "show": ["sign:Today"], "hold": 2.2 },
-		{ "at": "the git host still has the commit", "show": ["commit-parcel", "sign:Your commit"], "together": true, "hold": 3 }
+		{ "at": "nothing on your laptop can rewind that", "show": ["sign:A rewind can’t reach this"], "hold": 3 }
 	]
 }

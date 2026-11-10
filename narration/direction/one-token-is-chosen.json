@@ -1,7 +1,5 @@
 {
 	"cues": [
-		{ "at": "The tokenizer, every layer of the model, the harness", "show": ["Tokenizer", "The model", "Harness"], "together": true, "in": "The whole trip, in one look", "hold": 3.4 },
-		{ "at": "The highest ones come to this board", "show": ["Logits: the highest scores"], "hold": 3 },
 		{ "at": "That's top-k or top-p", "show": ["sign:Sampler"], "hold": 3 },
 		{ "at": "another spin might start with", "show": ["wheel"], "do": "spin", "hold": 5 }
 	]

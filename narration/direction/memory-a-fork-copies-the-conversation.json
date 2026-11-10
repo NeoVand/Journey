@@ -1,7 +1,6 @@
 {
 	"cues": [
 		{ "at": "From there the two go their own ways", "show": ["rail-b", "rail-f"], "together": true, "hold": 3.4 },
-		{ "at": "Both sessions still work on the same scheduler.py", "show": ["files-tray"], "hold": 3.6 },
 		{ "at": "Fork Conversation copies it up to a checkpoint", "show": ["checkpoint-stand", "sign:Checkpoint"], "together": true, "hold": 3 }
 	]
 }

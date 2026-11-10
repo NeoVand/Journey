@@ -1,8 +1,6 @@
 {
 	"cues": [
 		{ "at": "the server hands over a menu", "show": ["mcp:Tools"], "hold": 4 },
-		{ "at": "The tools go into the request", "show": ["front:Tools"], "hold": 3.2 },
-		{ "at": "Whoever wrote the server", "show": ["MCP"], "hold": 2.2 },
-		{ "at": "alongside your own instructions", "show": ["front:Instructions"], "hold": 3.4 }
+		{ "at": "The tools go into the request", "show": ["front:Tools"], "hold": 3.2 }
 	]
 }

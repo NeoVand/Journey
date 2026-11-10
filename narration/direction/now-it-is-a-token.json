@@ -1,10 +1,6 @@
 {
 	"cues": [
-		{ "at": "numbers are all the model will ever read", "show": ["The model"], "hold": 3 },
-		{ "at": "a chat template flattens the whole request", "show": ["chat-template"], "hold": 6 },
 		{ "at": "There are two", "show": ["belt"], "do": "flip", "hold": 4.5 },
-		{ "at": "they get the same number", "show": ["belt"], "do": "flip", "hold": 6 },
-		{ "at": "Your laptop could only estimate", "show": ["Laptop"], "hold": 3 },
-		{ "at": "behind the front door", "show": ["Front door"], "hold": 3 }
+		{ "at": "they get the same number", "show": ["belt"], "do": "flip", "hold": 6 }
 	]
 }

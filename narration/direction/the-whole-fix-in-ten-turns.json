@@ -1,8 +1,5 @@
 {
 	"cues": [
-		{ "at": "the harness's instructions, the tool list", "show": ["front:Instructions", "front:Environment", "front:Tools", "front:Conversation"], "together": true, "hold": 3.2 },
-		{ "at": "Twenty-one thousand green, fifteen hundred amber", "show": ["label:21,000 reused", "label:1,500 new"], "together": true, "in": "Turn two starts ahead", "hold": 3.4 },
-		{ "at": "Turn six, the tests run, and fail", "show": ["monitor"], "in": "Evidence, not opinion", "hold": 3 },
 		{ "at": "Each request carries the whole conversation", "show": ["drawer:Conversation"], "do": "pull", "index": 3, "hold": 5 }
 	]
 }

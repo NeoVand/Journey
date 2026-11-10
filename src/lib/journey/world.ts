@@ -866,6 +866,7 @@ export class World {
 		this.chevron.repeat.set(len / 0.62, 2);
 		const backing = new THREE.Mesh(new THREE.TubeGeometry(ret, 320, 0.115, 20), retMat);
 		backing.castShadow = true;
+		backing.name = 'return-loop';
 		this.root.add(backing);
 		this.loopMeshes = [backing];
 		const haze = new THREE.Mesh(
@@ -996,6 +997,8 @@ export class World {
 	onPress: (what: 'wheel' | 'enter') => void = () => {};
 	/** On a phone, how far down the screen the words begin at this point in the story. The page measures it. */
 	roomAt: ((T: number) => number) | null = null;
+	/** During a peek at another moment of the story, the moment the reader is at: its card decides where the picture goes. */
+	homeT: number | null = null;
 	/** On a phone, where the header ends, as a share of the screen: no picture is framed under it. */
 	ceiling = 0;
 	/** On a phone, where the title page's words end, as a share of the screen: its picture has the room below. */
@@ -1210,13 +1213,14 @@ export class World {
 	 * tiles, wakes the brain, spins the wheel. False if there's nothing by those names in the scene now. cutBack is for a
 	 * peek at another moment of the story, which the page ends with a cut.
 	 */
-	visit(cue: { names: string[]; together?: boolean; hold?: number; act?: string; index?: number; cutBack?: boolean; still?: boolean }) {
+	visit(cue: { names: string[]; together?: boolean; hold?: number; act?: string; index?: number; cutBack?: boolean; still?: boolean; wide?: boolean }) {
 		return this.visits.start({
 			names: cue.names,
 			together: cue.together,
 			hold: cue.hold,
 			cutBack: cue.cutBack,
 			still: cue.still,
+			wide: cue.wide,
 			act: this.actFor(cue.act, cue.index),
 			fly: !this.trackIn
 		});
@@ -1329,7 +1333,8 @@ export class World {
 		const intro = this.intro;
 
 		// The picture makes room before the words arrive, and only takes it back once they've gone.
-		this.rig.update(T, this.stage.width, this.stage.height, px, py, time, this.roomAt?.(T), this.titleFloor ?? undefined, this.ceiling);
+		const home = this.homeT ?? undefined;
+		this.rig.update(T, this.stage.width, this.stage.height, px, py, time, this.roomAt?.(home ?? T), this.titleFloor ?? undefined, this.ceiling, home);
 		this.frameTrack(px, py, time);
 
 		// Inside a trip's own place, nothing else exists.

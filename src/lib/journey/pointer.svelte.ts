@@ -9,8 +9,8 @@
 import type { Narrator } from './narrator.svelte';
 import type { World } from './world';
 
-/** One moment: when, what to show, what to do there, and where in the story it lives if not here. */
-export type Moment = { t: number; show: string[]; together?: boolean; do?: string; index?: number; in?: string; hold?: number };
+/** One moment: when, what to show, what to do there, and where in the story it lives if not here. wide pulls back to see a whole. */
+export type Moment = { t: number; show: string[]; together?: boolean; do?: string; index?: number; in?: string; hold?: number; wide?: boolean };
 
 /** What the page does for it. */
 export interface Stagehand {
@@ -75,7 +75,7 @@ export class Pointer {
 		// The cut has covered the change: go and look in the other place, once it has been drawn there.
 		if (this.pending && now >= this.pending.at) {
 			const { m, still } = this.pending;
-			if (this.world.visit({ names: m.show, together: m.together, hold: m.hold, act: m.do, index: m.index, cutBack: true, still })) this.pending = null;
+			if (this.world.visit({ names: m.show, together: m.together, hold: m.hold, act: m.do, index: m.index, wide: m.wide, cutBack: true, still })) this.pending = null;
 			else if (now >= this.pending.at + PATIENCE) this.home();
 		}
 		// A peek has stayed its time: home.
@@ -90,18 +90,21 @@ export class Pointer {
 		}
 	}
 
-	/** Shows a moment: here if the thing is in the picture's world now, else a peek at where it lives. */
+	/**
+	 * Shows a moment: a peek at the card it names, if it names one, since that's where it is meant to be seen (the
+	 * laptop as it was in the very first frame, say); otherwise here, if the thing is in the picture's world now.
+	 */
 	private start(m: Moment, now: number, move: boolean) {
-		const visit = { names: m.show, together: m.together, hold: m.hold, act: m.do, index: m.index, still: !move };
-		if (this.world.hasThing(m.show)) {
+		const visit = { names: m.show, together: m.together, hold: m.hold, act: m.do, index: m.index, wide: m.wide, still: !move };
+		const T = move && m.in ? this.hand.whenIs(m.in) : null;
+		if (T === null) {
+			if (!this.world.hasThing(m.show)) return false;
 			// In a peek, a second thing there is shown from there too, and the cut home waits for it.
 			if (!this.world.visit({ ...visit, cutBack: this.peeking })) return false;
 			this.lit = m;
 			this.hand.note();
 			return true;
 		}
-		const T = move && m.in ? this.hand.whenIs(m.in) : null;
-		if (T === null) return false;
 		this.world.endVisit();
 		this.hand.peek(T);
 		this.peeking = true;

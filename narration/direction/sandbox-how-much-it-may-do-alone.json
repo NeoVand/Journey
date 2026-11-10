@@ -1,8 +1,6 @@
 {
 	"cues": [
-		{ "at": "Above the rules sits a mode", "show": ["check-Deny", "check-Ask", "check-Allow"], "together": true, "hold": 2.8 },
 		{ "at": "A loose mode leans on the sandbox", "show": ["sign:Sandbox: Seatbelt or bubblewrap"], "hold": 3.4 },
-		{ "at": "The agent can rewrite the scheduler's locking", "show": ["project-tray"], "hold": 2.2 },
 		{ "at": "but running pytest still waits for your yes", "show": ["you-desk"], "hold": 2.6 }
 	]
 }

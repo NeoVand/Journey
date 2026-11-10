@@ -1,13 +1,8 @@
 {
 	"cues": [
-		{ "at": "the harness spends a few hundred milliseconds packing", "show": ["Harness"] },
-		{ "at": "Think of them as four drawers", "show": ["front:Instructions", "front:Environment", "front:Tools", "front:Conversation"], "together": true, "hold": 2.6 },
 		{ "at": "open the first one", "show": ["drawer:Instructions"], "do": "pull", "index": 0, "hold": 9 },
 		{ "at": "Second drawer", "show": ["drawer:Environment"], "do": "pull", "index": 1, "hold": 8 },
 		{ "at": "Third.", "show": ["drawer:Tools"], "do": "pull", "index": 2, "hold": 6 },
-		{ "at": "Some come from MCP servers", "show": ["MCP"], "hold": 4 },
-		{ "at": "waiting on a shelf", "show": ["Skills"], "hold": 3 },
-		{ "at": "And the last drawer is me", "show": ["drawer:Conversation"], "do": "pull", "index": 3, "hold": 6 },
-		{ "at": "every drawer is about to empty onto one page", "show": ["Request"], "hold": 3 }
+		{ "at": "And the last drawer is me", "show": ["drawer:Conversation"], "do": "pull", "index": 3, "hold": 6 }
 	]
 }

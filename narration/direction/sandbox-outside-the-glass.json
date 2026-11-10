@@ -1,9 +1,6 @@
 {
 	"cues": [
-		{ "at": "The sandbox wraps the commands the agent runs", "show": ["glass-frame"], "hold": 3 },
-		{ "at": "its own tools for reading and editing files", "show": ["File tools"], "hold": 2.8 },
-		{ "at": "So do the MCP servers it starts", "show": ["MCP server"], "hold": 2.6 },
-		{ "at": "And so do your hooks", "show": ["Your hooks"], "hold": 2.6 },
+		{ "at": "its own tools for reading and editing files", "show": ["File tools", "MCP server", "Your hooks"], "together": true, "hold": 14 },
 		{ "at": "there's no glass behind that rule", "show": ["check-Allow"], "hold": 3 }
 	]
 }

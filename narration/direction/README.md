@@ -32,9 +32,11 @@ it feels like a friend with a pointer who knows when to use it. Done badly, it's
   - `"spin"` spins the odds wheel. Only on "One token is chosen".
 - `hold` (optional): seconds to stay, 3.6 by default. Use 2 to 2.5 for quick runs through a list, 3 to 4 usually, and
   6 to 9 while a pulled-out drawer is still being talked about.
-- `in` (optional): the title of the card where the thing lives, when it isn't in this card's world. The picture cuts
-  there, the camera shows it, and it cuts back while the card stays. This is a peek. Only on the main road, never from
-  inside a side trip.
+- `in` (optional): the title of a card to show the thing at, when it isn't in this card's world or is meant to be seen
+  as it was there. The picture cuts there, the camera shows it, and it cuts back while the card stays. This is a peek.
+  Only on the main road, never from inside a side trip, and rare: two in the whole story at the moment.
+- `wide` (optional): pulls back, high, to show a whole: the loop from laptop down to the model and back. The one kind of
+  moment that goes further away than the card's shot. Frame it with several names and `"together": true`.
 
 ## Names
 
@@ -60,15 +62,17 @@ whether a name frames well, leave the moment out.
 
 ## Taste
 
-- Three to eight moments for a story conversation, two to five for a side trip. Fewer, well chosen, beats more.
-- About eight seconds or more between moments, except a deliberate quick run that follows a list in the words, such as
-  "crosses the internet… arrives at the front door… cut into tokens". Give those holds of 2 to 2.5 seconds.
+- One to three moments for a story conversation, one or two for a side trip. Every move of the camera takes the
+  picture away from the card, so each one has to earn it: fewer, well chosen, beats more.
+- When the words run through a list, don't follow every item: one longer look that holds while the list is said, or
+  `"together": true` over the parts, reads better than a hop per word.
 - Go where the words go. Something named that's outside the card's shot is worth the most: the harness when the card
   shows the laptop, the front door on a card about the request.
 - Act out what's described. A drawer opened, a wheel spun, the tiles flipped.
 - Never the same thing twice in a row, and rarely twice in one conversation. If it does come back, the second time
   should add something: pulled rather than shown, say.
-- Peeks cut the picture, so at most one or two per conversation, for something worth the trip.
+- Peeks cut the picture to another chapter and back, so they're kept for the rare moment worth the trip: the model,
+  far off in its data center, or the loop as it was in the very first frame.
 - Don't start with what the card's shot is already about, and don't follow every mention of the harness.
 - No moment while the voices are mid-joke or summing up the whole card. The last line of a conversation usually needs
   nothing.

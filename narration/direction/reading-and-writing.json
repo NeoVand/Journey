@@ -1,9 +1,6 @@
 {
 	"cues": [
-		{ "at": "and fills the KV cache", "show": ["KV cache"], "hold": 3 },
 		{ "at": "The limit is how fast it can compute", "show": ["label:All at once. Limited by compute."], "hold": 3 },
-		{ "at": "how fast it can move numbers out of memory", "show": ["label:One at a time. Limited by memory."], "hold": 3 },
-		{ "at": "Picture a chip busy writing for lots of people", "show": ["lanes"], "hold": 3.4 },
-		{ "at": "Over RDMA", "show": ["rdma", "sign:KV cache, over RDMA"], "together": true, "hold": 4 }
+		{ "at": "how fast it can move numbers out of memory", "show": ["label:One at a time. Limited by memory."], "hold": 3 }
 	]
 }

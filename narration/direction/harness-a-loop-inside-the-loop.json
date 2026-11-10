@@ -1,7 +1,5 @@
 {
 	"cues": [
-		{ "at": "lands in the conversation", "show": ["front:Conversation"], "hold": 3.2 },
-		{ "at": "Another loop", "show": ["Subagent", "sub-pad"], "together": true, "hold": 3.6 },
-		{ "at": "the same files as everyone else", "show": ["sign:Your files"], "hold": 3.4 }
+		{ "at": "Another loop", "show": ["Subagent", "sub-pad"], "together": true, "hold": 3.6 }
 	]
 }

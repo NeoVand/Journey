@@ -1,7 +1,6 @@
 {
 	"cues": [
 		{ "at": "find the scheduler code, read the test file", "show": ["plan-sheet"], "hold": 3.4 },
-		{ "at": "The stamp comes down", "show": ["stamp"], "hold": 2.6 },
-		{ "at": "the sign over your files turns over", "show": ["mode-sign"], "hold": 3 }
+		{ "at": "The stamp comes down", "show": ["stamp"], "hold": 2.6 }
 	]
 }

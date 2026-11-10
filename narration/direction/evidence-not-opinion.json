@@ -1,8 +1,6 @@
 {
 	"cues": [
 		{ "at": "it runs inside the sandbox", "show": ["sandbox-frame"], "hold": 3.4 },
-		{ "at": "They can touch the same files", "show": ["Your repository"], "hold": 3 },
-		{ "at": "The harness captures everything", "show": ["monitor"], "hold": 4.5 },
-		{ "at": "The harness trims long output", "show": ["Harness"], "hold": 3 }
+		{ "at": "The harness captures everything", "show": ["monitor"], "hold": 4.5 }
 	]
 }

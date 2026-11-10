@@ -1,9 +1,6 @@
 {
 	"cues": [
 		{ "at": "it packs everything into one request", "show": ["Pack"], "hold": 3.4 },
-		{ "at": "it reads the reply as it streams in", "show": ["Read"], "hold": 3.4 },
-		{ "at": "the harness checks the call", "show": ["gate"], "hold": 3 },
-		{ "at": "It writes down what happened", "show": ["Write down"], "hold": 4 },
-		{ "at": "it searches the code and fetches the library's docs together", "show": ["cartridge"], "together": true, "hold": 3.4 }
+		{ "at": "It writes down what happened", "show": ["Write down"], "hold": 4 }
 	]
 }

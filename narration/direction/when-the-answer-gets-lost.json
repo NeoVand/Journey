@@ -1,11 +1,6 @@
 {
 	"cues": [
-		{ "at": "The harness crashes after writing the file", "show": ["Harness"], "hold": 3 },
 		{ "at": "the next step is to look, not to retry", "show": ["loupe"], "hold": 3.4 },
-		{ "at": "Steering changes the plan", "show": ["sign:Steer"], "hold": 2.4 },
-		{ "at": "Cancelling.", "show": ["sign:Cancel"], "hold": 2.2 },
-		{ "at": "In Claude Code that's Escape", "show": ["Laptop"], "hold": 2.6 },
-		{ "at": "Kills the process", "show": ["sign:Terminate"], "hold": 2.4 },
 		{ "at": "putting a file back the way it was", "show": ["sign:Roll back"], "hold": 2.6 }
 	]
 }

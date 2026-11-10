@@ -1,11 +1,6 @@
 {
 	"cues": [
-		{ "at": "the harness's own system prompt", "show": ["Harness"], "hold": 3.4 },
-		{ "at": "built in or from an MCP server", "show": ["mcp:Tools"], "hold": 3 },
-		{ "at": "The first two parts barely change", "show": ["label:stays the same"], "hold": 3 },
-		{ "at": "only by growing at the end", "show": ["label:grows"], "hold": 3 },
-		{ "at": "can reuse work it already did", "show": ["label:21,000 reused"], "in": "Turn two starts ahead", "hold": 3.2 },
-		{ "at": "Your code.", "show": ["Laptop"], "hold": 4 },
-		{ "at": "the provider does the real cutting", "show": ["Tokenizer"], "hold": 3 }
+		{ "at": "The first two parts barely change", "show": ["label:stays the same", "label:grows"], "together": true, "hold": 7 },
+		{ "at": "Your code.", "show": ["Laptop"], "hold": 4 }
 	]
 }

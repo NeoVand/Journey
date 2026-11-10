@@ -1,9 +1,6 @@
 {
 	"cues": [
 		{ "at": "every single tool definition", "show": ["drawer:Tools"], "do": "pull", "index": 2, "hold": 8 },
-		{ "at": "one more check to pass", "show": ["safety-arch", "sign:Safety check"], "together": true, "hold": 4 },
-		{ "at": "Content exclusions stop chosen files", "show": ["Laptop"], "hold": 3 },
-		{ "at": "Where does it go now", "show": ["The model"], "do": "excite", "hold": 3.4 },
-		{ "at": "sends it to the copy most likely", "show": ["Router"], "in": "Turn two starts ahead", "hold": 4.5 }
+		{ "at": "Where does it go now", "show": ["brain", "The model"], "together": true, "do": "excite", "hold": 3.4 }
 	]
 }

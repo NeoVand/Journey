@@ -26,11 +26,18 @@ export interface VisitCue {
 	cutBack?: boolean;
 	/** For reduced motion: it glows, and what happens happens, but the camera stays with the shot. */
 	still?: boolean;
+	/**
+	 * Pulls back to show a whole, the loop say: the one kind of visit that may go further away than the shot. It rises
+	 * high to see the shape of it, takes its time, and lights nothing in particular, since the whole is the point.
+	 */
+	wide?: boolean;
 }
 
-/** Seconds to get there, and to come back. */
+/** Seconds to get there, and to come back; a pull back to see a whole takes longer, so the reveal can be read. */
 const GO = 1.5;
 const BACK = 1.3;
+const WIDE_GO = 2.6;
+const WIDE_BACK = 2.1;
 const QUICK = 0.6;
 /** How far the camera drifts round the thing while it stays, in radians. */
 const DRIFT = 0.16;
@@ -47,6 +54,7 @@ export class Visits {
 		centre: THREE.Vector3;
 		phase: Phase;
 		t: number;
+		go: number;
 		hold: number;
 		back: number;
 		fromPos: THREE.Vector3;
@@ -117,9 +125,15 @@ export class Visits {
 		const margin = 2.2 - 0.9 * Math.min(1, Math.max(0, (radius - 1) / 1.5));
 		const fit = (radius / (fill * Math.tan((cam.fov * Math.PI) / 360))) * margin;
 		const away = this.v1.copy(fromPos).sub(centre);
-		const dist = Math.max(fit * 0.5, Math.min(fit, away.length() * 0.85));
+		// Coming closer than the shot, but never so close the thing overflows the picture: a shot already near it stays.
+		const dist = cue.wide ? fit : Math.max(fit * 0.8, Math.min(fit, away.length() * 0.85));
 		const toPos = new THREE.Vector3();
-		if (cue.fly) {
+		if (cue.fly && cue.wide) {
+			// High over it, from the side the camera is on: from up there nothing stands in the way of a whole.
+			const az = Math.atan2(away.x, away.z);
+			const el = 0.78;
+			toPos.set(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el)).multiplyScalar(dist).add(centre);
+		} else if (cue.fly) {
 			const el0 = Math.min(0.62, Math.max(0.24, Math.asin(Math.max(-1, Math.min(1, away.y / Math.max(1e-6, away.length()))))));
 			const az0 = Math.atan2(away.x, away.z) + 0.2 * this.turn;
 			const at = (az: number, el: number) => toPos.set(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el)).multiplyScalar(dist).add(centre);
@@ -138,15 +152,16 @@ export class Visits {
 			toPos.copy(away.normalize()).multiplyScalar(Math.min(fromPos.distanceTo(centre) * 0.75, fit)).add(centre);
 		}
 		this.unglow();
-		this.glowOn(things);
+		if (!cue.wide) this.glowOn(things);
 		this.v = {
 			cue,
 			things,
 			centre,
 			phase: 'go',
 			t: 0,
+			go: cue.wide ? WIDE_GO : GO,
 			hold: cue.hold ?? 3.6,
-			back: BACK,
+			back: cue.wide ? WIDE_BACK : BACK,
 			fromPos,
 			fromLook,
 			toPos,
@@ -166,7 +181,7 @@ export class Visits {
 		v.leftLook.copy(this.lastLook);
 		v.phase = 'back';
 		v.t = 0;
-		v.back = quick ? QUICK : BACK;
+		v.back = quick ? QUICK : v.cue.wide ? WIDE_BACK : BACK;
 	}
 
 	/** Drops the visit at once, with nothing to animate: the page has cut away, so nobody sees the jump. */
@@ -196,11 +211,11 @@ export class Visits {
 		const pos = this.pos;
 		const look = this.look;
 		if (v.phase === 'go') {
-			const e = smoother(Math.min(1, v.t / GO));
+			const e = smoother(Math.min(1, v.t / v.go));
 			this.arc(v.fromPos, v.toPos, e, pos);
 			look.lerpVectors(v.fromLook, v.centre, e);
 			k = e;
-			if (v.t >= GO) {
+			if (v.t >= v.go) {
 				v.phase = 'stay';
 				v.t = 0;
 			}
@@ -244,7 +259,8 @@ export class Visits {
 		this.lastPos.copy(pos);
 		this.lastLook.copy(look);
 		const glow = smooth(k) * (0.85 + 0.15 * Math.sin(clock * 4.2));
-		this.stage.dimmed = smooth(k);
+		// A look at a whole singles nothing out, so nothing goes into shade either.
+		this.stage.dimmed = v.cue.wide ? 0 : smooth(k);
 		for (const mesh of this.glowing.keys()) {
 			for (const m of (Array.isArray(mesh.material) ? mesh.material : [mesh.material]) as THREE.MeshStandardMaterial[]) {
 				// What already shines, a lamp or a screen, keeps its own light; the rest warms towards amber.

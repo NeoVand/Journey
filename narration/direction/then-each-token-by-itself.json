@@ -1,7 +1,5 @@
 {
 	"cues": [
-		{ "at": "Attention is where information moves between tokens", "show": ["attention", "label:Attention"], "together": true, "in": "Its working memory", "hold": 3 },
-		{ "at": "A small network", "show": ["sign:Feed-forward network"], "hold": 3.6 },
-		{ "at": "tokens get swapped between chips", "show": ["nvlink"], "in": "One model, many chips", "hold": 3.2 }
+		{ "at": "A small network", "show": ["sign:Feed-forward network"], "hold": 3.6 }
 	]
 }

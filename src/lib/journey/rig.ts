@@ -47,8 +47,8 @@ export class Rig {
 	 * room: on a phone, how far down the screen the words begin, as a share of its height. A shot framed above the words
 	 * then takes all the room there is, down to the words and no further, however long the chapter's card is.
 	 */
-	private solve(shot: Shot, aspect: number, room?: number, top?: number, ceiling = 0) {
-		let region = aspect < 0.9 ? shot.tall : shot.wide;
+	private solve(shot: Shot, aspect: number, room?: number, top?: number, ceiling = 0, own?: Region) {
+		let region = own ?? (aspect < 0.9 ? shot.tall : shot.wide);
 		const above = aspect < 0.9 && room !== undefined && region.y < 0.2 && region.y + region.h < 0.9;
 		// From just under the header down to where the words start: nothing of the picture hides beneath either.
 		if (above) {
@@ -72,11 +72,23 @@ export class Rig {
 		};
 	}
 
+	/** The part of the screen the picture has at a moment of the story: between two shots, part way from one to the next. */
+	private regionAt(T: number, aspect: number): Region {
+		const { shots } = this;
+		let i = 0;
+		while (i < shots.length - 2 && T >= shots[i + 1].T) i++;
+		const k = smoother(Math.min(1, Math.max(0, (T - shots[i].T) / (shots[i + 1].T - shots[i].T))));
+		const a = aspect < 0.9 ? shots[i].tall : shots[i].wide;
+		const b = aspect < 0.9 ? shots[i + 1].tall : shots[i + 1].wide;
+		return { x: lerp(a.x, b.x, k), y: lerp(a.y, b.y, k), w: lerp(a.w, b.w, k), h: lerp(a.h, b.h, k) };
+	}
+
 	/**
 	 * On a phone: room is where the words start, top where the title page's words end, and ceiling where the header
-	 * ends, each as a share of the screen's height.
+	 * ends, each as a share of the screen's height. home, during a peek at another moment, is the moment the reader is
+	 * at: the picture shows the other moment, in the part of the screen the reader's own card leaves it.
 	 */
-	update(T: number, width: number, height: number, parallaxX = 0, parallaxY = 0, time = 0, room?: number, top?: number, ceiling?: number) {
+	update(T: number, width: number, height: number, parallaxX = 0, parallaxY = 0, time = 0, room?: number, top?: number, ceiling?: number, home?: number) {
 		const aspect = width / height;
 		const { shots } = this;
 		let i = 0;
@@ -84,8 +96,9 @@ export class Rig {
 		const a = shots[i];
 		const b = shots[i + 1];
 		const k = smoother(Math.min(1, Math.max(0, (T - a.T) / (b.T - a.T))));
-		const A = this.solve(a, aspect, room, top, ceiling);
-		const B = this.solve(b, aspect, room, top, ceiling);
+		const own = home === undefined ? undefined : this.regionAt(home, aspect);
+		const A = this.solve(a, aspect, room, top, ceiling, own);
+		const B = this.solve(b, aspect, room, top, ceiling, own);
 
 		// The camera never quite stops: a slow drift keeps depth alive while the reader is reading.
 		const az = lerp(a.az, b.az, k) * DEG + parallaxX * 0.018 + Math.sin(time * 0.31) * 0.0045;

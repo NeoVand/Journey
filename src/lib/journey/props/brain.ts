@@ -379,6 +379,8 @@ export class Brain {
 			builder.add(dirs, side, (0.92 + hash(i * 7.7) * 0.12) * LOBE_TONE[lobeOf(nodes[path[0]].d)], hash(i * 2.2) * 11);
 		});
 		const folds = new THREE.Mesh(builder.build(), this.foldMat);
+		// The brain itself, by name, so the conversation can show the whole model and not only the plinth it sits on.
+		folds.name = 'brain';
 		folds.castShadow = true;
 		folds.receiveShadow = true;
 		this.group.add(folds);

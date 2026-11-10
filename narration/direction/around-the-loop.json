@@ -1,8 +1,6 @@
 {
 	"cues": [
-		{ "at": "the output is sitting on my laptop", "show": ["monitor", "Laptop"], "hold": 3 },
-		{ "at": "The harness puts it into the transcript", "show": ["drawer:Conversation"], "do": "pull", "index": 3, "hold": 6 },
-		{ "at": "starts with exactly the same bytes as the last one", "show": ["sign:Computed before?"], "in": "Turn two starts ahead", "hold": 3.4 },
-		{ "at": "change the start, with a new tool or an edited system prompt", "show": ["front:Instructions", "front:Tools"], "together": true, "hold": 3 }
+		{ "at": "There's a green pipe that's been in the picture since the very first frame", "show": ["Laptop", "Front door", "return-loop"], "together": true, "wide": true, "in": "How a coding agent works", "hold": 5 },
+		{ "at": "The harness puts it into the transcript", "show": ["drawer:Conversation"], "do": "pull", "index": 3, "hold": 6 }
 	]
 }

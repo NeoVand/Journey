@@ -1,7 +1,6 @@
 {
 	"cues": [
 		{ "at": "Your request, fix the race condition in the job scheduler, is near the very start", "show": ["first-page"], "hold": 3.4 },
-		{ "at": "The latest list was written a turn or two ago", "show": ["list-three-done"], "hold": 3 },
 		{ "at": "Three ticked, one amber, one waiting", "show": ["checklist-board"], "hold": 3 }
 	]
 }

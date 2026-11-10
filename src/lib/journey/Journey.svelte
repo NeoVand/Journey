@@ -213,6 +213,8 @@
 	let mapOpen = $state(false);
 	let mapHere = $state('How a coding agent works');
 	const headings = () => [...document.querySelectorAll<HTMLElement>('main h1, main h2')];
+	/** The world a place in the story stands in, which its words take their colours from: inside the data centre they're light. */
+	const toneOf = (t: number) => (t >= 8 && t < 19 ? 'inside' : 'sky');
 	// Before the 3D is running, and when it can't run, the page is plain text that simply scrolls.
 	let cutTo = (title: string, at?: 'at-once') => headings().find((h) => h.textContent === title)?.scrollIntoView({ behavior: at ? 'instant' : 'auto' });
 	let locate = () => mapHere;
@@ -609,6 +611,9 @@
 					cover(to ?? T, () => {
 						peekT = to;
 						if (to === null) w.endVisit();
+						// The words take on the colours of the world the picture is showing, under the same cut: light words over
+						// the data centre, dark ones over the sky. Home again, each card has its own back.
+						for (const p of pins) p.el.dataset.tone = toneOf(to ?? p.i);
 					}),
 				note: () => cue('spot', Math.floor(Math.random() * 5))
 			});
@@ -686,8 +691,9 @@
 			const sections = [...document.querySelectorAll<HTMLElement>('[data-beat]')];
 			const pins = sections.flatMap((s, i) =>
 				[...s.querySelectorAll<HTMLElement>('.pin')].map((el) => {
-					// A card belongs to one world for its whole life, so its colours can never flip while it is showing.
-					el.dataset.tone = i >= 8 && i < 19 ? 'inside' : 'sky';
+					// A card belongs to one world for its whole life, so its colours never flip as the story plays. Only a peek,
+					// which shows another world for a moment, lends it that world's colours while it lasts.
+					el.dataset.tone = toneOf(i);
 					return {
 						el,
 						i,
@@ -929,9 +935,12 @@
 				};
 
 				const publish = () => {
-				form = w.state.form;
+				// A peek shows another part of the story for a moment: the header keeps the reader's place, and only its
+				// colours go with the picture.
+				if (peekT === null) form = w.state.form;
 				// Only the header follows this. It switches while the screen is black, so nobody sees it happen.
-				dark = T >= 7.96 && T < 19.02;
+				const seen = peekT ?? T;
+				dark = seen >= 7.96 && seen < 19.02;
 				atTitle = T < 0.45;
 				fade();
 				const starts = [2.04, 2.2, 2.36, 2.52];
@@ -973,6 +982,8 @@
 				showGauge();
 				px += (mx - px) * (1 - Math.exp(-dt * 3));
 				py += (my - py) * (1 - Math.exp(-dt * 3));
+				// A peek shows another moment, framed for the card the reader is still on.
+				w.homeT = peekT !== null && !track ? T : null;
 				w.update(track && tripT !== null ? tripT : (peekT ?? T), reduced ? 0 : time, dt, reduced ? 0 : px, reduced ? 0 : py, reduced);
 				// After the picture is drawn, so what's named is found where it is now; the camera goes to it from the next frame.
 				pointer?.update(now / 1000, narrator, !reduced);
@@ -1774,7 +1785,7 @@
 <div class="dive" data-dive aria-hidden="true"></div>
 <div class="cut" data-cut aria-hidden="true"></div>
 
-<div class={['journey', { dark: dark && !track, words: failed, tripping: !!track }]}>
+<div class={['journey', { dark: dark && !track, words: failed, tripping: !!track, pointing: !!pointer?.lit }]}>
 <header class={['bar', { 'at-title': atTitle && !trip }]}>
 	<button type="button" class="brand" aria-haspopup="dialog" aria-label="The journey of a token. Open the map of the trip" onclick={openMap}>
 		<svg viewBox="0 0 24 24" aria-hidden="true">
@@ -4062,6 +4073,21 @@
 			height: 46vh;
 			background: linear-gradient(to bottom, rgb(var(--veil) / var(--veil-a)) 68%, rgb(var(--veil) / 0));
 		}
+		/* The title page has open sky beside its words, until the conversation takes the camera somewhere: then a shade
+		   comes up behind them, in the colours of wherever the picture is. */
+		.hero .pin::before {
+			content: '';
+			position: absolute;
+			inset: -8vh -12vw -8vh -8vw;
+			z-index: -1;
+			pointer-events: none;
+			background: linear-gradient(to right, rgb(var(--veil) / var(--veil-a)) 72%, rgb(var(--veil) / calc(var(--veil-a) * 0.62)) 83%, rgb(var(--veil) / calc(var(--veil-a) * 0.22)) 92%, rgb(var(--veil) / 0));
+			opacity: 0;
+			transition: opacity 0.6s ease;
+		}
+		.pointing .hero .pin::before {
+			opacity: 1;
+		}
 	}
 	.pin.right {
 		margin-left: auto;
@@ -5417,9 +5443,12 @@
 		.steps li:not(.on) > span {
 			display: none;
 		}
-		/* The title page's ground is the header's own sky, so the two meet without a seam. */
+		/* The title page's ground is the header's own sky, so the two meet without a seam; over the data centre, its night. */
 		.hero .pin {
 			--veil: 198 229 253;
+		}
+		.hero .pin:global([data-tone='inside']) {
+			--veil: 6 15 38;
 		}
 		.hero .pin::before {
 			content: '';

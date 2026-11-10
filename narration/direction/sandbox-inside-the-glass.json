@@ -1,6 +1,5 @@
 {
 	"cues": [
-		{ "at": "On macOS the fence is called Seatbelt", "show": ["sign:Sandbox: Seatbelt or bubblewrap", "sign:Sandbox: Seatbelt, bwrap or MXC"], "hold": 3 },
 		{ "at": "A write to your home folder", "show": ["home-tray"], "hold": 3 },
 		{ "at": "To reach the network they go through a proxy", "show": ["sign:Proxy"], "hold": 5 }
 	]

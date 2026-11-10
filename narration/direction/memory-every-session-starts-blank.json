@@ -1,7 +1,6 @@
 {
 	"cues": [
 		{ "at": "Yesterday's whole conversation is saved", "show": ["rail-a"], "hold": 4 },
-		{ "at": "today starts with only what's always loaded", "show": ["sign:Today"], "hold": 3 },
 		{ "at": "Claude Code loads every CLAUDE.md", "show": ["notes-shelf"], "hold": 3 }
 	]
 }

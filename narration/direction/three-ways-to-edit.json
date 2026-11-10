@@ -1,9 +1,6 @@
 {
 	"cues": [
-		{ "at": "a safe change to a real file", "show": ["Your repository"], "hold": 3 },
 		{ "at": "The old text has to appear exactly once", "show": ["code-easel"], "hold": 3.4 },
-		{ "at": "OpenAI's API can enforce it while the model is still writing", "show": ["wheel"], "in": "One token is chosen", "hold": 3.2 },
-		{ "at": "The diff lands right in your editor", "show": ["Laptop"], "hold": 3 },
-		{ "at": "the result that comes back says which", "show": ["return-tray"], "hold": 3 }
+		{ "at": "The diff lands right in your editor", "show": ["Laptop"], "hold": 3 }
 	]
 }

@@ -1,7 +1,5 @@
 {
 	"cues": [
-		{ "at": "Reading a prompt this way is called prefill", "show": ["pool-Prefill pool", "label:All at once. Limited by compute."], "together": true, "in": "Reading and writing", "hold": 3.2 },
-		{ "at": "There's a row of little lights", "show": ["sign:KV cache"], "hold": 4 },
-		{ "at": "only the new part runs", "show": ["label:21,000 reused", "label:1,500 new"], "together": true, "in": "Turn two starts ahead", "hold": 3.4 }
+		{ "at": "There's a row of little lights", "show": ["sign:KV cache"], "hold": 4 }
 	]
 }

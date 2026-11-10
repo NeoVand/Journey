@@ -1,9 +1,6 @@
 {
 	"cues": [
 		{ "at": "What comes out of floor one", "show": ["sign:Layer 1", "sign:Layer 2"], "together": true, "hold": 3 },
-		{ "at": "At the bottom, each word sat", "show": ["sign:Embedding"], "hold": 3 },
-		{ "at": "used to score the next word", "show": ["Logits: the highest scores"], "hold": 3.4 },
-		{ "at": "And all eighty run for every token", "show": ["sign:74 more layers"], "hold": 3 },
-		{ "at": "split across many", "show": ["label:Accelerator"], "together": true, "in": "One model, many chips", "hold": 3.2 }
+		{ "at": "used to score the next word", "show": ["Logits: the highest scores"], "hold": 3.4 }
 	]
 }

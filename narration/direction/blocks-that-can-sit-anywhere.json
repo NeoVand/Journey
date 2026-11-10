@@ -1,9 +1,6 @@
 {
 	"cues": [
-		{ "at": "That store is the KV cache", "show": ["KV cache"], "hold": 3.4 },
 		{ "at": "A block can sit in any free slot", "show": ["tray"], "hold": 2.4 },
-		{ "at": "because the table knows the order", "show": ["block-table"], "hold": 3.4 },
-		{ "at": "a match has to run unbroken from the very first token", "show": ["prefix-gate", "sign:Computed before?"], "together": true, "in": "Turn two starts ahead", "hold": 3.4 },
-		{ "at": "the parts that never change at the top of the request", "show": ["label:stays the same"], "in": "One JSON request", "hold": 3.4 }
+		{ "at": "because the table knows the order", "show": ["block-table"], "hold": 3.4 }
 	]
 }

@@ -1,8 +1,5 @@
 {
 	"cues": [
-		{ "at": "the model isn't in here", "show": ["sign:Out to the model", "sign:Back from the model"], "together": true, "hold": 3.4 },
-		{ "at": "Searching the code", "show": ["Run"], "hold": 3.6 },
-		{ "at": "checked against your rules first", "show": ["gate"], "hold": 3 },
 		{ "at": "At the heart of it, a loop", "show": ["loop"], "hold": 5 },
 		{ "at": "Everything the request is packed from", "show": ["front:Instructions", "front:Environment", "front:Tools", "front:Conversation"], "together": true, "hold": 6 }
 	]

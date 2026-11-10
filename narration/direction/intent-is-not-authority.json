@@ -1,9 +1,6 @@
 {
 	"cues": [
 		{ "at": "authority sits on your laptop, in the harness", "show": ["Harness"], "hold": 3.4 },
-		{ "at": "called a JSON Schema", "show": ["drawer:Tools"], "do": "pull", "index": 2, "hold": 6 },
-		{ "at": "It goes back to the model as the result of its call", "show": ["sign:Refused: goes back as the tool result"], "hold": 3.4 },
-		{ "at": "this is where your hooks plug in", "show": ["sign:Your hooks", "hook-wheel"], "together": true, "hold": 3.6 },
 		{ "at": "inside a fence the operating system puts around it", "show": ["sandbox-frame"], "hold": 3.6 }
 	]
 }

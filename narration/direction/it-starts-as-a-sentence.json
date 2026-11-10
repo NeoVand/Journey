@@ -1,11 +1,5 @@
 {
 	"cues": [
-		{ "at": "held by a program on your laptop", "show": ["Laptop"], "hold": 3 },
-		{ "at": "That's the harness, the part you actually installed", "show": ["Harness"] },
-		{ "at": "in a data center", "show": ["label:Accelerator"], "together": true, "in": "One model, many chips", "hold": 3.2 },
-		{ "at": "at its front door", "show": ["Front door"], "hold": 3 },
-		{ "at": "On the internet, scrambled bytes", "show": ["tunnel-frame"], "hold": 2.4 },
-		{ "at": "a row of numbers", "show": ["Tokenizer"], "hold": 2.6 },
-		{ "at": "Then the harness starts packing", "show": ["front:Instructions", "front:Environment", "front:Tools", "front:Conversation"], "together": true, "hold": 3 }
+		{ "at": "That's the harness, the part you actually installed", "show": ["Harness"] }
 	]
 }
