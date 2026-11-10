@@ -1412,6 +1412,11 @@ export class World {
 		return { step: this.finale.running ? this.finale.step : -1, laps: this.finale.laps };
 	}
 
+	/** Names one of the four gates in "Intent is not authority": its beacon flares. */
+	nameGate(i: number) {
+		this.back.nameGate(i);
+	}
+
 	/** Names one of the front door's five checks: its blade nods out, its lamp flares. */
 	nameCheck(i: number) {
 		this.gateway.name(i);

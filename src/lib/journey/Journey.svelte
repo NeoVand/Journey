@@ -803,6 +803,7 @@
 					else if (what === 'temperature') turnDial(i / 10);
 					else if (what === 'memory') w.nameMemory(i);
 					else if (what === 'check') w.nameCheck(i);
+					else if (what === 'gate') w.nameGate(i);
 				}
 			});
 			{

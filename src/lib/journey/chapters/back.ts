@@ -430,6 +430,9 @@ export class Back {
 	private streamEnd = new THREE.LineCurve3(new THREE.Vector3(STREAM_BOTTOM[0], STREAM_BOTTOM[1] + 9, STREAM_BOTTOM[2]), new THREE.Vector3(...STREAM_BOTTOM));
 	private carrier = new THREE.Group();
 	private gates: Gate[] = [];
+	/** When a conversation last named each gate (the clock's seconds): its beacon flares. */
+	private gateNamedAt = [-10, -10, -10, -10];
+	private gateClock = 0;
 	private bad = new Cart();
 	private good = new Cart();
 	private binSign!: THREE.Group;
@@ -1336,6 +1339,11 @@ export class Back {
 		this.turn = i;
 	}
 
+	/** Names one of the four gates: its beacon flares. */
+	nameGate(i: number) {
+		if (i >= 0 && i < this.gateNamedAt.length) this.gateNamedAt[i] = this.gateClock;
+	}
+
 	/** Names one of the seven kinds of memory: its drawer comes out, the one named before goes back. */
 	nameMemory(i: number) {
 		this.memNamed = { i, at: this.memClock };
@@ -1881,6 +1889,7 @@ export class Back {
 				gg.position.set(trackX(goodAt(T)), CARTY, TRACK_Z);
 				this.good.lean((t) => trackX(goodAt(t)), T);
 			}
+			this.gateClock = time;
 			this.gates.forEach((gate, i) => {
 				const hold = A + ((B - A) * (i + 1)) / (stations.length - 1);
 				const open = raise(seg(T, hold, hold + 0.1));
@@ -1897,9 +1906,12 @@ export class Back {
 				// The first call is judged by the first two gates; the second, after it, by each gate in turn.
 				const first = T < 20.4;
 				const passedFirst = i === 0 && first && T > 20.1;
-				if (refused) gate.lamp.set(color.red, 1 + Math.sin(time * 14) * 0.5);
-				else if (passedFirst) gate.lamp.mix(color.amber, color.green, smooth(seg(T, 20.1, 20.14)), 1.15);
-				else gate.lamp.mix(color.amber, color.green, smooth(opened), 0.25 + smooth(opened) * 0.9);
+				// Named in the conversation, a gate's beacon flares, in whatever colour it stands at.
+				const since = time - this.gateNamedAt[i];
+				const flare = since >= 0 && since < 1.4 ? Math.sin((since / 1.4) * Math.PI) * 1.6 : 0;
+				if (refused) gate.lamp.set(color.red, 1 + Math.sin(time * 14) * 0.5 + flare);
+				else if (passedFirst) gate.lamp.mix(color.amber, color.green, smooth(seg(T, 20.1, 20.14)), 1.15 + flare);
+				else gate.lamp.mix(color.amber, color.green, smooth(opened), 0.25 + smooth(opened) * 0.9 + flare);
 				if (refused) gate.say({ pass: false, text: DENIED });
 				else if (passedFirst) gate.say({ pass: true, text: PASSED_BY[0] });
 				else gate.say(!first && T > hold + 0.01 ? { pass: true, text: PASSED_BY[i] } : null);
