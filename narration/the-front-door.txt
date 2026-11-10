@@ -21,4 +21,4 @@ NORA: Twice, and the extension only ever sees GitHub's answers. Which vendor's c
 THEO: Let me get this straight. Decrypt, who are you, rate limit, budget, capacity. Not a single neural network involved.
 NORA: Not one. This whole stretch is ordinary web infrastructure, plain rules with no guessing. The part that deals in probabilities, the model itself, is still further in.
 THEO: And once it's through?
-NORA: The JSON itself is checked against the API's rules, and the model's name is pinned to one exact version. Then the request goes down the pipe, to be turned into tokens at last.
+NORA: The JSON itself is checked against the API's rules, and the model's name is pinned to one exact version. Then the request goes up the pipe, to be turned into tokens at last.
