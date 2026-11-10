@@ -41,6 +41,10 @@ const WIDE_BACK = 2.1;
 const QUICK = 0.6;
 /** How far the camera drifts round the thing while it stays, in radians. */
 const DRIFT = 0.16;
+/** Seconds for a glow left behind to die away, when a visit hands over to the next. */
+const FADE = 0.45;
+/** How quickly the scene's shade follows the visits, per second: it never jumps when one hands over to the next. */
+const SHADE = 5;
 /** Smaller across than this, in world units, and a thing has shrunk out of sight. */
 const SHRUNK = 0.05;
 const GLOW = new THREE.Color(color.amber);
@@ -64,9 +68,16 @@ export class Visits {
 		leftPos: THREE.Vector3;
 		leftLook: THREE.Vector3;
 		acted: boolean;
+		/** How far in shade the scene was as this visit began: one visit handing to the next keeps it there. */
+		carry: number;
 	} | null = null;
 	/** Each glowing mesh wears a copy of its material; its own is kept here. */
 	private glowing = new Map<THREE.Mesh, THREE.Material | THREE.Material[]>();
+	/** Meshes a visit has moved on from: their glow dies away from where it was, rather than going out at once. */
+	private fading = new Map<THREE.Mesh, { own: THREE.Material | THREE.Material[]; level: number }>();
+	/** How strongly the things glowed last frame, and how far the rest of the scene is in shade. */
+	private lit = 0;
+	private shade = 0;
 	/** Which way round the next visit drifts: it alternates, so no two feel the same. */
 	private turn = 1;
 	/** The pose drawn last frame, so a visit or a way back starts from exactly there. */
@@ -151,7 +162,8 @@ export class Visits {
 		} else {
 			toPos.copy(away.normalize()).multiplyScalar(Math.min(fromPos.distanceTo(centre) * 0.75, fit)).add(centre);
 		}
-		this.unglow();
+		// What glowed for the last visit fades as this one's glow comes up, and the shade carries on from where it is.
+		this.fadeGlow();
 		if (!cue.wide) this.glowOn(things);
 		this.v = {
 			cue,
@@ -167,7 +179,8 @@ export class Visits {
 			toPos,
 			leftPos: new THREE.Vector3(),
 			leftLook: new THREE.Vector3(),
-			acted: false
+			acted: false,
+			carry: this.shade
 		};
 		this.turn *= -1;
 		return true;
@@ -188,6 +201,8 @@ export class Visits {
 	end() {
 		this.v = null;
 		this.unglow();
+		this.lit = 0;
+		this.shade = 0;
 		this.stage.dimmed = 0;
 	}
 
@@ -198,8 +213,9 @@ export class Visits {
 	apply(dt: number, clock: number) {
 		const cam = this.stage.camera;
 		const v = this.v;
+		this.fadeOut(dt);
 		if (!v) {
-			this.stage.dimmed = 0;
+			this.ease(0, dt);
 			this.lastPos.copy(cam.position);
 			return;
 		}
@@ -243,7 +259,10 @@ export class Visits {
 			look.lerpVectors(v.leftLook, liveLook, e);
 			k = 1 - e;
 			if (v.t >= v.back) {
-				this.end();
+				// Home: the glow has all but gone, and the last of the shade lifts on its own.
+				this.v = null;
+				this.fadeGlow();
+				this.ease(0, dt);
 				this.lastPos.copy(cam.position);
 				return;
 			}
@@ -258,9 +277,11 @@ export class Visits {
 		}
 		this.lastPos.copy(pos);
 		this.lastLook.copy(look);
-		const glow = smooth(k) * (0.85 + 0.15 * Math.sin(clock * 4.2));
+		// A slow breath, not a pulse: anything quicker reads as a flicker.
+		const glow = smooth(k) * (0.9 + 0.1 * Math.sin(clock * 2.4));
+		this.lit = glow;
 		// A look at a whole singles nothing out, so nothing goes into shade either.
-		this.stage.dimmed = v.cue.wide ? 0 : smooth(k);
+		this.ease(v.cue.wide ? 0 : Math.max(smooth(k), v.phase === 'go' ? v.carry : 0), dt);
 		for (const mesh of this.glowing.keys()) {
 			for (const m of (Array.isArray(mesh.material) ? mesh.material : [mesh.material]) as THREE.MeshStandardMaterial[]) {
 				// What already shines, a lamp or a screen, keeps its own light; the rest warms towards amber.
@@ -366,18 +387,58 @@ export class Visits {
 					if (c.userData.glows) c.userData.glow = own.color.clone().lerp(GLOW, 0.3);
 					return c;
 				};
+				// Still fading from the last visit: it takes up its glow again from where it is.
+				const left = this.fading.get(mesh);
+				if (left) {
+					this.fading.delete(mesh);
+					this.glowing.set(mesh, left.own);
+					return;
+				}
 				this.glowing.set(mesh, own);
 				mesh.material = Array.isArray(own) ? own.map(copy) : copy(own);
 			});
 		}
 	}
 
-	private unglow() {
-		for (const [mesh, material] of this.glowing) {
-			const worn = mesh.material;
-			mesh.material = material;
-			for (const m of Array.isArray(worn) ? worn : [worn]) m.dispose();
-		}
+	/** Each glowing mesh starts to fade, from however bright it is now. */
+	private fadeGlow() {
+		for (const [mesh, own] of this.glowing) this.fading.set(mesh, { own, level: this.lit });
 		this.glowing.clear();
+		this.lit = 0;
+	}
+
+	/** Fading glows die down, and each gets its own material back once it's dark. */
+	private fadeOut(dt: number) {
+		for (const [mesh, f] of this.fading) {
+			f.level -= dt / FADE;
+			if (f.level <= 0) {
+				this.restore(mesh, f.own);
+				this.fading.delete(mesh);
+				continue;
+			}
+			for (const m of (Array.isArray(mesh.material) ? mesh.material : [mesh.material]) as THREE.MeshStandardMaterial[]) {
+				if (m.emissive && m.userData.glows) m.emissiveIntensity = 0.38 * f.level;
+			}
+		}
+	}
+
+	/** The rest of the scene goes into shade, or comes out of it, smoothly. */
+	private ease(to: number, dt: number) {
+		this.shade += (to - this.shade) * Math.min(1, dt * SHADE);
+		if (to === 0 && this.shade < 0.002) this.shade = 0;
+		this.stage.dimmed = this.shade;
+	}
+
+	private restore(mesh: THREE.Mesh, own: THREE.Material | THREE.Material[]) {
+		const worn = mesh.material;
+		mesh.material = own;
+		for (const m of Array.isArray(worn) ? worn : [worn]) m.dispose();
+	}
+
+	private unglow() {
+		for (const [mesh, material] of this.glowing) this.restore(mesh, material);
+		for (const [mesh, f] of this.fading) this.restore(mesh, f.own);
+		this.glowing.clear();
+		this.fading.clear();
 	}
 }
