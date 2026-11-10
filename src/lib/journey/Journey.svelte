@@ -1140,15 +1140,18 @@
 				const dt = Math.max(0, Math.min(0.05, (now - last) / 1000));
 				// The film's holds are reading and listening time, which the clock keeps however slowly the frames come.
 				const clock = Math.max(0, Math.min(1, (now - last) / 1000));
+				// Flights between places are passages, not story: they keep their length by the clock too, a little more
+				// coarsely on a slow machine rather than for a minute at a crawl. Scenes keep `dt`, so they never skip.
+				const passage = Math.min(0.2, clock);
 				last = now;
 				time += dt;
 				// Once the reader's hands are still, the scroll bar goes to where the story is.
 				if (gestures.still(now)) (track ? alignTrip : align)();
-				play(dt);
+				play(dt, passage);
 				runFilm(clock);
 				unfold(clock);
 				steppable();
-				playTrip(dt);
+				playTrip(dt, passage);
 				showGauge();
 				px += (mx - px) * (1 - Math.exp(-dt * 3));
 				py += (my - py) * (1 - Math.exp(-dt * 3));
@@ -1325,8 +1328,8 @@
 			let speed = 1;
 			/** Tells the sound the story was cut, once the sound exists. */
 			let heardCut: (to: number) => void = () => {};
-			const play = (dt: number) => {
-				if (voyage) return voyaging(dt);
+			const play = (dt: number, passage: number) => {
+				if (voyage) return voyaging(passage);
 				if (frozen || scrubbing) return;
 				const m = director.move(head.T);
 				speed = m.speed;
@@ -1873,9 +1876,9 @@
 			};
 			let tripCutting = false;
 			let tripSpeed = 1;
-			const playTrip = (dt: number) => {
+			const playTrip = (dt: number, passage: number) => {
 				if (blend !== blendGoal) {
-					blend = Math.min(1, Math.max(0, blend + Math.sign(blendGoal - blend) * (dt / 1.4)));
+					blend = Math.min(1, Math.max(0, blend + Math.sign(blendGoal - blend) * (passage / 1.4)));
 					if (blend === blendGoal && afterFlight) {
 						const then = afterFlight;
 						afterFlight = null;
@@ -1884,7 +1887,7 @@
 				}
 				w.trackBlend = blend * blend * (3 - 2 * blend);
 				if (arrive !== arriveGoal) {
-					arrive = Math.min(1, Math.max(0, arrive + Math.sign(arriveGoal - arrive) * (dt / 1.5)));
+					arrive = Math.min(1, Math.max(0, arrive + Math.sign(arriveGoal - arrive) * (passage / 1.5)));
 					if (arrive === arriveGoal && afterArrive) {
 						const then = afterArrive;
 						afterArrive = null;
