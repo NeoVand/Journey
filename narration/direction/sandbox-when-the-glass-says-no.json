@@ -1,6 +1,6 @@
 {
 	"cues": [
 		{ "at": "the download hits the wall", "show": ["glass-frame"], "hold": 3 },
-		{ "at": "that request goes through the rules like any other call", "show": ["check-Deny", "check-Ask", "check-Allow"], "together": true, "hold": 3 }
+		{ "at": "that request goes through the rules like any other call", "show": ["check-Ask", "sign:You decide"], "together": true, "hold": 4 }
 	]
 }
