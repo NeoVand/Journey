@@ -492,7 +492,10 @@ export class Back {
 	private slipTint = SLIPS.map((s) => new THREE.Color(SLIP_TINT[s.kind]));
 	private slipAmber = new THREE.Color(SLIP_TINT.summary);
 
-	private memDrawers: { group: THREE.Group; lamp: Lamp; z: number }[] = [];
+	private memDrawers: { group: THREE.Group; lamp: Lamp; z: number; x: number; out: number }[] = [];
+	/** The drawer a conversation is naming, and when (the clock's seconds): it slides out while it's named. */
+	private memNamed = { i: -1, at: 0 };
+	private memClock = 0;
 
 	private pipeA!: THREE.Mesh;
 	private pipeB!: THREE.Mesh;
@@ -1126,7 +1129,7 @@ export class Back {
 			const z = cz + 1.2;
 			group.position.set(cx, y, z);
 			g.add(group);
-			this.memDrawers.push({ group, lamp, z });
+			this.memDrawers.push({ group, lamp, z, x: cx, out: 0 });
 		});
 	}
 
@@ -1331,6 +1334,11 @@ export class Back {
 
 	setTurn(i: number) {
 		this.turn = i;
+	}
+
+	/** Names one of the seven kinds of memory: its drawer comes out, the one named before goes back. */
+	nameMemory(i: number) {
+		this.memNamed = { i, at: this.memClock };
 	}
 
 	setCache(on: boolean) {
@@ -2200,13 +2208,24 @@ export class Back {
 
 		/* ---- memory ---- */
 		if ((T > 26.6 && T < 28.3) || homeward) {
+			const dt = Math.min(0.05, Math.max(0, time - this.memClock));
+			this.memClock = time;
+			// A conversation names the drawers only on their own card; anywhere else they're as the story left them.
+			if (T < 27.05 || T > 28.1) this.memNamed.i = -1;
+			const since = time - this.memNamed.at;
 			this.memDrawers.forEach((dr, i) => {
 				const a = 27.12 + i * 0.1;
 				const k = outBack(seg(T, a, a + 0.08), 1.8);
 				const settle = 1 - smooth(seg(T, a + 0.1, a + 0.18));
 				const fixed = i === 6;
-				dr.group.position.z = dr.z + k * (fixed ? 0.05 : 0.26 + settle * 0.3);
-				dr.lamp.mix(color.amber, fixed ? color.red : color.green, seg(T, a, a + 0.06), 0.2 + seg(T, a, a + 0.06) * 0.8);
+				const named = this.memNamed.i === i;
+				dr.out += ((named && !fixed ? 1 : 0) - dr.out) * (1 - Math.exp(-dt * 9));
+				dr.group.position.z = dr.z + k * (fixed ? 0.05 : 0.26 + settle * 0.3) + dr.out * 0.9;
+				// The weights don't come out, whatever you do: named, the red drawer rattles in place and stays shut.
+				const rattle = named && fixed ? Math.sin(since * 42) * 0.07 * Math.max(0, 1 - since / 0.9) : 0;
+				dr.group.position.x = dr.x + rattle;
+				const flare = named ? Math.max(fixed ? 1.6 * (1 - since / 1.4) : 1, 0) : 0;
+				dr.lamp.mix(color.amber, fixed ? color.red : color.green, seg(T, a, a + 0.06), 0.2 + seg(T, a, a + 0.06) * 0.8 + flare * 0.8);
 			});
 		}
 

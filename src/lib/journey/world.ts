@@ -1412,6 +1412,11 @@ export class World {
 		return { step: this.finale.running ? this.finale.step : -1, laps: this.finale.laps };
 	}
 
+	/** Names one of the seven kinds of memory on its card: its drawer comes out. */
+	nameMemory(i: number) {
+		this.back.nameMemory(i);
+	}
+
 	setCache(on: boolean) {
 		this.back.setCache(on);
 	}

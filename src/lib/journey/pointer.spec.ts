@@ -7,7 +7,7 @@ const sheets = new URL('../../../narration/direction/', import.meta.url);
 const talks = new URL('../../../static/narration/', import.meta.url);
 const ACTS = ['pull', 'flip', 'excite', 'spin'];
 /** What a beat can do on the card, with nothing for the camera to show. */
-const BEATS = ['turn', 'cache', 'temperature'];
+const BEATS = ['turn', 'cache', 'temperature', 'memory'];
 const titles = new Set(Object.values(manifest as Record<string, { title: string }>).map((t) => t.title));
 
 describe('the conversations’ direction', () => {

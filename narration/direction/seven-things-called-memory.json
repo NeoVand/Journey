@@ -1,6 +1,13 @@
 {
 	"cues": [
-		{ "at": "One, the conversation history", "show": ["drawer:Conversation"], "do": "pull", "index": 3, "hold": 4 },
-		{ "at": "Your project's rules file goes into the request", "show": ["drawer:Instructions"], "do": "pull", "index": 0, "hold": 5 }
+		{ "at": "One, the conversation history", "show": [], "do": "memory", "index": 0 },
+		{ "at": "Two, the current model context", "show": [], "do": "memory", "index": 1 },
+		{ "at": "Three, continuation state", "show": [], "do": "memory", "index": 2 },
+		{ "at": "The inference cache", "show": [], "do": "memory", "index": 3 },
+		{ "at": "Five, the workspace", "show": [], "do": "memory", "index": 4 },
+		{ "at": "External state", "show": [], "do": "memory", "index": 5 },
+		{ "at": "And the last one's the red drawer", "show": [], "do": "memory", "index": 6 },
+		{ "at": "Your project's rules file goes into the request", "show": ["drawer:Instructions"], "do": "pull", "index": 0, "hold": 5 },
+		{ "at": "one that nothing you do will change", "show": [], "do": "memory", "index": 6 }
 	]
 }
