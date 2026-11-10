@@ -49,7 +49,7 @@ export const CLUSTER_SHOTS: Shot[] = [
 	{ T: 11.02, ...ROUTER },
 	{ T: 11.28, ...ROUTER, az: -22 },
 	{ T: 11.4, ...TURN2 },
-	{ T: 11.86, ...TURN2, az: 4 },
+	{ T: 11.76, ...TURN2, az: 4 },
 	{ T: 12.04, ...LANES },
 	{ T: 12.9, ...LANES, az: 5 },
 	{ T: 13.06, ...POOLS },
@@ -220,7 +220,9 @@ export class Cluster {
 
 		if (T > 8.9 && T < 10.3) this.kv.update(seg(T, 9.1, 9.56), seg(T, 9.58, 9.9), time);
 		if (T > 8.9 && T < 12.3) {
-			this.tray.update(seg(T, 10.12, 10.62), seg(T, 11.03, 11.14), seg(T, 11.3, 11.41), seg(T, 11.41, 11.7), seg(T, 11.7, 11.86), time);
+			// Everything, the new block and the amber "1,500 new" included, is done before the card comes to rest at about 11.79:
+			// the conversation talks about the new tokens while the card is up, so they have to be there.
+			this.tray.update(seg(T, 10.12, 10.62), seg(T, 11.03, 11.14), seg(T, 11.3, 11.41), seg(T, 11.41, 11.636), seg(T, 11.636, 11.76), time);
 		}
 		if (T < 12.3) this.router.update(seg(T, 11.12, 11.18), seg(T, 11.17, 11.3));
 		if (T > 11.8 && T < 13.2) this.lanes.update(seg(T, 12.08, 12.92) * STEPS);
