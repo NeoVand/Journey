@@ -85,17 +85,19 @@ export class Voyage {
 		}
 		const shot = cam.position;
 		const focus = this.rig.focus;
-		// Up: rising first, then drawing back over. Down: across first, high, then settling into the shot.
+		// Like a crane, and always through the open sky in front of the world, where nothing stands: going up, it draws
+		// back out of the shot first and then rises; coming down, it comes down out there first, then glides in level
+		// to the shot. Never straight up or down through whatever is stacked above or below a place.
 		let across: number;
 		let up: number;
 		let turn: number;
 		if (f.fall > 0) {
-			across = 1 - smoother(Math.min(1, f.fall * 1.12));
-			up = 1 - smoother(Math.max(0, (f.fall - 0.22) / 0.78));
+			up = 1 - smoother(Math.min(1, f.fall * 1.3));
+			across = 1 - smoother(Math.max(0, (f.fall - 0.18) / 0.82));
 			turn = 1 - smoother(Math.min(1, f.fall * 1.05));
 		} else {
-			across = smoother(f.rise);
-			up = smoother(Math.min(1, f.rise * 1.3));
+			across = smoother(Math.min(1, f.rise * 1.3));
+			up = smoother(Math.max(0, (f.rise - 0.18) / 0.82));
 			turn = smoother(Math.min(1, f.rise * 1.15));
 		}
 		const x = lerp(shot.x, this.apexPos.x, across);

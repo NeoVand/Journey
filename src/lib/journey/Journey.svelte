@@ -1285,7 +1285,10 @@
 					if (v.veil === 'dark') {
 						f.id = ++flightId;
 						f.over = [v.to, v.to];
-						f.near = partOf(v.to) === 0 ? w.modelTop() : undefined;
+						// Coming up out of the model: the top sees the model and where the flight is going together, from far
+						// enough back that the way down passes in front of the model, never through it.
+						f.near = undefined;
+						f.also = partOf(v.to) === 0 ? w.modelTop() : undefined;
 					}
 				}
 				head.jump(T);
