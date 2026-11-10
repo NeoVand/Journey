@@ -1412,6 +1412,11 @@ export class World {
 		return { step: this.finale.running ? this.finale.step : -1, laps: this.finale.laps };
 	}
 
+	/** Tells the last chapter's lap stop by stop: the token goes round to stop i (9 finishes the lap). */
+	tellStop(i: number) {
+		this.finale.tell(i);
+	}
+
 	/** Names one of the four gates in "Intent is not authority": its beacon flares. */
 	nameGate(i: number) {
 		this.back.nameGate(i);

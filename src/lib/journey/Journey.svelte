@@ -824,6 +824,7 @@
 							cue('gate', i);
 						}
 					} else if (what === 'attention') attentionSaid = i;
+					else if (what === 'stop') w.tellStop(i);
 				}
 			});
 			{

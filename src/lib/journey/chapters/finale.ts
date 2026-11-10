@@ -92,6 +92,10 @@ export class Finale {
 	private runs: number[] = [];
 	private signs: { group: THREE.Group; at: number }[] = [];
 	private stepStarts: number[] = [];
+	/** Where on the lap a conversation has walked the told token to, stop by stop: -1 when it isn't walking it. */
+	private toldGoal = -1;
+	private toldU = 0;
+	private toldClock = 0;
 	private mat = new THREE.Matrix4();
 	private p = new THREE.Vector3();
 	private t = new THREE.Vector3();
@@ -242,6 +246,41 @@ export class Finale {
 		return leg;
 	}
 
+	/**
+	 * A conversation tells the lap stop by stop: the token goes to the middle of stop i (0 to 8), and with 9 it finishes
+	 * the lap and is gone.
+	 */
+	tell(i: number) {
+		if (i >= 9) return void (this.toldGoal = 1);
+		const a = this.stepStarts[i] ?? 0;
+		const b = this.stepStarts[i + 1] ?? 1;
+		if (this.toldGoal < 0) this.toldU = Math.max(0.001, a - 0.02);
+		// It waits where it can be seen, never inside a machine, and as far into the stop as it can: in the middle of the
+		// last stretch in the open that's a fair length, where the stop does its work rather than on the way to it.
+		const runs: [number, number][] = [];
+		let from = -1;
+		for (let k = 0; k <= 80; k++) {
+			const u = a + ((b - a) * k) / 80;
+			if (!this.legAt(u).hidden && k < 80) {
+				if (from < 0) from = u;
+			} else if (from >= 0) {
+				runs.push([from, u]);
+				from = -1;
+			}
+		}
+		const longest = Math.max(0, ...runs.map(([p, q]) => q - p));
+		const chosen = runs.filter(([p, q]) => q - p >= longest * 0.3).at(-1);
+		this.toldGoal = chosen ? (chosen[0] + chosen[1]) / 2 : a + (b - a) * 0.5;
+	}
+
+	/** The leg of the lap a share of it falls on. */
+	private legAt(u: number) {
+		let at = u * this.total;
+		let i = 0;
+		while (i < this.legs.length - 1 && at > this.legs[i].time) at -= this.legs[i++].time;
+		return this.legs[i];
+	}
+
 	update(T: number) {
 		const on = T >= FINALE_T;
 		this.group.visible = on;
@@ -258,7 +297,7 @@ export class Finale {
 		this.harnessPulse = 0;
 		this.brainBusy = 0;
 		this.onTrack.length = 0;
-		this.running = (story > 0 && story < 1) || this.runs.length > 0;
+		this.running = (story > 0 && story < 1) || this.runs.length > 0 || this.toldGoal >= 0;
 		let newest = 0;
 		const ride = (token: THREE.Mesh, u: number) => {
 			const leg = this.place(token, u);
@@ -268,8 +307,16 @@ export class Finale {
 			newest = leg.step;
 		};
 		const told = this.tokens[0];
+		const dt = Math.min(0.05, Math.max(0, (now - this.toldClock) / 1000));
+		this.toldClock = now;
+		if (T < STORY[1]) this.toldGoal = -1;
 		if (story > 0 && story < 1) ride(told, story);
-		else told.visible = false;
+		else if (this.toldGoal >= 0) {
+			// Walked round with the words: it glides on to the stop being told, never backwards past the start.
+			this.toldU += (this.toldGoal - this.toldU) * (1 - Math.exp(-dt * 2.6));
+			if (this.toldGoal >= 1 && this.toldU > 0.995) this.toldGoal = -1;
+			ride(told, Math.min(0.999, this.toldU));
+		} else told.visible = false;
 
 		// Runs finish oldest first, so anything over a lap is always at the front of the list.
 		while (this.runs.length && now - this.runs[0] > LAP_MS) {

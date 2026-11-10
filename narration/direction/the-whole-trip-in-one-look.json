@@ -1,5 +1,15 @@
 {
 	"cues": [
-		{ "at": "On thousands of chips in a data center", "show": ["brain", "The model"], "together": true, "do": "excite", "hold": 4 }
+		{ "at": "Ask. You type one sentence", "show": [], "do": "stop", "index": 0 },
+		{ "at": "Assemble. The harness", "show": [], "do": "stop", "index": 1 },
+		{ "at": "Cross. The request", "show": [], "do": "stop", "index": 2 },
+		{ "at": "Encode. It reaches", "show": [], "do": "stop", "index": 3 },
+		{ "at": "Compute.", "show": [], "do": "stop", "index": 4 },
+		{ "at": "On thousands of chips in a data center", "show": ["brain", "The model"], "together": true, "do": "excite", "hold": 4 },
+		{ "at": "Stream. Text comes back", "show": [], "do": "stop", "index": 5 },
+		{ "at": "Authorize. The harness checks", "show": [], "do": "stop", "index": 6 },
+		{ "at": "Act. Now the tools", "show": [], "do": "stop", "index": 7 },
+		{ "at": "Loop. The results", "show": [], "do": "stop", "index": 8 },
+		{ "at": "You'll know where it goes", "show": [], "do": "stop", "index": 9 }
 	]
 }
