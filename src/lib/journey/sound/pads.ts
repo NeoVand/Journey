@@ -1,101 +1,326 @@
 /**
- * Ambient pads: soft chords in the story's key that drift slowly, so every note the story plays sits inside them.
- * Each place has its own: open and airy in the sky, deep and cool inside the cluster, warm in the harness room,
- * and a dreamier chord around the model, with now and then a music-box glint, as if it were thinking. At the very end,
- * as the light goes gold, the sky's chord settles into a warmer one.
+ * The music of each place: a small composer for every part of the story, playing for as long as the reader is there.
+ *
+ * Each one is a slow chord progression on soft pads, with a melody over it: notes picked one at a time, mostly from the
+ * chord, close to the last one, so they fall into short phrases rather than scattering; or, where the place is about
+ * flow, a steady arpeggio. The notes are the recorded kalimba, music box, marimba and harp. Everything is in D, so every
+ * note the story itself plays (its pentatonic: D E F# A B) sits inside whatever is sounding.
+ *
+ * The feeling of each place comes from its mode, register and pace, the way film music does it:
+ * - The open sky, where the story starts and ends: D major, rising I, vi, IV, V. Bright, open, unhurried; curiosity.
+ * - The model: D Lydian, its raised fourth floating the I to II vamp of wonder, with music-box glints.
+ * - Inside the data centre: B Dorian (minor, with the raised sixth that keeps it hopeful), and a soft glassy arpeggio
+ *   running like computation. Focused and cool, never dark: nothing sits below 110 Hz, where drones turn ominous.
+ * - The harness room: D Mixolydian's homely flat seventh, I, bVII, IV, on warm wood. A workshop.
+ * - The sandbox: suspended chords that never quite settle. Careful, but fair.
+ * - Memory: the wistful vi, IV, I, V, on harp.
+ * - Plans: a calm I, IV, V with notes stepping upward, like ticking off a list.
+ * - The end of the day: IV to I, the plagal "amen" of arriving home.
  */
-import { porcelain, note } from './synth';
+import type { Voice } from './engine';
+import { harp, porcelain } from './synth';
 
-/** Builds a pad into `out` and returns a function that stops it. */
+/** Builds a place's music into `out` and returns a function that lets it fade away. */
 export type Pad = (ctx: AudioContext, out: AudioNode) => () => void;
 
-interface Shape {
-	/** The chord, in Hz. */
-	chord: number[];
-	type: OscillatorType;
-	/** Where the filter sits, and how far it wanders, in Hz. */
-	cutoff: number;
-	sweep: number;
-	/** How slowly it moves, in cycles per second. */
-	drift: number;
-	/** How loud, before the bed's own level. */
-	level: number;
-	/** Seconds between glints, if any. */
-	glints?: [number, number];
+interface Mood {
+	/** Chord voicings, as MIDI notes, played in turn. */
+	chords: number[][];
+	/** Seconds each chord lasts. */
+	bar: number;
+	/** The scale the melody may use besides the chord, as pitch classes (0 is C). */
+	scale: number[];
+	pad: { type: OscillatorType; cutoff: number; level: number };
+	melody: {
+		/** The range it moves in, as MIDI notes. */
+		lo: number;
+		hi: number;
+		/** Seconds between notes: a range for a wandering melody, the beat for an arpeggio. */
+		every: [number, number];
+		/** wander: phrases near the last note. arp: up and down the chord. climb: up the chord, then again. */
+		shape: 'wander' | 'arp' | 'climb';
+		/** How often a beat of an arpeggio is left out. */
+		rest?: number;
+		gain: number;
+		voice?: 'harp';
+	};
 }
 
-function pad(shape: Shape): Pad {
+const hz = (midi: number) => 440 * Math.pow(2, (midi - 69) / 12);
+
+/** A little room of its own: two echoes, left and right, darkening as they repeat. */
+function space(ctx: AudioContext, out: AudioNode) {
+	const input = ctx.createGain();
+	input.gain.value = 0.32;
+	const left = ctx.createDelay(2);
+	left.delayTime.value = 0.43;
+	const right = ctx.createDelay(2);
+	right.delayTime.value = 0.61;
+	const tone = ctx.createBiquadFilter();
+	tone.type = 'lowpass';
+	tone.frequency.value = 2300;
+	const feedback = ctx.createGain();
+	feedback.gain.value = 0.36;
+	const merge = ctx.createChannelMerger(2);
+	input.connect(left);
+	left.connect(merge, 0, 0);
+	left.connect(right);
+	right.connect(merge, 0, 1);
+	right.connect(tone).connect(feedback).connect(left);
+	merge.connect(out);
+	return input;
+}
+
+function mood(m: Mood): Pad {
 	return (ctx, out) => {
-		const now = ctx.currentTime;
+		const start = ctx.currentTime;
 		const bus = ctx.createGain();
-		bus.gain.setValueAtTime(0, now);
-		bus.gain.linearRampToValueAtTime(shape.level, now + 3);
+		bus.gain.setValueAtTime(0, start);
+		bus.gain.linearRampToValueAtTime(1, start + 3);
+		bus.connect(out);
+		const wet = space(ctx, bus);
+		const padBus = ctx.createGain();
+		padBus.gain.value = m.pad.level;
 		const filter = ctx.createBiquadFilter();
 		filter.type = 'lowpass';
-		filter.frequency.value = shape.cutoff;
-		filter.Q.value = 0.4;
-		// The filter breathes open and closed, very slowly.
-		const lfo = ctx.createOscillator();
-		lfo.frequency.value = shape.drift;
-		const depth = ctx.createGain();
-		depth.gain.value = shape.sweep;
-		lfo.connect(depth).connect(filter.frequency);
-		filter.connect(bus).connect(out);
-		const nodes: AudioScheduledSourceNode[] = [lfo];
-		shape.chord.forEach((f, i) => {
-			// Two slightly detuned voices per note, each swelling on its own slow cycle, so the chord never sits still.
-			for (const cents of [-6, 6]) {
-				const o = ctx.createOscillator();
-				o.type = shape.type;
-				o.frequency.value = f;
-				o.detune.value = cents + (i % 2 ? 2 : -2);
-				const g = ctx.createGain();
-				g.gain.value = 0.5 / shape.chord.length;
-				const swell = ctx.createOscillator();
-				swell.frequency.value = shape.drift * (0.7 + i * 0.23);
-				const swellDepth = ctx.createGain();
-				swellDepth.gain.value = 0.35 / shape.chord.length;
-				swell.connect(swellDepth).connect(g.gain);
-				o.connect(g).connect(filter);
-				nodes.push(o, swell);
-			}
-		});
-		for (const n of nodes) n.start(now);
-		// Now and then a single high note, somewhere in the chord's scale.
-		let timer = 0;
-		const glint = () => {
-			if (!shape.glints) return;
-			const [a, b] = shape.glints;
-			timer = window.setTimeout(
-				() => {
-					const g = ctx.createGain();
-					g.gain.value = 0.18 + Math.random() * 0.12;
-					const p = ctx.createStereoPanner();
-					p.pan.value = Math.random() * 1.4 - 0.7;
-					g.connect(p).connect(out);
-					porcelain(note(10 + Math.floor(Math.random() * 6)))(ctx, g, ctx.currentTime + 0.02);
-					glint();
-				},
-				(a + Math.random() * (b - a)) * 1000
-			);
+		filter.frequency.value = m.pad.cutoff;
+		filter.Q.value = 0.5;
+		filter.connect(padBus).connect(bus);
+
+		/** Which chord sounds from when, so a note can be fitted to the chord under it. */
+		const changes: { at: number; chord: number[] }[] = [];
+		const chordAt = (t: number) => {
+			let c = changes[0]?.chord ?? m.chords[0];
+			for (const x of changes) if (x.at <= t) c = x.chord;
+			return c;
 		};
-		glint();
+		let held: { stop: (at: number) => void } | null = null;
+		const sound = (chord: number[], at: number) => {
+			const voices: { o: OscillatorNode; g: GainNode }[] = [];
+			chord.forEach((n, i) => {
+				// Two voices a hair apart, for warmth; too far apart and they beat, which is what made the old pads uneasy.
+				for (const cents of [-3, 3]) {
+					const o = ctx.createOscillator();
+					o.type = m.pad.type;
+					o.frequency.value = hz(n);
+					o.detune.value = cents + (i % 2 ? 1 : -1);
+					const g = ctx.createGain();
+					g.gain.setValueAtTime(0, at);
+					g.gain.setTargetAtTime(0.5 / chord.length, at, 1.1);
+					o.connect(g).connect(filter);
+					o.start(at);
+					voices.push({ o, g });
+				}
+			});
+			return {
+				stop: (t: number) => {
+					for (const { o, g } of voices) {
+						g.gain.cancelScheduledValues(t);
+						g.gain.setTargetAtTime(0, t, 1.3);
+						o.stop(t + 7);
+					}
+				}
+			};
+		};
+
+		let bar = 0;
+		let nextChord = start + 0.05;
+		let nextNote = start + 1.2 + Math.random();
+		let last = Math.round((m.melody.lo + m.melody.hi) / 2);
+		let step = 0;
+		let up = true;
+
+		/** The notes the melody may take under a chord: its own tones in every octave, and the scale's. */
+		const pool = (chord: number[], withScale: boolean) => {
+			const out: { n: number; w: number }[] = [];
+			const classes = new Set(chord.map((n) => n % 12));
+			for (let n = m.melody.lo; n <= m.melody.hi; n++) {
+				if (classes.has(n % 12)) out.push({ n, w: 3 });
+				else if (withScale && m.scale.includes(n % 12)) out.push({ n, w: 1 });
+			}
+			return out;
+		};
+
+		const play = (n: number, at: number, accent = 1) => {
+			const g = ctx.createGain();
+			g.gain.value = m.melody.gain * accent * (0.75 + Math.random() * 0.25);
+			const p = ctx.createStereoPanner();
+			p.pan.value = Math.random() * 1.2 - 0.6;
+			g.connect(p);
+			p.connect(bus);
+			p.connect(wet);
+			const voice: Voice = m.melody.voice === 'harp' ? harp(hz(n)) : porcelain(hz(n));
+			voice(ctx, g, at);
+		};
+
+		const nextMelody = (at: number) => {
+			const chord = chordAt(at);
+			const mel = m.melody;
+			if (mel.shape === 'wander') {
+				// Close to the last note, mostly on the chord: a phrase, not a scatter. Now and then a breath.
+				const near = pool(chord, true).filter((x) => Math.abs(x.n - last) <= 7 && x.n !== last);
+				const choices = near.length ? near : pool(chord, false);
+				const total = choices.reduce((s, x) => s + x.w / (1 + Math.abs(x.n - last) / 3), 0);
+				let r = Math.random() * total;
+				let chosen = choices[0]?.n ?? last;
+				for (const x of choices) {
+					r -= x.w / (1 + Math.abs(x.n - last) / 3);
+					if (r <= 0) {
+						chosen = x.n;
+						break;
+					}
+				}
+				last = chosen;
+				play(chosen, at);
+				const [a, b] = mel.every;
+				return at + a + Math.random() * (b - a) + (Math.random() < 0.15 ? b : 0);
+			}
+			// An arpeggio: the chord's tones in order, up (and back down, for arp), with a little accent on each turn.
+			const tones = pool(chord, false).map((x) => x.n);
+			if (!tones.length) return at + mel.every[0];
+			if (Math.random() >= (mel.rest ?? 0)) {
+				const i = mel.shape === 'climb' ? step % tones.length : Math.min(tones.length - 1, step);
+				play(tones[i], at, step === 0 ? 1.15 : 1);
+			}
+			if (mel.shape === 'climb') step = (step + 1) % tones.length;
+			else {
+				step += up ? 1 : -1;
+				if (step >= tones.length - 1) up = false;
+				if (step <= 0) up = true;
+			}
+			return at + mel.every[0];
+		};
+
+		const tick = () => {
+			const horizon = ctx.currentTime + 0.6;
+			while (nextChord < horizon) {
+				const chord = m.chords[bar % m.chords.length];
+				held?.stop(nextChord);
+				held = sound(chord, nextChord);
+				changes.push({ at: nextChord, chord });
+				if (changes.length > 4) changes.shift();
+				bar++;
+				nextChord += m.bar;
+			}
+			while (nextNote < horizon) nextNote = nextMelody(Math.max(nextNote, ctx.currentTime + 0.02));
+		};
+		tick();
+		const timer = window.setInterval(tick, 120);
 		return () => {
-			clearTimeout(timer);
+			window.clearInterval(timer);
 			const t = ctx.currentTime;
 			bus.gain.cancelScheduledValues(t);
-			bus.gain.setTargetAtTime(0, t, 0.5);
-			for (const n of nodes) n.stop(t + 3);
+			bus.gain.setTargetAtTime(0, t, 0.6);
+			held?.stop(t);
 		};
 	};
 }
 
-/** D, A, E, F#: open fifths with a ninth, in the same pentatonic as the notes. */
+/** D major's notes, and its modes' (as pitch classes, C = 0). */
+const D_MAJOR = [2, 4, 6, 7, 9, 11, 1];
+const D_LYDIAN = [2, 4, 6, 8, 9, 11, 1];
+const D_MIXOLYDIAN = [2, 4, 6, 7, 9, 11, 0];
+const B_DORIAN = [11, 1, 2, 4, 6, 8, 9];
+
 export const PADS: Record<string, Pad> = {
-	'pad-sky': pad({ chord: [146.83, 220, 329.63, 369.99], type: 'triangle', cutoff: 1300, sweep: 500, drift: 0.045, level: 0.07 }),
-	'pad-cluster': pad({ chord: [73.42, 110, 146.83, 220], type: 'sine', cutoff: 650, sweep: 260, drift: 0.07, level: 0.09 }),
-	'pad-room': pad({ chord: [146.83, 220, 293.66, 369.99], type: 'triangle', cutoff: 950, sweep: 300, drift: 0.05, level: 0.07 }),
-	'pad-brain': pad({ chord: [146.83, 184.99, 220, 329.63, 440], type: 'triangle', cutoff: 1500, sweep: 700, drift: 0.06, level: 0.08, glints: [1.4, 3.6] }),
-	// The end of the day: the sky's chord settles into a warmer major seventh, with a rare high note like a first star.
-	'pad-dusk': pad({ chord: [110, 146.83, 184.99, 220, 277.18], type: 'triangle', cutoff: 1050, sweep: 380, drift: 0.035, level: 0.075, glints: [4, 9] })
+	// The open sky: Dmaj9, Bm11, Gmaj9 with its raised eleventh, A6sus2. Sparse bells up high.
+	'pad-sky': mood({
+		chords: [
+			[50, 57, 61, 64, 66],
+			[47, 54, 57, 62, 64],
+			[55, 59, 61, 66, 69],
+			[45, 52, 59, 61, 66]
+		],
+		bar: 9,
+		scale: D_MAJOR,
+		pad: { type: 'triangle', cutoff: 1250, level: 0.05 },
+		melody: { lo: 74, hi: 91, every: [1.7, 3.4], shape: 'wander', gain: 0.2 }
+	}),
+	// The model: Dmaj7#11 to E over D, back and forth, the floating sound of wonder; quicker music-box glints.
+	'pad-brain': mood({
+		chords: [
+			[50, 57, 61, 64, 68],
+			[50, 59, 64, 68, 71]
+		],
+		bar: 7,
+		scale: D_LYDIAN,
+		pad: { type: 'triangle', cutoff: 1500, level: 0.055 },
+		melody: { lo: 79, hi: 96, every: [0.9, 2.2], shape: 'wander', gain: 0.17 }
+	}),
+	// Inside the data centre: Bm9, E, Bm9, A. A soft arpeggio, like work flowing through the chips.
+	'pad-cluster': mood({
+		chords: [
+			[47, 54, 57, 61, 62],
+			[52, 56, 59, 64, 66],
+			[47, 54, 57, 61, 62],
+			[45, 52, 57, 59, 61]
+		],
+		bar: 8,
+		scale: B_DORIAN,
+		pad: { type: 'sine', cutoff: 950, level: 0.06 },
+		melody: { lo: 66, hi: 86, every: [0.32, 0.32], shape: 'arp', rest: 0.25, gain: 0.1 }
+	}),
+	// The harness room: D, C over D, G over D. Warm wood, unhurried.
+	'pad-room': mood({
+		chords: [
+			[50, 57, 62, 66, 69],
+			[50, 55, 60, 64, 67],
+			[50, 55, 59, 62, 67],
+			[50, 57, 62, 66, 69]
+		],
+		bar: 10,
+		scale: D_MIXOLYDIAN,
+		pad: { type: 'triangle', cutoff: 1000, level: 0.05 },
+		melody: { lo: 57, hi: 76, every: [1.8, 3.8], shape: 'wander', gain: 0.2 }
+	}),
+	// The sandbox: Dsus2, Asus4, Gsus2, Dsus4, never quite settling.
+	'pad-gates': mood({
+		chords: [
+			[50, 57, 62, 64, 69],
+			[45, 52, 57, 62, 64],
+			[55, 57, 62, 67, 69],
+			[50, 57, 62, 67, 69]
+		],
+		bar: 9,
+		scale: D_MAJOR,
+		pad: { type: 'triangle', cutoff: 1150, level: 0.05 },
+		melody: { lo: 74, hi: 88, every: [2, 4], shape: 'wander', gain: 0.17 }
+	}),
+	// Memory: Bm7, Gmaj7, Dadd9, A. Bittersweet, on harp.
+	'pad-memory': mood({
+		chords: [
+			[47, 54, 57, 62, 66],
+			[55, 59, 62, 66, 69],
+			[50, 57, 62, 64, 66],
+			[45, 52, 57, 61, 64]
+		],
+		bar: 9,
+		scale: D_MAJOR,
+		pad: { type: 'triangle', cutoff: 1100, level: 0.05 },
+		melody: { lo: 67, hi: 84, every: [2, 4.2], shape: 'wander', gain: 0.2, voice: 'harp' }
+	}),
+	// Plans: Dmaj7, Gadd9, A, D. The notes climb the chord, one step at a time.
+	'pad-plans': mood({
+		chords: [
+			[50, 57, 61, 66],
+			[55, 57, 59, 62, 66],
+			[45, 52, 59, 61, 64],
+			[50, 57, 61, 66]
+		],
+		bar: 8,
+		scale: D_MAJOR,
+		pad: { type: 'triangle', cutoff: 1200, level: 0.05 },
+		melody: { lo: 74, hi: 86, every: [0.5, 0.5], shape: 'climb', rest: 0.35, gain: 0.11 }
+	}),
+	// The end of the day: Gmaj9 resolving to Dmaj9, slowly, with a rare high note like a first star.
+	'pad-dusk': mood({
+		chords: [
+			[55, 59, 62, 66, 69],
+			[50, 57, 61, 64, 66]
+		],
+		bar: 11,
+		scale: D_MAJOR,
+		pad: { type: 'triangle', cutoff: 1050, level: 0.055 },
+		melody: { lo: 81, hi: 93, every: [3.5, 7], shape: 'wander', gain: 0.16 }
+	})
 };

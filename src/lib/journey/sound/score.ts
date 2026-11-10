@@ -414,21 +414,21 @@ export function score(w: World): { cues: Cue[]; beds: Bed[] } {
 		// Each place is a soft chord in the story's key, with a breath of its own air far underneath.
 		beds: [
 			{ sound: 'pad-sky', from: 0, to: 6.95, level: 1, fade: 0.06 },
-			{ sound: 'sky', from: 0, to: 7.93, level: 0.12, fade: 0.04 },
+			{ sound: 'sky', from: 0, to: 7.93, level: 0.07, fade: 0.04 },
 			{ sound: 'belt', from: 6.02, to: 7.9, level: 0.28, fade: 0.04 },
 			// The model: a dreamier chord with music-box glints, a thinking hum, and its gears.
 			{ sound: 'pad-brain', from: 6.9, to: 7.95, level: 1, fade: 0.06 },
-			{ sound: 'thinking', from: 6.95, to: 7.95, level: 0.4, fade: 0.06 },
-			{ sound: 'gears', from: 6.95, to: 7.95, level: 0.28, fade: 0.06 },
+			{ sound: 'thinking', from: 6.95, to: 7.95, level: 0.2, fade: 0.06 },
+			{ sound: 'gears', from: 6.95, to: 7.95, level: 0.18, fade: 0.06 },
 			{ sound: 'pad-cluster', from: 8.0, to: 18.9, level: 1, fade: 0.05 },
-			{ sound: 'cluster', from: 8.0, to: 18.9, level: 0.14, fade: 0.05 },
+			{ sound: 'cluster', from: 8.0, to: 18.9, level: 0.06, fade: 0.05 },
 			{ sound: 'belt', from: 8.5, to: 9.56, level: 0.22, fade: 0.04 },
 			{ sound: 'belt', from: 14.03, to: 14.12, level: 0.22, fade: 0.02 },
 			{ sound: 'belt', from: 18.06, to: 18.64, level: 0.22, fade: 0.04 },
 			{ sound: 'pad-sky', from: 19.05, to: 32.1, level: 1, fade: 0.05 },
 			// The light goes gold as the camera pulls back to the whole trip, and the chord warms with it.
 			{ sound: 'pad-dusk', from: 32.12, to: 34, level: 1, fade: 0.2 },
-			{ sound: 'sky', from: 19.05, to: 34, level: 0.12, fade: 0.05 }
+			{ sound: 'sky', from: 19.05, to: 34, level: 0.07, fade: 0.05 }
 		]
 	};
 }
@@ -513,7 +513,7 @@ function insideHarness(): { cues: Cue[]; beds: Bed[] } {
 		cues,
 		beds: [
 			{ sound: 'pad-room', from: 0, to: 6.1, level: 1, fade: 0.05 },
-			{ sound: 'room', from: 0, to: 6.1, level: 0.18, fade: 0.05 },
+			{ sound: 'room', from: 0, to: 6.1, level: 0.1, fade: 0.05 },
 			// The transcript winding onto its reel, for as long as it winds.
 			{ sound: 'reel', from: 4.3, to: 4.9, level: 0.35, fade: 0.04 }
 		]
@@ -663,8 +663,8 @@ function permissionAndSandbox(): { cues: Cue[]; beds: Bed[] } {
 	return {
 		cues,
 		beds: [
-			{ sound: 'pad-sky', from: 0, to: 6.1, level: 1, fade: 0.05 },
-			{ sound: 'sky', from: 0, to: 6.1, level: 0.12, fade: 0.05 }
+			{ sound: 'pad-gates', from: 0, to: 6.1, level: 1, fade: 0.05 },
+			{ sound: 'sky', from: 0, to: 6.1, level: 0.07, fade: 0.05 }
 		]
 	};
 }
@@ -738,8 +738,8 @@ function memoryAndRewinding(): { cues: Cue[]; beds: Bed[] } {
 	return {
 		cues,
 		beds: [
-			{ sound: 'pad-sky', from: 0, to: 6.1, level: 1, fade: 0.05 },
-			{ sound: 'sky', from: 0, to: 6.1, level: 0.12, fade: 0.05 }
+			{ sound: 'pad-memory', from: 0, to: 6.1, level: 1, fade: 0.05 },
+			{ sound: 'sky', from: 0, to: 6.1, level: 0.07, fade: 0.05 }
 		]
 	};
 }
@@ -814,8 +814,8 @@ function plansAndLists(agent: HarnessId): { cues: Cue[]; beds: Bed[] } {
 	return {
 		cues,
 		beds: [
-			{ sound: 'pad-sky', from: 0, to: 6.1, level: 1, fade: 0.05 },
-			{ sound: 'sky', from: 0, to: 6.1, level: 0.12, fade: 0.05 }
+			{ sound: 'pad-plans', from: 0, to: 6.1, level: 1, fade: 0.05 },
+			{ sound: 'sky', from: 0, to: 6.1, level: 0.07, fade: 0.05 }
 		]
 	};
 }
