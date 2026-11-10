@@ -79,37 +79,148 @@ function standIn(): Record<Part, THREE.BufferGeometry> {
 }
 
 /**
- * Glazed blue tissue with electronic waves running over it: rings of signal spreading out from the intake on the roof
- * and down over both halves, and slower sweeps travelling round the brain. They show brightest along the crowns of the
- * folds; the deepest creases keep a faint light of their own, as if from inside. A class of its own, so the copy a visit
- * dresses the brain in keeps its waves.
+ * Where the waves start, and so how far each point is from them over the surface: three sets, one for each kind of wave.
+ * The first starts on the roof, where tokens come in, and at the top of the brainstem; the others start at points on
+ * either half that don't mirror each other, so the two halves never pulse alike.
  */
+const SOURCES: [number, number, number][][] = [
+	[
+		[0.4, 3.7, 0.9],
+		[-0.4, 3.7, -0.9],
+		[-0.8, -1.4, 0]
+	],
+	[
+		[5.6, 0.6, 2.2],
+		[3.2, 2.6, -3.2]
+	],
+	[
+		[-4.6, 0.8, 2.6],
+		[1.2, -2.6, -4.2],
+		[-1.3, -3.8, 0.4]
+	]
+];
+
+/**
+ * How far each vertex is over the surface, down every crease and back over every fold, from the nearest of each set of
+ * points: Dijkstra along the mesh's edges. Three distances to a vertex, -1 where a set can't reach it.
+ */
+function overSurface(geo: THREE.BufferGeometry, sets: [number, number, number][][]) {
+	const p = (geo.getAttribute('position') as THREE.BufferAttribute).array as Float32Array;
+	const tri = geo.getIndex()!.array;
+	const n = p.length / 3;
+	// Each vertex's neighbours, packed one after another: two for every triangle it's in.
+	const start = new Uint32Array(n + 1);
+	for (let i = 0; i < tri.length; i++) start[tri[i] + 1] += 2;
+	for (let i = 0; i < n; i++) start[i + 1] += start[i];
+	const fill = start.slice(0, n);
+	const next = new Uint32Array(start[n]);
+	for (let t = 0; t < tri.length; t += 3)
+		for (let k = 0; k < 3; k++) {
+			const a = tri[t + k];
+			next[fill[a]++] = tri[t + ((k + 1) % 3)];
+			next[fill[a]++] = tri[t + ((k + 2) % 3)];
+		}
+	const out = new Float32Array(n * 3).fill(-1);
+	const dist = new Float64Array(n);
+	const keys = new Float64Array(start[n] + n);
+	const ids = new Uint32Array(start[n] + n);
+	sets.forEach((points, f) => {
+		dist.fill(Infinity);
+		let size = 0;
+		const push = (v: number, d: number) => {
+			let i = size++;
+			while (i > 0) {
+				const up = (i - 1) >> 1;
+				if (keys[up] <= d) break;
+				keys[i] = keys[up];
+				ids[i] = ids[up];
+				i = up;
+			}
+			keys[i] = d;
+			ids[i] = v;
+		};
+		const pop = () => {
+			const v = ids[0];
+			const d = keys[0];
+			const lastK = keys[--size];
+			const lastV = ids[size];
+			let i = 0;
+			for (;;) {
+				let c = 2 * i + 1;
+				if (c >= size) break;
+				if (c + 1 < size && keys[c + 1] < keys[c]) c++;
+				if (keys[c] >= lastK) break;
+				keys[i] = keys[c];
+				ids[i] = ids[c];
+				i = c;
+			}
+			keys[i] = lastK;
+			ids[i] = lastV;
+			return [v, d];
+		};
+		for (const [x, y, z] of points) {
+			let best = 0;
+			let near = Infinity;
+			for (let v = 0; v < n; v++) {
+				const d = (p[v * 3] - x) ** 2 + (p[v * 3 + 1] - y) ** 2 + (p[v * 3 + 2] - z) ** 2;
+				if (d < near) [near, best] = [d, v];
+			}
+			dist[best] = 0;
+			push(best, 0);
+		}
+		while (size > 0) {
+			const [v, d] = pop();
+			if (d > dist[v]) continue;
+			for (let e = start[v]; e < start[v + 1]; e++) {
+				const u = next[e];
+				const nd = d + Math.hypot(p[u * 3] - p[v * 3], p[u * 3 + 1] - p[v * 3 + 1], p[u * 3 + 2] - p[v * 3 + 2]);
+				if (nd < dist[u]) {
+					dist[u] = nd;
+					push(u, nd);
+				}
+			}
+		}
+		for (let v = 0; v < n; v++) if (Number.isFinite(dist[v])) out[v * 3 + f] = dist[v];
+	});
+	return out;
+}
+
+/**
+ * Glazed blue tissue with waves of signal running over it. Each spreads over the surface itself, down into every crease
+ * and back over every fold, so its front wanders the way the brain is folded; three kinds start in different places,
+ * travel at their own pace and swell and fade in turn, crossing as they go. They show brightest along the crowns of the
+ * folds, and the deepest creases keep a faint light of their own, as if from inside. A class of its own, so the copy a
+ * visit dresses the brain in keeps its waves.
+ */
+/** One kind of wave at a point this far over the surface from where it starts: a bright front with a fading trail behind. */
+const FRONT = /* glsl */ `
+float front(float d, float t, float spacing) {
+	if (d < 0.0) return 0.0;
+	float a = fract((d - t) / spacing);
+	float w = fwidth(a);
+	return (smoothstep(0.962 - w, 0.99, a) * 1.3 + pow(a, 16.0) * 0.3) * (1.0 - smoothstep(1.0 - w * 1.5, 1.0, a));
+}
+`;
+
 class Tissue extends THREE.MeshPhysicalMaterial {
 	onBeforeCompile(shader: THREE.WebGLProgramParametersWithUniforms) {
 		Object.assign(shader.uniforms, waves);
 		shader.vertexShader = shader.vertexShader
-			.replace('#include <common>', '#include <common>\nattribute float crown;\nvarying float vCrown;\nvarying vec3 vBrainPos;')
-			.replace('#include <begin_vertex>', '#include <begin_vertex>\nvCrown = crown;\nvBrainPos = position;');
+			.replace('#include <common>', '#include <common>\nattribute float crown;\nattribute vec3 geo;\nvarying float vCrown;\nvarying vec3 vGeo;')
+			.replace('#include <begin_vertex>', '#include <begin_vertex>\nvCrown = crown;\nvGeo = geo;');
 		shader.fragmentShader = shader.fragmentShader
-			.replace('#include <common>', '#include <common>\nuniform float uWaveTime;\nuniform float uWaveGain;\nuniform vec3 uWaveColor;\nvarying float vCrown;\nvarying vec3 vBrainPos;')
+			.replace('#include <common>', '#include <common>\nuniform float uWaveTime;\nuniform float uWaveGain;\nuniform vec3 uWaveColor;\nvarying float vCrown;\nvarying vec3 vGeo;\n' + FRONT)
 			.replace(
 				'#include <emissivemap_fragment>',
 				/* glsl */ `#include <emissivemap_fragment>
 				{
-					vec3 p = vBrainPos;
-					// Out from the intake: rings, each a thin bright front with a short trail behind it, wavering as they go.
-					float d = length(p - vec3(0.0, ${BRAIN_SEAT.toFixed(2)}, 0.0)) + 0.45 * sin(0.9 * p.x + 0.5 * p.z) * cos(0.7 * p.y - 0.35 * p.z);
-					float a = fract((d - uWaveTime) / 2.6);
-					float wa = fwidth(a);
-					float ring = (smoothstep(0.972 - wa, 0.994, a) * 1.4 + pow(a, 14.0) * 0.45) * (1.0 - smoothstep(1.0 - wa * 1.5, 1.0, a));
-					// Round the brain: fainter lines travelling the other way, leaning as they climb, so the two kinds cross.
-					float turn = atan(p.z, p.x + 0.3) / 6.28318 * 7.0 + p.y * 0.12 - uWaveTime * 0.08;
-					float b = abs(fract(turn) - 0.5) * 2.0;
-					float wb = fwidth(turn) * 2.0;
-					float line = 1.0 - smoothstep(0.0, 0.06 + wb, 1.0 - b);
-					float crownLight = mix(0.55, 1.0, smoothstep(0.25, 0.8, vCrown));
+					float t = uWaveTime;
+					float waves = front(vGeo.x, t, 4.4) * (0.65 + 0.35 * sin(t * 0.31))
+						+ front(vGeo.y, t * 0.82 + 1.7, 5.6) * (0.5 + 0.5 * sin(t * 0.23 + 2.0))
+						+ front(vGeo.z, t * 0.91 + 3.1, 5.0) * (0.5 + 0.5 * sin(t * 0.27 + 4.1));
+					float crownLight = mix(0.5, 1.0, smoothstep(0.25, 0.8, vCrown));
 					float creaseLight = 1.0 - smoothstep(0.0, 0.3, vCrown);
-					totalEmissiveRadiance += uWaveColor * uWaveGain * ((ring + line * 0.32) * crownLight + creaseLight * 0.28);
+					totalEmissiveRadiance += uWaveColor * uWaveGain * (waves * crownLight + creaseLight * 0.22);
 				}`
 			);
 	}
@@ -231,6 +342,7 @@ export class Brain {
 		}
 		geo.setAttribute('color', new THREE.BufferAttribute(tint, 3));
 		geo.setAttribute('crown', new THREE.BufferAttribute(crowns, 1));
+		geo.setAttribute('geo', new THREE.BufferAttribute(overSurface(geo, SOURCES), 3));
 		geo.computeVertexNormals();
 		geo.computeBoundingSphere();
 
