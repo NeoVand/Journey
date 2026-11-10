@@ -4329,6 +4329,25 @@
 		--veil-a: 0.97;
 	}
 
+	/* Inside the data centre the header's words are light. A flight there can pass a white tray or floor behind them, where
+	   they would vanish, so the header keeps a faint ground of the hall's own night, there and only there. Phones have a
+	   ground of their own. */
+	@media (min-aspect-ratio: 9/10) {
+		.journey:not(.tripping) .bar::before {
+			content: '';
+			position: absolute;
+			inset: 0 0 -36px;
+			z-index: -1;
+			pointer-events: none;
+			background: linear-gradient(to bottom, rgb(6 15 38 / 0.72) 30%, rgb(6 15 38 / 0));
+			opacity: 0;
+			transition: opacity 0.5s;
+		}
+		.journey.dark:not(.tripping) .bar::before {
+			opacity: 1;
+		}
+	}
+
 	/* A side trip flies in close, so its props reach up behind the header: the header brings a ground of its own, in the
 	   colour of the place the trip is in. Phones have one all the time. */
 	.tripping .bar::before {
