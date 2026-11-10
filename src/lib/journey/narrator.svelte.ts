@@ -45,6 +45,11 @@ export class Narrator {
 	done = $state(false);
 	/** The reader asked to listen, and hasn't paused since: arriving at a card starts its conversation. */
 	listening = $state(false);
+	/**
+	 * The film is choosing what plays and when, from the Play key: arriving at a card doesn't start its conversation by
+	 * itself, since the film starts it once the card's scene has played.
+	 */
+	led = false;
 	/** The card the reader is on, or was last fully on: what the talk key would play. */
 	here = $state<string | null>(null);
 	/** How fast they talk, remembered between visits. */
@@ -97,6 +102,13 @@ export class Narrator {
 
 	pause() {
 		this.listening = false;
+		this.audio?.pause();
+	}
+
+	/** Stops for a moment without letting go: the reader is dragging the film, and it plays on from wherever they leave it. */
+	suspend() {
+		window.clearTimeout(this.settle);
+		this.cancelFade(this.audio);
 		this.audio?.pause();
 	}
 
@@ -236,9 +248,9 @@ export class Narrator {
 		if (id) this.here = id;
 		window.clearTimeout(this.settle);
 		if (this.id && id !== this.id && this.playing) this.fadeOut(false);
-		if (id && this.listening && TALKS[id] && (id !== this.id || !this.playing)) {
+		if (id && this.listening && !this.led && TALKS[id] && (id !== this.id || !this.playing)) {
 			this.settle = window.setTimeout(() => {
-				if (this.shown === id && this.listening) this.play(id);
+				if (this.shown === id && this.listening && !this.led) this.play(id);
 			}, SETTLE);
 		}
 	}
@@ -336,9 +348,9 @@ export class Narrator {
 		this.fading = requestAnimationFrame(step);
 	}
 
-	private cancelFade(audio: HTMLAudioElement) {
+	private cancelFade(audio: HTMLAudioElement | null) {
 		cancelAnimationFrame(this.fading);
-		audio.volume = 1;
+		if (audio) audio.volume = 1;
 	}
 
 	private mediaKeys(audio: HTMLAudioElement) {

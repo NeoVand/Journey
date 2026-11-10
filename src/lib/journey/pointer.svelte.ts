@@ -130,7 +130,12 @@ export class Pointer {
 		this.lit = null;
 	}
 
-	/** Drops everything at once: the reader leapt elsewhere, from the map. */
+	/** Lets go gently: a visit flies back as it's left, so a flight setting off now leaves from wherever the camera is. */
+	release() {
+		this.letGo();
+	}
+
+	/** Drops everything at once: the reader leapt elsewhere, under a cut. */
 	clear() {
 		this.pending = null;
 		if (this.peeking) this.hand.peek(null);

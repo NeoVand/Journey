@@ -61,7 +61,7 @@ describe('Director', () => {
 		expect(t).toBeLessThan(2.9);
 	});
 
-	it('cuts the beat under way to its end when finishing it briskly would still take too long', () => {
+	it('finishes a long beat under way faster rather than cutting it, within a couple of seconds', () => {
 		const d = make();
 		const p = new Playhead(d.pace, 2);
 		d.go(2);
@@ -69,21 +69,29 @@ describe('Director', () => {
 		for (let i = 0; i < 10; i++) p.step(d.target, 1 / 60, d.move(p.T).speed);
 		d.next(p.T);
 		expect(d.target).toBe(4);
-		// Ten seconds left of the long beat: even at four times that's over a second, so it's cut instead.
-		const { cuts } = play(d, p);
-		expect(cuts).toEqual([3]);
+		// Ten seconds left of the long beat: played through quickly, never cut, then the last beat as made.
+		const { t, cuts, speeds } = play(d, p);
+		expect(cuts).toEqual([]);
 		expect(p.T).toBe(4);
+		expect(Math.max(...speeds)).toBeGreaterThan(DESK.hurry);
+		expect(t).toBeLessThan(DESK.most + 2.6);
 	});
 
-	it('steps back by playing backwards when that is quick, and by a cut when it is not', () => {
+	it('steps back by playing backwards, however long the beat, and never cuts', () => {
 		const d = make();
 		const p = new Playhead(d.pace, 3);
 		d.go(3);
 		d.back(p.T);
 		expect(d.target).toBe(2);
-		// Ten seconds of beat, even at three times, is over the limit: a cut.
-		expect(d.move(p.T).cut).toBe(2);
-		// Two seconds at three times is under it: played backwards.
+		// Ten seconds of beat: backwards, faster than the least rewind, in no more than `most` and the easing.
+		const m = d.move(p.T);
+		expect(m.cut).toBeUndefined();
+		expect(m.speed).toBeGreaterThan(DESK.rewind);
+		const { t, cuts } = play(d, p);
+		expect(cuts).toEqual([]);
+		expect(p.T).toBe(2);
+		expect(t).toBeLessThan(DESK.most + 0.6);
+		// Two seconds at three times is short enough to play at the least rewind.
 		const r = make();
 		r.go(2);
 		r.back(2);
@@ -95,6 +103,42 @@ describe('Director', () => {
 		e.back(q.T);
 		expect(e.target).toBe(1);
 		expect(e.move(q.T)).toEqual({ speed: DESK.rewind });
+	});
+
+	it('keeps one speed for a whole pass, so it neither lurches nor crawls at the end', () => {
+		const d = make();
+		d.go(3);
+		d.back(3);
+		const first = d.move(3).speed;
+		expect(d.move(2.2).speed).toBe(first);
+	});
+
+	it('leaps only further than a beat or two: those are cuts, which the page dresses as a flight', () => {
+		const d = make();
+		d.go(4);
+		expect(d.move(0.5).cut).toBe(3);
+		d.go(0);
+		expect(d.move(3.5).cut).toBe(0);
+		// One beat to finish and the next to play is not a leap.
+		d.go(3);
+		expect(d.move(1.5).cut).toBeUndefined();
+	});
+
+	it('rests anywhere the reader lets go, and a step on finishes that beat', () => {
+		const d = make();
+		d.rest(2.4);
+		expect(d.target).toBe(2.4);
+		expect(d.move(2.4)).toEqual({ speed: 1 });
+		d.next(2.4);
+		expect(d.target).toBe(3);
+		expect(d.move(2.4)).toEqual({ speed: 1 });
+		d.rest(2.4);
+		d.back(2.4);
+		expect(d.target).toBe(2);
+		// Letting go right on a stop is resting at it.
+		d.rest(3);
+		expect(d.hold).toBe(null);
+		expect(d.goal).toBe(3);
 	});
 
 	it('turns round mid-beat to the nearest stop, not one further', () => {

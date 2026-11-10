@@ -28,6 +28,7 @@ import { CABINET_ROOF, MemoryStage, MEMORY_AT, MEMORY_SHOTS, MEMORY_SKY } from '
 import { PlansStage, PLANS_AT, PLANS_SHOTS, PLANS_SKY, SCREEN_ROOF } from './tracks/plans';
 import { hitBox } from './poke';
 import { Visits } from './visit';
+import { Voyage, type Flight } from './voyage';
 import { Cluster, CLUSTER_SHOTS, DIVE_T } from './cluster';
 import { MODEL_FLANK, MODEL_ISLAND_Y, MODEL_X, MODEL_Z, RETURN_POINTS, STREAM_POINTS } from './layout';
 import { Back, BACK_SHOTS } from './chapters/back';
@@ -301,6 +302,7 @@ export class World {
 	private constructor(canvas: HTMLCanvasElement) {
 		this.stage = new Stage(canvas);
 		this.rig = new Rig(this.stage.camera, SHOTS);
+		this.voyage = new Voyage(this.rig);
 		this.visits = new Visits(this.stage, () => (this.trackIn && this.trackId ? [this.places[this.trackId as 'harness']?.group] : [this.root, this.cluster.group]));
 		this.clouds.lay(
 			[
@@ -1060,6 +1062,9 @@ export class World {
 	tripRoomAt: ((t: number) => number) | null = null;
 	private poker = new Poker();
 	private lastT = 0;
+	/** A flight between far-apart moments of the story, while the page has one under way: see voyage.ts. */
+	flight: Flight | null = null;
+	private voyage!: Voyage;
 	/** Which way up each tile has been turned by hand, and how far along that is. */
 	private tileSide = TOKENS.map(() => 0);
 	private tileFrom = TOKENS.map(() => 0);
@@ -1183,6 +1188,13 @@ export class World {
 			pan: behind ? 0 : Math.max(-1, Math.min(1, p.x * 0.8)),
 			gain: Math.min(1.2, Math.pow(ref / d, 0.7)) * (1 - Math.min(0.7, off * 0.9))
 		};
+	}
+
+	/** The top of the model, wherever the world has it: a flight into it or up out of it looks down on it from there. */
+	modelTop(): [number, number, number] {
+		const box = this.part.setFromObject(this.brain.group);
+		const c = box.getCenter(this.v4);
+		return [c.x, box.max.y, c.z];
 	}
 
 	get pulledDrawer() {
@@ -1494,6 +1506,10 @@ export class World {
 
 		this.state.form = formAt(T);
 		this.visits.apply(dt, time);
+		if (this.flight) {
+			const seen = this.voyage.apply(this.stage.camera, this.flight, this.stage.width, this.stage.height);
+			this.stage.focusLight(seen.look, seen.reach);
+		}
 		this.stage.render();
 	}
 

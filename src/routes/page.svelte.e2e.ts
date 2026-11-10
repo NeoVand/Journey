@@ -165,6 +165,8 @@ test('the tour shows the controls, can turn the sound on, asks for a star, and e
 	await expect(page.getByRole('dialog', { name: 'One card at a time' })).toBeVisible();
 	// The arrow keys move through the tour while it's open, not through the story.
 	await page.keyboard.press('ArrowRight');
+	await expect(page.getByRole('dialog', { name: 'Or watch it like a film' })).toBeVisible();
+	await page.keyboard.press('ArrowRight');
 	await page.keyboard.press('ArrowRight');
 	const sound = page.getByRole('dialog', { name: 'Sound, if you like' });
 	await expect(sound).toBeVisible();
@@ -314,6 +316,120 @@ test('the last chapter leaves nothing behind when the reader jumps back', async 
 		}, T);
 	expect(await shownAt(32.9)).toBe(true);
 	expect(await shownAt(3.5)).toBe(false);
+});
+
+type Film = { __film: { state(): { T: number; flying: boolean; filming: boolean }; director: { target: number } }; __narrator: { id: string | null; playing: boolean } };
+
+test('Play runs the story like a film: the scene, then its conversation, on to the next, and Pause stops it all', async ({ page }) => {
+	test.setTimeout(180_000);
+	await page.goto('/?debug');
+	const key = page.locator('header button.film');
+	await expect(key).toBeEnabled({ timeout: 120_000 });
+	await page.waitForFunction(() => document.querySelector('main.driven'), null, { timeout: 90_000 });
+	await page.keyboard.press('k');
+	await expect(key).toHaveAttribute('aria-pressed', 'true');
+	// The title card's conversation comes first, a breath after the film begins.
+	await page.waitForFunction(() => (window as unknown as Film).__narrator.id === 'how-a-coding-agent-works' && (window as unknown as Film).__narrator.playing, null, { timeout: 30_000 });
+	// A step on, while it plays: the next card's scene plays, and the film carries on into that card's conversation.
+	await page.keyboard.press('ArrowRight');
+	await page.waitForFunction(() => (window as unknown as Film).__narrator.id === 'it-starts-as-a-sentence' && (window as unknown as Film).__narrator.playing, null, { timeout: 90_000 });
+	await expect(key).toHaveAttribute('aria-pressed', 'true');
+	// Pause stops the voices with the film.
+	await page.keyboard.press('k');
+	await expect(key).toHaveAttribute('aria-pressed', 'false');
+	await page.waitForFunction(() => !(window as unknown as Film).__narrator.playing, null, { timeout: 5_000 });
+});
+
+test('without the voices, the film holds each card long enough to read it, then moves on by itself', async ({ page }) => {
+	test.setTimeout(180_000);
+	await page.goto('/?debug');
+	const key = page.locator('header button.film');
+	await expect(key).toBeEnabled({ timeout: 120_000 });
+	await page.waitForFunction(() => document.querySelector('main.driven'), null, { timeout: 90_000 });
+	await key.hover();
+	const plate = page.getByRole('group', { name: 'The whole story, as a film' });
+	const voices = plate.getByRole('button', { name: 'Voices' });
+	await expect(voices).toHaveAttribute('aria-pressed', 'true');
+	await voices.click();
+	await expect(voices).toHaveAttribute('aria-pressed', 'false');
+	await plate.getByRole('button', { name: 'Play the whole story' }).click();
+	// The title card is read, then the first scene plays: nobody talks.
+	await page.waitForFunction(() => scrollY > innerHeight * 0.5, null, { timeout: 60_000 });
+	expect(await page.evaluate(() => (window as unknown as Film).__narrator.playing)).toBe(false);
+	await expect(key).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('a step back plays the scene backwards, however long it is, with no cut', async ({ page }) => {
+	test.setTimeout(300_000);
+	await page.goto('/?debug#turn-two-starts-ahead');
+	await page.waitForFunction(
+		() => {
+			const f = (window as unknown as Film).__film;
+			if (!f) return false;
+			const s = f.state();
+			return !s.flying && Math.abs(s.T - f.director.target) < 1e-4 && s.T > 11;
+		},
+		null,
+		{ timeout: 150_000 }
+	);
+	const from = await page.evaluate(() => (window as unknown as Film).__film.state().T);
+	await page.keyboard.press('ArrowLeft');
+	const to = await page.evaluate(() => (window as unknown as Film).__film.director.target);
+	expect(to).toBeLessThan(from - 0.2);
+	// Every frame until it gets there: without a GPU a frame can take half a second, and the scene never skips ahead.
+	const run = await page.evaluate(
+		(to) =>
+			new Promise<{ Ts: number[]; covered: boolean }>((done) => {
+				const Ts: number[] = [];
+				let covered = false;
+				const t0 = performance.now();
+				const tick = () => {
+					Ts.push((window as unknown as Film).__film.state().T);
+					const veil = document.querySelector<HTMLElement>('[data-veil]');
+					if (document.querySelector('[data-cut]')?.classList.contains('on') || (veil && +veil.style.opacity > 0)) covered = true;
+					if (performance.now() - t0 < 120_000 && Math.abs(Ts.at(-1)! - to) > 1e-4) requestAnimationFrame(tick);
+					else done({ Ts, covered });
+				};
+				requestAnimationFrame(tick);
+			}),
+		to
+	);
+	expect(run.covered).toBe(false);
+	// All the way back to the card before, through the moments between: never forwards, and never in one leap.
+	expect(run.Ts.at(-1)!).toBeCloseTo(to, 4);
+	for (let i = 1; i < run.Ts.length; i++) expect(run.Ts[i]).toBeLessThanOrEqual(run.Ts[i - 1] + 1e-9);
+	expect(new Set(run.Ts.map((t) => t.toFixed(3))).size).toBeGreaterThan(4);
+});
+
+test("the film's rail scrubs the story either way, and the picture goes with it", async ({ page }) => {
+	test.setTimeout(180_000);
+	await page.goto('/?debug');
+	const key = page.locator('header button.film');
+	await expect(key).toBeEnabled({ timeout: 120_000 });
+	await page.waitForFunction(() => document.querySelector('main.driven'), null, { timeout: 90_000 });
+	await key.hover();
+	const plate = page.getByRole('group', { name: 'The whole story, as a film' });
+	await expect(plate).toBeVisible();
+	const box = (await plate.locator('.strip').boundingBox())!;
+	const y = box.y + box.height / 2;
+	const T = () => page.evaluate(() => (window as unknown as Film).__film.state().T);
+	const drag = async (from: number, to: number) => {
+		await page.mouse.move(box.x + box.width * from, y);
+		await page.mouse.down();
+		for (let i = 1; i <= 12; i++) {
+			await page.mouse.move(box.x + box.width * (from + ((to - from) * i) / 12), y);
+			await page.waitForTimeout(40);
+		}
+		await page.mouse.up();
+	};
+	// Forwards: the story follows the drag on into the first chapters.
+	await drag(0.01, 0.16);
+	await expect.poll(T, { timeout: 30_000 }).toBeGreaterThan(3);
+	const ahead = await T();
+	// And back again.
+	await drag(0.16, 0.04);
+	await expect.poll(T, { timeout: 30_000 }).toBeLessThan(ahead - 1);
+	await expect(plate.getByRole('slider', { name: 'Where in the story' })).toHaveAttribute('aria-valuetext', /of \d+:\d\d:\d\d/);
 });
 
 test.describe('on a phone', () => {

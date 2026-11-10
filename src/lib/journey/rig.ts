@@ -84,6 +84,23 @@ export class Rig {
 	}
 
 	/**
+	 * What the shot at T looks at, into `out`, and how big its subject is, without moving the camera: for a flight that
+	 * has to see where it set out from and where it's going at once.
+	 */
+	subjectAt(T: number, aspect: number, out: THREE.Vector3) {
+		const { shots } = this;
+		let i = 0;
+		while (i < shots.length - 2 && T >= shots[i + 1].T) i++;
+		const a = shots[i];
+		const b = shots[i + 1];
+		const k = smoother(Math.min(1, Math.max(0, (T - a.T) / (b.T - a.T))));
+		const ta = aspect < 0.9 && a.tallTarget ? a.tallTarget : a.target;
+		const tb = aspect < 0.9 && b.tallTarget ? b.tallTarget : b.target;
+		out.set(lerp(ta[0], tb[0], k), lerp(ta[1], tb[1], k), lerp(ta[2], tb[2], k));
+		return { radius: lerp(a.radius, b.radius, k), az: lerp(a.az, b.az, k) * DEG, el: lerp(a.el, b.el, k) * DEG };
+	}
+
+	/**
 	 * On a phone: room is where the words start, top where the title page's words end, and ceiling where the header
 	 * ends, each as a share of the screen's height. home, during a peek at another moment, is the moment the reader is
 	 * at: the picture shows the other moment, in the part of the screen the reader's own card leaves it.

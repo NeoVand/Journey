@@ -58,6 +58,27 @@ export class Pace {
 		if (at < hi) total += (hi - at) / FREE_RATE;
 		return total;
 	}
+
+	/** Where the story is after playing for s seconds from a: the other way round from `seconds`. */
+	after(a: number, s: number) {
+		let at = a;
+		let left = Math.max(0, s);
+		for (const span of this.spans) {
+			if (span.to <= at) continue;
+			if (span.from > at) {
+				const gap = (span.from - at) / FREE_RATE;
+				if (left <= gap) return at + left * FREE_RATE;
+				left -= gap;
+				at = span.from;
+			}
+			const rate = ((span.to - span.from) / span.seconds) * this.quicker(span);
+			const here = (span.to - at) / rate;
+			if (left <= here) return at + left * rate;
+			left -= here;
+			at = span.to;
+		}
+		return at + left * FREE_RATE;
+	}
 }
 
 const RESPONSE = 7; // how eagerly the playhead closes the last of the gap, per second
