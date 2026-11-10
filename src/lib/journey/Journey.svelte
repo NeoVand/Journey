@@ -4,6 +4,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import TripMap from './TripMap.svelte';
+	import LoopMap from './LoopMap.svelte';
 	import { Pointer } from './pointer.svelte';
 	import Subtitles from './Subtitles.svelte';
 	import TalkPlayer from './TalkPlayer.svelte';
@@ -49,6 +50,8 @@
 
 	let harness = $state<HarnessId>('claude');
 	let form = $state(1);
+	/** Where the reader is in the story, for the map of the loop in the corner. */
+	let loopT = $state(0);
 	let drawer = $state(-1);
 	/** A drawer the reader has pulled out takes over from the story's. */
 	let pulled = $state(-1);
@@ -60,6 +63,7 @@
 	let atTitle = $state(true);
 	/** Set while a card's words reach down into the corner the source key sits in. */
 	let crowded = $state(false);
+	let mapCrowded = $state(false);
 	/** What the conversation points at in the picture, as it's named. Made once the world is. */
 	let pointer = $state<Pointer | null>(null);
 	/** Where the subtitles have room: a stretch along the bottom, or with a top, a band under the header. */
@@ -685,22 +689,37 @@
 			const sourceEl = document.querySelector<HTMLElement>('a.source');
 			const WORDS = 'h1, h2, p, li, dt, dd, button, pre, table, figure, .dial, .ticket';
 			let cornered = 0;
-			const crowds = () => {
-				if (!sourceEl) return false;
-				const key = sourceEl.getBoundingClientRect();
-				// Its size at rest, not with its name out, and a little room around it.
-				const left = key.left - 8;
-				const right = key.left + key.height + 8;
-				const top = key.top - 6;
+			/**
+			 * Whether any card's words on screen now reach into this part of it. A paragraph or a heading counts by its
+			 * words, not its box: a row of two buttons is a paragraph as wide as the card.
+			 */
+			const span = document.createRange();
+			const wordsIn = (left: number, top: number, right: number, bottom: number) => {
 				for (const pin of document.querySelectorAll<HTMLElement>('.pin')) {
 					if (pin.style.visibility === 'hidden') continue;
 					for (const el of pin.querySelectorAll<HTMLElement>(WORDS)) {
-						const q = el.getBoundingClientRect();
-						if (!q.width || q.bottom <= top || q.top >= key.bottom || q.left >= right || q.right <= left) continue;
+						let q = el.getBoundingClientRect();
+						if (/^(P|LI|DT|DD|H1|H2)$/.test(el.tagName)) {
+							span.selectNodeContents(el);
+							q = span.getBoundingClientRect();
+						}
+						if (!q.width || q.bottom <= top || q.top >= bottom || q.left >= right || q.right <= left) continue;
 						if (el.checkVisibility({ opacityProperty: true, visibilityProperty: true })) return true;
 					}
 				}
 				return false;
+			};
+			const crowds = () => {
+				if (!sourceEl) return false;
+				const key = sourceEl.getBoundingClientRect();
+				// Its size at rest, not with its name out, and a little room around it.
+				return wordsIn(key.left - 8, key.top - 6, key.left + key.height + 8, key.bottom);
+			};
+			// The map of the loop keeps its corner, and the right-hand cards leave it room. On a shorter screen a few long
+			// ones need it all, and while one of those is up, the map steps out of its way.
+			const mapCrowds = () => {
+				const map = document.querySelector<HTMLElement>('.loop-map')?.getBoundingClientRect();
+				return !!map && wordsIn(map.left - 8, map.top - 8, map.right, map.bottom);
 			};
 			/** The room a subtitle needs: two lines, and a margin. */
 			const SUBTITLE_ROOM = 120;
@@ -993,6 +1012,7 @@
 				// A peek shows another part of the story for a moment: the header keeps the reader's place, and only its
 				// colours go with the picture.
 				if (peekT === null) form = w.state.form;
+				loopT = Math.round(T * 1000) / 1000;
 				// Only the header follows this. It switches while the screen is black, so nobody sees it happen.
 				const seen = peekT ?? T;
 				dark = seen >= 7.96 && seen < 19.02;
@@ -1047,6 +1067,7 @@
 				if (now - cornered > 300) {
 					cornered = now;
 					crowded = crowds();
+					mapCrowded = mapCrowds();
 					if (narrator.subtitles && narrator.playing) placeSubtitles();
 				}
 				if (now - noted > 1500) {
@@ -1633,6 +1654,7 @@
 						w.update(nextT, t, 1, 0, 0, true);
 						publish();
 						crowded = crowds();
+						mapCrowded = mapCrowds();
 						placeSubtitles();
 					},
 					maxT: () => stops[stops.length - 1]
@@ -2561,6 +2583,12 @@
 	<Icon icon={GithubIcon} size={20} stroke={1.8} />
 	<span class="source-name">Source on GitHub</span>
 </a>
+<!-- Where the reader is in the whole loop, steady in the corner. The last card shows the whole loop itself. -->
+{#if driven}
+	<div class={['loop-key', { away: !!trip || tourOpen || mapCrowded || loopT >= 31.97 }]}>
+		<LoopMap T={loopT} onjump={jump} onopen={openMap} />
+	</div>
+{/if}
 <!-- What Nora and Theo are saying, when the player's subtitle key is on. -->
 <Subtitles {narrator} place={subtitlePlace} />
 <!-- Inside the page's frame, so a big monitor's larger words reach the tour's card too. -->
@@ -4267,6 +4295,27 @@
 			visibility 0.4s,
 			color 0.15s,
 			transform 0.1s;
+	}
+	/* The map of the loop: out of the way during a side trip, the tour and the last look at the whole trip. */
+	.loop-key :global(.loop-map) {
+		transition:
+			opacity 0.4s,
+			visibility 0.4s;
+	}
+	.loop-key.away :global(.loop-map) {
+		opacity: 0;
+		visibility: hidden;
+	}
+	/*
+	 * Words on the right of the screen keep clear of the corner the map stands in: a spacer under them, which gives way
+	 * first when a long card needs the height, so no card is pushed up under the header.
+	 */
+	@media (min-aspect-ratio: 9/10) {
+		.driven .pin.right::after {
+			content: '';
+			flex: 0 1 calc(118px * var(--ui, 1));
+			min-height: 0;
+		}
 	}
 	.source.show {
 		opacity: 1;

@@ -11,7 +11,7 @@ import { bell, bounceDown, clamp, hash, inOut, lerp, outBack, outCubic, seg, smo
 import { createCastShadow } from '../props/island';
 import { TEN_AT, TEN_STEP, TEN_TURNS, CALL_IDS, CALLS, HARNESSES, type HarnessId } from '../content';
 import { GATE_ICON } from '../icons';
-import { EASEL_POS, EASEL_TILT, RETURN_POINTS } from '../layout';
+import { EASEL_POS, EASEL_TILT, LOWER, RETURN_POINTS, STREAM_POINTS } from '../layout';
 import type { Shot } from '../rig';
 
 const box = (x: number, y: number, w: number, h: number) => ({ x, y, w, h });
@@ -43,9 +43,10 @@ const SCAN_HALF = 4.05;
 const SCAN_REACH = 3;
 const SCAN_PARK_Y = WY + 4.7;
 const LENS_R = 0.72;
-const C_POS: V3 = [-20, 6, -4];
-const M_POS: V3 = [-48, 9, -4];
-const U_POS: V3 = [-78, 12, -4];
+/** The islands that explain things on the way round, off to the left of the loop, each further on and a little higher. */
+const C_POS: V3 = [-50, 6, -4];
+const M_POS: V3 = [-78, 9, -4];
+const U_POS: V3 = [-108, 12, -4];
 /** Along that island from its centre: the file, the post the pipe plugs into, and the loupe's arm on the post. */
 const FILE_X = 5.5;
 const POST_X = 3.87;
@@ -54,21 +55,24 @@ const LOUPE_ARM = 0.71;
 /** The arm's angle parked up over the pipe, and looking at the changed line. */
 const LOUPE_REST = 2.2;
 const LOUPE_LOOK = -0.554;
-const R_POS: V3 = [-110, 15, -4];
+const R_POS: V3 = [-140, 15, -4];
 /** A bar's tag sits on the top front edge of the bar, this far above its top. */
 const TAG_RISE = 0.2;
-const F_POS: V3 = [-144, 18, -4];
+const F_POS: V3 = [-174, 18, -4];
 /** How high each step's top stands. The lowest still clears the name plates on the fronts, so what climbs them is seen. */
 const STEP_H = [1.3, 1.9, 2.5, 3.1, 3.7];
 
 const rel = (o: V3, x: number, y: number, z: number): V3 => [o[0] + x, o[1] + y, o[2] + z];
+const UP = new THREE.Vector3(0, 1, 0);
+/** Where something drawn for the gates or the workshop stands now, in the ring below your laptop. */
+const low = (p: V3): V3 => [p[0] + LOWER[0], p[1] + LOWER[1], p[2] + LOWER[2]];
 
 const S_HATCH = { az: 17, el: 12, target: [1.4, 3.2, 0] as V3, radius: 8.6, ry: 4.4, wide: box(0.01, 0.04, 0.58, 0.92), tall: TALL };
-const S_GATES = { az: -18, el: 15, target: [-56.6, GY + 2.5, 1.3] as V3, radius: 4.9, ry: 3, wide: box(0.47, 0.06, 0.52, 0.9), tall: TALL };
-const S_BOX = { az: 9, el: 12, target: [-15.4, WY + 3.2, 2.2] as V3, radius: 8.3, ry: 5, wide: box(0, 0.05, 0.6, 0.92), tall: TALL };
-const S_FIND = { az: -8, el: 13, target: [WX - 4, WY + 2.8, 0.8] as V3, radius: 7.2, ry: 4.3, wide: RIGHT, tall: TALL };
-const S_EDIT = { az: 4, el: 8, target: [WX - 1.3, WY + 2.4, 1.5] as V3, radius: 5.1, ry: 3.7, wide: LEFT, tall: TALL };
-const S_TEST = { az: 10, el: 11, target: [WX + 7.6, WY + 2.5, 1.5] as V3, radius: 3.9, ry: 3.5, wide: RIGHT, tall: TALL };
+const S_GATES = { az: -18, el: 15, target: low([-56.6, GY + 2.5, 1.3]), radius: 4.9, ry: 3, wide: box(0.47, 0.06, 0.52, 0.9), tall: TALL };
+const S_BOX = { az: 9, el: 12, target: low([-15.4, WY + 3.2, 2.2]), radius: 8.3, ry: 5, wide: box(0, 0.05, 0.6, 0.92), tall: TALL };
+const S_FIND = { az: -8, el: 13, target: low([WX - 4, WY + 2.8, 0.8]), radius: 7.2, ry: 4.3, wide: RIGHT, tall: TALL };
+const S_EDIT = { az: 4, el: 8, target: low([WX - 1.3, WY + 2.4, 1.5]), radius: 5.1, ry: 3.7, wide: LEFT, tall: TALL };
+const S_TEST = { az: 10, el: 11, target: low([WX + 7.6, WY + 2.5, 1.5]), radius: 3.9, ry: 3.5, wide: RIGHT, tall: TALL };
 const S_HOME = { az: 24, el: 15, target: [1.2, 1.9, 0.6] as V3, radius: 6.1, ry: 4.15, wide: box(0, 0.12, 0.58, 0.82), tall: TALL };
 const S_COMPACT = { az: 14, el: 15, target: rel(C_POS, 0, 2.6, 0), radius: 5.9, ry: 3.8, wide: RIGHT, tall: TALL };
 
@@ -129,7 +133,8 @@ const S_TEN = { az: -10, el: 14, target: rel(R_POS, 0, 2.6, 0.6), radius: 9.2, r
 const S_FIN = { az: 9, el: 14, target: rel(F_POS, 0, 2.5, 0.8), radius: 10.8, ry: 3.6, wide: box(0.01, 0.4, 0.98, 0.56), tall: TALL };
 /** What the test monitor shows once the whole suite is green. */
 const PASSED = 99;
-const S_WHOLE = { az: -4, el: 13, target: [-18, -13, 0] as V3, radius: 49, ry: 25.5, wide: box(0.01, 0.05, 0.98, 0.93), tall: box(0, 0.06, 1, 0.43), tallTarget: [-18, -13, 0] as V3, tallRadius: 50, tallRy: 25.5 };
+/** The whole figure-eight, upright, from a little to its right: the model on top, your laptop at the waist, your tools below. */
+const S_WHOLE = { az: 7, el: 8, target: [2.2, 5.2, 0] as V3, radius: 32, ry: 35.5, wide: box(0.42, 0.09, 0.56, 0.89), tall: box(0, 0.06, 1, 0.43), tallTarget: [2.2, 5.2, 0] as V3, tallRadius: 31, tallRy: 35 };
 const S_END = { az: 29, el: 17, target: [1.9, 1.35, 0.4] as V3, radius: 6.25, ry: 6.25, wide: box(0.4, 0.02, 0.61, 0.94), tall: box(0, 0.05, 1, 0.42) };
 
 export const BACK_SHOTS: Shot[] = [
@@ -138,12 +143,12 @@ export const BACK_SHOTS: Shot[] = [
 	// Close enough to read every board: the first call's way to the gate that stops it, the refusal, then along
 	// with the second call, gate by gate.
 	{ T: 20.04, ...S_GATES },
-	{ T: 20.17, ...S_GATES, target: [-55.3, GY + 2.3, 1.7], radius: 3.9, ry: 2.9, az: -13, el: 18 },
-	{ T: 20.37, ...S_GATES, target: [-55.3, GY + 2.3, 1.7], radius: 3.9, ry: 2.9, az: -10, el: 18 },
+	{ T: 20.17, ...S_GATES, target: low([-55.3, GY + 2.3, 1.7]), radius: 3.9, ry: 2.9, az: -13, el: 18 },
+	{ T: 20.37, ...S_GATES, target: low([-55.3, GY + 2.3, 1.7]), radius: 3.9, ry: 2.9, az: -10, el: 18 },
 	// Face on, turning a little to the right as it goes: the posts and the hook wheel stand nearer the reader than
 	// the card does, and from here they never cover it, whichever side of them it waits.
-	{ T: 20.45, ...S_GATES, target: [-57.2, GY + 2.5, 1.3], radius: 4.4, az: -3 },
-	{ T: 20.92, ...S_GATES, target: [-46.1, GY + 2.5, 1.3], radius: 4.4, az: 5 },
+	{ T: 20.45, ...S_GATES, target: low([-57.2, GY + 2.5, 1.3]), radius: 4.4, az: -3 },
+	{ T: 20.92, ...S_GATES, target: low([-46.1, GY + 2.5, 1.3]), radius: 4.4, az: 5 },
 	{ T: 21.06, ...S_BOX },
 	{ T: 21.9, ...S_BOX, az: 6 },
 	{ T: 22.06, ...S_FIND },
@@ -170,7 +175,7 @@ export const BACK_SHOTS: Shot[] = [
 	{ T: 32, ...S_END, az: 26 },
 	{ T: 32.02, ...S_END, az: 26 },
 	{ T: 32.3, ...S_WHOLE },
-	{ T: 33, ...S_WHOLE, az: -7 }
+	{ T: 33, ...S_WHOLE, az: 3 }
 ];
 
 const up = new THREE.Vector3(0, 1, 0);
@@ -411,16 +416,25 @@ export class Back {
 		[0.4, 3.2, -2.07],
 		[0.38, 3.22, -2.4],
 		[-0.6, 3.3, -3.4],
-		[-8, 0, -7.6],
-		[-30, -7, -8.8],
-		[-50, -7.5, -9.4],
-		[-58, -8, -6.8],
-		[DOCK_X - 0.2, GY + 3.9, TRACK_Z - 2.6],
-		[DOCK_X, GY + DOCK_H + 0.85, TRACK_Z - 0.42],
-		[DOCK_X, GY + DOCK_H + 0.55, TRACK_Z],
-		[DOCK_X, GY + DOCK_H + 0.32, TRACK_Z],
-		[DOCK_X, GY + DOCK_H, TRACK_Z]
+		// Behind your island and down the left of the ring below it, wide and gently enough for the card riding it, round
+		// to the dock at the head of the gates, and down into it.
+		[-6, 0.4, -6.4],
+		[-13, -4.6, -8.4],
+		[-20, -9.6, -9],
+		[-25, -13.4, -7.6],
+		[-26.6, -15.6, -5.2],
+		...(
+			[
+				[DOCK_X - 0.2, GY + 3.9, TRACK_Z - 2.6],
+				[DOCK_X, GY + DOCK_H + 0.85, TRACK_Z - 0.42],
+				[DOCK_X, GY + DOCK_H + 0.55, TRACK_Z],
+				[DOCK_X, GY + DOCK_H + 0.32, TRACK_Z],
+				[DOCK_X, GY + DOCK_H, TRACK_Z]
+			] as V3[]
+		).map(low)
 	]);
+	/** The last of the reply's glass tube, straight down into the harness's roof: what the stream drops through. */
+	private streamEnd = curve(STREAM_POINTS.slice(-5));
 	private carrier = new THREE.Group();
 	private gates: Gate[] = [];
 	private bad = new Cart();
@@ -501,8 +515,6 @@ export class Back {
 	private tags: THREE.Group[] = [];
 	private fromSign: THREE.Object3D[] = [];
 	private gatePipe!: THREE.Mesh;
-	private homeGlass!: THREE.Mesh;
-	private homeRingsHigh!: THREE.Group;
 	private cursor!: THREE.Group;
 	private cursorHome = { x: 0, step: 1 };
 	private turn = 0;
@@ -523,7 +535,8 @@ export class Back {
 	private d = new THREE.Object3D();
 	private c = new THREE.Color();
 	private v = new THREE.Vector3();
-	private zones: { g: THREE.Object3D; from: number; to: number; home: boolean; whole: boolean }[] = [];
+	private a2 = new THREE.Vector3();
+	private zones: { g: THREE.Object3D; from: number; to: number; home: boolean; whole: boolean; at: V3 }[] = [];
 
 	constructor() {
 		this.buildHatch();
@@ -538,10 +551,12 @@ export class Back {
 		this.setHarness('claude');
 	}
 
-	private zone(from: number, to: number, home = false, whole = false) {
+	/** A part of the world that's only there in its own chapters. at moves it from where it was drawn. */
+	private zone(from: number, to: number, home = false, whole = false, at: V3 = [0, 0, 0]) {
 		const g = new THREE.Group();
+		g.position.set(...at);
 		this.group.add(g);
-		this.zones.push({ g, from, to, home, whole });
+		this.zones.push({ g, from, to, home, whole, at });
 		return g;
 	}
 
@@ -559,6 +574,7 @@ export class Back {
 		this.carrier.add(this.topCard.mesh);
 		g.add(this.carrier);
 		this.gatePipe = tube(this.gatePath, 0.09, m.orangeGlow, 200);
+		this.gatePipe.name = 'call-pipe';
 		g.add(this.gatePipe);
 		const fromSky = createSign('From the provider', 0.24);
 		// Its left end stays on its arm: a phone's bigger sign grows to the right, away from the tube.
@@ -570,29 +586,12 @@ export class Back {
 		g.add(arm);
 		this.fromSign = [fromSky, arm];
 
-		// The tube from the detokenizer, arriving: this is where the text was going all along. It stays, because it keeps being used.
-		const roof = 3.9;
-		const glass = (this.homeGlass = new THREE.Mesh(
-			new THREE.CylinderGeometry(0.5, 0.5, 44, 36, 1, true),
-			new THREE.MeshPhysicalMaterial({ color: '#7fb4ea', transparent: true, opacity: 0.42, roughness: 0.08, clearcoat: 1, depthWrite: false, side: THREE.DoubleSide })
-		));
-		glass.position.set(1.1, roof + 22, -0.75);
-		glass.renderOrder = 4;
-		this.group.add(glass);
-		const rings = new Batch();
-		rings.add(ring(0.68, 0.52, 0.2), m.steel, { p: [1.1, roof + 0.1, -0.75] });
-		rings.add(ring(0.6, 0.52, 0.08), m.steel, { p: [1.1, 6.7, -0.75] });
-		this.group.add(rings.build('home-tube'));
-		// These two are only there while the tube runs on up out of the frame.
-		const high = new Batch();
-		for (const y of [12.7, 18.7]) high.add(ring(0.6, 0.52, 0.08), m.steel, { p: [1.1, y, -0.75] });
-		this.homeRingsHigh = high.build('home-tube-high');
-		this.group.add(this.homeRingsHigh);
+		// The tube itself belongs to the world: it comes all the way down from the model, and stands from the first frame.
 	}
 
 	/* ---- the gates ---- */
 	private buildGates() {
-		const g = this.zone(19.5, 21.4, false, true);
+		const g = this.zone(19.5, 21.4, false, true, LOWER);
 		const m = mats();
 		const isl = islandAt(23, 12);
 		isl.position.set(-51, GY, 0.4);
@@ -658,7 +657,7 @@ export class Back {
 
 	/* ---- the sandbox and its workshop ---- */
 	private buildSandbox() {
-		const g = this.zone(19.9, 25.7, false, true);
+		const g = this.zone(19.9, 25.7, false, true, LOWER);
 		const m = mats();
 		const isl = islandAt(32, 15);
 		isl.position.set(WX, WY, 0.4);
@@ -926,7 +925,8 @@ export class Back {
 		g.add(this.trayFoot);
 		this.slug = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.5, 6, 16), new THREE.MeshStandardMaterial({ color: '#b8ffd6', emissive: color.green, emissiveIntensity: 2.2 }));
 		this.slug.visible = false;
-		g.add(this.slug);
+		// It rides the green loop, which runs from the harness, so it stands in the world rather than in the workshop.
+		this.group.add(this.slug);
 	}
 
 	/* ---- turn two ---- */
@@ -1694,7 +1694,7 @@ export class Back {
 
 	/** The route the last token rides, as far as this half of the world knows it. */
 	get finaleRoute() {
-		return { gatePath: this.gatePath, dock: [DOCK_X, CARTY + 0.3, TRACK_Z] as V3, trackEnd: [-41.4, CARTY + 0.3, TRACK_Z] as V3, back: this.returnCurve };
+		return { gatePath: this.gatePath, dock: low([DOCK_X, CARTY + 0.3, TRACK_Z]), trackEnd: low([-41.4, CARTY + 0.3, TRACK_Z]), back: this.returnCurve };
 	}
 
 	/** Everything comes to rest for the last look, however the reader got here: past a long scroll or by a cut. */
@@ -1706,17 +1706,12 @@ export class Back {
 			z.g.visible = z.whole;
 			if (!z.whole) continue;
 			const a = 31.99 + rising++ * 0.035;
-			z.g.position.y = -80 * (1 - outBack(seg(T, a, a + 0.15), 1.1));
+			z.g.position.set(z.at[0], z.at[1] - 80 * (1 - outBack(seg(T, a, a + 0.15), 1.1)), z.at[2]);
 		}
 		// The hatch only holds the pipe, and that has to stay joined to the harness: it draws itself out instead.
 		this.gatePipe.parent!.position.y = 0;
 		this.gatePipe.geometry.setDrawRange(0, Math.floor(smooth(seg(T, 32.02, 32.17)) * 200) * 14 * 6);
 		this.fromSign.forEach((o) => (o.visible = false));
-		const short = smooth(seg(T, FINALE_T + 0.05, 32.12));
-		const length = lerp(44, 5.1, short);
-		this.homeGlass.scale.y = length / 44;
-		this.homeGlass.position.y = 3.9 + length / 2;
-		this.homeRingsHigh.visible = short < 0.5;
 		this.carrier.visible = false;
 		this.bad.group.visible = false;
 		this.good.group.visible = false;
@@ -1724,7 +1719,7 @@ export class Back {
 		this.binSign.visible = false;
 		this.gates.forEach((gate, i) => {
 			let open = 0;
-			for (const x of onTrack) open = Math.max(open, 1 - smooth(seg(Math.abs(x - GATE_X[i]), 1.4, 3.4)));
+			for (const x of onTrack) open = Math.max(open, 1 - smooth(seg(Math.abs(x - LOWER[0] - GATE_X[i]), 1.4, 3.4)));
 			gate.set(open > 0 ? outBack(open, 1.2) : 0);
 			gate.lamp.mix(color.amber, color.green, open, 0.25 + open * 0.9);
 			// Each board says what its gate is doing now, however the reader got here: waiting, or letting a token through.
@@ -1739,14 +1734,32 @@ export class Back {
 
 	update(T: number, time: number, onTrack: number[] = []) {
 		if (T >= FINALE_T) return this.rest(T, time, onTrack);
-		this.homeGlass.scale.y = 1;
-		this.homeGlass.position.y = 25.9;
-		this.homeRingsHigh.visible = true;
 		this.trayFoot.visible = true;
 		this.fromSign.forEach((o) => (o.visible = true));
-		for (const z of this.zones) z.g.position.y = 0;
+		for (const z of this.zones) z.g.position.set(...z.at);
 		this.gatePipe.geometry.setDrawRange(0, Infinity);
 		this.play(T, time);
+	}
+
+	/**
+	 * Before the reply comes down, the ring below your laptop already stands: the call pipe, the gates and the
+	 * workshop, empty and waiting, so the loop reads whole from the first frame.
+	 */
+	idle(time: number) {
+		this.play(19.2, time);
+		for (const z of this.zones) {
+			z.g.visible = z.whole;
+			z.g.position.set(...z.at);
+		}
+		this.gatePipe.geometry.setDrawRange(0, Infinity);
+		this.fromSign.forEach((o) => (o.visible = false));
+		this.carrier.visible = false;
+		this.bad.group.visible = false;
+		this.good.group.visible = false;
+		this.rain.forEach((s) => (s.visible = false));
+		this.binSign.visible = false;
+		this.result.mesh.visible = false;
+		this.trayFoot.visible = false;
 	}
 
 	private play(T: number, time: number) {
@@ -1761,7 +1774,9 @@ export class Back {
 				const k = seg(T, 19.08 + i * 0.03, 19.26 + i * 0.03);
 				slip.visible = k > 0 && k < 1;
 				if (!slip.visible) return;
-				slip.position.set(1.1 + Math.sin(i * 2.3) * 0.1, lerp(15, 4, k * k), -0.75 + Math.cos(i * 1.6) * 0.08);
+				this.streamEnd.getPointAt(k * k, slip.position);
+				slip.position.x += Math.sin(i * 2.3) * 0.1;
+				slip.position.z += Math.cos(i * 1.6) * 0.08;
 				slip.rotation.set(Math.sin(k * 7 + i) * 0.5, Math.sin(k * 5 + i * 2) * 0.6, Math.sin(k * 4 + i) * 0.2);
 			});
 			const pop = outBack(seg(T, 19.3, 19.42), 1.6);
@@ -1774,8 +1789,16 @@ export class Back {
 				if (go > 0) {
 					// Up and over the machine's roof, and down onto the pipe behind it, riding high enough to clear it.
 					const JOIN = 0.14;
-					this.b.copy(this.gatePath.getPointAt(Math.max(go, JOIN)));
-					this.b.y += 0.82;
+					// Lifted off the pipe square to it, not straight up: where it drops steeply to the gates, straight up would
+					// put the card back against it.
+					const at = Math.max(go, JOIN);
+					this.b.copy(this.gatePath.getPointAt(at));
+					const along = this.gatePath.getTangentAt(at, this.v);
+					const lift = this.a2.crossVectors(along, UP).cross(along).normalize();
+					if (lift.y < 0) lift.negate();
+					// Where it runs straight down into the dock, straight up is clear of it again.
+					lift.lerp(UP, smooth(seg(Math.abs(along.y), 0.75, 0.95))).normalize();
+					this.b.addScaledVector(lift, 0.9);
 					if (go < JOIN) {
 						const k = inOut(go / JOIN);
 						const u = 1 - k;
@@ -2050,7 +2073,7 @@ export class Back {
 			this.slug.position.copy(this.returnCurve.getPointAt(u));
 			this.slug.quaternion.setFromUnitVectors(up, this.returnCurve.getTangentAt(u));
 			// It swells the pipe wherever the pipe is free, and squeezes through the wall and the fitting at each end.
-			const free = Math.min(this.slug.position.distanceTo(this.a.set(-11.5, -14.3, 3.45)), this.slug.position.distanceTo(this.a.set(0.4, 1.3, -1.75)), this.slug.position.distanceTo(this.a.set(-13.5, -14.69, 3.6)));
+			const free = Math.min(this.slug.position.distanceTo(this.a.set(...low([-11.5, -14.3, 3.45]))), this.slug.position.distanceTo(this.a.set(0.4, 1.3, -1.75)), this.slug.position.distanceTo(this.a.set(...low([-13.5, -14.69, 3.6]))));
 			const thin = lerp(0.54, 1, smooth(seg(free, 0.55, 1.5)));
 			this.slug.scale.set(thin, 1, thin);
 		}

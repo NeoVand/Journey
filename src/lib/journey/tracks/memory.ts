@@ -24,7 +24,7 @@ export const MEMORY_SKY = { top: new THREE.Color('#9fd0f8'), mid: new THREE.Colo
 export const CABINET_ROOF: Omit<Shot, 'T'> = {
 	az: -12,
 	el: 62,
-	target: [-48, 16.6, -4],
+	target: [-78, 16.6, -4],
 	radius: 1.6,
 	ry: 1.1,
 	wide: { x: 0, y: 0, w: 1, h: 1 },
