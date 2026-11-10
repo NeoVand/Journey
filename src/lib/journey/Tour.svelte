@@ -1,7 +1,7 @@
 <script lang="ts">
 	/**
 	 * A quick look around. A welcome, then a spotlight that glides from one control to the next (the steps, the talk
-	 * key, sound, the map) and ends in the corner, on the source, with Begin. The page opens it by itself on a first visit,
+	 * key, sound, the map) and ends in the corner, on the source, with Play. The page opens it by itself on a first visit,
 	 * once the world is ready, and the title page's Show me around key opens it after that.
 	 */
 	import { ArrowLeft01Icon, ArrowRight01Icon, Cancel01Icon, StarIcon, VolumeHighIcon, VolumeOffIcon } from '@hugeicons/core-free-icons';
@@ -14,13 +14,13 @@
 		open = $bindable(false),
 		soundOn,
 		ontogglesound,
-		onbegin
+		onplay
 	}: {
 		open?: boolean;
 		soundOn: boolean;
 		ontogglesound: () => void;
-		/** The last stop's key: the tour ends and the story starts. */
-		onbegin: () => void;
+		/** The last stop's key: the tour ends and the film plays. */
+		onplay: () => void;
 	} = $props();
 
 	type Stop = {
@@ -158,7 +158,7 @@
 	function next() {
 		if (n < LAST) return go(n + 1);
 		finish();
-		onbegin();
+		onplay();
 	}
 
 	/** The dialog is the tour: shown as a modal, so the page behind it keeps still and the keyboard stays inside. */
@@ -294,8 +294,16 @@
 				</button>
 			{/if}
 			<button type="button" class="next" bind:this={primary} onclick={next}>
-				{n === 0 ? 'Show me' : n === LAST ? 'Begin' : 'Next'}
-				<Icon icon={ArrowRight01Icon} size={18} stroke={2.2} />
+				{#if n === LAST}
+					<!-- The tour ends where the title page's key does: on Play. Solid, like every play key here. -->
+					<svg class="glyph" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+						<path d="M8 6.1v11.8a1.3 1.3 0 0 0 2 1.1l9.3-5.9a1.3 1.3 0 0 0 0-2.2L10 5a1.3 1.3 0 0 0-2 1.1z" />
+					</svg>
+					Play
+				{:else}
+					{n === 0 ? 'Show me' : 'Next'}
+					<Icon icon={ArrowRight01Icon} size={18} stroke={2.2} />
+				{/if}
 			</button>
 		</div>
 	</div>
@@ -689,6 +697,14 @@
 	}
 	.foot .next {
 		padding: 0 12px 0 16px;
+	}
+	.foot .next:has(.glyph) {
+		padding: 0 16px 0 13px;
+	}
+	.foot .next .glyph {
+		fill: currentColor;
+	}
+	.foot .next {
 		background: linear-gradient(#ffd45f, #ffb921);
 		color: #101a30;
 		box-shadow:

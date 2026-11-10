@@ -527,7 +527,6 @@
 			return;
 		event.preventDefault();
 		step(event.key === 'ArrowRight' ? 1 : -1, 'key');
-		if (event.key === 'ArrowRight') pressBegin();
 	}
 
 	/** K plays and pauses the film, as it does on most video players, unless something being typed in wants it. */
@@ -537,6 +536,7 @@
 		if (target?.closest('input:not([type="range"]), textarea, select, [contenteditable]') || document.querySelector('dialog[open]')) return;
 		event.preventDefault();
 		toggleFilm();
+		pressPlayKey();
 	}
 
 	/** Inside a tray of choices the arrow keys move the choice, as they do in any set of radio buttons, not the story. */
@@ -558,8 +558,8 @@
 		return () => tray.removeEventListener('keydown', roam);
 	};
 
-	/** The title page's Begin key goes down with the → key it stands for, while the title page is still there to see it. */
-	function pressBegin() {
+	/** The title page's Play key goes down with the K key that plays the film too, while the title page is there to see it. */
+	function pressPlayKey() {
 		const key = document.querySelector<HTMLElement>('.begin');
 		if (!key || key.closest<HTMLElement>('.pin')?.style.visibility === 'hidden') return;
 		key.classList.add('pressed');
@@ -1551,6 +1551,9 @@
 				filming = true;
 				narrator.led = true;
 				frozen = false;
+				// The card the reader is looking at as the film starts, the title page say, is already there to read: it stays
+				// whole without the voices, and only the cards after it unfold.
+				whole = Math.min(director.last, director.ahead(T));
 				const k = director.goal;
 				const id = talkFor(k);
 				// Over at the end: the film starts again from the top.
@@ -2710,11 +2713,25 @@
 				<div class="told"><span>Your agent</span>{@render picker()}</div>
 				<p class="fallback">This browser can’t draw the 3D scenes right now, so here’s the whole story in words.</p>
 			{:else}
-				<!-- Two keys side by side: the way in, and a look around the controls first. -->
+				<!-- Two keys side by side: the way in, which plays the whole story as a film, and a look around the controls first.
+				     Scrolling and the arrow keys still go card by card, for a reader who'd rather drive. -->
 				<div class="begin-row">
-					<button type="button" class={['begin', { live: driven }]} disabled={!driven} aria-keyshortcuts="ArrowRight" onclick={() => step(1, 'button')}>
-						Begin
-						<Icon icon={ArrowRight01Icon} size={21} stroke={2.4} />
+					<button type="button" class={['begin', { live: driven, playing: filming }]} disabled={!driven} aria-keyshortcuts="K" onclick={() => toggleFilm()}>
+						<!-- Solid, the same play and pause as the header's: outlined, two bars read as a zero zero. Both share one place,
+						     so the key keeps its width as it turns from one to the other, and whichever is showing sits in the middle. -->
+						<span class="says">
+							<span class={{ shown: !filming }}>
+								<svg class="glyph" viewBox="0 0 24 24" aria-hidden="true">
+									<path d="M8 6.1v11.8a1.3 1.3 0 0 0 2 1.1l9.3-5.9a1.3 1.3 0 0 0 0-2.2L10 5a1.3 1.3 0 0 0-2 1.1z" />
+								</svg>Play
+							</span>
+							<span class={{ shown: filming }}>
+								<svg class="glyph" viewBox="0 0 24 24" aria-hidden="true">
+									<rect x="6" y="5" width="4.4" height="14" rx="1.5" />
+									<rect x="13.6" y="5" width="4.4" height="14" rx="1.5" />
+								</svg>Pause
+							</span>
+						</span>
 					</button>
 					<button type="button" class={['tour-key', { live: driven }]} aria-haspopup="dialog" disabled={!driven} onclick={openTour}>
 						<Icon icon={SignpostIcon} size={19} stroke={1.8} />
@@ -3255,7 +3272,7 @@
 <!-- What Nora and Theo are saying, when the player's subtitle key is on. -->
 <Subtitles {narrator} place={subtitlePlace} />
 <!-- Inside the page's frame, so a big monitor's larger words reach the tour's card too. -->
-<Tour bind:open={tourOpen} {soundOn} ontogglesound={() => toggleSound()} onbegin={() => step(1, 'button')} />
+<Tour bind:open={tourOpen} {soundOn} ontogglesound={() => toggleSound()} onplay={() => !filming && toggleFilm()} />
 </div>
 
 <Tokenizer bind:open={tryOpen} oncut={(now, before) => cue('tokens', now, before)} />
@@ -5227,8 +5244,8 @@
 	}
 
 	/*
-	 * The way in is a key, the reader's first press, in the token's amber. It's a real key with a real depth, and it goes
-	 * down when pressed, the same as the → key it stands for.
+	 * The way in is a key, the reader's first press, in the token's amber: Play, which runs the whole story as a film.
+	 * It's a real key with a real depth, and it goes down when pressed, and with the K key that does the same.
 	 */
 	.begin-row {
 		display: flex;
@@ -5240,9 +5257,8 @@
 	.begin {
 		display: inline-flex;
 		align-items: center;
-		gap: 10px;
 		margin-bottom: 6px;
-		padding: 14px 18px 15px 24px;
+		padding: 14px 23px 15px 22px;
 		border: 0;
 		border-radius: 16px;
 		background: linear-gradient(#ffd660, #ffb921 70%);
@@ -5318,13 +5334,27 @@
 			filter 0.15s,
 			color 0.9s ease;
 	}
-	.begin :global(svg) {
-		transition: transform 0.2s cubic-bezier(0.2, 1.6, 0.4, 1);
+	/* Solid, as a player's own play and pause always are, sized with the word beside it. */
+	.begin .glyph {
+		flex: none;
+		display: block;
+		width: 0.95em;
+		height: 0.95em;
+		fill: currentColor;
 	}
-	@media (hover: hover) {
-		.begin:hover:not(:disabled) :global(svg) {
-			transform: translateX(3px);
-		}
+	.begin .says {
+		display: grid;
+		justify-items: center;
+	}
+	.begin .says > span {
+		grid-area: 1 / 1;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5em;
+		visibility: hidden;
+	}
+	.begin .says > .shown {
+		visibility: visible;
 	}
 	/* Beside it, the way to a look around first: a cream key of the same height and depth, so the two read as a pair. */
 	.tour-key {
@@ -5381,7 +5411,7 @@
 		outline: 2px solid #1f5fe0;
 		outline-offset: 3px;
 	}
-	/* It drops into place just after Begin does. */
+	/* It warms up just after Play does. */
 
 	.told {
 		display: flex;
@@ -5717,7 +5747,7 @@
 		}
 		.begin {
 			margin-bottom: 5px;
-			padding: 11px 14px 12px 19px;
+			padding: 11px 18px 12px 17px;
 			border-radius: 14px;
 			font-size: 19px;
 		}
@@ -5734,7 +5764,7 @@
 				gap: 8px;
 			}
 			.begin {
-				padding: 11px 10px 12px 15px;
+				padding: 11px 13px 12px 12px;
 			}
 			.tour-key {
 				gap: 6px;
@@ -5783,7 +5813,7 @@
 	@media (min-aspect-ratio: 9/10) {
 		.begin {
 			font-size: clamp(22px, 1.35vw, 27px);
-			padding: 0.64em 0.8em 0.7em 1.08em;
+			padding: 0.64em 1.02em 0.7em 0.98em;
 		}
 		.told {
 			font-size: clamp(14.5px, 0.88vw, 17px);
