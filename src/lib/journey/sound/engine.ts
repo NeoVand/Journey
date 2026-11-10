@@ -11,6 +11,15 @@ const MASTER = 0.9;
 /** How loud the world stays under a conversation. */
 const HUSH = 0.28;
 
+/**
+ * The reader's own two faders, 0 to 1 as the sliders show them: the ambience under everything, and the sounds things
+ * make. Both start well under full, since the world should sit behind the story, and the sliders are heard as a curve,
+ * so their middle sounds like the middle.
+ */
+export const MIX = { ambience: 0.55, effects: 0.7 };
+export type Mix = typeof MIX;
+const heard = (slider: number) => slider * slider;
+
 export interface Play {
 	/** Linear volume, 1 as recorded. */
 	gain?: number;
@@ -74,6 +83,9 @@ export class Sound {
 	private bedsBus!: GainNode;
 	private duck!: GainNode;
 	private echo!: GainNode;
+	/** The room's return, which follows the effects fader: it is their echo. */
+	private back!: GainNode;
+	private levels: Mix = { ...MIX };
 	private buffers = new Map<string, AudioBuffer>();
 	private loading = new Map<string, Promise<AudioBuffer | null>>();
 	private beds = new Map<string, Bed>();
@@ -120,17 +132,30 @@ export class Sound {
 		this.under.gain.value = this.hushed ? HUSH : 1;
 		comp.connect(this.under).connect(this.master).connect(ctx.destination);
 		this.sfx = ctx.createGain();
+		this.sfx.gain.value = heard(this.levels.effects);
 		this.sfx.connect(comp);
 		this.duck = ctx.createGain();
 		this.duck.connect(comp);
 		this.bedsBus = ctx.createGain();
+		this.bedsBus.gain.value = heard(this.levels.ambience);
 		this.bedsBus.connect(this.duck);
 		const verb = ctx.createConvolver();
 		verb.buffer = room(ctx, 2.2, 3.2);
 		this.echo = ctx.createGain();
-		const back = ctx.createGain();
-		back.gain.value = 0.32;
-		this.echo.connect(verb).connect(back).connect(comp);
+		this.back = ctx.createGain();
+		this.back.gain.value = 0.32 * heard(this.levels.effects);
+		this.echo.connect(verb).connect(this.back).connect(comp);
+	}
+
+	/** The reader moved a fader: the change glides, so a drag never zips. */
+	mix(levels: Mix) {
+		this.levels = { ...levels };
+		const ctx = this.ctx;
+		if (!ctx) return;
+		const now = ctx.currentTime;
+		this.bedsBus.gain.setTargetAtTime(heard(levels.ambience), now, 0.06);
+		this.sfx.gain.setTargetAtTime(heard(levels.effects), now, 0.06);
+		this.back.gain.setTargetAtTime(0.32 * heard(levels.effects), now, 0.06);
 	}
 
 	/** Fetches and decodes sounds ahead of when they're needed. */
