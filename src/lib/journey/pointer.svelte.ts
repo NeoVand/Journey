@@ -9,7 +9,10 @@
 import type { Narrator } from './narrator.svelte';
 import type { World } from './world';
 
-/** One moment: when, what to show, what to do there, and where in the story it lives if not here. wide pulls back to see a whole. */
+/**
+ * One moment: when, what to show, what to do there, and where in the story it lives if not here. wide pulls back to see a
+ * whole. A moment that shows nothing is a beat: something on the card changes in step with the words, and the camera stays.
+ */
 export type Moment = { t: number; show: string[]; together?: boolean; do?: string; index?: number; in?: string; hold?: number; wide?: boolean; front?: boolean };
 
 /** What the page does for it. */
@@ -20,6 +23,8 @@ export interface Stagehand {
 	peek(T: number | null): void;
 	/** As the camera sets off: one quiet note. */
 	note(): void;
+	/** A beat: the card does something in step with the words, the turn shown, say, while the camera stays where it is. */
+	act?(what: string, index: number): void;
 }
 
 /** Set off a moment before the words, so the camera arrives with them. */
@@ -67,6 +72,10 @@ export class Pointer {
 			if (this.lit || this.pending) this.letGo();
 			const at = moments ? moments.findIndex((m) => m.t >= t - 0.05) : -1;
 			this.next = at < 0 ? (moments?.length ?? 0) : at;
+			// Landing part way through, the card catches up with the beats it missed: the last of each kind is where it is now.
+			const caught: Record<string, Moment> = {};
+			for (const m of moments?.slice(0, this.next) ?? []) if (!m.show.length && m.do) caught[m.do] = m;
+			for (const m of Object.values(caught)) this.hand.act?.(m.do!, m.index ?? 0);
 		}
 		this.id = id;
 		this.heard = t;
@@ -85,6 +94,10 @@ export class Pointer {
 
 		while (moments && this.next < moments.length && moments[this.next].t - LEAD <= t) {
 			const m = moments[this.next++];
+			if (!m.show.length) {
+				if (m.do) this.hand.act?.(m.do, m.index ?? 0);
+				continue;
+			}
 			if (t - m.t > LATE) continue;
 			if (this.start(m, now, move)) break;
 		}

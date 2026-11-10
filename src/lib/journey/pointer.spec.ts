@@ -6,6 +6,8 @@ import { Pointer, type Moment } from './pointer.svelte';
 const sheets = new URL('../../../narration/direction/', import.meta.url);
 const talks = new URL('../../../static/narration/', import.meta.url);
 const ACTS = ['pull', 'flip', 'excite', 'spin'];
+/** What a beat can do on the card, with nothing for the camera to show. */
+const BEATS = ['turn', 'cache'];
 const titles = new Set(Object.values(manifest as Record<string, { title: string }>).map((t) => t.title));
 
 describe('the conversations’ direction', () => {
@@ -17,7 +19,11 @@ describe('the conversations’ direction', () => {
 			const { cues } = JSON.parse(readFileSync(new URL(f, sheets), 'utf8')) as { cues: (Omit<Moment, 't'> & { at: string })[] };
 			for (const c of cues) {
 				expect(c.at, f).toBeTruthy();
-				expect(c.show.length, `${f}: ${c.at}`).toBeGreaterThan(0);
+				if (!c.show.length) {
+					expect(BEATS, `${f}: ${c.at}: a beat shows nothing, so it must do something on the card`).toContain(c.do);
+					expect(c.in, `${f}: ${c.at}`).toBeUndefined();
+					continue;
+				}
 				if (c.do) expect(ACTS, `${f}: ${c.at}`).toContain(c.do);
 				if (c.in) expect(titles.has(c.in), `${f}: no card called "${c.in}"`).toBe(true);
 			}
@@ -86,6 +92,26 @@ describe('the pointer', () => {
 	});
 
 	const talk = (direction: Moment[]) => ({ playing: true, id: 'a', time: 0, seeks: 0, direction: { a: direction } as Record<string, Moment[]> });
+
+	it('plays a beat on the card without moving the camera, and catches the card up after a jump', () => {
+		const { world, asked } = fakeWorld(['Harness']);
+		const acts: string[] = [];
+		const p = new Pointer(world, { whenIs: () => null, peek: () => {}, note: () => {}, act: (what, i) => void acts.push(`${what} ${i}`) });
+		const n = talk([
+			{ t: 2, show: [], do: 'turn', index: 0 },
+			{ t: 4, show: [], do: 'turn', index: 1 },
+			{ t: 6, show: ['Harness'] },
+			{ t: 8, show: [], do: 'cache', index: 0 },
+			{ t: 10, show: [], do: 'turn', index: 2 }
+		]);
+		for (let t = 0; t < 5; t += 0.05) p.update(t, { ...n, time: t }, true);
+		expect(acts).toEqual(['turn 0', 'turn 1']);
+		expect(asked).toEqual([]);
+		// A jump past both kinds: the card lands where the words have got to, each kind at its latest.
+		p.update(6, { ...n, time: 11, seeks: 1 }, true);
+		expect(acts.slice(2)).toEqual(['turn 2', 'cache 0']);
+		expect(asked).toEqual([]);
+	});
 
 	it('shows a thing here as its words come, and is free again once the visit comes back', () => {
 		const { world, asked } = fakeWorld(['Harness']);

@@ -33,7 +33,7 @@
 	const now = $derived(on && time > 0 ? narrator.speaker(id, time) : null);
 	const turns = $derived(narrator.turns[id] ?? []);
 	/** The moments the conversation shows something in the scene: marked on the score, and a click near one goes there. */
-	const marks = $derived((narrator.direction[id] ?? []).map((m) => m.t));
+	const marks = $derived((narrator.direction[id] ?? []).filter((m) => m.show.length).map((m) => m.t));
 	/** Where a press on the score began, to tell a click from a drag. */
 	let pressedAt = 0;
 	const lanes = [

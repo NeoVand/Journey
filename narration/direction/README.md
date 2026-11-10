@@ -37,6 +37,10 @@ it feels like a friend with a pointer who knows when to use it. Done badly, it's
   Only on the main road, never from inside a side trip, and rare: two in the whole story at the moment.
 - `wide` (optional): pulls back to show a whole: the loop from your laptop up to the model and back. The one kind of
   moment that goes further away than the card's shot. Frame it with several names and `"together": true`.
+- A beat: `"show": []` with a `do`, and the camera stays where it is while the card changes in step with the words.
+  `"turn"` with `index` 0 to 9 shows that turn of "The whole fix, in ten turns" (and plays its note); `"cache"` with
+  `index` 1 or 0 switches its cache on or off. Beats can be as many as the words need: they move nothing but the card.
+  Landing part way through a conversation, the card catches up with the latest beat of each kind.
 - `front` (optional): sees the thing from the side it faces, for a screen or a sign whose words are the point, however
   the card's own shot looks at it. A far flight takes a little longer by itself, so it never lurches.
 

@@ -780,7 +780,12 @@
 						// the data centre, dark ones over the sky. Home again, each card has its own back.
 						for (const p of pins) p.el.dataset.tone = toneOf(to ?? p.i);
 					}),
-				note: () => cue('spot', Math.floor(Math.random() * 5))
+				note: () => cue('spot', Math.floor(Math.random() * 5)),
+				// The ten turns follow Nora as she counts them, and the cache goes off and on again as she switches it.
+				act: (what, i) => {
+					if (what === 'turn') pinTurn(i);
+					else if (what === 'cache') setCache(i === 1);
+				}
 			});
 			{
 				const gl = w.stage.renderer.getContext();
@@ -1147,8 +1152,11 @@
 				const reached = T < TEN_AT ? -1 : Math.min(TEN_TURNS.length - 1, Math.floor((T - TEN_AT) / TEN_STEP));
 				if (reached !== turnReached) {
 					turnReached = reached;
-					turnPinned = -1;
-					w.setTurn(Math.max(0, reached));
+					// The newest turn shows as the bars rise, unless Nora is counting them out: then she says which one.
+					if (!narrator.playing) {
+						turnPinned = -1;
+						w.setTurn(Math.max(0, reached));
+					}
 				}
 			};
 
