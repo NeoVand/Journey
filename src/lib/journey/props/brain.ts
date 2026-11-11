@@ -5,22 +5,24 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { asset } from '$app/paths';
 import { hitBall } from '../poke';
 import { Batch } from '../kit/batch';
-import { extrude, rbox, roundedRect, sweep } from '../kit/geometry';
-import { color, Lamp, mats } from '../kit/materials';
+import { extrude, roundedRect } from '../kit/geometry';
+import { mats } from '../kit/materials';
 import { seg, smooth } from '../kit/math';
 import { islandAt, machine, shadowOn } from '../kit/machines';
 import { createCastShadow } from './island';
 
 /*
- * The model, as what it is: a very large brain, fitted out by someone who only knows how to make machines.
+ * The model, as Neo Mohsenvand designed it: a brain built like a machine. Glossy cushions in yellow and blue run in waves over each half,
+ * the way a brain's folds do, and in the channels between them the works show through: chrome pipes with light strips,
+ * copper coils, blocks of electronics with lit bars, rows of cyan lights on the blue, and an eye in each side. The
+ * cerebellum is two drums wound in copper; the brainstem a chrome conduit down into the pedestal.
  * Long axis along X with the front at +X, the fissure in the plane z = 0, and the near side facing +Z.
  * Origin at the middle of the brain.
  *
- * The brain itself is a real one. Its cortex is the left hemisphere of a 25-year-old's MRI, from the UCSF Neuroscape lab's
- * Glass Brain, which they gave to the public domain (NIH 3D, 3DPX-000757). It was smoothed of scanner noise, its folds
- * deepened a little, thinned, and given a brainstem modelled to fit it; the right half is its mirror. Each vertex carries
- * how open it is to the sky (red), how high it stands above the folds around it (green) and which part it belongs to
- * (blue): see static/models/brain.glb, made in Blender and packed with gltfpack.
+ * Its shape is a real brain's. The far half was laid out in Blender over the left hemisphere of a 25-year-old's MRI, from
+ * the UCSF Neuroscape lab's Glass Brain, which they gave to the public domain (NIH 3D, 3DPX-000757): its outer skin,
+ * with the cushions running across it by distance from the crest, so they curl round the eye where the temporal lobe
+ * swells. The near half is its mirror. See static/models/brain.glb, packed with gltfpack.
  */
 
 /** Height of the flat seat the intake stands on, above the brain's centre. */
@@ -43,12 +45,15 @@ const waves = {
 	uWaveColor: { value: new THREE.Color('#62eeff') }
 };
 
-type Part = 'cortex' | 'brainstem';
-let anatomy: Record<Part, THREE.BufferGeometry> | null = null;
+/** What the file holds: one half of each finish, mirrored for the other, and what stands in the middle. */
+type Half = 'shell' | 'chrome' | 'copper' | 'amber' | 'dark' | 'cyan';
+type Middle = 'chrome' | 'amber' | 'dark';
+type Parts = { half: Partial<Record<Half, THREE.BufferGeometry>>; middle: Partial<Record<Middle, THREE.BufferGeometry>> };
+let parts: Parts | null = null;
 
 const smoothstep = (a: number, b: number, v: number) => smooth(seg(v, a, b));
 
-/** Plain float positions and colours in the brain's own frame: the file packs them, and keeps each part's placement on its node. */
+/** Plain float positions (and colours, if any) in the brain's own frame: the file packs them, and keeps each part's placement on its node. */
 function unpack(mesh: THREE.Mesh) {
 	mesh.updateWorldMatrix(true, false);
 	const src = mesh.geometry;
@@ -65,38 +70,44 @@ function unpack(mesh: THREE.Mesh) {
 	return g;
 }
 
-/** A plain stand-in, only if the file can't be had: an egg of a brain, all of it open and none of it folded. */
-function standIn(): Record<Part, THREE.BufferGeometry> {
-	const blob = (sx: number, sy: number, sz: number, x: number, y: number, z: number) => {
-		const g = new THREE.SphereGeometry(1, 48, 32);
-		g.deleteAttribute('normal');
-		g.deleteAttribute('uv');
-		g.scale(sx, sy, sz).translate(x, y, z);
-		g.setAttribute('color', new THREE.Float32BufferAttribute(new Array(g.getAttribute('position').count * 3).fill(0.8), 3));
-		return g;
-	};
-	return { cortex: blob(5.8, 3.6, 2.3, 0.25, 0.1, -2.5), brainstem: blob(0.7, 2.2, 0.7, -1.1, -2.9, 0) };
+/** The other half: the same, across the fissure, with every triangle wound the other way so it still faces out. */
+function mirrored(g: THREE.BufferGeometry) {
+	const m = g.clone();
+	const p = m.getAttribute('position') as THREE.BufferAttribute;
+	for (let i = 0; i < p.count; i++) p.setZ(i, -p.getZ(i));
+	const index = m.getIndex()!;
+	for (let i = 0; i < index.count; i += 3) {
+		const b = index.getX(i + 1);
+		index.setX(i + 1, index.getX(i + 2));
+		index.setX(i + 2, b);
+	}
+	return m;
+}
+
+/** A plain stand-in, only if the file can't be had: half an egg of yellow cushion. */
+function standIn(): Parts {
+	const g = new THREE.SphereGeometry(1, 48, 32);
+	g.deleteAttribute('normal');
+	g.deleteAttribute('uv');
+	g.scale(5.9, 3.6, 2.4).translate(0.2, 0, -2.5);
+	g.setAttribute('color', new THREE.Float32BufferAttribute(new Array(g.getAttribute('position').count * 3).fill(1), 3));
+	return { half: { shell: g }, middle: {} };
 }
 
 /**
- * Where the waves start, and so how far each point is from them over the surface: three sets, one for each kind of wave.
- * The first starts on the roof, where tokens come in, and at the top of the brainstem; the others start at points on
- * either half that don't mirror each other, so the two halves never pulse alike.
+ * Where the waves start on the far half, and so how far each point is from them over the surface: three sets, one for
+ * each kind of wave. The first starts on the roof, where tokens come in, and at the top of the brainstem. The near half
+ * is the far half's mirror, and takes the same three distances in another order, so the two halves never pulse alike.
  */
 const SOURCES: [number, number, number][][] = [
 	[
-		[0.4, 3.7, 0.9],
-		[-0.4, 3.7, -0.9],
-		[-0.8, -1.4, 0]
+		[0.4, 3.9, -0.7],
+		[-0.8, -1.6, -0.5]
 	],
+	[[5.4, 0.6, -2.2]],
 	[
-		[5.6, 0.6, 2.2],
-		[3.2, 2.6, -3.2]
-	],
-	[
-		[-4.6, 0.8, 2.6],
-		[1.2, -2.6, -4.2],
-		[-1.3, -3.8, 0.4]
+		[-4.6, 0.8, -2.6],
+		[1.2, -2.6, -3.8]
 	]
 ];
 
@@ -182,7 +193,7 @@ function overSurface(geo: THREE.BufferGeometry, sets: [number, number, number][]
 		}
 		// Walking along edges makes the fronts a little faceted; easing each distance towards its neighbours' rounds them.
 		const eased = new Float64Array(n);
-		for (let pass = 0; pass < 16; pass++) {
+		for (let pass = 0; pass < 10; pass++) {
 			for (let v = 0; v < n; v++) {
 				if (!Number.isFinite(dist[v]) || dist[v] === 0) {
 					eased[v] = dist[v];
@@ -206,13 +217,6 @@ function overSurface(geo: THREE.BufferGeometry, sets: [number, number, number][]
 	return out;
 }
 
-/**
- * Glazed blue tissue with waves of signal running over it. Each spreads over the surface itself, down into every crease
- * and back over every fold, so its front wanders the way the brain is folded; three kinds start in different places,
- * travel at their own pace and swell and fade in turn, crossing as they go. They show brightest along the crowns of the
- * folds, and the deepest creases keep a faint light of their own, as if from inside. A class of its own, so the copy a
- * visit dresses the brain in keeps its waves.
- */
 /** One kind of wave, as light: its white-hot core, its halo and its afterglow, at a point this far over the surface from where it starts. */
 const FRONT = /* glsl */ `
 // One kind of wave at a point this far over the surface from where it starts. sd is how far ahead of the nearest front
@@ -232,15 +236,21 @@ vec3 front(float d, float t, float spacing, float along) {
 }
 `;
 
+/**
+ * The cushions and the floor of the channels between them, with waves of signal running through the channels. Each wave
+ * spreads over the surface itself, so its front follows the channels' turns; three kinds start in different places,
+ * travel at their own pace and swell and fade in turn, crossing as they go. They light the dark floor and only rim the
+ * cushions' edges. A class of its own, so the copy a visit dresses the brain in keeps its waves.
+ */
 class Tissue extends THREE.MeshPhysicalMaterial {
 	onBeforeCompile(shader: THREE.WebGLProgramParametersWithUniforms) {
 		Object.assign(shader.uniforms, waves);
 		shader.vertexShader = shader.vertexShader
-			.replace('#include <common>', '#include <common>\nattribute float crown;\nattribute vec3 geo;\nvarying float vCrown;\nvarying vec3 vGeo;\nvarying float vDepth;')
-			.replace('#include <begin_vertex>', '#include <begin_vertex>\nvCrown = crown;\nvGeo = geo;')
+			.replace('#include <common>', '#include <common>\nattribute float pad;\nattribute vec3 geo;\nvarying float vPad;\nvarying vec3 vGeo;\nvarying float vDepth;')
+			.replace('#include <begin_vertex>', '#include <begin_vertex>\nvPad = pad;\nvGeo = geo;')
 			.replace('#include <project_vertex>', '#include <project_vertex>\nvDepth = -mvPosition.z;');
 		shader.fragmentShader = shader.fragmentShader
-			.replace('#include <common>', '#include <common>\nuniform float uWaveTime;\nuniform float uWaveGain;\nuniform vec3 uWaveColor;\nvarying float vCrown;\nvarying vec3 vGeo;\nvarying float vDepth;\n' + FRONT)
+			.replace('#include <common>', '#include <common>\nuniform float uWaveTime;\nuniform float uWaveGain;\nuniform vec3 uWaveColor;\nvarying float vPad;\nvarying vec3 vGeo;\nvarying float vDepth;\n' + FRONT)
 			.replace(
 				'#include <emissivemap_fragment>',
 				/* glsl */ `#include <emissivemap_fragment>
@@ -249,11 +259,11 @@ class Tissue extends THREE.MeshPhysicalMaterial {
 					vec3 w = front(vGeo.x, t, 6.5, vGeo.y * 0.8 - vGeo.z * 0.6) * (0.65 + 0.35 * sin(t * 0.31))
 						+ front(vGeo.y, t * 0.82 + 1.7, 7.8, vGeo.z * 0.7 + vGeo.x * 0.5) * (0.5 + 0.5 * sin(t * 0.23 + 2.0))
 						+ front(vGeo.z, t * 0.91 + 3.1, 7.2, vGeo.x * 0.6 - vGeo.y * 0.8) * (0.5 + 0.5 * sin(t * 0.27 + 4.1));
-					float crownLight = mix(0.55, 1.0, smoothstep(0.25, 0.8, vCrown));
-					float creaseLight = 1.0 - smoothstep(0.0, 0.3, vCrown);
+					// Full in the channels, a rim on the cushions' edges, nothing on their tops.
+					float floorLight = 1.0 - smoothstep(0.15, 0.85, vPad);
 					// The core burns nearly white; the halo and the afterglow stay in the wave's colour.
 					vec3 hot = mix(uWaveColor, vec3(1.0), 0.55);
-					totalEmissiveRadiance += uWaveGain * ((hot * w.x + uWaveColor * (w.y + w.z)) * crownLight + uWaveColor * creaseLight * 0.18);
+					totalEmissiveRadiance += uWaveGain * (hot * w.x + uWaveColor * (w.y + w.z)) * floorLight;
 				}`
 			);
 	}
@@ -289,29 +299,36 @@ export function gearShape(teeth: number, pitch: number, holes = 0) {
 	return shape;
 }
 
+/** The cushions' two colours, from the design, and the floor between them. */
+const YELLOW = new THREE.Color('#ffc824');
+const BLUE = new THREE.Color('#2338b5');
+const FLOOR = new THREE.Color('#16181d');
+
 export class Brain {
 	group = new THREE.Group();
 	private tissue: Tissue;
-	private lamps: Lamp[] = [];
+	/** Lit parts and how bright they are at rest: the bars and strips in amber, the rows on the blue in cyan. */
+	private lights: { mesh: THREE.Mesh; rest: number; beat: number }[] = [];
 	hit!: THREE.Mesh;
 	private excited = 0;
 	private extraTurn = 0;
 	private lastUpdate = 0;
 
-	/** Fetches the brain's anatomy, once, before the world is built. Without it the model still stands, as a plain egg. */
+	/** Fetches the brain, once, before the world is built. Without it the model still stands, as a plain egg. */
 	static async load() {
-		if (anatomy) return;
+		if (parts) return;
 		try {
 			const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(asset('models/brain.glb'));
-			const found: Partial<Record<Part, THREE.BufferGeometry>> = {};
+			const found: Parts = { half: {}, middle: {} };
 			gltf.scene.traverse((o) => {
 				const mesh = o as THREE.Mesh;
 				if (!mesh.isMesh) return;
-				const part = [mesh.name, mesh.parent?.name].find((n) => n === 'cortex' || n === 'brainstem') as Part | undefined;
-				if (part) found[part] = unpack(mesh);
+				const name = [mesh.name, mesh.parent?.name].find((n) => n?.startsWith('half_') || n?.startsWith('mid_'));
+				if (name?.startsWith('half_')) found.half[name.slice(5) as Half] = unpack(mesh);
+				else if (name?.startsWith('mid_')) found.middle[name.slice(4) as Middle] = unpack(mesh);
 				mesh.geometry.dispose();
 			});
-			if (found.cortex && found.brainstem) anatomy = found as Record<Part, THREE.BufferGeometry>;
+			if (found.half.shell) parts = found;
 		} catch (e) {
 			console.warn('The brain could not be loaded, so it stands in as an egg.', e);
 		}
@@ -319,137 +336,93 @@ export class Brain {
 
 	constructor() {
 		this.tissue = new Tissue({
-			color: '#2f68f5',
-			roughness: 0.42,
+			color: '#ffffff',
+			roughness: 0.36,
 			metalness: 0,
-			clearcoat: 0.75,
-			clearcoatRoughness: 0.2,
-			sheen: 0.7,
-			sheenColor: '#a8d8ff',
-			sheenRoughness: 0.45,
+			clearcoat: 0.85,
+			clearcoatRoughness: 0.14,
 			vertexColors: true,
 			// It shines with its own waves: an emissive colour, at nothing, tells a visit not to light it up in amber as well.
 			emissive: '#7fe6ff',
 			emissiveIntensity: 0
 		});
-		const parts = anatomy ?? standIn();
-		this.buildTissue(parts);
-		this.buildKeel(parts.cortex);
+		const from = parts ?? standIn();
+		// Everything that is the brain, under its name, so the conversation shows all of it and a visit lights all of it.
+		const brain = new THREE.Group();
+		brain.name = 'brain';
+		this.group.add(brain);
+		this.buildShell(brain, from.half.shell!);
+		this.buildWorks(brain, from);
 		this.buildSeat();
 		this.buildStem();
 	}
 
-	/* ---- the brain: both halves of the cortex and the brainstem, as one glazed body ---- */
-	private buildTissue(parts: Record<Part, THREE.BufferGeometry>) {
-		const far = parts.cortex.clone();
-		const near = parts.cortex.clone();
-		const p = near.getAttribute('position') as THREE.BufferAttribute;
-		for (let i = 0; i < p.count; i++) p.setZ(i, -p.getZ(i));
-		// A mirror turns every triangle inside out, unless they're wound the other way.
-		const index = near.getIndex()!;
-		for (let i = 0; i < index.count; i += 3) {
-			const b = index.getX(i + 1);
-			index.setX(i + 1, index.getX(i + 2));
-			index.setX(i + 2, b);
-		}
-		const geo = mergeGeometries([far, near, parts.brainstem]);
-		far.dispose();
-		near.dispose();
-		const pos = geo.getAttribute('position');
+	/* ---- the cushions, both halves, and the floor of the channels between them ---- */
+	private buildShell(brain: THREE.Group, half: THREE.BufferGeometry) {
+		const far = overSurface(half, SOURCES);
+		const near = new Float32Array(far.length);
+		for (let i = 0; i < far.length; i += 3) [near[i], near[i + 1], near[i + 2]] = [far[i + 1], far[i + 2], far[i]];
+		half.setAttribute('geo', new THREE.BufferAttribute(far, 3));
+		const other = mirrored(half);
+		other.setAttribute('geo', new THREE.BufferAttribute(near, 3));
+		const geo = mergeGeometries([half, other]);
+		other.dispose();
 		const baked = geo.getAttribute('color');
-		const count = pos.count;
+		const count = baked.count;
 		const tint = new Float32Array(count * 3);
-		const crowns = new Float32Array(count);
-		const deep = new THREE.Color('#10145a');
-		const white = new THREE.Color(1, 1, 1);
-		const pale = new THREE.Color(0.92, 0.94, 1);
+		const pads = new Float32Array(count);
 		const c = new THREE.Color();
 		for (let i = 0; i < count; i++) {
-			const open = smoothstep(0.04, 0.85, baked.getX(i));
-			const crown = baked.getY(i);
-			// The creases fall into a deep indigo, the crowns stand in full colour, and the brainstem a shade paler.
-			c.copy(deep).lerp(white, Math.min(1, open ** 1.2 * 0.62 + crown * 0.48));
-			if (baked.getZ(i) > 0.5) c.lerp(pale, 0.3);
+			// Red says which colour the cushion is, green how much this point is cushion rather than floor.
+			const pad = smoothstep(0.1, 0.9, baked.getY(i));
+			c.copy(baked.getX(i) > 0.5 ? YELLOW : BLUE).lerp(FLOOR, 1 - pad);
 			c.toArray(tint, i * 3);
-			crowns[i] = crown;
+			pads[i] = pad;
 		}
 		geo.setAttribute('color', new THREE.BufferAttribute(tint, 3));
-		geo.setAttribute('crown', new THREE.BufferAttribute(crowns, 1));
-		geo.setAttribute('geo', new THREE.BufferAttribute(overSurface(geo, SOURCES), 3));
+		geo.setAttribute('pad', new THREE.BufferAttribute(pads, 1));
 		geo.computeVertexNormals();
 		geo.computeBoundingSphere();
-
 		const mesh = new THREE.Mesh(geo, this.tissue);
-		// The brain itself, by name, so the conversation can show the whole model and not only the plinth it sits on.
-		mesh.name = 'brain';
+		mesh.name = 'cushions';
 		mesh.castShadow = true;
 		mesh.receiveShadow = true;
-		this.group.add(mesh);
+		brain.add(mesh);
 
-		// The pointer presses the cerebrum: a ball round both halves, not the stem below them.
-		const cerebrum = new THREE.Box3().setFromBufferAttribute(parts.cortex.getAttribute('position') as THREE.BufferAttribute);
-		cerebrum.min.z = Math.min(cerebrum.min.z, -cerebrum.max.z);
-		cerebrum.max.z = -cerebrum.min.z;
-		const round = cerebrum.getBoundingSphere(new THREE.Sphere());
-		this.hit = hitBall(round.radius);
+		// The pointer presses the brain: a ball round both halves.
+		const round = geo.boundingSphere!;
+		this.hit = hitBall(round.radius * 0.92);
 		this.hit.position.copy(round.center);
 		this.group.add(this.hit);
 	}
 
-	/* ---- a steel spine down the fissure between the halves, just under their inner edges, with lamps along it ---- */
-	private buildKeel(cortex: THREE.BufferGeometry) {
-		const pos = cortex.getAttribute('position');
-		// The top of the fissure along the brain: the highest the halves' inner edges reach, at each place along it.
-		const x0 = -4.9;
-		const x1 = 5.3;
-		const steps = 41;
-		const crest = new Array(steps).fill(-Infinity);
-		for (let i = 0; i < pos.count; i++) {
-			if (Math.abs(pos.getZ(i)) > 0.75) continue;
-			const k = Math.round(((pos.getX(i) - x0) / (x1 - x0)) * (steps - 1));
-			if (k >= 0 && k < steps) crest[k] = Math.max(crest[k], pos.getY(i));
-		}
-		const points: THREE.Vector3[] = [];
-		for (let k = 0; k < steps; k++) {
-			const near = crest.slice(Math.max(0, k - 2), k + 3).filter(Number.isFinite);
-			const y = near.length ? near.reduce((s, c) => s + c, 0) / near.length : 0;
-			// Its ends go down into the fissure rather than stop in the air.
-			const u = k / (steps - 1);
-			const dive = 1.1 * (smoothstep(0.12, 0, u) + smoothstep(0.88, 1, u));
-			points.push(new THREE.Vector3(THREE.MathUtils.lerp(x0, x1, u), y - 0.2 - dive, 0));
-		}
-		const path = new THREE.CatmullRomCurve3(points, false, 'centripetal');
-		path.arcLengthDivisions = 300;
-		const W = 0.2;
-		const profile: [number, number][] = [
-			[-W, -1.8],
-			[-W, -0.06],
-			[-W + 0.06, 0],
-			[W - 0.06, 0],
-			[W, -0.06],
-			[W, -1.8]
-		];
-		const keel = new THREE.Mesh(sweep(path, profile, 180), new THREE.MeshStandardMaterial({ color: '#99a3b4', metalness: 0.6, roughness: 0.4 }));
-		keel.castShadow = true;
-		keel.receiveShadow = true;
-		this.group.add(keel);
-		const up = new THREE.Vector3();
-		for (let i = 1; i < 26; i++) {
-			const u = i / 26;
-			if (i % 3 !== 1) continue;
-			const p = path.getPointAt(u);
-			// None under the seat.
-			if (Math.abs(p.x) < 2.6) continue;
-			const t = path.getTangentAt(u);
-			up.set(-t.y, t.x, 0);
-			if (up.y < 0) up.negate();
-			const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), up);
-			const lamp = new Lamp(rbox(0.3, 0.05, 0.22, 0.02, 2), color.amber, 0.4);
-			lamp.mesh.position.copy(p).addScaledVector(up, 0.02);
-			lamp.mesh.quaternion.copy(q);
-			this.group.add(lamp.mesh);
-			this.lamps.push(lamp);
-		}
+	/* ---- what shows in the channels, the eyes, the copper cerebellum and the chrome brainstem ---- */
+	private buildWorks(brain: THREE.Group, from: Parts) {
+		const chrome = new THREE.MeshStandardMaterial({ color: '#b4bcc8', metalness: 1, roughness: 0.22 });
+		const copper = new THREE.MeshStandardMaterial({ color: '#d98a55', metalness: 1, roughness: 0.3 });
+		const dark = new THREE.MeshStandardMaterial({ color: '#1d2027', metalness: 0.55, roughness: 0.42 });
+		const amber = new THREE.MeshStandardMaterial({ color: '#3a2a12', roughness: 0.35, emissive: '#ffa630', emissiveIntensity: 2 });
+		const cyan = new THREE.MeshStandardMaterial({ color: '#0d2a33', roughness: 0.3, emissive: '#5fe8ff', emissiveIntensity: 2 });
+		const finish = { chrome, copper, dark, amber, cyan };
+		const add = (geos: (THREE.BufferGeometry | undefined)[], name: keyof typeof finish, label: string) => {
+			const list = geos.filter((g): g is THREE.BufferGeometry => !!g);
+			if (!list.length) return;
+			const geo = list.length > 1 ? mergeGeometries(list.map((g) => (g.deleteAttribute('color'), g))) : list[0];
+			geo.computeVertexNormals();
+			const mesh = new THREE.Mesh(geo, finish[name]);
+			mesh.name = label;
+			mesh.castShadow = name !== 'amber' && name !== 'cyan';
+			mesh.receiveShadow = true;
+			brain.add(mesh);
+			if (name === 'amber') this.lights.push({ mesh, rest: 1.6, beat: 0 });
+			if (name === 'cyan') this.lights.push({ mesh, rest: 1.8, beat: 1.7 });
+		};
+		const both = (g: THREE.BufferGeometry | undefined) => (g ? [g, mirrored(g)] : []);
+		add([...both(from.half.chrome), from.middle.chrome], 'chrome', 'works');
+		add([...both(from.half.copper)], 'copper', 'coils');
+		add([...both(from.half.dark), from.middle.dark], 'dark', 'electronics');
+		add([...both(from.half.amber), from.middle.amber], 'amber', 'lights');
+		add([...both(from.half.cyan)], 'cyan', 'leds');
 	}
 
 	/* ---- the seat the intake stands on, sunk into the top of the brain: its top is exactly the intake's underside ---- */
@@ -486,6 +459,12 @@ export class Brain {
 		const b = new Batch();
 		b.add(new THREE.LatheGeometry(profile, 48), m.cream, { p: [sx, 0, 0] });
 		b.add(new THREE.TorusGeometry(0.8, 0.075, 12, 56), m.steel, { p: [sx, COLLAR_Y, 0], r: [Math.PI / 2, 0, 0] });
+		// A ring of light round the collar, where the brainstem goes in.
+		const glow = new THREE.Mesh(new THREE.TorusGeometry(0.66, 0.035, 8, 56), new THREE.MeshStandardMaterial({ color: '#3a2a12', emissive: '#ffa630', emissiveIntensity: 2 }));
+		glow.position.set(sx, COLLAR_Y + 0.05, 0);
+		glow.rotation.x = Math.PI / 2;
+		this.group.add(glow);
+		this.lights.push({ mesh: glow, rest: 1.4, beat: 0.6 });
 		b.add(new THREE.TorusGeometry(1.0, 0.07, 12, 56), m.steel, { p: [sx, -5.38, 0], r: [Math.PI / 2, 0, 0] });
 		this.group.add(b.build('stem'));
 
@@ -518,9 +497,12 @@ export class Brain {
 		// The waves travel on with time and with the story, and race when it thinks hard.
 		waves.uWaveTime.value = time * 0.7 + T * 1.6 + this.extraTurn * 1.4;
 		waves.uWaveGain.value = 0.6 + busy * 0.8 + this.excited * 1.6;
-		this.lamps.forEach((lamp, i) => {
-			const beat = Math.sin(time * 1.6 - i * 0.9) * 0.5 + 0.5;
-			lamp.set(color.amber, 0.12 + beat * (0.2 + busy * 0.5));
-		});
+		// The lights breathe at rest, brighten as the tokens pour in, and flare when it's pressed. Each on whatever it wears now:
+		// a visit dresses it in a copy of its material while the conversation talks about it.
+		for (const light of this.lights) {
+			const beat = Math.sin(time * 1.7 - light.beat) * 0.5 + 0.5;
+			const level = light.rest * (0.6 + beat * 0.4) * (1 + busy * 0.6 + this.excited * 1.2);
+			for (const mat of (Array.isArray(light.mesh.material) ? light.mesh.material : [light.mesh.material]) as THREE.MeshStandardMaterial[]) mat.emissiveIntensity = level;
+		}
 	}
 }
