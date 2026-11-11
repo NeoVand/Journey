@@ -1,0 +1,11 @@
+Concept art for one moment of an interactive 3D website that explains how a coding agent works. Match the look of the reference images exactly: glossy toy-like 3D objects with soft rounded bevels, porcelain-white floating island, sky-blue cloudy background, cream and ivory machines, cobalt-blue enamel, warm amber accents, jade green, brushed aluminum details, soft daylight studio lighting, gentle contact shadows, three-quarter view from slightly above, crisp product-render quality. No text anywhere except tiny icons. No people.
+
+The subject: "the harness", the program on your laptop that packs a request before sending it to an AI model. It is a cream cabinet like the one in the reference screenshot: rounded corners, a glass tube rising from its roof, cables plugged into its sides, four drawers on its front stacked vertically, each with a small icon (document, cube, wrench, speech bubble). A laptop sits beside it on the same porcelain island.
+
+All four drawers are pulled open at once, and out of each one a delightful little object springs up, like a jack-in-the-box, on a short coiled spring:
+1. Top drawer (instructions): a small hardback rulebook bursting open, pages fanning, a sticky note on its page, and three tiny cards stacked on little nested folder steps beside it.
+2. Second drawer (environment): a glass snow globe holding a tiny desk-world: a little folder, a small git-branch sprig with round nodes, a flip calendar, a tiny terminal block, all miniature and charming.
+3. Third drawer (tools): a chunky Swiss-army knife fanned open, each blade a different tool: a magnifying glass, a pencil, binoculars, a tiny terminal screen, a little globe; one blade is a plug-in adapter with two extra folded blades.
+4. Bottom drawer (conversation): an inflating glossy speech bubble rising out of it, with an empty file card beside it stamped with a red circle-slash.
+
+The objects are playful, readable at a glance, physically plausible, beautifully modelled, and clearly come out of their own drawer. The cabinet still reads as one calm, elegant machine. Composition leaves the left third of the frame calm and empty for text.

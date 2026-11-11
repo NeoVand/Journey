@@ -1,0 +1,14 @@
+Concept art for one scene of an interactive 3D website that explains, accurately, how a coding agent's harness works. Keep the look of the reference images: glossy, softly bevelled, toy-like but precise 3D objects, porcelain-white floor, cream and ivory machines, cobalt-blue enamel, warm amber, jade green, brushed aluminum, soft warm studio light, gentle contact shadows, three-quarter view from above, crisp product-render quality. No text or letters anywhere. No people. No decorative props: every object must stand for something real, and the whole picture must make sense at one glance, like a beautifully modelled diagram.
+
+We are inside the harness, the program on your laptop that runs the agent, seen as a cut-away cream room.
+
+THE CENTRE is the context: a tall clear glass column standing in the middle of the room, holding a neat stack of flat coloured layers, like a layered cake seen through glass. From the bottom up, in this exact order: a thick cream layer (the agent's instructions), a tan layer (the list of tools), a thin pale-blue layer (facts about your machine), a thin cobalt layer (your one-sentence prompt), then alternating thin amber layers (the model's tool requests) and jade-green layers (the results of running them). A slim brass ruler runs up the column's side with a red mark near the top: the limit of what fits.
+
+AROUND the column runs one clean circular conveyor, and on it only four things happen, in order, clockwise:
+1. SEND: a copy of the whole stack slides into a glass capsule that rises up a single tube through the ceiling, toward the model far away.
+2. STREAM: a thin ribbon of small tiles comes back down a second tube and lays itself along the conveyor, piece by piece.
+3. CHECK: a gate across the conveyor inspects an amber request card; on the gate, a small plug socket where your own rule script plugs in, and three lamps: green, amber, red.
+4. RUN: robotic arms reach out through round ports in the room's side wall, where cables lead to small boxes outside the room: your files, a terminal, and an extra tool server. A fresh jade-green result layer is being placed on top of the stack in the glass column.
+
+Beside the column, a separate filing cabinet receives a thin copy of every layer: the saved record on disk.
+Calm, spacious, uncluttered. Leave the left third of the frame empty for text.

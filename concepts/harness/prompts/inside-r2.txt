@@ -1,0 +1,14 @@
+Concept art for one scene of an interactive 3D website that explains how a coding agent works. Keep exactly the look of the reference image of the workshop: glossy toy-like 3D objects with soft rounded bevels, porcelain-white floor, cream walls, cobalt-blue enamel, warm amber and brass accents, soft warm studio light, gentle contact shadows, three-quarter isometric view from above, crisp product-render quality. No text, no letters, no numbers anywhere. No people.
+
+The scene is the inside of "the harness", the program on your laptop that runs a coding agent, seen as a cut-away cream room like a dollhouse. Its whole point is ONE LOOP that a request goes round, again and again, so the structure must read instantly:
+
+A large oval model-railway track fills most of the floor, and every machine stands right beside the track, in order, clockwise, like stops on a little railway. Small amber chevrons on the track sleepers show the direction. A little amber suitcase (the request) rides a tiny cart on the track. The six stops, in order around the oval:
+1. PACK: a packing table at the track's edge with the open suitcase being filled, four tiny objects in a row going in: a small blue rulebook, a snow globe, a folded red Swiss-army knife, a speech bubble, and a curl of paper scroll last.
+2. SEND: a brass pneumatic tube rising from beside the track up through the ceiling, a capsule with the suitcase shooting up it.
+3. READ: a vintage ticker-tape teleprinter beside the track, its paper ribbon running out onto the track bed.
+4. CHECK: the track passes THROUGH a turnstile gate; beside it a small friendly robot bouncer holding a clipboard, and a little desk with a green lamp, a silver desk bell and a red rubber stamp.
+5. RUN: a workbench whose two mechanical arms reach through a round brass porthole in the side wall into a filing cabinet of files beyond; one arm holds a magnifying glass, the other a pencil.
+6. WRITE DOWN: a blue typewriter whose long paper scroll unrolls back along the track toward the packing table, closing the loop, with a side branch of the scroll feeding into a small filing drawer.
+Off the loop, in the back corner, a glass dome covers a miniature copy of the whole oval loop with an even tinier suitcase.
+
+Clear paths, calm composition, the loop obvious at a glance. Leave the left third of the frame calm for text.

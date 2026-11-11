@@ -1,9 +1,9 @@
 import * as THREE from 'three';
-import { Stage } from './stage';
+import { breathe, Stage } from './stage';
 import { Rig, type Shot } from './rig';
 import { bell, inOut, lerp, outBack, outCubic, seg, smooth, smoother, spring, inCubic } from './kit/math';
 import { contactShadow, Label, loadFonts, Surface } from './kit/print';
-import { extrude, frameAt, rbox, ring, roundedRect, sweep } from './kit/geometry';
+import { bends, extrude, frameAt, PartOf, rbox, ring, roundedRect } from './kit/geometry';
 import { mats, color } from './kit/materials';
 import { Batch } from './kit/batch';
 import { fitting, leaving } from './kit/parts';
@@ -28,9 +28,12 @@ import { CABINET_ROOF, MemoryStage, MEMORY_AT, MEMORY_SHOTS, MEMORY_SKY } from '
 import { PlansStage, PLANS_AT, PLANS_SHOTS, PLANS_SKY, SCREEN_ROOF } from './tracks/plans';
 import { hitBox } from './poke';
 import { Visits } from './visit';
+import { MiniMap } from './minimap';
 import { Voyage, type Flight } from './voyage';
 import { Cluster, CLUSTER_SHOTS, DIVE_T } from './cluster';
-import { MODEL_FLANK, MODEL_ISLAND_Y, MODEL_X, MODEL_Z, RETURN_POINTS, STREAM_POINTS } from './layout';
+import { AXIS_X, LOWER, MODEL_ISLAND_Y, MODEL_X, MODEL_Z, STREAM_BOTTOM, STREAM_TOP } from './layout';
+import { CALL_ROLLER, HOME, HOME_OUTLINE, RETURN_ROLLER, returnPath, slab } from './cables';
+import { buildRoller, buildWheel, hang, type Solid } from './kit/cable';
 import { Back, BACK_SHOTS } from './chapters/back';
 import { Finale, FINALE_T } from './chapters/finale';
 
@@ -39,36 +42,82 @@ export const EXIT_T = 19;
 type V3 = [number, number, number];
 
 /*
- * ---------- layout: a figure-eight in the sky, pinched at your laptop ----------
- * Your laptop's island is the waist. The provider is upstairs: the request climbs the right-hand side of the ring above,
- * over the wire, through the front door and the tokenizer, and up a ramp into the model, which crowns it. The reply
- * comes back down the left in a glass tube. Your tools hang in the ring below: the calls go down the left to the
- * gates, through the workshop along the bottom, and the results climb the right back to the harness. Every position
- * is derived from these.
+ * ---------- layout: a pinwheel in the sky, turning about your laptop ----------
+ * The request leaves your island to the right, level, over the wire, through the front door and the tokenizer, all at
+ * your laptop's height; a glass lift carries the tokens up and back along the top to the model, which stands at the top
+ * of the axis through the harness. The reply comes straight down that axis. Below and to the left, the same shape the
+ * other way round: your tools (see layout.ts). Every position is derived from these.
  */
 const LINE_Z = 0.9;
-/** The wire and the front door: where they stand, as a shift of the islands they were first drawn on. */
+/** The wire and the front door, right of your island, at its height: a shift of the islands they were first drawn on. */
 const WIRE_X = 2;
 const TUNNEL_X = 9.6 + WIRE_X;
 const TUNNEL_L = 4.8;
-const TUNNEL_Y = 8;
-const ISLET_Y = 6.4;
-const ISLAND_B_Y = 5.6;
+const TUNNEL_Y = 2.4;
+/** A hair below your island, so the pipe out of it runs dead level into the foot of the wire. */
+const ISLET_Y = -0.175;
+const ISLAND_B_Y = 0;
 const GATEWAY_X = TUNNEL_X + TUNNEL_L + 0.04 + GW / 2;
-/** The tokenizer's island, over the front door and to the right of the axis. Everything on it is measured from here. */
-const C_X = 12;
-const ISLAND_C_Y = 14;
+/** The islands of the row, from above, each about its own position. */
+const ISLET_OUTLINE: [number, number][] = [
+	[8.0, 0.2],
+	[8.6, -2.0],
+	[10.6, -2.3],
+	[11.4, -0.8],
+	[11.2, 1.0],
+	[9.6, 1.7]
+];
+const B_OUTLINE: [number, number][] = [
+	[13.2, 1.4],
+	[13.0, -2.2],
+	[15.4, -3.3],
+	[18.8, -3.1],
+	[19.9, -1.2],
+	[19.8, 1.6],
+	[17.8, 3.0],
+	[14.8, 2.9]
+];
+const C_OUTLINE: [number, number][] = [
+	[-5.9, 0.4],
+	[-5.3, -2.0],
+	[-1.0, -3.2],
+	[8.2, -3.2],
+	[13.5, -2.4],
+	[13.7, 1.3],
+	[9.2, 3.1],
+	[-2.0, 3.2]
+];
+/** The tokenizer's island, next along the row. Everything on it is measured from here. */
+const C_X = 28.8;
+const ISLAND_C_Y = 0.25;
 const BELT_Y = ISLAND_C_Y + 0.5;
 const TEMPLATE_X = C_X - 3.4;
 const SLOT_X = TEMPLATE_X + 1.06;
 const BELT_END = C_X + 10.7;
 // As far along the path as both its feet still stand on the island.
 const SAFETY_X = C_X + 11.45;
-/** The roof of the model's brain, at the top of the ring, where the intake stands. */
+/** The roof of the model's brain, at the top of the axis, where the intake stands. */
 const MODEL_ROOF = MODEL_ISLAND_Y + BRAIN_FOOT + BRAIN_SEAT;
 /** The intake's mouth: its inner half-width, and how tall it stands on the roof. */
 const INTAKE_HALF = 1.15;
 const INTAKE_H = 1.45;
+const INTAKE_TOP = MODEL_ROOF + INTAKE_H;
+/**
+ * The token hose: its radius, and where it climbs, clamped up a mast at the end of the row. At the top it goes over a
+ * wheel, hangs across the sky to a second wheel over the model's intake, and drops off that into a nozzle above the well.
+ */
+const LIFT_R = 0.42;
+const LIFT_X = C_X + 13.65;
+const WHEEL_R = 0.6;
+const WRAP = WHEEL_R + LIFT_R;
+const MODEL_WHEEL: V3 = [MODEL_X + WRAP, INTAKE_TOP + 2.4, LINE_Z];
+const MAST_WHEEL: V3 = [LIFT_X - WRAP, MODEL_WHEEL[1] + 0.8, LINE_Z];
+const LIFT_TOP = MAST_WHEEL[1] - 0.3;
+const NOZZLE_Y = INTAKE_TOP + 0.95;
+/** Where the tokens leave the nozzle and fall free into the well. */
+const LIP_Y = INTAKE_TOP + 0.5;
+/** The token path lies in one upright plane, so its side is always the same: what a token shows faces you all the way up. */
+const FLOW_SIDE = new THREE.Vector3(0, 0, -1);
 const GANTRY_SCALE = 1.18;
 /** When each letter of the sentence lands after the page opens, once the lid is up. Uneven, with a breath between words, as people type. */
 const LETTER_AT = (() => {
@@ -111,7 +160,9 @@ const LAPTOP_SAYS: [number, string][] = [
 	[19.0, 'Reading the reply'],
 	[19.62, 'Checking the tool call'],
 	[25.04, 'Sending the result back'],
-	[25.9, 'On to the next turn']
+	[25.9, 'On to the next turn'],
+	// The tenth turn ends with a summary and no call: two files changed, the fix and its new test, and the whole suite green.
+	[30, 'Done: 2 files changed, 418 passed']
 ];
 const laptopSays = (T: number) => LAPTOP_SAYS.findLast(([from]) => T >= from)![1];
 
@@ -142,13 +193,13 @@ const CUT = {
 	tallTarget: [C_X - 0.6, C_TOP, 0.9] as [number, number, number],
 	tallRadius: 2.7
 };
-// Halfway up: the pipe from the front door climbing to the tokenizer, seen from out in front of both.
-const CLIMB = { az: 12, el: 4, target: [GATEWAY_X - 2.2, ISLAND_B_Y + 5.4, 0.4] as [number, number, number], radius: 7.6, ry: 6, wide: box(0.38, 0.06, 0.6, 0.88), tall: box(0, 0.06, 1, 0.5) };
-// Up the ramp with the tokens, looking a little up at it, the model above.
-const NEXT = { az: 14, el: 2, target: [BELT_END - 2, BELT_Y + 7.4, 4.6] as [number, number, number], radius: 9.6, wide: box(0.38, 0.06, 0.6, 0.88), tall: box(0, 0.06, 1, 0.5) };
+// Up the lift with the tokens, from out in front, the model far up and to the left.
+const NEXT = { az: 8, el: 3, target: [LIFT_X - 3, BELT_Y + 9, 0.9] as [number, number, number], radius: 10, ry: 11, wide: box(0.38, 0.06, 0.6, 0.88), tall: box(0, 0.06, 1, 0.5) };
 const INTAKE = { az: 26, el: 38, target: [MODEL_X, MODEL_ROOF + 1.2, MODEL_Z - 0.2] as [number, number, number], radius: 3.3, ry: 2.3, wide: box(0.38, 0.08, 0.62, 0.84), tall: box(0, 0.08, 1, 0.48) };
-// The model from outside, at the top of the ring: the ramp coming up into it, and the glass tube going down from it.
-const ARRIVE = { az: 22, el: 12, target: [MODEL_X + 1.2, MODEL_ROOF - 4.4, MODEL_Z] as [number, number, number], radius: 12.4, ry: 9.6, wide: box(0.38, 0.03, 0.62, 0.92), tall: box(0, 0.05, 1, 0.5) };
+// The model from outside, at the top of the axis: the lift coming along the top into it, and the glass column going down from it.
+const ARRIVE = { az: 16, el: 8, target: [MODEL_X + 7, MODEL_ROOF - 1.4, MODEL_Z] as [number, number, number], radius: 15, ry: 12, wide: box(0.38, 0.03, 0.62, 0.92), tall: box(0, 0.05, 1, 0.5) };
+/** The hose's whole span, from the mast's wheel to the model's, with the tokens riding across. */
+const GARLAND = { az: 9, el: 5, target: [(MODEL_X + LIFT_X) / 2, MODEL_ROOF - 0.5, MODEL_Z] as [number, number, number], radius: 27, ry: 20, wide: box(0.38, 0.06, 0.62, 0.88), tall: box(0, 0.06, 1, 0.5) };
 
 const SHOTS: Shot[] = [
 	...hold(0, 0.5, HERO),
@@ -157,14 +208,14 @@ const SHOTS: Shot[] = [
 	...hold(3, 3.58, REQUEST, { az: 11 }),
 	...hold(4, 4.64, WIRE, { az: 20, el: 13, target: [TUNNEL_X + 2.7, TUNNEL_Y + 0.3, 0.9] }),
 	...hold(5, 5.64, DOOR, { az: 18 }),
-	{ T: 5.83, ...CLIMB },
 	{ T: 6, ...CUT, target: [C_X - 0.3, ISLAND_C_Y + 0.9, 0.9] },
 	{ T: 6.16, ...CUT, target: [C_X - 0.3, ISLAND_C_Y + 0.9, 0.9] },
 	{ T: 6.56, ...CUT, target: [C_X + 7.1, ISLAND_C_Y + 0.9, 0.9], az: 7, tallTarget: [C_X + 8.2, C_TOP, 0.9] },
 	...hold(6.68, 6.8, TOKENS_SHOT, { az: 1 }),
 	{ T: 7, ...NEXT },
-	{ T: 7.44, ...ARRIVE },
-	{ T: 7.68, ...ARRIVE, az: 22 },
+	{ T: 7.14, ...GARLAND },
+	{ T: 7.3, ...ARRIVE },
+	{ T: 7.68, ...ARRIVE, az: 21 },
 	{ T: 7.81, ...INTAKE },
 	{ T: 7.89, ...INTAKE, az: 18, el: 50, radius: 2.5, ry: 1.9 },
 	{ T: 7.985, az: 10, el: 80, target: [MODEL_X, MODEL_ROOF + 0.1, MODEL_Z], radius: 0.3, ry: 0.22, wide: box(0, 0, 1, 1), tall: box(0, 0, 1, 1) },
@@ -242,35 +293,36 @@ export class World {
 	private piece = new THREE.Box3();
 	root = new THREE.Group();
 
-	private laptop = new Laptop();
-	private harness = new Harness();
-	private brain = new Brain();
-	private skills = new SkillShelf();
-	private doc = new RequestDoc();
-	private strips = [0, 1, 2, 3].map((i) => new Strip(i));
-	private tunnel = new Tunnel(TUNNEL_L);
-	private gateway = new Gateway();
-	private gantry = new Gantry();
-	private tiles: Tile[] = TOKENS.map((t) => new Tile(t));
-	private mcp = new McpServer();
+	// The machines, built a few at a time as the page opens: see create().
+	private laptop!: Laptop;
+	private harness!: Harness;
+	private brain!: Brain;
+	private skills!: SkillShelf;
+	private doc!: RequestDoc;
+	private strips!: Strip[];
+	private tunnel!: Tunnel;
+	private gateway!: Gateway;
+	private gantry!: Gantry;
+	private tiles!: Tile[];
+	private mcp!: McpServer;
 	private upstairs = new THREE.Group();
-	private cluster = new Cluster();
-	private back = new Back();
+	private cluster!: Cluster;
+	private back!: Back;
 	private bulges: THREE.Mesh[] = [];
 	private easelLegs!: THREE.Object3D;
-	private downCurve!: THREE.CatmullRomCurve3;
+	private downCurve!: THREE.Curve<THREE.Vector3>;
+	private downLen = 1;
 	private downTight: THREE.Vector3[] = [];
 	private beltTicks!: THREE.CanvasTexture;
-	private flow!: THREE.CatmullRomCurve3;
+	private flow!: THREE.Curve<THREE.Vector3>;
 	private flowLen = 1;
 	private lipS = 1e9;
+	private sagAt: V3 = [0, Infinity, 0];
 	private rest!: THREE.InstancedMesh;
 	private chevron!: THREE.Texture;
-	private ribbonArrows!: THREE.CanvasTexture;
 	private loopMeshes: THREE.Mesh[] = [];
 	private routeCable!: THREE.Curve<THREE.Vector3>;
 	private routeOut!: THREE.Curve<THREE.Vector3>;
-	private routeUnder!: THREE.Curve<THREE.Vector3>;
 	private stream!: THREE.Curve<THREE.Vector3>;
 	private finale!: Finale;
 	private clouds = new Cloudscape();
@@ -302,9 +354,21 @@ export class World {
 	/** T value of the last frame, for one-shot logic. */
 	state: WorldState = { form: 1, dive: 0, inside: false, dusk: 0 };
 
-	static async create(canvas: HTMLCanvasElement) {
+	/**
+	 * Builds the world a piece at a time, with a frame between pieces, so the page stays alive while it's built and the
+	 * loader can show how far it has got: `progress` hears 0 to 1.
+	 */
+	static async create(canvas: HTMLCanvasElement, progress: (k: number) => void = () => {}) {
 		await Promise.all([loadFonts(), Brain.load()]);
-		return new World(canvas);
+		const w = new World(canvas);
+		let done = 0;
+		for (const [share, step] of w.steps()) {
+			await breathe();
+			step();
+			done += share;
+			progress(Math.min(1, done / 100));
+		}
+		return w;
 	}
 
 	private constructor(canvas: HTMLCanvasElement) {
@@ -312,6 +376,44 @@ export class World {
 		this.rig = new Rig(this.stage.camera, SHOTS);
 		this.voyage = new Voyage(this.rig);
 		this.visits = new Visits(this.stage, () => (this.trackIn && this.trackId ? [this.places[this.trackId as 'harness']?.group] : [this.root, this.cluster.group]));
+	}
+
+	/**
+	 * The pieces of the world in the order they're built, each with its share of a hundred of the time it takes, for
+	 * the loader. Each is built before the next is asked for, so a piece can hand on its own parts.
+	 */
+	private *steps(): Generator<[number, () => void]> {
+		yield [
+			9,
+			() => {
+				this.laptop = new Laptop();
+				this.harness = new Harness();
+				this.brain = new Brain();
+				this.skills = new SkillShelf();
+				this.doc = new RequestDoc();
+			}
+		];
+		yield [
+			8,
+			() => {
+				this.strips = [0, 1, 2, 3].map((i) => new Strip(i));
+				this.tunnel = new Tunnel(TUNNEL_L);
+				this.gateway = new Gateway();
+				this.gantry = new Gantry();
+				this.tiles = TOKENS.map((t) => new Tile(t));
+				this.mcp = new McpServer();
+			}
+		];
+		yield [27, () => (this.cluster = new Cluster())];
+		yield [3, () => (this.back = new Back())];
+		const back = this.back.steps();
+		for (const step of back) yield [25 / back.length, step];
+		yield [20, () => this.buildSky()];
+		yield [8, () => this.finish()];
+	}
+
+	/** The sky and the islands in it, with everything that stands on them and the cables between. */
+	private buildSky() {
 		this.clouds.lay(
 			[
 				{ shots: SHOTS, sky: (T) => T < DIVE_T || T >= EXIT_T },
@@ -321,24 +423,29 @@ export class World {
 		);
 		this.stage.scene.add(this.root, this.cluster.group);
 		this.assemble();
+	}
+
+	/** What needs the whole world standing: the upstairs split, the finale's route, the map, the side trips' rigs. */
+	private finish() {
 		this.splitUpstairs();
 		this.root.add(this.back.group);
 		// Its route is the pipes already standing, so it can only be built once they all are.
 		this.finale = new Finale({
 			cable: this.routeCable,
 			out: this.routeOut,
-			up: this.routeUnder,
 			down: this.downCurve,
 			flow: this.flow,
 			flowLip: this.flowLipU(),
 			...this.back.finaleRoute,
 			slotX: SLOT_X,
+			beltEnd: BELT_END,
 			beltY: BELT_Y,
 			lineZ: LINE_Z,
 			tunnel: [TUNNEL_X, TUNNEL_X + TUNNEL_L, TUNNEL_Y],
 			stream: this.stream
 		});
 		this.root.add(this.finale.group);
+		this.buildMapPipes();
 		this.mcpTrack = new McpTrack(this.harness, this.mcp, this.mcpLead);
 		this.root.add(this.mcpTrack.group);
 
@@ -397,53 +504,18 @@ export class World {
 		const r = this.root;
 
 		// Islands, stepping up through the sky: your laptop, the far end of the wire, the tokenizer. The model's is its own.
-		const islandA = createIsland([
-			[-6.1, 0.2],
-			[-4.6, -2.7],
-			[0.4, -3.3],
-			[5.6, -3.0],
-			[8.2, -1.2],
-			[8.2, 1.3],
-			[5.0, 3.2],
-			[-1.2, 3.7],
-			[-5.2, 2.7]
-		]);
+		const islandA = createIsland(HOME_OUTLINE);
 		r.add(islandA);
 
-		const islet = createIsland([
-			[8.0, 0.2],
-			[8.6, -2.0],
-			[10.6, -2.3],
-			[11.4, -0.8],
-			[11.2, 1.0],
-			[9.6, 1.7]
-		], 0.46);
+		const islet = createIsland(ISLET_OUTLINE, 0.46);
 		islet.position.set(WIRE_X, ISLET_Y, 0);
 		r.add(islet);
 
-		const islandB = createIsland([
-			[13.2, 1.4],
-			[13.0, -2.2],
-			[15.4, -3.3],
-			[18.8, -3.1],
-			[19.9, -1.2],
-			[19.8, 1.6],
-			[17.8, 3.0],
-			[14.8, 2.9]
-		]);
+		const islandB = createIsland(B_OUTLINE);
 		islandB.position.set(WIRE_X, ISLAND_B_Y, 0);
 		r.add(islandB);
 
-		const islandC = createIsland([
-			[-5.9, 0.4],
-			[-5.3, -2.0],
-			[-1.0, -3.2],
-			[8.2, -3.2],
-			[12.2, -2.0],
-			[12.4, 1.2],
-			[9.2, 3.1],
-			[-2.0, 3.2]
-		]);
+		const islandC = createIsland(C_OUTLINE);
 		islandC.position.set(C_X, ISLAND_C_Y, 0);
 		r.add(islandC);
 
@@ -462,10 +534,11 @@ export class World {
 			m.position.set(x, y, z);
 			r.add(m);
 		};
-		// A soft shadow under each island, out in the haze. The tokenizer's stands just under it: the front door is below.
-		shade(0.5, -6.5, 0.2, 18, 11, 0.26);
+		// A soft shadow under each island of the row, out in the haze. Your own island's is off to its right, clear of the
+		// pipes that go down the axis and along to the left.
+		shade(4.5, -6.5, 0.2, 12, 10, 0.22);
 		shade(16.6 + WIRE_X, ISLAND_B_Y - 5.6, 0.4, 11, 9, 0.22);
-		shade(C_X + 3, ISLAND_C_Y - 2.4, 0.4, 19, 9, 0.16);
+		shade(C_X + 3, ISLAND_C_Y - 5.6, 0.4, 19, 9, 0.22);
 
 		// Laptop.
 		this.laptop.group.position.set(-3.3, 0, 0.5);
@@ -565,145 +638,110 @@ export class World {
 		this.buildFlow();
 		this.buildPipes();
 		this.buildModelTeaser();
-		this.buildStream();
 		this.root.add(this.clouds.group);
 	}
 
 	/**
-	 * The token path: straight along the belt, then up. A conveyor carries the tokens out past the end of the island,
-	 * round towards you and up over the front door's side of the ring, and in over the model's shoulder to its roof,
-	 * where they tip into the intake.
+	 * The token path: straight along the belt, round one bend into a glass lift at the end of the row, straight up it,
+	 * round another and straight back along the top to the model, and down into its intake. Drawn with a ruler and a
+	 * compass, so the tokens ride a pipe that is all straights and circles.
 	 */
 	private buildFlow() {
 		const m = mats();
 		const y = BELT_Y + TILE_H / 2;
 		const z = LINE_Z;
-		const top = MODEL_ROOF + INTAKE_H;
-		const [hx, hz] = [MODEL_X, MODEL_Z];
-		const pts: [number, number, number][] = [
-			[SLOT_X, y, z],
-			[SLOT_X + 4.6, y, z],
-			[SLOT_X + 7.6, y, z],
-			[SLOT_X + 10.6, y, z],
-			[BELT_END - 0.4, y, z],
-			// Level until the longest token's tail is off the belt, so it can't tip back into it as the climb begins.
-			[BELT_END + 0.5, y, z + 0.14],
-			[BELT_END + 1.2, y + 0.02, z + 0.55],
-			[BELT_END + 2.0, y + 0.3, z + 1.5],
-			[BELT_END + 3.0, y + 1.5, z + 3.5],
-			[BELT_END + 2.9, y + 3.9, z + 5.9],
-			[BELT_END + 1.2, y + 5.6, z + 7.4],
-			[BELT_END - 1.8, y + 7.2, z + 7.6],
-			[BELT_END - 5.2, y + 9.0, z + 6.6],
-			[hx + 10.4, y + 11.4, hz + 4.4],
-			[hx + 7.4, top - 1.6, hz + 2.4],
-			[hx + 5.0, top + 0.2, hz + 0.9],
-			[hx + 3.3, top + 0.34, hz + 0.2],
-			[hx + 2.2, top + 0.3, hz],
-			[hx + 1.5, top + 0.24, hz],
-			[hx + 0.9, top + 0.06, hz],
-			[hx + 0.45, top - 0.32, hz],
-			[hx + 0.14, top - 0.86, hz],
-			[hx, top - 1.6, hz],
-			[hx, top - 2.9, hz]
-		];
-		// Even out the bends between the belt and the last run to the hatch. Tiles are rigid and some are long,
-		// and a sudden tight bend would drive their corners through the rails.
-		const rough = new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(...p)), false, 'centripetal');
-		rough.arcLengthDivisions = 800;
-		const roughLen = rough.getLength();
-		const fine = rough.getSpacedPoints(300);
-		const belt = BELT_END - 0.2 - SLOT_X;
-		const home = (fine.findLastIndex((q) => Math.hypot(q.x - hx, q.z - hz) > 3) / 300) * roughLen;
-		const give = fine.map((_, i) => {
-			const at = (i / 300) * roughLen;
-			return smooth(seg(at, belt, belt + 1.6)) * (1 - smooth(seg(at, home - 1, home)));
+		// Rigid along the belt and up the mast, where it's clamped; free from the top of the mast to the nozzle, hanging
+		// over the two wheels under its own weight; then the fall into the well.
+		const climb = bends([[SLOT_X, y, z], [LIFT_X, y, z], [LIFT_X, LIFT_TOP, z]], [1.6]);
+		const top = (w: V3): V3 => [w[0], w[1] + WRAP, w[2]];
+		const wheel = (w: V3): Solid => ({ roller: w, axis: [0, 0, 1], radius: WHEEL_R, half: 1 });
+		const hose = hang({
+			from: { at: [LIFT_X, LIFT_TOP, z], out: [0, 1, 0], bare: true },
+			to: { at: [MODEL_X, NOZZLE_Y, z], out: [0, 1, 0], bare: true },
+			via: [{ at: top(MAST_WHEEL), slack: 1.12 }, { at: top(MODEL_WHEEL), slack: 1.008 }],
+			r: LIFT_R,
+			slack: 1.14,
+			bend: WRAP,
+			on: [wheel(MAST_WHEEL), wheel(MODEL_WHEEL)]
 		});
-		for (let pass = 0; pass < 60; pass++) {
-			const was = fine.map((q) => q.clone());
-			for (let i = 1; i < 300; i++) fine[i].lerp(this.v1.copy(was[i - 1]).add(was[i + 1]).multiplyScalar(0.5), give[i] * 0.5);
-		}
-		this.flow = new THREE.CatmullRomCurve3(fine.filter((_, i) => i % 2 === 0), false, 'centripetal');
-		this.flow.arcLengthDivisions = 1200;
+		const fall = new THREE.LineCurve3(new THREE.Vector3(MODEL_X, NOZZLE_Y, z), new THREE.Vector3(MODEL_X, INTAKE_TOP - 3, z));
+		const flow = new THREE.CurvePath<THREE.Vector3>();
+		flow.add(climb);
+		flow.add(hose);
+		flow.add(fall);
+		this.flow = flow;
+		this.flow.arcLengthDivisions = 3000;
 		this.flowLen = this.flow.getLength();
+		const nozzleS = climb.getLength() + hose.getLength();
+		// The lowest the hose hangs between the wheels, for the map's mark.
+		for (let i = 0; i <= 200; i++) {
+			const p = hose.getPointAt(i / 200);
+			if (p.x < MAST_WHEEL[0] && p.x > MODEL_WHEEL[0] && p.y < this.sagAt[1]) this.sagAt = p.toArray() as V3;
+		}
 
 		// The safety check stands where the path is about to leave the island, square to it.
-		let archU = 0;
-		while (this.flow.getPointAt(archU).x < SAFETY_X) archU += 0.001;
-		const archAt = this.flow.getPointAt(archU);
-		const archAlong = this.flow.getTangentAt(archU);
-		const archTurn = -Math.atan2(archAlong.z, archAlong.x);
-		this.safety = new SafetyArch(-archTurn + 0.2);
-		this.safety.group.position.set(archAt.x, ISLAND_C_Y, archAt.z);
-		this.safety.group.rotation.y = archTurn;
+		const archU = (SAFETY_X - SLOT_X) / this.flowLen;
+		this.safety = new SafetyArch(0.2);
+		this.safety.group.position.set(SAFETY_X, ISLAND_C_Y, z);
 		this.root.add(this.safety.group);
 		this.safetyS = archU * this.flowLen;
 
-		// Open channel for everything past the belt.
-		const u0 = (BELT_END - 0.25 - SLOT_X) / this.flowLen;
-		const samples: THREE.Vector3[] = [];
+		// The hose: warm clear vinyl from just past the arch to the nozzle over the intake's mouth.
+		const mouth = (SAFETY_X + 0.75 - SLOT_X) / this.flowLen;
 		const lip = this.flowLipU();
 		this.lipS = lip * this.flowLen;
-		for (let i = 0; i <= 160; i++) samples.push(this.flow.getPointAt(lerp(u0, lip, i / 160)));
-		const ribbonCurve = new THREE.CatmullRomCurve3(samples, false, 'centripetal');
-		ribbonCurve.arcLengthDivisions = 800;
-		const W = 0.5;
-		const down = -TILE_H / 2 - 0.015;
-		const rail = 0.17;
-		const profile: [number, number][] = [
-			[-W, down + rail],
-			[-W + 0.025, down + rail + 0.03],
-			[-W + 0.06, down + rail],
-			[-W + 0.07, down + 0.055],
-			[-W + 0.11, down + 0.02],
-			[W - 0.11, down + 0.02],
-			[W - 0.07, down + 0.055],
-			[W - 0.06, down + rail],
-			[W - 0.025, down + rail + 0.03],
-			[W, down + rail],
-			[W - 0.03, down - 0.02],
-			[W - 0.12, down - 0.055],
-			[-W + 0.12, down - 0.055],
-			[-W + 0.03, down - 0.02]
-		];
-		const arrows = document.createElement('canvas');
-		arrows.width = arrows.height = 128;
-		const ac = arrows.getContext('2d')!;
-		ac.fillStyle = '#000';
-		ac.fillRect(0, 0, 128, 128);
-		ac.strokeStyle = '#fff';
-		ac.lineWidth = 11;
-		ac.lineCap = 'round';
-		ac.lineJoin = 'round';
-		ac.beginPath();
-		ac.moveTo(46, 30);
-		ac.lineTo(82, 64);
-		ac.lineTo(46, 98);
-		ac.stroke();
-		this.ribbonArrows = new THREE.CanvasTexture(arrows);
-		this.ribbonArrows.wrapS = THREE.RepeatWrapping;
-		this.ribbonArrows.wrapT = THREE.ClampToEdgeWrapping;
-		this.ribbonArrows.repeat.set(1 / 1.05, 1);
-		this.ribbonArrows.anisotropy = 8;
-		const ribbonMat = new THREE.MeshPhysicalMaterial({
-			color: '#ff9226',
-			roughness: 0.32,
-			clearcoat: 0.7,
-			clearcoatRoughness: 0.28,
-			emissive: '#ffb066',
-			emissiveMap: this.ribbonArrows,
-			emissiveIntensity: 0.9,
-			side: THREE.DoubleSide
-		});
-		const ribbon = new THREE.Mesh(sweep(ribbonCurve, profile, 320), ribbonMat);
-		// It climbs over the tokenizer's island, and its shadow would lie across the belt in every shot of it.
-		ribbon.castShadow = false;
-		ribbon.receiveShadow = true;
-		this.root.add(ribbon);
+		const tube = new PartOf(this.flow, mouth, nozzleS / this.flowLen);
+		const glass = new THREE.Mesh(
+			new THREE.TubeGeometry(tube, Math.ceil(tube.getLength() / 0.07), LIFT_R, 28),
+			new THREE.MeshPhysicalMaterial({ color: '#ffb466', transparent: true, opacity: 0.34, roughness: 0.08, clearcoat: 1, depthWrite: false, side: THREE.DoubleSide })
+		);
+		glass.name = 'token-lift';
+		glass.renderOrder = 4;
+		this.root.add(glass);
+		const hoops = new Batch();
+		const hoop = ring(LIFT_R + 0.1, LIFT_R + 0.02, 0.08);
+		const Y = new THREE.Vector3(0, 1, 0);
+		const q = new THREE.Quaternion();
+		const e = new THREE.Euler();
+		const len = tube.getLength();
+		const at = (u: number, geo: THREE.BufferGeometry) => {
+			q.setFromUnitVectors(Y, tube.getTangentAt(u));
+			e.setFromQuaternion(q);
+			hoops.add(geo, m.steel, { p: tube.getPointAt(u).toArray() as V3, r: [e.x, e.y, e.z] });
+		};
+		// Clamped up the mast: a ring round the hose every so often, on an arm back to the mast.
+		const upFrom = LIFT_X - 1.6 - (SAFETY_X + 0.75) + Math.PI * 0.8;
+		const climbFrom = (upFrom + 0.8) / len;
+		const climbTo = (upFrom + LIFT_TOP - y - 1.6 - 0.4) / len;
+		const poleZ = z - 1.15;
+		const n = Math.round((climbTo - climbFrom) * len / 2.4);
+		for (let i = 0; i <= n; i++) {
+			const u = climbFrom + ((climbTo - climbFrom) * i) / n;
+			at(u, hoop);
+			const p = tube.getPointAt(u);
+			hoops.add(rbox(0.08, 0.08, z - LIFT_R - 0.1 - poleZ, 0.02, 1), m.steelSoft, { p: [p.x, p.y, (z - LIFT_R - 0.1 + poleZ) / 2] });
+			hoops.add(rbox(p.x - MAST_WHEEL[0], 0.08, 0.08, 0.02, 1), m.steelSoft, { p: [(p.x + MAST_WHEEL[0]) / 2, p.y, poleZ] });
+		}
+		const collar = ring(LIFT_R + 0.22, LIFT_R + 0.02, 0.24);
+		at(0, collar);
+		this.root.add(hoops.build('lift-hoops'));
 
-		// Stand linking the channel to the island so it never just floats out of the belt.
+		// The mast: a pole behind the hose from the island to the wheel's axle, and the wheel.
+		const mast = new Batch();
+		const mastTop = MAST_WHEEL[1] + 0.25;
+		mast.add(new THREE.CylinderGeometry(0.13, 0.16, mastTop - ISLAND_C_Y, 16), m.steel, { p: [MAST_WHEEL[0], (mastTop + ISLAND_C_Y) / 2, poleZ] });
+		mast.add(rbox(0.9, 0.12, 0.9, 0.04, 2), m.steelSoft, { p: [MAST_WHEEL[0], ISLAND_C_Y + 0.06, poleZ] });
+		const axle = new THREE.CylinderGeometry(0.09, 0.09, z + 0.75 - poleZ, 14);
+		mast.add(axle, m.steelSoft, { p: [MAST_WHEEL[0], MAST_WHEEL[1], (z + 0.75 + poleZ) / 2], r: [Math.PI / 2, 0, 0] });
+		buildWheel(mast, MAST_WHEEL, WHEEL_R, 1.0);
+		this.root.add(mast.build('mast'));
+
+		// A steel trough from the end of the belt over the arch's floor to the mouth of the lift, so nothing crosses the gap
+		// on air, and a stand linking it to the island.
 		const b = new Batch();
-		b.add(rbox(0.9, 0.5, 1.2, 0.08, 3), m.steelSoft, { p: [BELT_END + 0.1, BELT_Y - 0.28, LINE_Z] });
+		const trough = SAFETY_X + 0.75 - BELT_END;
+		b.add(rbox(trough, 0.06, 1.1, 0.02, 2), m.steelSoft, { p: [BELT_END + trough / 2, BELT_Y - 0.03, z] });
+		b.add(rbox(0.9, 0.5, 1.2, 0.08, 3), m.steelSoft, { p: [BELT_END + 0.1, BELT_Y - 0.28, z] });
 		this.root.add(b.build('channel-mount'));
 
 		// The rest of the request, thousands more tiles than anyone can draw.
@@ -718,12 +756,11 @@ export class World {
 		this.root.add(this.rest);
 	}
 
-	/** Where the channel ends: just past the intake's near wall, tipping over into the well. */
+	/** Where the tokens leave the nozzle over the intake's mouth and fall free into the well. */
 	private flowLipU() {
-		for (let i = 0; i <= 400; i++) {
-			const u = 0.6 + (i / 400) * 0.4;
-			const p = this.flow.getPointAt(u);
-			if (Math.abs(p.x - MODEL_X) < INTAKE_HALF - 0.32 && Math.abs(p.z - MODEL_Z) < INTAKE_HALF) return u;
+		for (let i = 0; i <= 2000; i++) {
+			const u = 0.7 + (i / 2000) * 0.3;
+			if (this.flow.getPointAt(u).y < LIP_Y && Math.abs(this.flow.getPointAt(u).x - MODEL_X) < 0.01) return u;
 		}
 		return 1;
 	}
@@ -731,21 +768,35 @@ export class World {
 	private buildPipes() {
 		const m = mats();
 
-		// The outbound line, warm. One unbroken run past the easel from the harness to the island's edge, where it lifts off.
+		// The outbound line, warm: out of the harness, down onto the island, round the front of the easel, and straight off
+		// the island's edge, dead level, into the foot of the wire on the next islet.
 		const LINE_R = 0.078;
-		const lift: V3 = [7.66, 0.2, 1.3];
-		const out = curve([
-			...leaving([HARNESS_POS.x + HW / 2, PORT_Y, HARNESS_POS.z + PORT_OUT_Z], [1, 0, 0], LINE_R),
-			[3.2, 0.22, 0.06],
-			[3.62, 0.085, 0.56],
-			[4.2, 0.085, 1.2],
-			[4.9, 0.085, 1.46],
-			[6.7, 0.085, 1.46],
-			[7.2, 0.1, 1.4],
-			lift
-		]);
+		const port: V3 = [HARNESS_POS.x + HW / 2, PORT_Y, HARNESS_POS.z + PORT_OUT_Z];
+		const standFace: V3 = [TUNNEL_X + 0.1 - 0.25, ISLET_Y + 0.26, LINE_Z];
+		const islet = slab(ISLET_OUTLINE, ISLET_Y, 0.46, [WIRE_X, 0]);
+		const B = slab(B_OUTLINE, ISLAND_B_Y, 0.62, [WIRE_X, 0]);
+		const C = slab(C_OUTLINE, ISLAND_C_Y, 0.62, [C_X, 0]);
+		const harness: Solid = { min: [-0.42, 0, -1.92], max: [2.62, 3.9, 0.62] };
+		const easel: Solid = { min: [4.45, 0, 0.17], max: [7.05, 3.4, 1.27] };
+		const server: Solid = { min: [6.49, 0, -1.33], max: [7.91, 1.45, -0.11] };
+		const R = LINE_R;
+		// Lying on the floor round the front of the easel, then off your island's edge, across the gap, and up onto the
+		// islet into the foot of the wire.
+		const out = hang({
+			from: { at: port, out: [1, 0, 0] },
+			to: { at: standFace, out: [-1, 0, 0] },
+			via: [
+				{ at: [3.7, R, 0.9], slack: 1.03 },
+				{ at: [5.75, R, 1.6], slack: 1.0 },
+				{ at: [7.8, R, 1.2], slack: 1.0 }
+			],
+			r: R,
+			slack: 1.015,
+			bend: 0.5,
+			on: [HOME, islet, harness, easel, server]
+		});
 		this.routeOut = out;
-		const outTube = new THREE.Mesh(new THREE.TubeGeometry(out, 120, LINE_R, 16), m.orangeGlow);
+		const outTube = new THREE.Mesh(new THREE.TubeGeometry(out, Math.ceil(out.getLength() / 0.05), LINE_R, 16), m.orangeGlow);
 		outTube.castShadow = true;
 		this.root.add(outTube);
 		const fittings = (parts: (b: Batch) => void) => {
@@ -753,52 +804,33 @@ export class World {
 			parts(b);
 			this.root.add(b.build('fittings'));
 		};
-		// Off the edge of your island, up through the open sky beside the wire's islet, and over onto it, into the foot of the tunnel.
-		const standFace: V3 = [TUNNEL_X + 0.1 - 0.25, ISLET_Y + 0.26, LINE_Z];
 		fittings((b) => fitting(b, standFace, [-1, 0, 0], LINE_R, { flange: 1.9 }));
-		const up = curve([
-			lift,
-			[8.2, 0.42, 1.22],
-			[8.85, 1.3, 1.06],
-			[9.25, 3.0, 0.95],
-			[9.35, 5.0, 0.9],
-			[9.45, 6.3, 0.9],
-			[9.85, 6.64, 0.9],
-			...leaving(standFace, [-1, 0, 0], LINE_R).reverse()
-		]);
-		this.routeUnder = up;
-		const upTube = new THREE.Mesh(new THREE.TubeGeometry(up, 90, LINE_R, 16), m.orangeGlow);
-		upTube.castShadow = true;
-		this.root.add(upTube);
 
-		// Gateway to the chat template: out of the rear wall, round behind the front door's island, up behind the far end of
-		// the tokenizer's, over onto it, and along its back to the template.
+		// Gateway to the chat template: out of the rear wall, straight back, along behind both islands, and forward into the template.
 		const gateRear: V3 = [GATEWAY_X, ISLAND_B_Y + 0.7, LINE_Z - 1.1];
 		const templateRear: V3 = [TEMPLATE_X, ISLAND_C_Y + 0.45, LINE_Z - 0.95];
-		const behind = -3.85;
 		fittings((b) => fitting(b, gateRear, [0, 0, -1], LINE_R));
 		fittings((b) => fitting(b, templateRear, [0, 0, -1], LINE_R));
-		const down = curve([
-			...leaving(gateRear, [0, 0, -1], LINE_R),
-			[GATEWAY_X, ISLAND_B_Y + 0.62, LINE_Z - 1.9],
-			[GATEWAY_X + 0.5, ISLAND_B_Y + 0.8, behind + 0.4],
-			[GATEWAY_X + 1.8, ISLAND_B_Y + 1.6, behind],
-			[C_X + 10.1, ISLAND_B_Y + 3.6, behind],
-			[C_X + 10.0, ISLAND_C_Y - 1.6, behind],
-			[C_X + 9.7, ISLAND_C_Y - 0.2, behind + 0.1],
-			[C_X + 9.3, ISLAND_C_Y + 0.25, behind + 0.6],
-			[C_X + 8.6, ISLAND_C_Y + 0.085, -2.5],
-			[C_X + 5, ISLAND_C_Y + 0.085, -2.25],
-			[C_X - 1.2, ISLAND_C_Y + 0.085, -2.1],
-			[C_X - 2.7, ISLAND_C_Y + 0.085, -1.75],
-			[C_X - 3.3, ISLAND_C_Y + 0.2, -1.12],
-			...leaving(templateRear, [0, 0, -1], LINE_R).reverse()
-		]);
-		const downTube = new THREE.Mesh(new THREE.TubeGeometry(down, 260, LINE_R, 16), m.orangeGlow);
+		// Down off the back of the gateway onto the floor, along behind it, across the gap between the islands, and up into
+		// the template's back.
+		const down = hang({
+			from: { at: gateRear, out: [0, 0, -1] },
+			to: { at: templateRear, out: [0, 0, -1] },
+			via: [
+				{ at: [GATEWAY_X + 1.2, ISLAND_B_Y + R, -1.35], slack: 1.03 },
+				{ at: [TEMPLATE_X - 1.2, ISLAND_C_Y + R, -1.3], slack: 1.012 }
+			],
+			r: R,
+			slack: 1.03,
+			bend: 0.5,
+			on: [B, C]
+		});
+		const downTube = new THREE.Mesh(new THREE.TubeGeometry(down, Math.ceil(down.getLength() / 0.05), LINE_R, 16), m.orangeGlow);
 		downTube.castShadow = true;
 		this.root.add(downTube);
 		this.downCurve = down;
-		this.downTight = [gateRear, [C_X + 9.4, ISLAND_C_Y + 0.1, -3.2] as V3, templateRear].map((p) => new THREE.Vector3(...p));
+		this.downLen = down.getLength();
+		this.downTight = [gateRear, templateRear].map((p) => new THREE.Vector3(...p));
 
 		// What travels down that pipe: a slug of request, swelling the tube as it goes.
 		const slugMat = new THREE.MeshPhysicalMaterial({ color: '#ffb35c', roughness: 0.2, clearcoat: 1, emissive: '#ff8a1a', emissiveIntensity: 1.5 });
@@ -885,27 +917,36 @@ export class World {
 		this.chevron = new THREE.CanvasTexture(canvas);
 		this.chevron.wrapS = THREE.RepeatWrapping;
 		this.chevron.wrapT = THREE.RepeatWrapping;
-		const ret = new THREE.CatmullRomCurve3(RETURN_POINTS.map((p) => new THREE.Vector3(...p)), false, 'centripetal');
+		const ret = returnPath();
+		const rollers = new Batch();
+		buildRoller(rollers, RETURN_ROLLER);
+		buildRoller(rollers, CALL_ROLLER);
+		this.root.add(rollers.build('rollers'));
 		const len = ret.getLength();
 		const retMat = (m.greenGlow as THREE.MeshPhysicalMaterial).clone();
 		retMat.emissiveMap = this.chevron;
 		retMat.emissive.set('#b9ffd6');
 		retMat.emissiveIntensity = 1.0;
 		this.chevron.repeat.set(len / 0.62, 2);
-		const backing = new THREE.Mesh(new THREE.TubeGeometry(ret, 320, 0.115, 20), retMat);
+		const segments = Math.ceil(len / 0.06);
+		const backing = new THREE.Mesh(new THREE.TubeGeometry(ret, segments, 0.115, 20), retMat);
 		backing.castShadow = true;
 		backing.name = 'return-loop';
 		this.root.add(backing);
 		this.loopMeshes = [backing];
 		const haze = new THREE.Mesh(
-			new THREE.TubeGeometry(ret, 320, 0.115 * 1.3, 20),
+			new THREE.TubeGeometry(ret, segments, 0.115 * 1.3, 20),
 			new THREE.MeshBasicMaterial({ color: color.green, transparent: true, opacity: 0.16, depthWrite: false })
 		);
 		this.root.add(haze);
 		this.loopMeshes.push(haze);
 	}
 
-	/** The model, crowning the ring above your laptop: the brain on its pedestal, and the intake on its roof. */
+	/**
+	 * The model, at the top of the axis through your laptop: the brain on its pedestal, the intake on its roof, and the
+	 * reply's glass column, straight down out of the underside of its island into the harness's roof. The column stands
+	 * from the first frame, like the green loop, and is explained when it's used.
+	 */
 	private buildModelTeaser() {
 		const m = mats();
 		const x = MODEL_X;
@@ -913,45 +954,36 @@ export class World {
 		this.brain.group.position.set(x, MODEL_ROOF - BRAIN_SEAT, z);
 		this.root.add(this.brain.group);
 		this.buildIntake(x, MODEL_ROOF, z);
-		// A steel post on the roof, beside the intake, carrying the end of the ramp, so it is held up by something.
+		// A gantry on the intake's rim: two legs, an axle across them with the hose's wheel on it, and a nozzle on an arm
+		// below the wheel, where the hose ends and the tokens fall out into the well.
 		const post = new Batch();
-		const leg = INTAKE_H - 0.06;
-		post.add(rbox(0.34, 0.08, 1.4, 0.03, 2), m.steel, { p: [x + 2.02, MODEL_ROOF + leg + 0.02, z] });
-		for (const s of [-0.58, 0.58]) post.add(rbox(0.12, leg, 0.12, 0.03, 2), m.steelSoft, { p: [x + 2.02, MODEL_ROOF + leg / 2, z + s] });
+		const [wx, wy] = MODEL_WHEEL;
+		const leg = wy + 0.2 - INTAKE_TOP;
+		for (const s of [-1.48, 1.48]) post.add(rbox(0.14, leg, 0.14, 0.03, 2), m.steelSoft, { p: [wx, INTAKE_TOP + leg / 2, z + s] });
+		post.add(new THREE.CylinderGeometry(0.08, 0.08, 3.1, 14), m.steelSoft, { p: [wx, wy, z], r: [Math.PI / 2, 0, 0] });
+		buildWheel(post, MODEL_WHEEL, WHEEL_R, 1.0);
+		const armY = NOZZLE_Y - 0.25;
+		post.add(rbox(0.1, 0.1, 2.96, 0.03, 1), m.steelSoft, { p: [wx, armY, z] });
+		post.add(rbox(wx - x - 0.45, 0.1, 0.1, 0.03, 1), m.steelSoft, { p: [(wx + x + 0.45) / 2, armY, z] });
+		post.add(new THREE.CylinderGeometry(LIFT_R + 0.1, LIFT_R + 0.06, NOZZLE_Y - LIP_Y + 0.1, 28, 1, true), m.steel, { p: [x, (NOZZLE_Y + LIP_Y) / 2, z] });
+		post.add(ring(LIFT_R + 0.2, LIFT_R + 0.02, 0.18), m.steel, { p: [x, NOZZLE_Y + 0.02, z] });
 		this.root.add(post.build('chute-post'));
-	}
 
-	/**
-	 * The reply's way home, from the model's pedestal down the left of the ring to the harness's roof: glass, so what
-	 * comes down it can be seen. It stands from the first frame, like the green loop, and is explained when it's used.
-	 */
-	private buildStream() {
-		const m = mats();
-		const stream = new THREE.CatmullRomCurve3(STREAM_POINTS.map((p) => new THREE.Vector3(...p)), false, 'centripetal');
-		stream.arcLengthDivisions = 600;
+		const stream = new THREE.LineCurve3(new THREE.Vector3(...STREAM_TOP), new THREE.Vector3(...STREAM_BOTTOM));
 		this.stream = stream;
 		const glass = new THREE.Mesh(
-			new THREE.TubeGeometry(stream, 300, 0.5, 28),
+			new THREE.TubeGeometry(stream, 2, 0.5, 36),
 			new THREE.MeshPhysicalMaterial({ color: '#7fb4ea', transparent: true, opacity: 0.42, roughness: 0.08, clearcoat: 1, depthWrite: false, side: THREE.DoubleSide })
 		);
 		glass.name = 'stream';
 		glass.renderOrder = 4;
 		this.root.add(glass);
-		// Steel hoops along it, a collar where it leaves the pedestal, and another where it meets the harness's roof.
 		const hoops = new Batch();
-		const hoop = ring(0.6, 0.52, 0.08);
-		const Y = new THREE.Vector3(0, 1, 0);
-		const q = new THREE.Quaternion();
-		const len = stream.getLength();
-		for (let d = 2.2; d < len - 1.5; d += 3.4) {
-			const at = d / len;
-			q.setFromUnitVectors(Y, stream.getTangentAt(at));
-			const e = new THREE.Euler().setFromQuaternion(q);
-			hoops.add(hoop, m.steel, { p: stream.getPointAt(at).toArray() as V3, r: [e.x, e.y, e.z] });
-		}
-		const [fx, fy, fz] = MODEL_FLANK;
-		hoops.add(ring(0.74, 0.52, 0.26), m.steel, { p: [fx - 0.1, fy, fz], r: [0, 0, Math.PI / 2] });
-		hoops.add(ring(0.68, 0.52, 0.2), m.steel, { p: [1.1, 4.0, -0.75] });
+		const [ax, top, az] = STREAM_TOP;
+		const bottom = STREAM_BOTTOM[1];
+		for (let y = bottom + 2.8; y < top - 1; y += 2.8) hoops.add(ring(0.6, 0.52, 0.08), m.steel, { p: [ax, y, az] });
+		hoops.add(ring(0.74, 0.52, 0.26), m.steel, { p: [ax, top + 0.05, az] });
+		hoops.add(ring(0.68, 0.52, 0.2), m.steel, { p: [ax, bottom + 0.1, az] });
 		this.root.add(hoops.build('stream-hoops'));
 	}
 
@@ -1057,7 +1089,8 @@ export class World {
 	}
 
 	/** What the reader can press, and when. Tell the page about anything that belongs to it. */
-	onPress: (what: 'wheel' | 'enter') => void = () => {};
+	/** A press on the wheel or the finale's Enter; a conversation's spin can say which slice it lands in. */
+	onPress: (what: 'wheel' | 'enter', want?: number) => void = () => {};
 	/** On a phone, how far down the screen the words begin at this point in the story. The page measures it. */
 	roomAt: ((T: number) => number) | null = null;
 	/** During a peek at another moment of the story, the moment the reader is at: its card decides where the picture goes. */
@@ -1198,6 +1231,24 @@ export class World {
 		};
 	}
 
+	private placed = new Map<string, [number, number, number]>();
+	private placeBox = new THREE.Box3();
+	/**
+	 * The middle of a named thing on the story's road, for a sound to come from: found once, then remembered. Null if
+	 * there's nothing by that name yet.
+	 */
+	placeOf(name: string): [number, number, number] | null {
+		const known = this.placed.get(name);
+		if (known) return known;
+		const o = this.root.getObjectByName(name) ?? this.cluster.group.getObjectByName(name);
+		if (!o) return null;
+		o.updateWorldMatrix(true, true);
+		const c = this.placeBox.setFromObject(o).getCenter(new THREE.Vector3());
+		const p: [number, number, number] = [c.x, c.y, c.z];
+		this.placed.set(name, p);
+		return p;
+	}
+
 	/** The top of the model, wherever the world has it: a flight into it or up out of it looks down on it from there. */
 	modelTop(): [number, number, number] {
 		const box = this.part.setFromObject(this.brain.group);
@@ -1286,7 +1337,7 @@ export class World {
 	 * tiles, wakes the brain, spins the wheel. False if there's nothing by those names in the scene now. cutBack is for a
 	 * peek at another moment of the story, which the page ends with a cut.
 	 */
-	visit(cue: { names: string[]; together?: boolean; hold?: number; act?: string; index?: number; cutBack?: boolean; still?: boolean; wide?: boolean }) {
+	visit(cue: { names: string[]; together?: boolean; hold?: number; act?: string; index?: number; cutBack?: boolean; still?: boolean; wide?: boolean; front?: boolean }) {
 		return this.visits.start({
 			names: cue.names,
 			together: cue.together,
@@ -1294,6 +1345,7 @@ export class World {
 			cutBack: cue.cutBack,
 			still: cue.still,
 			wide: cue.wide,
+			front: cue.front,
 			act: this.actFor(cue.act, cue.index),
 			fly: !this.trackIn
 		});
@@ -1335,7 +1387,7 @@ export class World {
 		}
 		if (act === 'flip') return () => this.tiles.forEach((_, i) => this.flipTile(i));
 		if (act === 'excite') return () => this.brain.excite();
-		if (act === 'spin') return () => this.onPress('wheel');
+		if (act === 'spin') return () => this.onPress('wheel', index);
 		return undefined;
 	}
 
@@ -1360,6 +1412,26 @@ export class World {
 		return { step: this.finale.running ? this.finale.step : -1, laps: this.finale.laps };
 	}
 
+	/** Tells the last chapter's lap stop by stop: the token goes round to stop i (9 finishes the lap). */
+	tellStop(i: number) {
+		this.finale.tell(i);
+	}
+
+	/** Names one of the four gates in "Intent is not authority": its beacon flares. */
+	nameGate(i: number) {
+		this.back.nameGate(i);
+	}
+
+	/** Names one of the front door's five checks: its blade nods out, its lamp flares. */
+	nameCheck(i: number) {
+		this.gateway.name(i);
+	}
+
+	/** Names one of the seven kinds of memory on its card: its drawer comes out. */
+	nameMemory(i: number) {
+		this.back.nameMemory(i);
+	}
+
 	setCache(on: boolean) {
 		this.back.setCache(on);
 	}
@@ -1368,8 +1440,8 @@ export class World {
 		this.cluster.setTemperature(temperature);
 	}
 
-	spinWheel(reduced: boolean) {
-		return this.cluster.spinWheel(reduced);
+	spinWheel(reduced: boolean, want?: number) {
+		return this.cluster.spinWheel(reduced, want);
 	}
 
 	setHarness(id: HarnessId) {
@@ -1514,7 +1586,6 @@ export class World {
 			}
 
 			this.chevron.offset.x = time * 0.42;
-			this.ribbonArrows.offset.x = -time * 0.5;
 		}
 
 		// A side trip borrows the first island, so it plays over whatever the story has posed there.
@@ -1522,6 +1593,7 @@ export class World {
 
 		this.state.form = formAt(T);
 		this.visits.apply(dt, time);
+		this.maybeDrawMap(T, this.stopAt(T));
 		if (this.flight) {
 			const seen = this.voyage.apply(this.stage.camera, this.flight, this.stage.width, this.stage.height);
 			this.stage.focusLight(seen.look, seen.reach);
@@ -1687,9 +1759,9 @@ export class World {
 		const scale = lerp(1, 0.62, smooth(seg(T, 3.58, 3.76)));
 		const u = 1 - moveK;
 		const P0 = DOC_POS;
-		// Up and out: it clears the stand and the island's edge, rises past the MCP server, and comes level with the wire's mouth.
-		const dropX = u * u * u * P0.x + 3 * u * u * moveK * 8.4 + 3 * u * moveK * moveK * (TUNNEL_X - 3.2) + moveK * moveK * moveK * (TUNNEL_X - 1.05);
-		const docY = u * u * u * P0.y + 3 * u * u * moveK * (P0.y + 2.6) + 3 * u * moveK * moveK * (TUNNEL_Y + 0.4) + moveK * moveK * moveK * TUNNEL_Y;
+		// Up and out over the stand and the island's edge, then level with the wire's mouth, on the next islet along.
+		const dropX = u * u * u * P0.x + 3 * u * u * moveK * 8.2 + 3 * u * moveK * moveK * (TUNNEL_X - 3) + moveK * moveK * moveK * (TUNNEL_X - 1.05);
+		const docY = u * u * u * P0.y + 3 * u * u * moveK * (P0.y + 2.2) + 3 * u * moveK * moveK * (TUNNEL_Y + 0.5) + moveK * moveK * moveK * TUNNEL_Y;
 		const docX = lerp(dropX, TUNNEL_X + 1.1, inOut(enterK));
 		const dg = this.doc.group;
 		// It rolls up on the way down. The roll forms at the page's foot, so lifting the page by that much puts the roll on the tube's axis.
@@ -1758,14 +1830,19 @@ export class World {
 	private updateBulges(T: number) {
 		const k = seg(T, 5.6, 6.02);
 		this.bulges.forEach((slug, i) => {
-			const u = inOut(k) * 1.18 - i * 0.05;
+			// A slug's length apart, however long the pipe is.
+			const u = inOut(k) * 1.18 - (i * 0.95) / this.downLen;
 			slug.visible = u > 0 && u < 1;
 			if (!slug.visible) return;
 			slug.position.copy(this.downCurve.getPointAt(u));
 			slug.quaternion.setFromUnitVectors(this.yAxis, this.downCurve.getTangentAt(u));
-			// It swells the pipe where the pipe is free, and squeezes thin to get through a fitting or an island.
+			// It swells the pipe where the pipe is free, and squeezes thin to get through a fitting, or where the pipe lies on
+			// an island's floor.
 			const free = Math.min(...this.downTight.map((at) => slug.position.distanceTo(at)));
-			const thin = THREE.MathUtils.lerp(0.078 / (slug.geometry as THREE.CapsuleGeometry).parameters.radius, 1, smooth(seg(free, 0.5, 1.4)));
+			const { x, y } = slug.position;
+			const floor = x > 14.7 && x < 22.1 ? ISLAND_B_Y : x > 22.75 ? ISLAND_C_Y : -Infinity;
+			const room = Math.min(smooth(seg(free, 0.5, 1.4)), smooth(seg(y - floor, 0.1, 0.24)));
+			const thin = THREE.MathUtils.lerp(0.078 / (slug.geometry as THREE.CapsuleGeometry).parameters.radius, 1, room);
 			slug.scale.set(thin, 1, thin);
 		});
 	}
@@ -1813,7 +1890,7 @@ export class World {
 			// Past the lip nothing is carrying it any more: it falls, and pulls away from the one behind.
 			const past = Math.max(0, s - this.lipS);
 			const u = Math.min(1, (s + past * past * 0.5) / this.flowLen);
-			const f = frameAt(this.flow, u);
+			const f = frameAt(this.flow, u, FLOW_SIDE);
 			target.position.copy(f.p);
 			target.position.addScaledVector(f.up, y - TILE_H / 2);
 			this.mat.makeBasis(f.t, f.up, f.side.clone().negate());
@@ -1845,7 +1922,8 @@ export class World {
 			frame(s, tile.group, rest * low * size + (1 - size) * 0.08 + pop + hop + bounce + idle + leap);
 			tile.group.rotateX((flip + turned) * Math.PI);
 			tile.group.scale.set((1 + squash * 0.04) * size, low * size, (1 + squash * 0.12) * size);
-			tile.group.visible = feed > 0 && !this.fallenIn(s, tile.group.position.y);
+			// Behind the slot it's still inside the template, and drawn nowhere: it isn't anywhere either.
+			tile.group.visible = feed > 0 && s + tile.width / 2 > 0 && !this.fallenIn(s, tile.group.position.y);
 		});
 
 		// The gantry walks from one boundary to the next, then stamps.
@@ -1897,12 +1975,142 @@ export class World {
 		this.safety.update(seg(T, 6.84, 6.895), seg(T, 6.895, 6.935), outBack(seg(T, 6.9, 6.95), 2), seen, seen * (1 - through), time);
 	}
 
+	/** Which of the loop's nine stops a moment of the story is at. */
+	private stopAt(T: number) {
+		return [2, 4, 5, 7, 18, 20, 22, 25, 1e9].findIndex((from) => T < from);
+	}
+
 	/** Whether something riding the token path at s has gone over the lip and down past the bottom of the well. */
 	private fallenIn(s: number, y: number) {
 		return s > this.lipS && y < WELL_FLOOR_Y - 0.85;
 	}
 
+	/* ---------- the map in the corner: the world itself, from far off ---------- */
+
+	/** Where the page's map draws itself. Set by the page once it has one; null where there isn't one. */
+	mapCanvas: HTMLCanvasElement | null = null;
+	/** A phone draws its map only when the reader reaches another stop, not on a clock. */
+	mapSeldom = false;
+	private map = new MiniMap(new THREE.Vector3(-5.5, 4, 0), { x: 51, y: 28 }, 6, 5);
+	private mapAt = -Infinity;
+	private mapStop = -1;
+	/** The loop's thin pipes again, as thick as the glass, drawn only into the map: at its size the real ones are hairs. */
+	private mapPipes = new THREE.Group();
+
+	/** The page's map canvas, or none; a phone's is drawn only when the reader reaches another stop. */
+	setMapCanvas(canvas: HTMLCanvasElement | null, seldom: boolean) {
+		this.mapCanvas = canvas;
+		this.mapSeldom = seldom;
+		this.mapStop = -1;
+	}
+
+	private buildMapPipes() {
+		const m = mats();
+		const { gatePath, back } = this.back.finaleRoute;
+		const thick = (path: THREE.Curve<THREE.Vector3>, mat: THREE.Material) => {
+			const mesh = new THREE.Mesh(new THREE.TubeGeometry(path, Math.ceil(path.getLength() / 0.4), 0.42, 8), mat);
+			this.mapPipes.add(mesh);
+		};
+		thick(this.routeOut, m.orangeGlow);
+		thick(this.downCurve, m.orangeGlow);
+		thick(gatePath, m.orangeGlow);
+		thick(back, m.greenGlow);
+		this.mapPipes.visible = false;
+		this.root.add(this.mapPipes);
+	}
+
+	/**
+	 * Where the reader's token is on the loop at a moment of the story, in the world: along the route the request takes,
+	 * through the model, down the axis, round your tools and back up to the harness, where it stays for the turns after.
+	 */
+	private routeAt(T: number) {
+		const low = (p: V3): V3 => [p[0] + LOWER[0], p[1] + LOWER[1], p[2] + LOWER[2]];
+		const dock = low([-60.6, -10.7, 0.7]);
+		const route: [number, V3][] = [
+			[0, [-3.3, 1.2, 0.5]],
+			[2, [HARNESS_POS.x, 2, HARNESS_POS.z]],
+			[3.5, [DOC_POS.x, 1.6, LINE_Z]],
+			[4, [TUNNEL_X, TUNNEL_Y, LINE_Z]],
+			[4.9, [TUNNEL_X + TUNNEL_L, TUNNEL_Y, LINE_Z]],
+			[5.3, [GATEWAY_X, 1.6, LINE_Z]],
+			[6, [TEMPLATE_X, 0.9, LINE_Z]],
+			[6.86, [BELT_END, 0.9, LINE_Z]],
+			[7.25, [LIFT_X, LIFT_TOP, LINE_Z]],
+			[7.5, this.sagAt],
+			[7.75, [MODEL_WHEEL[0], MODEL_WHEEL[1] + WRAP, LINE_Z]],
+			[7.95, [MODEL_X, MODEL_ROOF - 2, MODEL_Z]],
+			[18.6, [MODEL_X, MODEL_ROOF - 2, MODEL_Z]],
+			[18.95, [AXIS_X, STREAM_TOP[1], STREAM_TOP[2]]],
+			[19.3, [AXIS_X, 3.5, -0.75]],
+			[19.6, this.back.callCurve.getPointAt(0.12).toArray() as V3],
+			[19.9, this.back.callCurve.getPointAt(0.6).toArray() as V3],
+			[20.04, dock],
+			[21.3, low([-41.4, -12.5, 0.7])],
+			[22.4, low([-24.5, -13.5, 0.7])],
+			[24.6, low([-13.5, -14.69, 3.6])],
+			[25.1, returnPath().getPointAt(0.45).toArray() as V3],
+			[25.42, [HARNESS_POS.x, 1.6, HARNESS_POS.z]]
+		];
+		let i = 0;
+		while (i < route.length - 2 && T >= route[i + 1][0]) i++;
+		const [ta, a] = route[i];
+		const [tb, b] = route[i + 1];
+		const k = Math.min(1, Math.max(0, (T - ta) / (tb - ta)));
+		return this.v4.set(lerp(a[0], b[0], k), lerp(a[1], b[1], k), lerp(a[2], b[2], k));
+	}
+
+	/** Where the reader is on the map, as shares of its width and height, at a moment of the story. */
+	mapMark(T: number) {
+		const c = this.mapCanvas;
+		return c ? this.map.where(this.routeAt(T).clone(), c.width, c.height) : null;
+	}
+
+	/** Where the nine stops are on the map. */
+	mapStops(): { x: number; y: number }[] {
+		const c = this.mapCanvas;
+		if (!c) return [];
+		const at = [0.6, 2.4, 4.4, 5.6, 7.95, 18.97, 20.5, 22.6, 25.08];
+		return at.map((T) => this.map.where(this.routeAt(T).clone(), c.width, c.height));
+	}
+
+	/**
+	 * Draws the map now and then: on a clock outside the model, and whenever the reader reaches another stop. Inside the
+	 * model, and on a side trip, it keeps what it last drew, which the world outside hasn't changed since.
+	 */
+	private maybeDrawMap(T: number, stop: number) {
+		const c = this.mapCanvas;
+		if (!c || this.trackIn) return;
+		const now = performance.now();
+		const inside = T >= DIVE_T && T < EXIT_T;
+		const due = stop !== this.mapStop || (!this.mapSeldom && !inside && now - this.mapAt > 1500);
+		if (!due) return;
+		this.mapAt = now;
+		this.mapStop = stop;
+		this.drawMap(inside);
+	}
+
+	private drawMap(inside: boolean) {
+		const saved: [THREE.Object3D, boolean][] = [this.root, this.cluster.group, this.clouds.group, this.finale.group, this.mapPipes, ...Object.values(this.places).map((p) => p!.group)].map((o) => [o, o.visible]);
+		this.root.visible = true;
+		this.cluster.group.visible = false;
+		this.clouds.group.visible = false;
+		this.finale.group.visible = false;
+		this.mapPipes.visible = true;
+		for (const p of Object.values(this.places)) p!.group.visible = false;
+		const undo = this.back.showForMap();
+		const back = this.back.group.visible;
+		this.back.group.visible = true;
+		// Inside the model the sky is the dark of the machine: the map is always the world outside, by day.
+		if (inside) this.stage.setSky(SKY_A.top, SKY_A.mid, SKY_A.low);
+		this.map.draw(this.stage.renderer, this.stage.scene, this.mapCanvas!);
+		if (inside) this.stage.setSky(SKY_IN.top, SKY_IN.mid, SKY_IN.low);
+		this.back.group.visible = back;
+		undo();
+		for (const [o, v] of saved) o.visible = v;
+	}
+
 	dispose() {
+		this.map.dispose();
 		this.stage.dispose();
 	}
 }

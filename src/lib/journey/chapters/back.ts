@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { Batch } from '../kit/batch';
 import { extrude, rbox, roundedRect, ring } from '../kit/geometry';
 import { color, Lamp, mats } from '../kit/materials';
-import { archBlock, arcPoint, Card, curve, hazard, islandAt, machine, panel, shadowOn, stripes, tube } from '../kit/machines';
+import { archBlock, arcPoint, Card, hazard, islandAt, machine, panel, shadowOn, stripes, tube } from '../kit/machines';
 import { drawPageIcon, font, Label, Surface, type IconData } from '../kit/print';
 import { FINALE_T } from './finale';
 import { gearShape } from '../props/brain';
@@ -11,7 +11,9 @@ import { bell, bounceDown, clamp, hash, inOut, lerp, outBack, outCubic, seg, smo
 import { createCastShadow } from '../props/island';
 import { TEN_AT, TEN_STEP, TEN_TURNS, CALL_IDS, CALLS, HARNESSES, type HarnessId } from '../content';
 import { GATE_ICON } from '../icons';
-import { EASEL_POS, EASEL_TILT, LOWER, RETURN_POINTS, STREAM_POINTS } from '../layout';
+import { EASEL_POS, EASEL_TILT, LOWER, STREAM_BOTTOM } from '../layout';
+import { callPath, RETURN_ROLLER, returnPath } from '../cables';
+import { bends } from '../kit/geometry';
 import type { Shot } from '../rig';
 
 const box = (x: number, y: number, w: number, h: number) => ({ x, y, w, h });
@@ -27,6 +29,9 @@ const TRACK_Z = 0.7;
 const CARTY = GY + 0.2;
 const DOCK_X = -60.6;
 const DOCK_H = 2.3;
+/** A steel riser on the dock's roof, standing clear above the gates, with an elbow at the top the calls' cable plugs into. */
+const RISER: V3 = [DOCK_X + 0.9, GY + 7, TRACK_Z - 0.85];
+const RISER_END: V3 = [RISER[0] + 0.55, RISER[1], RISER[2]];
 /** The dock's mouth: tall enough for a call card on its cart, even leaning as the cart sets off. */
 const DOCK_ARCH = 2.0;
 /** Where the carts run, from inside the dock to the end of the rail, and how far short of a gate they wait: far
@@ -44,9 +49,9 @@ const SCAN_REACH = 3;
 const SCAN_PARK_Y = WY + 4.7;
 const LENS_R = 0.72;
 /** The islands that explain things on the way round, off to the left of the loop, each further on and a little higher. */
-const C_POS: V3 = [-50, 6, -4];
-const M_POS: V3 = [-78, 9, -4];
-const U_POS: V3 = [-108, 12, -4];
+const C_POS: V3 = [-50, 22, -4];
+const M_POS: V3 = [-78, 25, -4];
+const U_POS: V3 = [-108, 28, -4];
 /** Along that island from its centre: the file, the post the pipe plugs into, and the loupe's arm on the post. */
 const FILE_X = 5.5;
 const POST_X = 3.87;
@@ -55,10 +60,10 @@ const LOUPE_ARM = 0.71;
 /** The arm's angle parked up over the pipe, and looking at the changed line. */
 const LOUPE_REST = 2.2;
 const LOUPE_LOOK = -0.554;
-const R_POS: V3 = [-140, 15, -4];
+const R_POS: V3 = [-140, 31, -4];
 /** A bar's tag sits on the top front edge of the bar, this far above its top. */
 const TAG_RISE = 0.2;
-const F_POS: V3 = [-174, 18, -4];
+const F_POS: V3 = [-174, 34, -4];
 /** How high each step's top stands. The lowest still clears the name plates on the fronts, so what climbs them is seen. */
 const STEP_H = [1.3, 1.9, 2.5, 3.1, 3.7];
 
@@ -130,11 +135,11 @@ const SUMMARY_UP: V3 = [0, 0.19 + SUMMARY_HALF * Math.cos(SUMMARY_LEAN), -SUMMAR
 const S_MEM = { az: -12, el: 9, target: rel(M_POS, 0, 3.9, 0), radius: 5.6, ry: 4.3, wide: LEFT, tall: TALL };
 const S_UNK = { az: 10, el: 20, target: rel(U_POS, 0, 1.9, 0.7), radius: 7.6, ry: 4.3, wide: box(0.42, 0.06, 0.58, 0.9), tall: TALL };
 const S_TEN = { az: -10, el: 14, target: rel(R_POS, 0, 2.6, 0.6), radius: 9.2, ry: 4.2, wide: box(0.01, 0.42, 0.98, 0.56), tall: box(0, 0.06, 1, 0.3) };
-const S_FIN = { az: 9, el: 14, target: rel(F_POS, 0, 2.5, 0.8), radius: 10.8, ry: 3.6, wide: box(0.01, 0.4, 0.98, 0.56), tall: TALL };
+const S_FIN = { az: 9, el: 14, target: rel(F_POS, 0, 2.5, 0.8), radius: 10.8, ry: 3.6, wide: box(0.01, 0.33, 0.98, 0.49), tall: TALL };
 /** What the test monitor shows once the whole suite is green. */
 const PASSED = 99;
-/** The whole figure-eight, upright, from a little to its right: the model on top, your laptop at the waist, your tools below. */
-const S_WHOLE = { az: 7, el: 8, target: [2.2, 5.2, 0] as V3, radius: 32, ry: 35.5, wide: box(0.42, 0.09, 0.56, 0.89), tall: box(0, 0.06, 1, 0.43), tallTarget: [2.2, 5.2, 0] as V3, tallRadius: 31, tallRy: 35 };
+/** The whole pinwheel, from in front and a little to its right: the model at the top of the axis, your laptop at its middle, your tools at the bottom. */
+const S_WHOLE = { az: 6, el: 5, target: [-5.5, 4.2, 0] as V3, radius: 48, ry: 28, wide: box(0.42, 0.1, 0.56, 0.84), tall: box(0, 0.06, 1, 0.43), tallTarget: [-5.5, 3.5, 0] as V3, tallRadius: 60, tallRy: 34 };
 const S_END = { az: 29, el: 17, target: [1.9, 1.35, 0.4] as V3, radius: 6.25, ry: 6.25, wide: box(0.4, 0.02, 0.61, 0.94), tall: box(0, 0.05, 1, 0.42) };
 
 export const BACK_SHOTS: Shot[] = [
@@ -411,32 +416,23 @@ export class Back {
 	private spec: HarnessId = 'claude';
 	private rain: THREE.Mesh[] = [];
 	private topCard = new Card(2.7, 1.68, 300);
-	private gatePath = curve([
-		[0.4, 3.2, -1.75],
-		[0.4, 3.2, -2.07],
-		[0.38, 3.22, -2.4],
-		[-0.6, 3.3, -3.4],
-		// Behind your island and down the left of the ring below it, wide and gently enough for the card riding it, round
-		// to the dock at the head of the gates, and down into it.
-		[-6, 0.4, -6.4],
-		[-13, -4.6, -8.4],
-		[-20, -9.6, -9],
-		[-25, -13.4, -7.6],
-		[-26.6, -15.6, -5.2],
-		...(
-			[
-				[DOCK_X - 0.2, GY + 3.9, TRACK_Z - 2.6],
-				[DOCK_X, GY + DOCK_H + 0.85, TRACK_Z - 0.42],
-				[DOCK_X, GY + DOCK_H + 0.55, TRACK_Z],
-				[DOCK_X, GY + DOCK_H + 0.32, TRACK_Z],
-				[DOCK_X, GY + DOCK_H, TRACK_Z]
-			] as V3[]
-		).map(low)
-	]);
-	/** The last of the reply's glass tube, straight down into the harness's roof: what the stream drops through. */
-	private streamEnd = curve(STREAM_POINTS.slice(-5));
+	/**
+	 * The calls' way to the gates: back out of the harness, behind the green pipe, down to just under your island's
+	 * level, along behind it to the left, level, as far as the dock, forward over it, and straight down into it. Straight
+	 * runs and round bends; from in front, a level arm to the left that mirrors the request's row to the right.
+	 */
+	private gatePath = callPath(low(RISER_END));
+	/** The calls' cable, for the map. */
+	get callCurve() {
+		return this.gatePath;
+	}
+	/** The last of the reply's glass column, above the harness's roof: what the stream drops through. */
+	private streamEnd = new THREE.LineCurve3(new THREE.Vector3(STREAM_BOTTOM[0], STREAM_BOTTOM[1] + 9, STREAM_BOTTOM[2]), new THREE.Vector3(...STREAM_BOTTOM));
 	private carrier = new THREE.Group();
 	private gates: Gate[] = [];
+	/** When a conversation last named each gate (the clock's seconds): its beacon flares. */
+	private gateNamedAt = [-10, -10, -10, -10];
+	private gateClock = 0;
 	private bad = new Cart();
 	private good = new Cart();
 	private binSign!: THREE.Group;
@@ -483,7 +479,7 @@ export class Back {
 	private termKey = -1;
 	private exitLamp!: Lamp;
 	private result = new Card(2.5, 1.5, 300);
-	private returnCurve = curve(RETURN_POINTS);
+	private returnCurve = returnPath();
 	private slug!: THREE.Mesh;
 
 	private page = new Card(2.3, 3.1, 330);
@@ -499,7 +495,10 @@ export class Back {
 	private slipTint = SLIPS.map((s) => new THREE.Color(SLIP_TINT[s.kind]));
 	private slipAmber = new THREE.Color(SLIP_TINT.summary);
 
-	private memDrawers: { group: THREE.Group; lamp: Lamp; z: number }[] = [];
+	private memDrawers: { group: THREE.Group; lamp: Lamp; z: number; x: number; out: number }[] = [];
+	/** The drawer a conversation is naming, and when (the clock's seconds): it slides out while it's named. */
+	private memNamed = { i: -1, at: 0 };
+	private memClock = 0;
 
 	private pipeA!: THREE.Mesh;
 	private pipeB!: THREE.Mesh;
@@ -538,17 +537,28 @@ export class Back {
 	private a2 = new THREE.Vector3();
 	private zones: { g: THREE.Object3D; from: number; to: number; home: boolean; whole: boolean; at: V3 }[] = [];
 
-	constructor() {
-		this.buildHatch();
-		this.buildGates();
-		this.buildSandbox();
-		this.buildHome();
-		this.buildCompact();
-		this.buildMemory();
-		this.buildUnknown();
-		this.buildTen();
-		this.buildFinish();
-		this.setHarness('claude');
+	/** Its parts, to be built in this order: a few at a time, so the page can draw a frame between them as it opens. */
+	steps(): (() => void)[] {
+		return [
+			() => {
+				this.buildHatch();
+				this.buildGates();
+			},
+			() => this.buildSandbox(),
+			() => {
+				this.buildHome();
+				this.buildCompact();
+			},
+			() => {
+				this.buildMemory();
+				this.buildUnknown();
+			},
+			() => {
+				this.buildTen();
+				this.buildFinish();
+				this.setHarness('claude');
+			}
+		];
 	}
 
 	/** A part of the world that's only there in its own chapters. at moves it from where it was drawn. */
@@ -571,6 +581,8 @@ export class Back {
 			g.add(slip);
 			this.rain.push(slip);
 		}
+		// The call the harness has just parsed, by name, so a conversation can show it beside the drawer its result goes to.
+		this.topCard.mesh.name = 'call-card';
 		this.carrier.add(this.topCard.mesh);
 		g.add(this.carrier);
 		this.gatePipe = tube(this.gatePath, 0.09, m.orangeGlow, 200);
@@ -600,7 +612,8 @@ export class Back {
 		shade.position.set(-51, GY - 8, 0.4);
 		g.add(shade);
 
-		// Where the pipe lands: calls arrive through the roof and leave on carts through the open end.
+		// Where the cable lands: calls come down a riser through the roof, clear over the gates, and leave on carts
+		// through the open end.
 		const dock = archBlock({ w: 3, d: 3.2, h: DOCK_H, archZ: 0, archD: 1.5, archH: DOCK_ARCH, closedLeft: true });
 		dock.position.set(DOCK_X, GY, TRACK_Z);
 		g.add(dock);
@@ -609,8 +622,13 @@ export class Back {
 		dockSign.position.set(DOCK_X, GY + DOCK_H - 0.4, TRACK_Z + 1.63);
 		g.add(dockSign);
 		const socket = new Batch();
-		fitting(socket, [DOCK_X, GY + DOCK_H, TRACK_Z], [0, 1, 0], 0.09);
+		const [rx, ry, rz] = RISER;
+		socket.add(rbox(0.5, 0.06, 0.5, 0.02, 2), m.steelSoft, { p: [rx, GY + DOCK_H + 0.03, rz] });
+		fitting(socket, RISER_END, [1, 0, 0], 0.09);
 		g.add(socket.build('dock-socket'));
+		const riser = tube(bends([[rx, GY + DOCK_H, rz], [rx, ry, rz], RISER_END], [0.4]), 0.11, m.steel, 40);
+		riser.name = 'dock-riser';
+		g.add(riser);
 
 		const b = new Batch();
 		b.add(rbox(21.4, 0.1, 1.1, 0.03, 2), m.rubber, { p: [-51.3, GY + 0.05, TRACK_Z] });
@@ -693,7 +711,8 @@ export class Back {
 		pane(D, H, [x1, WY + H / 2, 0], Math.PI / 2);
 		// Where the green pipe leaves: results go out of the sandbox through a fitting, not through the glass.
 		const gland = new Batch();
-		gland.add(ring(0.27, 0.11, 0.2, 28), m.steel, { p: [x1, -14.3, 3.45], r: [0, 0, Math.PI / 2] });
+		// Level with the hopper, so the green pipe comes straight through the wall into it.
+		gland.add(ring(0.27, 0.11, 0.2, 28), m.steel, { p: [x1, WY + 0.31, 3.6], r: [0, 0, Math.PI / 2] });
 		this.gland = gland.build('pipe-gland');
 		g.add(this.gland);
 		pane(D, H, [x0, WY + H / 2, 0], Math.PI / 2);
@@ -1113,7 +1132,7 @@ export class Back {
 			const z = cz + 1.2;
 			group.position.set(cx, y, z);
 			g.add(group);
-			this.memDrawers.push({ group, lamp, z });
+			this.memDrawers.push({ group, lamp, z, x: cx, out: 0 });
 		});
 	}
 
@@ -1318,6 +1337,16 @@ export class Back {
 
 	setTurn(i: number) {
 		this.turn = i;
+	}
+
+	/** Names one of the four gates: its beacon flares. */
+	nameGate(i: number) {
+		if (i >= 0 && i < this.gateNamedAt.length) this.gateNamedAt[i] = this.gateClock;
+	}
+
+	/** Names one of the seven kinds of memory: its drawer comes out, the one named before goes back. */
+	nameMemory(i: number) {
+		this.memNamed = { i, at: this.memClock };
 	}
 
 	setCache(on: boolean) {
@@ -1693,6 +1722,16 @@ export class Back {
 	}
 
 	/** The route the last token rides, as far as this half of the world knows it. */
+	/**
+	 * Shows the loop's own parts at rest, and nothing else of this half, for the map in the corner: the gates, the
+	 * workshop and the call pipe, but none of the islands that explain things on the side. Gives back how to undo it.
+	 */
+	showForMap() {
+		const was = this.zones.map((z) => z.g.visible);
+		for (const z of this.zones) z.g.visible = z.whole;
+		return () => this.zones.forEach((z, i) => (z.g.visible = was[i]));
+	}
+
 	get finaleRoute() {
 		return { gatePath: this.gatePath, dock: low([DOCK_X, CARTY + 0.3, TRACK_Z]), trackEnd: low([-41.4, CARTY + 0.3, TRACK_Z]), back: this.returnCurve };
 	}
@@ -1788,7 +1827,7 @@ export class Back {
 				this.carrier.position.copy(this.a);
 				if (go > 0) {
 					// Up and over the machine's roof, and down onto the pipe behind it, riding high enough to clear it.
-					const JOIN = 0.14;
+					const JOIN = 4.6 / this.gatePath.getLength();
 					// Lifted off the pipe square to it, not straight up: where it drops steeply to the gates, straight up would
 					// put the card back against it.
 					const at = Math.max(go, JOIN);
@@ -1798,13 +1837,13 @@ export class Back {
 					if (lift.y < 0) lift.negate();
 					// Where it runs straight down into the dock, straight up is clear of it again.
 					lift.lerp(UP, smooth(seg(Math.abs(along.y), 0.75, 0.95))).normalize();
-					this.b.addScaledVector(lift, 0.9);
+					this.b.addScaledVector(lift, 1.15);
 					if (go < JOIN) {
 						const k = inOut(go / JOIN);
 						const u = 1 - k;
 						const [ax, ay, az] = [this.a.x, this.a.y, this.a.z];
 						this.carrier.position.set(
-							u * u * u * ax + 3 * u * u * k * 4.6 + 3 * u * k * k * 2.2 + k * k * k * this.b.x,
+							u * u * u * ax + 3 * u * u * k * 4.6 + 3 * u * k * k * -1.2 + k * k * k * this.b.x,
 							u * u * u * ay + 3 * u * u * k * 6.4 + 3 * u * k * k * 6.6 + k * k * k * this.b.y,
 							u * u * u * az + 3 * u * u * k * 0.4 + 3 * u * k * k * -5 + k * k * k * this.b.z
 						);
@@ -1850,6 +1889,7 @@ export class Back {
 				gg.position.set(trackX(goodAt(T)), CARTY, TRACK_Z);
 				this.good.lean((t) => trackX(goodAt(t)), T);
 			}
+			this.gateClock = time;
 			this.gates.forEach((gate, i) => {
 				const hold = A + ((B - A) * (i + 1)) / (stations.length - 1);
 				const open = raise(seg(T, hold, hold + 0.1));
@@ -1866,9 +1906,12 @@ export class Back {
 				// The first call is judged by the first two gates; the second, after it, by each gate in turn.
 				const first = T < 20.4;
 				const passedFirst = i === 0 && first && T > 20.1;
-				if (refused) gate.lamp.set(color.red, 1 + Math.sin(time * 14) * 0.5);
-				else if (passedFirst) gate.lamp.mix(color.amber, color.green, smooth(seg(T, 20.1, 20.14)), 1.15);
-				else gate.lamp.mix(color.amber, color.green, smooth(opened), 0.25 + smooth(opened) * 0.9);
+				// Named in the conversation, a gate's beacon flares, in whatever colour it stands at.
+				const since = time - this.gateNamedAt[i];
+				const flare = since >= 0 && since < 1.4 ? Math.sin((since / 1.4) * Math.PI) * 1.6 : 0;
+				if (refused) gate.lamp.set(color.red, 1 + Math.sin(time * 14) * 0.5 + flare);
+				else if (passedFirst) gate.lamp.mix(color.amber, color.green, smooth(seg(T, 20.1, 20.14)), 1.15 + flare);
+				else gate.lamp.mix(color.amber, color.green, smooth(opened), 0.25 + smooth(opened) * 0.9 + flare);
 				if (refused) gate.say({ pass: false, text: DENIED });
 				else if (passedFirst) gate.say({ pass: true, text: PASSED_BY[0] });
 				else gate.say(!first && T > hold + 0.01 ? { pass: true, text: PASSED_BY[i] } : null);
@@ -2072,10 +2115,19 @@ export class Back {
 			const u = 1 - inOut(home);
 			this.slug.position.copy(this.returnCurve.getPointAt(u));
 			this.slug.quaternion.setFromUnitVectors(up, this.returnCurve.getTangentAt(u));
-			// It swells the pipe wherever the pipe is free, and squeezes through the wall and the fitting at each end.
-			const free = Math.min(this.slug.position.distanceTo(this.a.set(...low([-11.5, -14.3, 3.45]))), this.slug.position.distanceTo(this.a.set(0.4, 1.3, -1.75)), this.slug.position.distanceTo(this.a.set(...low([-13.5, -14.69, 3.6]))));
-			const thin = lerp(0.54, 1, smooth(seg(free, 0.55, 1.5)));
-			this.slug.scale.set(thin, 1, thin);
+			// It swells the pipe wherever the pipe hangs free, and squeezes through the wall and the fitting at each end, over
+			// the roller, and where the pipe lies on a floor.
+			const at = this.slug.position;
+			const free = Math.min(
+				at.distanceTo(this.a.set(...low([-11.5, WY + 0.31, 3.6]))),
+				at.distanceTo(this.a.set(0.4, 1.3, -1.75)),
+				at.distanceTo(this.a.set(...low([-13.5, -14.69, 3.6]))),
+				at.distanceTo(this.a.set(...RETURN_ROLLER.c)) - 0.25
+			);
+			const floor = Math.min(Math.abs(at.y), Math.abs(at.y - low([0, WY, 0])[1]));
+			const room = Math.min(smooth(seg(free, 0.9, 1.8)), smooth(seg(floor, 0.3, 0.7)));
+			// Short as well as thin there: a long straight slug can't follow the pipe round the roller.
+			this.slug.scale.set(lerp(0.42, 1, room), lerp(0.3, 1, room), lerp(0.42, 1, room));
 		}
 
 		/* ---- turn two ---- */
@@ -2168,13 +2220,24 @@ export class Back {
 
 		/* ---- memory ---- */
 		if ((T > 26.6 && T < 28.3) || homeward) {
+			const dt = Math.min(0.05, Math.max(0, time - this.memClock));
+			this.memClock = time;
+			// A conversation names the drawers only on their own card; anywhere else they're as the story left them.
+			if (T < 27.05 || T > 28.1) this.memNamed.i = -1;
+			const since = time - this.memNamed.at;
 			this.memDrawers.forEach((dr, i) => {
 				const a = 27.12 + i * 0.1;
 				const k = outBack(seg(T, a, a + 0.08), 1.8);
 				const settle = 1 - smooth(seg(T, a + 0.1, a + 0.18));
 				const fixed = i === 6;
-				dr.group.position.z = dr.z + k * (fixed ? 0.05 : 0.26 + settle * 0.3);
-				dr.lamp.mix(color.amber, fixed ? color.red : color.green, seg(T, a, a + 0.06), 0.2 + seg(T, a, a + 0.06) * 0.8);
+				const named = this.memNamed.i === i;
+				dr.out += ((named && !fixed ? 1 : 0) - dr.out) * (1 - Math.exp(-dt * 9));
+				dr.group.position.z = dr.z + k * (fixed ? 0.05 : 0.26 + settle * 0.3) + dr.out * 0.9;
+				// The weights don't come out, whatever you do: named, the red drawer rattles in place and stays shut.
+				const rattle = named && fixed ? Math.sin(since * 42) * 0.07 * Math.max(0, 1 - since / 0.9) : 0;
+				dr.group.position.x = dr.x + rattle;
+				const flare = named ? Math.max(fixed ? 1.6 * (1 - since / 1.4) : 1, 0) : 0;
+				dr.lamp.mix(color.amber, fixed ? color.red : color.green, seg(T, a, a + 0.06), 0.2 + seg(T, a, a + 0.06) * 0.8 + flare * 0.8);
 			});
 		}
 

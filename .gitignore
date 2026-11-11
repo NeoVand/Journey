@@ -23,5 +23,7 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 # Playwright
 test-results
+# Scratch scripts and their pictures
+/tmp/
 sound-lab/
 narration-lab/

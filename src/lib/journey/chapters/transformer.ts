@@ -627,6 +627,8 @@ export class Transformer {
 		this.tiles.forEach((tile, i) => {
 			this.rowX.push(-total / 2 + cursor + tile.width / 2);
 			cursor += tile.width + 0.07;
+			// By its word, so a conversation can point at "job" among the careers, or "race" in sports.
+			tile.group.name = `word:${TOKENS[i].text.trim()}`;
 			this.group.add(tile.group);
 			// A soft patch under each tile, which only exists while the tile is resting on a map.
 			const contact = contactShadow(tile.width * TS + 0.3, 0.8 * TS + 0.28, 0.14, 0.5);

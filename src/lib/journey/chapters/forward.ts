@@ -272,12 +272,16 @@ class Sampler {
 	}
 
 	/** A real draw at the current temperature. The wheel comes to rest on it, and says which it was. */
-	spin(reduced: boolean) {
+	/** Spins and draws from the odds; or, given a slice, lands somewhere inside that one, as a conversation's example asks. */
+	spin(reduced: boolean, want?: number) {
 		return new Promise<number>((resolve) => {
 			const odds = wheelOdds(this.temperature);
 			let r = Math.random();
 			let pick = 0;
-			while (pick < odds.length - 1 && r > odds[pick]) r -= odds[pick++];
+			if (want !== undefined && want >= 0 && want < odds.length) {
+				pick = want;
+				r *= odds[pick];
+			} else while (pick < odds.length - 1 && r > odds[pick]) r -= odds[pick++];
 			// How far clockwise from the top this point on the wheel lies, with the favorite centred at zero.
 			// It stops well inside its slice, because a pointer resting on a line would settle nothing.
 			const before = odds.slice(0, pick).reduce((a, b) => a + b, 0);
@@ -1071,8 +1075,8 @@ export class Forward {
 		this.sampler.setTemperature(temperature);
 	}
 
-	spinWheel(reduced: boolean) {
-		return this.sampler.spin(reduced);
+	spinWheel(reduced: boolean, want?: number) {
+		return this.sampler.spin(reduced, want);
 	}
 
 	get wheelDisc() {

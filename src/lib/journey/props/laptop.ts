@@ -30,6 +30,9 @@ const LAYOUT: Key[][] = [
 	[k('fn', 1), k('ctrl', 1), k('opt', 1), k('cmd', 1.25), k('', 5, ' '), k('cmd', 1.25, 'rcmd'), k('opt', 1, 'ropt'), k('', 1, 'left'), k('', 1, 'right')]
 ];
 
+/** A status that ends the turn, "Done: what changed", gives back what changed; any other status gives nothing. */
+const summary = (status: string) => /^Done: (.+)$/.exec(status)?.[1] ?? null;
+
 export class Laptop {
 	group = new THREE.Group();
 	lid = new THREE.Group();
@@ -299,9 +302,22 @@ export class Laptop {
 		}
 
 		if (this.sent > 0.5) {
-			c.font = `500 44px ${font.mono}`;
-			c.fillStyle = `rgba(255,197,61,${(this.sent - 0.5) * 2})`;
-			c.fillText(this.status, x, y0 + lines.length * lh + 34);
+			const a = (this.sent - 0.5) * 2;
+			const y = y0 + lines.length * lh + 34;
+			const done = summary(this.status);
+			if (done) {
+				// The turn's last word is its summary, the one thing on the screen meant to be read from across the room.
+				c.font = `700 72px ${font.mono}`;
+				c.fillStyle = `rgba(95,227,154,${a})`;
+				c.fillText('Done.', x, y + 40);
+				c.font = `500 56px ${font.mono}`;
+				c.fillStyle = `rgba(244,248,255,${a})`;
+				c.fillText(done, x, y + 40 + 80);
+			} else {
+				c.font = `500 44px ${font.mono}`;
+				c.fillStyle = `rgba(255,197,61,${a})`;
+				c.fillText(this.status, x, y);
+			}
 		}
 	}
 
@@ -386,9 +402,20 @@ export class Laptop {
 			c.fillRect(bx + 32 + cw + 6, by + 92 + (lines.length - 1) * lh - size * 0.8, 8, size * 0.98);
 		}
 		if (this.sent > 0.5) {
-			c.font = `600 38px ${font.sans}`;
-			c.fillStyle = `rgba(31,95,224,${(this.sent - 0.5) * 2})`;
-			c.fillText(this.status, bx + 6, by + bh + 58);
+			const a = (this.sent - 0.5) * 2;
+			const done = summary(this.status);
+			if (done) {
+				c.font = `700 52px ${font.sans}`;
+				c.fillStyle = `rgba(15,138,79,${a})`;
+				c.fillText('Done.', bx + 6, by + bh + 66);
+				c.font = `600 40px ${font.sans}`;
+				c.fillStyle = `rgba(17,26,46,${a})`;
+				c.fillText(done, bx + 6, by + bh + 66 + 56);
+			} else {
+				c.font = `600 38px ${font.sans}`;
+				c.fillStyle = `rgba(31,95,224,${a})`;
+				c.fillText(this.status, bx + 6, by + bh + 58);
+			}
 		}
 	}
 

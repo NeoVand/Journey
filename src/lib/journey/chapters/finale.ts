@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { TRIP } from '../content';
-import { LOWER, MODEL_FLANK, MODEL_ISLAND_Y, MODEL_X } from '../layout';
+import { AXIS_X, LOWER, MODEL_ISLAND_Y, MODEL_X } from '../layout';
 import { rbox } from '../kit/geometry';
 import { createSign } from '../kit/parts';
 import { curve } from '../kit/machines';
@@ -53,9 +53,8 @@ interface Leg {
 /** The pipes and places the token really rides, from the rest of the world. */
 export interface Route {
 	cable: THREE.Curve<THREE.Vector3>;
+	/** From the harness to the foot of the wire. */
 	out: THREE.Curve<THREE.Vector3>;
-	/** From the edge of your island up to the foot of the wire. */
-	up: THREE.Curve<THREE.Vector3>;
 	down: THREE.Curve<THREE.Vector3>;
 	flow: THREE.Curve<THREE.Vector3>;
 	flowLip: number;
@@ -64,6 +63,8 @@ export interface Route {
 	dock: V3;
 	trackEnd: V3;
 	slotX: number;
+	/** Where the belt ends and the hose begins, along the token path. */
+	beltEnd: number;
 	beltY: number;
 	lineZ: number;
 	/** The glass of the wire: where it starts and ends along x, and its height. */
@@ -91,6 +92,10 @@ export class Finale {
 	private runs: number[] = [];
 	private signs: { group: THREE.Group; at: number }[] = [];
 	private stepStarts: number[] = [];
+	/** Where on the lap a conversation has walked the told token to, stop by stop: -1 when it isn't walking it. */
+	private toldGoal = -1;
+	private toldU = 0;
+	private toldClock = 0;
 	private mat = new THREE.Matrix4();
 	private p = new THREE.Vector3();
 	private t = new THREE.Vector3();
@@ -105,7 +110,8 @@ export class Finale {
 		const above = (p: V3, h: number): V3 => [p[0], p[1] + h, p[2]];
 		const [tunnelFrom, tunnelTo, tunnelY] = r.tunnel;
 		// Where the green loop comes out of the sandbox's wall, on its way back up to the harness.
-		const wall = v(low([-10.6, -13, 2.2]));
+		const wall = v(low([-10.6, -14.69, 3.6]));
+		const belt = (r.beltEnd - r.slotX) / r.flow.getLength();
 		let backFrom = 0;
 		for (let i = 0, best = Infinity; i <= 400; i++) {
 			const d = r.back.getPointAt(i / 400, this.p).distanceTo(wall);
@@ -115,23 +121,25 @@ export class Finale {
 		this.legs = [
 			// Up from the keys and down onto the cable, which is thin and short, so it travels small.
 			{ path: curve([[-3.3, 0.85, 1], [-2.4, 1.3, 0.5], [-1.5, 0.62, -0.3], above(end(r.cable, 0.28), 0.22), above(end(r.cable, 0.34), 0.2)]), time: 1, ride: 0, step: 0, size: 0.5 },
-			{ path: new Part(r.cable, 0.34, 1), time: 0.6, ride: 0.2, step: 0, size: 0.5, shrink: 2.5 },
+			{ path: new Part(r.cable, 0.34, 1), time: 0.6, ride: 0.26, step: 0, size: 0.5, shrink: 2.5 },
 			{ path: line([0, 2, -0.65], [1.8, 2, -0.65]), time: 1.1, ride: 0, step: 1, hidden },
-			// Along the pipe past the easel, riding high enough to clear the easel's foot, and up the pipe into the sky.
-			{ path: r.out, time: 1.5, ride: 0.3, step: 2 },
-			{ path: r.up, time: 1.2, ride: 0.2, step: 2 },
-			{ path: line(end(r.up, 1), [tunnelFrom + 0.1, tunnelY, z]), time: 0.1, ride: 0, step: 2, hidden },
+			// Along the pipe past the easel, riding high enough to clear the easel's foot, and across to the wire.
+			{ path: r.out, time: 2.2, ride: 0.3, step: 2, shrink: 2.5 },
+			{ path: line(end(r.out, 1), [tunnelFrom + 0.1, tunnelY, z]), time: 0.1, ride: 0, step: 2, hidden },
 			{ path: line([tunnelFrom + 0.1, tunnelY, z], [tunnelTo - 0.1, tunnelY, z]), time: 0.9, ride: 0, step: 2 },
-			// Through the gateway, and out of its back wall up to the tokenizer.
+			// Through the gateway, and out of its back wall along to the tokenizer.
 			{ path: line([tunnelTo - 0.1, tunnelY, z], end(r.down, 0.03)), time: 1, ride: 0, step: 3, hidden },
 			{ path: new Part(r.down, 0.03, 1), time: 1.6, ride: 0.2, step: 3 },
 			{ path: line(end(r.down, 1), [r.slotX, beltY, z]), time: 0.4, ride: 0, step: 3, hidden },
-			{ path: new Part(r.flow, 0, r.flowLip), time: 2.4, ride: 0.24, step: 3, size: 0.72 },
-			// Through the model, and out of the side of its pedestal into the glass.
+			{ path: new Part(r.flow, 0, belt), time: 1.2, ride: 0.24, step: 3, size: 0.72 },
+			// Up the hose on the mast, over its wheel, across the sky and over the model's wheel, small enough to ride inside it.
+			{ path: new Part(r.flow, belt, r.flowLip), time: 2, ride: 0, step: 4, size: 0.6 },
+			// Through the model, and out of the bottom of its island into the glass column.
 			{ path: line(flowEnd, end(r.stream, 0)), time: 1.9, ride: 0, step: 4, hidden },
 			{ path: r.stream, time: 2.5, ride: 0, step: 5 },
 			{ path: line([1.1, 3.6, -0.75], [0.4, 3.2, -1.76]), time: 0.25, ride: 0, step: 6, hidden },
-			{ path: r.gatePath, time: 2, ride: 0.2, step: 6 },
+			// Higher on the calls' cable: it sags, so a flat token's ends come down to meet it.
+			{ path: r.gatePath, time: 2.6, ride: 0.3, step: 6 },
 			{ path: line(r.dock, [r.dock[0] + 1.6, r.dock[1], r.dock[2]]), time: 0.2, ride: 0, step: 6, hidden },
 			{ path: line([r.dock[0] + 1.6, r.dock[1], r.dock[2]], r.trackEnd), time: 2.1, ride: 0, step: 6 },
 			{ path: curve([r.trackEnd, low([-40.4, -12.1, 0.7]), low([-38.2, -13, 0.7]), low([-36.3, -14.46, 0.7])]), time: 0.6, ride: 0, step: 7 },
@@ -182,14 +190,14 @@ export class Finale {
 		const size = isPhone ? 1.6 : 0.8;
 		const where: V3[] = [
 			[-5.2, 3.6, 0.6],
-			[5.4, 5.4, -0.75],
-			[tunnelFrom - 0.2, tunnelY + 3.3, z],
-			[tunnelTo + 6.2, tunnelY + 1.2, z],
-			[MODEL_X - 9.4, MODEL_ISLAND_Y + 9.6, 1.2],
-			[MODEL_FLANK[0] - 18.4, 15.6, -0.5],
+			[5.6, 5.2, -0.75],
+			[tunnelFrom + 3.4, tunnelY + 3.3, z],
+			[r.slotX + 1.2, beltY + 3.6, z],
+			[MODEL_X - 9, MODEL_ISLAND_Y + 11.4, 1.2],
+			[AXIS_X - 3.8, 10.6, -0.75],
 			low([-52, -7, 0.7]),
 			low([-27, -5.7, 1]),
-			[23.4, -7.4, -1]
+			[AXIS_X + 3, -12, -4.4]
 		];
 		TRIP.forEach((stop, i) => {
 			// Already sized for phones above, so it opts out of the general phone enlargement.
@@ -238,6 +246,41 @@ export class Finale {
 		return leg;
 	}
 
+	/**
+	 * A conversation tells the lap stop by stop: the token goes to the middle of stop i (0 to 8), and with 9 it finishes
+	 * the lap and is gone.
+	 */
+	tell(i: number) {
+		if (i >= 9) return void (this.toldGoal = 1);
+		const a = this.stepStarts[i] ?? 0;
+		const b = this.stepStarts[i + 1] ?? 1;
+		if (this.toldGoal < 0) this.toldU = Math.max(0.001, a - 0.02);
+		// It waits where it can be seen, never inside a machine, and as far into the stop as it can: in the middle of the
+		// last stretch in the open that's a fair length, where the stop does its work rather than on the way to it.
+		const runs: [number, number][] = [];
+		let from = -1;
+		for (let k = 0; k <= 80; k++) {
+			const u = a + ((b - a) * k) / 80;
+			if (!this.legAt(u).hidden && k < 80) {
+				if (from < 0) from = u;
+			} else if (from >= 0) {
+				runs.push([from, u]);
+				from = -1;
+			}
+		}
+		const longest = Math.max(0, ...runs.map(([p, q]) => q - p));
+		const chosen = runs.filter(([p, q]) => q - p >= longest * 0.3).at(-1);
+		this.toldGoal = chosen ? (chosen[0] + chosen[1]) / 2 : a + (b - a) * 0.5;
+	}
+
+	/** The leg of the lap a share of it falls on. */
+	private legAt(u: number) {
+		let at = u * this.total;
+		let i = 0;
+		while (i < this.legs.length - 1 && at > this.legs[i].time) at -= this.legs[i++].time;
+		return this.legs[i];
+	}
+
 	update(T: number) {
 		const on = T >= FINALE_T;
 		this.group.visible = on;
@@ -254,7 +297,7 @@ export class Finale {
 		this.harnessPulse = 0;
 		this.brainBusy = 0;
 		this.onTrack.length = 0;
-		this.running = (story > 0 && story < 1) || this.runs.length > 0;
+		this.running = (story > 0 && story < 1) || this.runs.length > 0 || this.toldGoal >= 0;
 		let newest = 0;
 		const ride = (token: THREE.Mesh, u: number) => {
 			const leg = this.place(token, u);
@@ -264,8 +307,16 @@ export class Finale {
 			newest = leg.step;
 		};
 		const told = this.tokens[0];
+		const dt = Math.min(0.05, Math.max(0, (now - this.toldClock) / 1000));
+		this.toldClock = now;
+		if (T < STORY[1]) this.toldGoal = -1;
 		if (story > 0 && story < 1) ride(told, story);
-		else told.visible = false;
+		else if (this.toldGoal >= 0) {
+			// Walked round with the words: it glides on to the stop being told, never backwards past the start.
+			this.toldU += (this.toldGoal - this.toldU) * (1 - Math.exp(-dt * 2.6));
+			if (this.toldGoal >= 1 && this.toldU > 0.995) this.toldGoal = -1;
+			ride(told, Math.min(0.999, this.toldU));
+		} else told.visible = false;
 
 		// Runs finish oldest first, so anything over a lap is always at the front of the list.
 		while (this.runs.length && now - this.runs[0] > LAP_MS) {

@@ -117,10 +117,11 @@ export function blobShape(points: [number, number][], samples = 180) {
 }
 
 /** Frame used by both the swept ribbon and whatever rides on it, so the two can never disagree. */
-export function frameAt(curve: THREE.Curve<THREE.Vector3>, u: number) {
+export function frameAt(curve: THREE.Curve<THREE.Vector3>, u: number, fixedSide?: THREE.Vector3) {
 	const p = curve.getPointAt(u);
 	const t = curve.getTangentAt(u).normalize();
-	const side = new THREE.Vector3(0, 1, 0).cross(t).normalize();
+	// A path that runs straight up has no side of its own: one in a single plane can be given its side instead.
+	const side = fixedSide ? fixedSide.clone() : new THREE.Vector3(0, 1, 0).cross(t).normalize();
 	const up = t.clone().cross(side).normalize();
 	return { p, t, side, up };
 }
@@ -179,4 +180,61 @@ export function paper(w: number, h: number, curl = 0.1, sag = 0.02, rows = 30) {
 	}
 	g.computeVertexNormals();
 	return g;
+}
+
+/** A circular arc in 3D: from centre + u, turning towards centre + v, through angle radians. u and v are square and as long as the radius. */
+class Arc3 extends THREE.Curve<THREE.Vector3> {
+	constructor(
+		private centre: THREE.Vector3,
+		private u: THREE.Vector3,
+		private v: THREE.Vector3,
+		private angle: number
+	) {
+		super();
+	}
+	getPoint(t: number, target = new THREE.Vector3()) {
+		const a = this.angle * t;
+		return target.copy(this.centre).addScaledVector(this.u, Math.cos(a)).addScaledVector(this.v, Math.sin(a));
+	}
+}
+
+/**
+ * A pipe drawn with a ruler and a compass: straight from corner to corner, and round every corner on a circular arc of
+ * one radius (or each corner's own, from a list). The first and last points are the pipe's ends.
+ */
+export function bends(points: [number, number, number][], radius: number | number[]) {
+	const path = new THREE.CurvePath<THREE.Vector3>();
+	const p = points.map((q) => new THREE.Vector3(...q));
+	let from = p[0].clone();
+	for (let i = 1; i < p.length - 1; i++) {
+		const r = Array.isArray(radius) ? radius[i - 1] : radius;
+		const d1 = p[i].clone().sub(p[i - 1]).normalize();
+		const d2 = p[i + 1].clone().sub(p[i]).normalize();
+		const turn = Math.acos(Math.min(1, Math.max(-1, d1.dot(d2))));
+		if (turn < 1e-4 || r <= 0) continue;
+		const cut = r * Math.tan(turn / 2);
+		const start = p[i].clone().addScaledVector(d1, -cut);
+		const end = p[i].clone().addScaledVector(d2, cut);
+		const inward = d2.clone().addScaledVector(d1, -d1.dot(d2)).normalize();
+		const centre = start.clone().addScaledVector(inward, r);
+		if (start.distanceTo(from) > 1e-6) path.add(new THREE.LineCurve3(from, start));
+		path.add(new Arc3(centre, start.clone().sub(centre), d1.clone().multiplyScalar(r), turn));
+		from = end;
+	}
+	path.add(new THREE.LineCurve3(from, p[p.length - 1].clone()));
+	return path;
+}
+
+/** A stretch of a curve, from one share of its length to another. */
+export class PartOf extends THREE.Curve<THREE.Vector3> {
+	constructor(
+		private base: THREE.Curve<THREE.Vector3>,
+		private from: number,
+		private to: number
+	) {
+		super();
+	}
+	getPoint(t: number, target = new THREE.Vector3()) {
+		return this.base.getPointAt(this.from + (this.to - this.from) * t, target);
+	}
 }

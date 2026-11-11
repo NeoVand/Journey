@@ -55,6 +55,12 @@
 	let form = $state(1);
 	/** Where the reader is in the story, for the map of the loop in the corner. */
 	let loopT = $state(0);
+	/** Where the reader's token is on that map's picture, and where its nine stops are. */
+	let loopMark = $state<{ x: number; y: number } | null>(null);
+	let loopStops = $state<{ x: number; y: number }[]>([]);
+	/** The map's canvas, which the world draws the real scene into once it's running. */
+	let mapCanvas: HTMLCanvasElement | null = null;
+	let lendMap: (c: HTMLCanvasElement | null) => void = (c) => (mapCanvas = c);
 	let drawer = $state(-1);
 	/** A drawer the reader has pulled out takes over from the story's. */
 	let pulled = $state(-1);
@@ -73,9 +79,18 @@
 	let subtitlePlace = $state<{ top: number | null; left: number; right: number }>({ top: null, left: 0, right: 0 });
 	let driven = $state(false);
 	let failed = $state(false);
+	/** How far the world has got with building itself and warming up, 0 to 1: the loader's line fills with it. */
+	let built = $state(0);
 	let section = $state(0);
 	let part = $state<Stage>(null);
 	let attention = $state(-1);
+	/**
+	 * What the conversation is naming, while it plays, for the card's own list to follow: the front door's check, the gate,
+	 * the attention step. Past the last one, the whole list is done again, as the story has it.
+	 */
+	let checkSaid = -1;
+	let gateSaid = -1;
+	let attentionSaid = -1;
 	let world: World | undefined;
 
 	const spec = $derived(HARNESSES[harness]);
@@ -195,12 +210,27 @@
 	/** As the reader sees them: whole numbers that always add up to 100. */
 	const percents = $derived(wholePercents(odds));
 
-	async function spinIt() {
+	/** Nora turns the dial in the conversation: it runs there a tenth at a time, one tick of the ratchet each. */
+	let dialTimer = 0;
+	function turnDial(to: number) {
+		clearInterval(dialTimer);
+		const step = () => {
+			const gap = to - temperature;
+			temperature = Math.abs(gap) <= 0.1 ? to : Math.round((temperature + Math.sign(gap) * 0.1) * 10) / 10;
+			world?.setTemperature(temperature);
+			cue('temperature', temperature);
+			if (temperature === to) clearInterval(dialTimer);
+		};
+		step();
+		dialTimer = window.setInterval(step, 45);
+	}
+
+	async function spinIt(want?: number) {
 		if (!world || spinning) return;
 		spinning = true;
 		landed = -1;
 		cue('spin');
-		const pick = await world.spinWheel(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+		const pick = await world.spinWheel(window.matchMedia('(prefers-reduced-motion: reduce)').matches, want);
 		wins[pick]++;
 		landed = pick;
 		spinning = false;
@@ -378,7 +408,7 @@
 	}
 	/** The sounds of the interface itself: a step, a flight, the map. Quiet until sound is on. */
 	/** The page's own sounds: the reader's steps and flights, and the controls they press. `n` and `m` say which, or how many. */
-	type CueKind = 'step' | 'flight' | 'drop' | 'rise' | 'map' | 'enter' | 'spin' | 'harness' | 'cache' | 'temperature' | 'turn' | 'tokens' | 'spot';
+	type CueKind = 'step' | 'flight' | 'drop' | 'rise' | 'map' | 'enter' | 'spin' | 'harness' | 'cache' | 'temperature' | 'turn' | 'tokens' | 'spot' | 'drawer' | 'check' | 'gate' | 'stop';
 	let cue: (kind: CueKind, n?: number, m?: number) => void = () => {};
 	let leaveTrack: (atOnce?: boolean) => void = () => {};
 	const trip = $derived(track ? TRACKS[track] : null);
@@ -527,7 +557,6 @@
 			return;
 		event.preventDefault();
 		step(event.key === 'ArrowRight' ? 1 : -1, 'key');
-		if (event.key === 'ArrowRight') pressBegin();
 	}
 
 	/** K plays and pauses the film, as it does on most video players, unless something being typed in wants it. */
@@ -537,6 +566,7 @@
 		if (target?.closest('input:not([type="range"]), textarea, select, [contenteditable]') || document.querySelector('dialog[open]')) return;
 		event.preventDefault();
 		toggleFilm();
+		pressPlayKey();
 	}
 
 	/** Inside a tray of choices the arrow keys move the choice, as they do in any set of radio buttons, not the story. */
@@ -558,8 +588,8 @@
 		return () => tray.removeEventListener('keydown', roam);
 	};
 
-	/** The title page's Begin key goes down with the → key it stands for, while the title page is still there to see it. */
-	function pressBegin() {
+	/** The title page's Play key goes down with the K key that plays the film too, while the title page is there to see it. */
+	function pressPlayKey() {
 		const key = document.querySelector<HTMLElement>('.begin');
 		if (!key || key.closest<HTMLElement>('.pin')?.style.visibility === 'hidden') return;
 		key.classList.add('pressed');
@@ -737,13 +767,20 @@
 			if (disposed) return;
 			let w: World;
 			try {
-				w = await World.create(canvas);
+				w = await World.create(canvas, (k) => (built = k * 0.6));
 			} catch (error) {
 				// Without WebGL the page is still the whole explanation, over the plain sky.
 				console.warn('The 3D scene could not start:', error);
 				failed = true;
 				return;
 			}
+			// The map in the corner: the world draws itself into it, now and then, and says where things are in it.
+			lendMap = (c) => {
+				mapCanvas = c;
+				w.setMapCanvas(c, matchMedia('(max-aspect-ratio: 9/10)').matches);
+				loopStops = w.mapStops();
+			};
+			lendMap(mapCanvas);
 			if (disposed) {
 				w.dispose();
 				return;
@@ -765,7 +802,33 @@
 						// the data centre, dark ones over the sky. Home again, each card has its own back.
 						for (const p of pins) p.el.dataset.tone = toneOf(to ?? p.i);
 					}),
-				note: () => cue('spot', Math.floor(Math.random() * 5))
+				note: () => cue('spot', Math.floor(Math.random() * 5)),
+				// The ten turns follow Nora as she counts them, and the cache goes off and on again as she switches it.
+				act: (what, i) => {
+					if (what === 'turn') pinTurn(i);
+					else if (what === 'cache') setCache(i === 1);
+					else if (what === 'temperature') turnDial(i / 10);
+					else if (what === 'memory') {
+						w.nameMemory(i);
+						cue('drawer', i);
+					} else if (what === 'check') {
+						checkSaid = i;
+						if (i < 5) {
+							w.nameCheck(i);
+							cue('check', i);
+						}
+					} else if (what === 'gate') {
+						gateSaid = i;
+						if (i < 4) {
+							w.nameGate(i);
+							cue('gate', i);
+						}
+					} else if (what === 'attention') attentionSaid = i;
+					else if (what === 'stop') {
+						w.tellStop(i);
+						cue('stop', i);
+					}
+				}
 			});
 			{
 				const gl = w.stage.renderer.getContext();
@@ -935,7 +998,8 @@
 				w.resize(drawnW, drawnH, dpr);
 			};
 			performance.mark('journey:built');
-			w.stage.warmUp();
+			await w.stage.warmUp((k) => (built = 0.6 + k * 0.4));
+			if (disposed) return;
 			performance.mark('journey:warm');
 			resize();
 			window.addEventListener('resize', resize);
@@ -965,8 +1029,8 @@
 			};
 			window.addEventListener('pointerdown', down, { passive: true });
 			window.addEventListener('pointerup', up, { passive: true });
-			w.onPress = (what) => {
-				if (what === 'wheel') spinIt();
+			w.onPress = (what, want) => {
+				if (what === 'wheel') spinIt(want);
 				else pressEnter();
 			};
 			// With a mouse, the cursor says what can be pressed. A few times a second is plenty for that.
@@ -1052,12 +1116,20 @@
 				const shownKey: number[] = [];
 				const inAt = (n: number, at: number) => (n === 0 ? 1 : seg(at - pins[n].i, pins[n].from - pins[n].fade * 0.3, pins[n].from + pins[n].fade * 0.7));
 				const outAt = (n: number, at: number) => (n === lastPin ? 0 : seg(at - pins[n].i, pins[n].end, pins[n].end + pins[n].fade));
+				/** Cards on the same side of the screen: two of them half there at once would be words over words. */
+				const sameSide = (a: number, b: number) => pins[a].el.classList.contains('right') === pins[b].el.classList.contains('right');
+				const cardUp: number[] = [];
 				const fade = () => {
+					for (let n = 0; n < pins.length; n++) cardUp[n] = Math.min(inAt(n, T), 1 - outAt(n, T));
 					// Cards belong to the playhead, not the scroll bar, so text and scene can never drift apart.
 					pins.forEach(({ el }, n) => {
 						const inK = inAt(n, T);
 						const outK = outAt(n, T);
-						const k = Math.min(inK, 1 - outK) * cardsK;
+						// Where one card's way out meets the next one's way in, in the same place, they hand over one after the other:
+						// the one going fades as the one coming waits, and they meet at nothing rather than both at half.
+						const before = n > 0 && sameSide(n - 1, n) ? cardUp[n - 1] : 0;
+						const after = n < lastPin && sameSide(n, n + 1) ? cardUp[n + 1] : 0;
+						const k = Math.max(0, cardUp[n] - Math.max(before, after)) * cardsK;
 						const key = k <= 0 ? -1 : Math.round(k * 200) + (outK > 0 ? 1000 : 0);
 						if (shownKey[n] === key) return;
 						shownKey[n] = key;
@@ -1104,6 +1176,9 @@
 				// colours go with the picture.
 				if (peekT === null) form = w.state.form;
 				loopT = Math.round(T * 1000) / 1000;
+				const mark = w.mapMark(T);
+				if (!mark) loopMark = null;
+				else if (!loopMark || Math.abs(mark.x - loopMark.x) + Math.abs(mark.y - loopMark.y) > 0.002) loopMark = mark;
 				// Only the header follows this. It switches while the screen is black, so nobody sees it happen.
 				const seen = peekT ?? T;
 				dark = veilThick > 0.5 ? veilDark : seen >= 7.96 && seen < 19.02;
@@ -1116,20 +1191,23 @@
 				});
 				drawer = T > 2.74 ? 4 : dr;
 				pulled = w.pulledDrawer;
-				check = T < 5 ? -1 : Math.min(5, Math.floor(((T - 5.04) / 0.58) * 5));
+				check = checkSaid >= 0 && narrator.playing ? checkSaid : T < 5 ? -1 : Math.min(5, Math.floor(((T - 5.04) / 0.58) * 5));
 				// The first call stops at the second gate, and the list has to say so.
-				gate = T < 20.04 ? -1 : T < 20.4 ? 1 : Math.min(4, Math.floor(((T - 20.4) / 0.58) * 5));
+				gate = gateSaid >= 0 && narrator.playing ? gateSaid : T < 20.04 ? -1 : T < 20.4 ? 1 : Math.min(4, Math.floor(((T - 20.4) / 0.58) * 5));
 				section = Math.min(sections.length - 1, Math.floor(T));
 				part = T < 14.15 ? null : T < 14.3 ? 'embed' : T < 14.625 ? 'attn' : T < 14.7 ? 'ffn' : T < 14.865 ? 'stack' : 'head';
-				attention = T < 14.358 ? -1 : T < 14.4 ? 0 : T < 14.43 ? 1 : T < 14.5 ? 2 : 3;
+				attention = attentionSaid >= 0 && narrator.playing ? attentionSaid : T < 14.358 ? -1 : T < 14.4 ? 0 : T < 14.43 ? 1 : T < 14.5 ? 2 : 3;
 				tripStep = w.trip.step;
 				tripLaps = w.trip.laps;
 				tripDone = T >= 32.88;
 				const reached = T < TEN_AT ? -1 : Math.min(TEN_TURNS.length - 1, Math.floor((T - TEN_AT) / TEN_STEP));
 				if (reached !== turnReached) {
 					turnReached = reached;
-					turnPinned = -1;
-					w.setTurn(Math.max(0, reached));
+					// The newest turn shows as the bars rise, unless Nora is counting them out: then she says which one.
+					if (!narrator.playing) {
+						turnPinned = -1;
+						w.setTurn(Math.max(0, reached));
+					}
 				}
 			};
 
@@ -1551,6 +1629,9 @@
 				filming = true;
 				narrator.led = true;
 				frozen = false;
+				// The card the reader is looking at as the film starts, the title page say, is already there to read: it stays
+				// whole without the voices, and only the cards after it unfold.
+				whole = Math.min(director.last, director.ahead(T));
 				const k = director.goal;
 				const id = talkFor(k);
 				// Over at the end: the film starts again from the top.
@@ -2177,6 +2258,26 @@
 				} else if (kind === 'turn') {
 					sound.voice(key(0.7), { gain: 0.22 });
 					sound.voice(porcelain(note(TURN_NOTES[n] ?? 0), 0.9), { gain: 0.26, delay: 0.03 });
+				} else if (kind === 'drawer') {
+					// A kind of memory named: its drawer slides out on a note that climbs with the count. The weights' drawer is
+					// locked, and only thuds.
+					if (n === 6) sound.play('clonk', { gain: 0.3, rate: 0.72 });
+					else {
+						sound.play('drawer-out', { gain: 0.28, rate: 1.05 + n * 0.03 });
+						sound.voice(porcelain(note([0, 2, 4, 5, 7, 9][n] ?? 0), 0.8), { gain: 0.13, delay: 0.08, wet: 0.3 });
+					}
+				} else if (kind === 'check') {
+					// One of the front door's checks named: a relay clicks, and the five climb a little scale.
+					sound.play('relay', { gain: 0.22, rate: 1 + n * 0.05 });
+					sound.voice(porcelain(note([0, 2, 4, 5, 7][n] ?? 0), 0.7), { gain: 0.12, delay: 0.04, wet: 0.3 });
+				} else if (kind === 'stop') {
+					// One of the last chapter's nine stops told: the same note it rings when Enter sends a token round, and home's
+					// chord when the lap is done.
+					if (n >= 9) sound.voice(chime([0, 2, 4, 7, 9]), { gain: 0.2, wet: 0.3 });
+					else sound.voice(porcelain(note([0, 2, 4, 5, 7, 9, 7, 5, 4][n] ?? 0), 1.2), { gain: 0.16, wet: 0.3 });
+				} else if (kind === 'gate') {
+					// A gate named: its beacon rings once.
+					sound.voice(porcelain(note([2, 4, 7, 9][n] ?? 0), 1), { gain: 0.14, wet: 0.35 });
 				} else if (kind === 'spot') {
 					// Something named lights up: one quiet porcelain note, under the voices.
 					sound.voice(porcelain(note([4, 7, 9, 11, 12][n % 5]), 0.9), { gain: 0.12, wet: 0.3 });
@@ -2385,7 +2486,8 @@
 				<rect class="mist" width="168" height="96" fill="url(#cloud-mist-{id})" />
 			</g>
 		</svg>
-		<span class="trip-name">{TRACKS[id].name}</span>
+		<!-- A hyphenated word such as to-do wraps as a whole: never "to-" at the end of one line and "do" on the next. -->
+		<span class="trip-name">{#each TRACKS[id].name.split(/(\S+-\S+)/) as part, i (i)}{#if i % 2}<span class="whole">{part}</span>{:else}{part}{/if}{/each}</span>
 	</button>
 {/snippet}
 
@@ -2459,7 +2561,7 @@
 {#if !driven && !failed}
 	<!-- A quiet line of light gliding while the world is built, and gone with a fade as the world fades in. -->
 	<div class="loader" aria-hidden="true" out:fade={{ duration: 220 }}>
-		<span class="glide"><i></i></span>
+		<span class="glide"><b style:transform="scaleX({built})"></b><i></i></span>
 		<p>Warming up the machines</p>
 	</div>
 {/if}
@@ -2710,11 +2812,25 @@
 				<div class="told"><span>Your agent</span>{@render picker()}</div>
 				<p class="fallback">This browser can’t draw the 3D scenes right now, so here’s the whole story in words.</p>
 			{:else}
-				<!-- Two keys side by side: the way in, and a look around the controls first. -->
+				<!-- Two keys side by side: the way in, which plays the whole story as a film, and a look around the controls first.
+				     Scrolling and the arrow keys still go card by card, for a reader who'd rather drive. -->
 				<div class="begin-row">
-					<button type="button" class={['begin', { live: driven }]} disabled={!driven} aria-keyshortcuts="ArrowRight" onclick={() => step(1, 'button')}>
-						Begin
-						<Icon icon={ArrowRight01Icon} size={21} stroke={2.4} />
+					<button type="button" class={['begin', { live: driven, playing: filming }]} disabled={!driven} aria-keyshortcuts="K" onclick={() => toggleFilm()}>
+						<!-- Solid, the same play and pause as the header's: outlined, two bars read as a zero zero. Both share one place,
+						     so the key keeps its width as it turns from one to the other, and whichever is showing sits in the middle. -->
+						<span class="says">
+							<span class={{ shown: !filming }}>
+								<svg class="glyph" viewBox="0 0 24 24" aria-hidden="true">
+									<path d="M8 6.1v11.8a1.3 1.3 0 0 0 2 1.1l9.3-5.9a1.3 1.3 0 0 0 0-2.2L10 5a1.3 1.3 0 0 0-2 1.1z" />
+								</svg>Play
+							</span>
+							<span class={{ shown: filming }}>
+								<svg class="glyph" viewBox="0 0 24 24" aria-hidden="true">
+									<rect x="6" y="5" width="4.4" height="14" rx="1.5" />
+									<rect x="13.6" y="5" width="4.4" height="14" rx="1.5" />
+								</svg>Pause
+							</span>
+						</span>
 					</button>
 					<button type="button" class={['tour-key', { live: driven }]} aria-haspopup="dialog" disabled={!driven} onclick={openTour}>
 						<Icon icon={SignpostIcon} size={19} stroke={1.8} />
@@ -3011,7 +3127,7 @@
 						</li>
 					{/each}
 				</ol>
-				<button type="button" class="spin" disabled={spinning} onclick={spinIt}>
+				<button type="button" class="spin" disabled={spinning} onclick={() => spinIt()}>
 					<Icon icon={SPIN} size={18} stroke={1.8} />
 					{spinning ? 'Round it goes' : 'Spin it yourself'}
 				</button>
@@ -3249,13 +3365,13 @@
 <!-- Where the reader is in the whole loop, steady in the corner. The last card shows the whole loop itself. -->
 {#if driven}
 	<div class={['loop-key', { away: !!trip || tourOpen || mapCrowded || loopT >= 31.97 }]}>
-		<LoopMap T={loopT} onjump={jump} onopen={openMap} />
+		<LoopMap T={loopT} mark={loopMark} stops={loopStops} onjump={jump} onopen={openMap} oncanvas={(c) => lendMap(c)} />
 	</div>
 {/if}
 <!-- What Nora and Theo are saying, when the player's subtitle key is on. -->
 <Subtitles {narrator} place={subtitlePlace} />
 <!-- Inside the page's frame, so a big monitor's larger words reach the tour's card too. -->
-<Tour bind:open={tourOpen} {soundOn} ontogglesound={() => toggleSound()} onbegin={() => step(1, 'button')} />
+<Tour bind:open={tourOpen} {soundOn} ontogglesound={() => toggleSound()} onplay={() => !filming && toggleFilm()} />
 </div>
 
 <Tokenizer bind:open={tryOpen} oncut={(now, before) => cue('tokens', now, before)} />
@@ -3895,6 +4011,14 @@
 		border-radius: 2px;
 		background: rgb(16 26 48 / 0.1);
 	}
+	/* How much is built: a soft amber fill behind the bead, from the left. */
+	.glide b {
+		position: absolute;
+		inset: 0;
+		transform-origin: left;
+		background: rgb(255 185 33 / 0.42);
+		transition: transform 0.3s ease-out;
+	}
 	.glide i {
 		position: absolute;
 		inset: 0 auto 0 0;
@@ -4220,6 +4344,25 @@
 		--tray-rim: rgb(255 255 255 / 0.1);
 		--veil: 6 15 38;
 		--veil-a: 0.97;
+	}
+
+	/* Inside the data centre the header's words are light. A flight there can pass a white tray or floor behind them, where
+	   they would vanish, so the header keeps a faint ground of the hall's own night, there and only there. Phones have a
+	   ground of their own. */
+	@media (min-aspect-ratio: 9/10) {
+		.journey:not(.tripping) .bar::before {
+			content: '';
+			position: absolute;
+			inset: 0 0 -36px;
+			z-index: -1;
+			pointer-events: none;
+			background: linear-gradient(to bottom, rgb(6 15 38 / 0.72) 30%, rgb(6 15 38 / 0));
+			opacity: 0;
+			transition: opacity 0.5s;
+		}
+		.journey.dark:not(.tripping) .bar::before {
+			opacity: 1;
+		}
 	}
 
 	/* A side trip flies in close, so its props reach up behind the header: the header brings a ground of its own, in the
@@ -5227,8 +5370,8 @@
 	}
 
 	/*
-	 * The way in is a key, the reader's first press, in the token's amber. It's a real key with a real depth, and it goes
-	 * down when pressed, the same as the → key it stands for.
+	 * The way in is a key, the reader's first press, in the token's amber: Play, which runs the whole story as a film.
+	 * It's a real key with a real depth, and it goes down when pressed, and with the K key that does the same.
 	 */
 	.begin-row {
 		display: flex;
@@ -5240,9 +5383,8 @@
 	.begin {
 		display: inline-flex;
 		align-items: center;
-		gap: 10px;
 		margin-bottom: 6px;
-		padding: 14px 18px 15px 24px;
+		padding: 14px 23px 15px 22px;
 		border: 0;
 		border-radius: 16px;
 		background: linear-gradient(#ffd660, #ffb921 70%);
@@ -5318,13 +5460,27 @@
 			filter 0.15s,
 			color 0.9s ease;
 	}
-	.begin :global(svg) {
-		transition: transform 0.2s cubic-bezier(0.2, 1.6, 0.4, 1);
+	/* Solid, as a player's own play and pause always are, sized with the word beside it. */
+	.begin .glyph {
+		flex: none;
+		display: block;
+		width: 0.95em;
+		height: 0.95em;
+		fill: currentColor;
 	}
-	@media (hover: hover) {
-		.begin:hover:not(:disabled) :global(svg) {
-			transform: translateX(3px);
-		}
+	.begin .says {
+		display: grid;
+		justify-items: center;
+	}
+	.begin .says > span {
+		grid-area: 1 / 1;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5em;
+		visibility: hidden;
+	}
+	.begin .says > .shown {
+		visibility: visible;
 	}
 	/* Beside it, the way to a look around first: a cream key of the same height and depth, so the two read as a pair. */
 	.tour-key {
@@ -5381,7 +5537,7 @@
 		outline: 2px solid #1f5fe0;
 		outline-offset: 3px;
 	}
-	/* It drops into place just after Begin does. */
+	/* It warms up just after Play does. */
 
 	.told {
 		display: flex;
@@ -5497,6 +5653,9 @@
 	.trip-cloud .mist {
 		transition: opacity 0.4s;
 	}
+	.trip-name .whole {
+		white-space: nowrap;
+	}
 	.trip-name {
 		max-width: 100%;
 		font-family: var(--display);
@@ -5506,11 +5665,14 @@
 		letter-spacing: -0.005em;
 		text-align: center;
 		text-wrap: pretty;
-		/* A glow of the sky round the letters, so a name stays clear where the world rises behind it, as on a short phone. */
+		/* A glow of the sky round the letters, so a name stays clear where the world rises behind it, as on a short phone,
+		   and a cable passing behind it fades out at the letters instead of striking through them. */
 		text-shadow:
-			0 0 2px rgb(214 234 251),
-			0 0 6px rgb(214 234 251 / 0.95),
-			0 0 12px rgb(214 234 251 / 0.85);
+			0 0 1px rgb(214 234 251),
+			0 0 3px rgb(214 234 251),
+			0 0 3px rgb(214 234 251),
+			0 0 7px rgb(214 234 251 / 0.95),
+			0 0 14px rgb(214 234 251 / 0.85);
 	}
 	@media (hover: hover) {
 		.trip-cloud:hover:not(:disabled) svg {
@@ -5717,7 +5879,7 @@
 		}
 		.begin {
 			margin-bottom: 5px;
-			padding: 11px 14px 12px 19px;
+			padding: 11px 18px 12px 17px;
 			border-radius: 14px;
 			font-size: 19px;
 		}
@@ -5734,7 +5896,7 @@
 				gap: 8px;
 			}
 			.begin {
-				padding: 11px 10px 12px 15px;
+				padding: 11px 13px 12px 12px;
 			}
 			.tour-key {
 				gap: 6px;
@@ -5783,7 +5945,7 @@
 	@media (min-aspect-ratio: 9/10) {
 		.begin {
 			font-size: clamp(22px, 1.35vw, 27px);
-			padding: 0.64em 0.8em 0.7em 1.08em;
+			padding: 0.64em 1.02em 0.7em 0.98em;
 		}
 		.told {
 			font-size: clamp(14.5px, 0.88vw, 17px);

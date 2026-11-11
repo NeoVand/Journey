@@ -29,14 +29,29 @@ it feels like a friend with a pointer who knows when to use it. Done badly, it's
     numbers, so the first flip shows the words again. Only on "Now it is a token".
   - `"excite"` lights up the model, the brain in the sky. Only where it's in view: "Thousands more behind it", and the
     last chapter.
-  - `"spin"` spins the odds wheel. Only on "One token is chosen".
+  - `"spin"` spins the odds wheel. Only on "One token is chosen". With `index` it lands in that slice (0 "The", 1 "I",
+    2 "Let", 3 "First", 4 "To"), for when the words name where a spin might land.
 - `hold` (optional): seconds to stay, 3.6 by default. Use 2 to 2.5 for quick runs through a list, 3 to 4 usually, and
   6 to 9 while a pulled-out drawer is still being talked about.
 - `in` (optional): the title of a card to show the thing at, when it isn't in this card's world or is meant to be seen
   as it was there. The picture cuts there, the camera shows it, and it cuts back while the card stays. This is a peek.
   Only on the main road, never from inside a side trip, and rare: two in the whole story at the moment.
-- `wide` (optional): pulls back, high, to show a whole: the loop from laptop down to the model and back. The one kind of
+- `wide` (optional): pulls back to show a whole: the loop from your laptop up to the model and back. The one kind of
   moment that goes further away than the card's shot. Frame it with several names and `"together": true`.
+- A beat: `"show": []` with a `do`, and the camera stays where it is while the card changes in step with the words.
+  `"turn"` with `index` 0 to 9 shows that turn of "The whole fix, in ten turns" (and plays its note); `"cache"` with
+  `index` 1 or 0 switches its cache on or off; `"temperature"` turns the wheel's dial to `index` tenths (2 to 20) on
+  "One token is chosen", a tick at a time; `"memory"` with `index` 0 to 6 brings out that drawer of the memory
+  cabinet on "Seven things called memory" (the red one, 6, rattles and stays shut); `"check"` with `index` 0 to 4 nods
+  that check out of the front door's gateway, its lamp flaring (named quickly in a row, they ripple).
+  `"gate"` with `index` 0 to 3 flares that gate's beacon in "Intent is not authority".
+  `"attention"` with `index` 0 to 2 lights that step (compare, weigh, mix) and its part of the formula on the attention
+  card while the talk plays; 3 hands it back to the story.
+  `"stop"` with `index` 0 to 8 walks the last chapter's token round to that stop of the nine (its chip lights), and 9
+  finishes the lap. Beats can be as many as the words need: they move nothing but the card.
+  Landing part way through a conversation, the card catches up with the latest beat of each kind.
+- `front` (optional): sees the thing from the side it faces, for a screen or a sign whose words are the point, however
+  the card's own shot looks at it. A far flight takes a little longer by itself, so it never lurches.
 
 ## Names
 

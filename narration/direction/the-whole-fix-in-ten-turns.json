@@ -1,5 +1,18 @@
 {
 	"cues": [
-		{ "at": "Each request carries the whole conversation", "show": ["drawer:Conversation"], "do": "pull", "index": 3, "hold": 5 }
+		{ "at": "Two hundred and fifty-four thousand tokens, or twenty-seven thousand", "show": [], "do": "cache", "index": 1 },
+		{ "at": "Turn one.", "show": [], "do": "turn", "index": 0 },
+		{ "at": "turn two is mostly green", "show": [], "do": "turn", "index": 1 },
+		{ "at": "Turn three, it sees", "show": [], "do": "turn", "index": 2 },
+		{ "at": "Turn four, it puts", "show": [], "do": "turn", "index": 3 },
+		{ "at": "Turn five, it adds", "show": [], "do": "turn", "index": 4 },
+		{ "at": "Turn six, the tests run", "show": [], "do": "turn", "index": 5 },
+		{ "at": "Turn seven, it swaps", "show": [], "do": "turn", "index": 6 },
+		{ "at": "Turn eight, the tests pass", "show": [], "do": "turn", "index": 7 },
+		{ "at": "Turn nine, it runs", "show": [], "do": "turn", "index": 8 },
+		{ "at": "Turn ten, four hundred", "show": [], "do": "turn", "index": 9 },
+		{ "at": "Each request carries the whole conversation", "show": ["drawer:Conversation"], "do": "pull", "index": 3, "hold": 5 },
+		{ "at": "Switch the cache off", "show": [], "do": "cache", "index": 0 },
+		{ "at": "every turn after rides on it", "show": [], "do": "cache", "index": 1 }
 	]
 }

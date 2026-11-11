@@ -1,5 +1,8 @@
 {
 	"cues": [
-		{ "at": "That's called an embedding", "show": ["sign:Embedding"], "hold": 3.6 }
+		{ "at": "That's called an embedding", "show": ["sign:Embedding"], "hold": 3.6 },
+		{ "at": "So why is \"job\" with the careers?", "show": ["word:job"], "hold": 4 },
+		{ "at": "Same for \"race\"", "show": ["word:race"], "hold": 3.4 },
+		{ "at": "After that the two \"the\" tiles come apart", "show": ["word:the"], "together": true, "hold": 5 }
 	]
 }

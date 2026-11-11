@@ -80,11 +80,20 @@ test('the arrow keys step through the story a card at a time', async ({ page }) 
 	await expect(back).toBeEnabled({ timeout: 60_000 });
 });
 
-test('the Begin key plays the first card', async ({ page }) => {
+test("the title page's Play key plays the story as a film, pauses it, and the arrow keys still go card by card", async ({ page }) => {
 	test.setTimeout(150_000);
 	await page.goto('/');
 	await page.waitForFunction(() => document.querySelector('main.driven'), null, { timeout: 90_000 });
-	await page.getByRole('button', { name: 'Begin' }).click();
+	const hero = page.locator('main').getByRole('button', { name: 'Play', exact: true });
+	await expect(hero).toHaveAttribute('aria-keyshortcuts', 'K');
+	await hero.click();
+	// The film is playing: the header's key says so, and the title page's key is now the way to pause it.
+	await expect(page.locator('header button.film')).toHaveAttribute('aria-pressed', 'true');
+	await page.locator('main').getByRole('button', { name: 'Pause', exact: true }).click();
+	await expect(page.locator('header button.film')).toHaveAttribute('aria-pressed', 'false');
+	await expect(hero).toBeVisible();
+	// A reader who'd rather drive steps on a card at a time, as ever.
+	await page.keyboard.press('ArrowRight');
 	await page.waitForFunction(() => scrollY > innerHeight * 0.5, null, { timeout: 10_000 });
 	await expect(page.getByRole('button', { name: 'Previous step' })).toBeEnabled({ timeout: 60_000 });
 });
@@ -154,7 +163,7 @@ test('a jump from the map lets the conversation go, and the card it lands on wai
 	await expect(talk).toHaveAttribute('aria-pressed', 'false');
 });
 
-test('the tour shows the controls, can turn the sound on, asks for a star, and ends with Begin', async ({ page }) => {
+test('the tour shows the controls, can turn the sound on, asks for a star, and ends with Play', async ({ page }) => {
 	test.setTimeout(150_000);
 	await page.goto('/');
 	await page.waitForFunction(() => document.querySelector('main.driven'), null, { timeout: 90_000 });
@@ -175,13 +184,14 @@ test('the tour shows the controls, can turn the sound on, asks for a star, and e
 	await expect(page.locator('header').getByRole('button', { name: 'Sound', exact: true })).toHaveAttribute('aria-pressed', 'true');
 	await sound.getByRole('button', { name: 'Next' }).click();
 	await page.getByRole('dialog', { name: 'The map' }).getByRole('button', { name: 'Next' }).click();
-	// The last stop is the source in the corner: a star, feedback, and Begin.
+	// The last stop is the source in the corner: a star, feedback, and Play.
 	const last = page.getByRole('dialog', { name: 'Made in the open' });
 	await expect(last.getByRole('link', { name: 'Star on GitHub' })).toHaveAttribute('href', 'https://github.com/NeoVand/Journey');
 	await expect(page.getByRole('link', { name: 'Source on GitHub' })).toHaveAttribute('target', '_blank');
-	await last.getByRole('button', { name: 'Begin' }).click();
+	await last.getByRole('button', { name: 'Play', exact: true }).click();
 	await expect(page.getByRole('dialog')).toBeHidden();
-	await page.waitForFunction(() => scrollY > innerHeight * 0.5, null, { timeout: 10_000 });
+	// The tour ends with the film playing.
+	await expect(page.locator('header button.film')).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('the arrow keys move the choice inside the agent tray, not the story', async ({ page }) => {
@@ -414,12 +424,42 @@ test("the film's rail scrubs the story either way, and the picture goes with it"
 	await key.hover();
 	const plate = page.getByRole('group', { name: 'The whole story, as a film' });
 	await expect(plate).toBeVisible();
-	const box = (await plate.locator('.strip').boundingBox())!;
-	const y = box.y + box.height / 2;
+	const strip = plate.locator('.strip');
 	const T = () => page.evaluate(() => (window as unknown as Film).__film.state().T);
+	/**
+	 * Where the rail is now, once it has come to rest: the plate drops open with a little spring, settling several pixels
+	 * lower, and a drag aimed where it was a moment ago misses it by a pixel and scrubs nothing.
+	 */
+	const rail = async () => {
+		let box = (await strip.boundingBox())!;
+		await expect
+			.poll(
+				async () => {
+					const was = box;
+					box = (await strip.boundingBox())!;
+					return Math.abs(box.x - was.x) + Math.abs(box.y - was.y) + Math.abs(box.width - was.width) < 0.25;
+				},
+				{ intervals: [150], timeout: 20_000 }
+			)
+			.toBe(true);
+		return box;
+	};
+	const scrubbing = () => page.evaluate(() => (window as unknown as { __film: { state(): { scrubbing: boolean } } }).__film.state().scrubbing);
 	const drag = async (from: number, to: number) => {
+		let box = await rail();
+		let y = box.y + box.height / 2;
 		await page.mouse.move(box.x + box.width * from, y);
 		await page.mouse.down();
+		// On a busy machine the header can still settle between measuring and pressing: a press that missed the rail
+		// starts no scrub, so let go, find the rail again and press once more.
+		if (!(await scrubbing())) {
+			await page.mouse.up();
+			box = await rail();
+			y = box.y + box.height / 2;
+			await page.mouse.move(box.x + box.width * from, y);
+			await page.mouse.down();
+		}
+		expect(await scrubbing(), 'the press lands on the rail').toBe(true);
 		for (let i = 1; i <= 12; i++) {
 			await page.mouse.move(box.x + box.width * (from + ((to - from) * i) / 12), y);
 			await page.waitForTimeout(40);
