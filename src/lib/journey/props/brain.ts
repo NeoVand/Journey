@@ -180,6 +180,27 @@ function overSurface(geo: THREE.BufferGeometry, sets: [number, number, number][]
 				}
 			}
 		}
+		// Walking along edges makes the fronts a little faceted; easing each distance towards its neighbours' rounds them.
+		const eased = new Float64Array(n);
+		for (let pass = 0; pass < 16; pass++) {
+			for (let v = 0; v < n; v++) {
+				if (!Number.isFinite(dist[v]) || dist[v] === 0) {
+					eased[v] = dist[v];
+					continue;
+				}
+				let sum = 0;
+				let count = 0;
+				for (let e = start[v]; e < start[v + 1]; e++) {
+					const d = dist[next[e]];
+					if (Number.isFinite(d)) {
+						sum += d;
+						count++;
+					}
+				}
+				eased[v] = count ? dist[v] * 0.5 + (sum / count) * 0.5 : dist[v];
+			}
+			dist.set(eased);
+		}
 		for (let v = 0; v < n; v++) if (Number.isFinite(dist[v])) out[v * 3 + f] = dist[v];
 	});
 	return out;
@@ -192,13 +213,22 @@ function overSurface(geo: THREE.BufferGeometry, sets: [number, number, number][]
  * folds, and the deepest creases keep a faint light of their own, as if from inside. A class of its own, so the copy a
  * visit dresses the brain in keeps its waves.
  */
-/** One kind of wave at a point this far over the surface from where it starts: a bright front with a fading trail behind. */
+/** One kind of wave, as light: its white-hot core, its halo and its afterglow, at a point this far over the surface from where it starts. */
 const FRONT = /* glsl */ `
-float front(float d, float t, float spacing) {
-	if (d < 0.0) return 0.0;
-	float a = fract((d - t) / spacing);
-	float w = fwidth(a);
-	return (smoothstep(0.962 - w, 0.99, a) * 1.3 + pow(a, 16.0) * 0.3) * (1.0 - smoothstep(1.0 - w * 1.5, 1.0, a));
+// One kind of wave at a point this far over the surface from where it starts. sd is how far ahead of the nearest front
+// (behind it, negative), so a front is light on both sides, with nothing to cut at the far side of the gap between two.
+vec3 front(float d, float t, float spacing, float along) {
+	if (d < 0.0) return vec3(0.0);
+	float u = (d - t) / spacing;
+	float sd = (u - floor(u + 0.5)) * spacing;
+	// Never thinner than about a pixel and a half wherever the camera is: derivatives glitter along the triangles' edges here.
+	float w = max(0.07, vDepth * 0.0013);
+	float core = exp(-(sd / w) * (sd / w));
+	float halo = exp(-(sd / (w * 4.5)) * (sd / (w * 4.5)));
+	float trail = sd < 0.0 ? exp(sd / 0.9) : 0.0;
+	// A thin white-hot front with a soft halo and a short afterglow, brighter in some places along it than others.
+	float swell = 0.55 + 0.45 * sin(along * 1.4 + t * 0.6);
+	return vec3(core * 1.7, halo * 0.45, trail * 0.3) * swell;
 }
 `;
 
@@ -206,21 +236,24 @@ class Tissue extends THREE.MeshPhysicalMaterial {
 	onBeforeCompile(shader: THREE.WebGLProgramParametersWithUniforms) {
 		Object.assign(shader.uniforms, waves);
 		shader.vertexShader = shader.vertexShader
-			.replace('#include <common>', '#include <common>\nattribute float crown;\nattribute vec3 geo;\nvarying float vCrown;\nvarying vec3 vGeo;')
-			.replace('#include <begin_vertex>', '#include <begin_vertex>\nvCrown = crown;\nvGeo = geo;');
+			.replace('#include <common>', '#include <common>\nattribute float crown;\nattribute vec3 geo;\nvarying float vCrown;\nvarying vec3 vGeo;\nvarying float vDepth;')
+			.replace('#include <begin_vertex>', '#include <begin_vertex>\nvCrown = crown;\nvGeo = geo;')
+			.replace('#include <project_vertex>', '#include <project_vertex>\nvDepth = -mvPosition.z;');
 		shader.fragmentShader = shader.fragmentShader
-			.replace('#include <common>', '#include <common>\nuniform float uWaveTime;\nuniform float uWaveGain;\nuniform vec3 uWaveColor;\nvarying float vCrown;\nvarying vec3 vGeo;\n' + FRONT)
+			.replace('#include <common>', '#include <common>\nuniform float uWaveTime;\nuniform float uWaveGain;\nuniform vec3 uWaveColor;\nvarying float vCrown;\nvarying vec3 vGeo;\nvarying float vDepth;\n' + FRONT)
 			.replace(
 				'#include <emissivemap_fragment>',
 				/* glsl */ `#include <emissivemap_fragment>
 				{
 					float t = uWaveTime;
-					float waves = front(vGeo.x, t, 4.4) * (0.65 + 0.35 * sin(t * 0.31))
-						+ front(vGeo.y, t * 0.82 + 1.7, 5.6) * (0.5 + 0.5 * sin(t * 0.23 + 2.0))
-						+ front(vGeo.z, t * 0.91 + 3.1, 5.0) * (0.5 + 0.5 * sin(t * 0.27 + 4.1));
-					float crownLight = mix(0.5, 1.0, smoothstep(0.25, 0.8, vCrown));
+					vec3 w = front(vGeo.x, t, 6.5, vGeo.y * 0.8 - vGeo.z * 0.6) * (0.65 + 0.35 * sin(t * 0.31))
+						+ front(vGeo.y, t * 0.82 + 1.7, 7.8, vGeo.z * 0.7 + vGeo.x * 0.5) * (0.5 + 0.5 * sin(t * 0.23 + 2.0))
+						+ front(vGeo.z, t * 0.91 + 3.1, 7.2, vGeo.x * 0.6 - vGeo.y * 0.8) * (0.5 + 0.5 * sin(t * 0.27 + 4.1));
+					float crownLight = mix(0.55, 1.0, smoothstep(0.25, 0.8, vCrown));
 					float creaseLight = 1.0 - smoothstep(0.0, 0.3, vCrown);
-					totalEmissiveRadiance += uWaveColor * uWaveGain * (waves * crownLight + creaseLight * 0.22);
+					// The core burns nearly white; the halo and the afterglow stay in the wave's colour.
+					vec3 hot = mix(uWaveColor, vec3(1.0), 0.55);
+					totalEmissiveRadiance += uWaveGain * ((hot * w.x + uWaveColor * (w.y + w.z)) * crownLight + uWaveColor * creaseLight * 0.18);
 				}`
 			);
 	}
