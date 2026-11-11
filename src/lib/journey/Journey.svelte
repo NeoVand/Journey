@@ -5,6 +5,8 @@
 	import { resolve } from '$app/paths';
 	import TripMap from './TripMap.svelte';
 	import LoopMap from './LoopMap.svelte';
+	import ContextBar from './ContextBar.svelte';
+	import { contextAt, type Context } from './context';
 	import { Pointer } from './pointer.svelte';
 	import Subtitles from './Subtitles.svelte';
 	import TalkPlayer from './TalkPlayer.svelte';
@@ -68,6 +70,8 @@
 	let check = $state(-1);
 	let gate = $state(-1);
 	let dark = $state(false);
+	/** What the model is sent at the reader's place in the story, for the gauge in the header. */
+	let context = $state.raw<Context | null>(null);
 	/** The title page is up: it brings its own ground, so the header's fade stays out of its heading. */
 	let atTitle = $state(true);
 	/** Set while a card's words reach down into the corner the source key sits in. */
@@ -1191,6 +1195,11 @@
 				});
 				drawer = T > 2.74 ? 4 : dr;
 				pulled = w.pulledDrawer;
+				// The header's gauge keeps the reader's place through a peek, like the form's name.
+				if (peekT === null) {
+					const now = contextAt(T);
+					if (now?.total !== context?.total || now?.parts.length !== context?.parts.length || now?.long !== context?.long) context = now;
+				}
 				check = checkSaid >= 0 && narrator.playing ? checkSaid : T < 5 ? -1 : Math.min(5, Math.floor(((T - 5.04) / 0.58) * 5));
 				// The first call stops at the second gate, and the list has to say so.
 				gate = gateSaid >= 0 && narrator.playing ? gateSaid : T < 20.04 ? -1 : T < 20.4 ? 1 : Math.min(4, Math.floor(((T - 20.4) / 0.58) * 5));
@@ -2408,8 +2417,6 @@
 		};
 	};
 
-	const reachedForm = (n: number) => n <= form;
-
 	function restart(event: MouseEvent) {
 		event.preventDefault();
 		cutTo('How a coding agent works');
@@ -2590,24 +2597,16 @@
 			<span class="long">Back to the journey</span>
 			<span class="short">Back</span>
 		</button>
+	{:else}
+		<ContextBar {context} />
 	{/if}
 	<div class="bar-end">
 		<div class="spine" role="status" aria-live="polite">
 			{#if trip}
-				<ol aria-hidden="true">
-					{#each trip.cards as card, n (card.title)}
-						<li class={{ on: n <= trackCard, now: n === trackCard }}></li>
-					{/each}
-				</ol>
 				<p>
 					<span>Side trip {trackCard + 1} of {trip.cards.length}</span> <strong>{trip.name}</strong>
 				</p>
 			{:else}
-				<ol aria-hidden="true">
-					{#each Array.from({ length: 12 }, (_, i) => i + 1) as n (n)}
-						<li class={{ on: reachedForm(n), now: n === form }}></li>
-					{/each}
-				</ol>
 				<p>
 					<span>Form {form} of 12</span>
 					{#key current.name}<strong in:flipIn>{current.name}</strong>{/key}
@@ -4346,22 +4345,45 @@
 		--veil-a: 0.97;
 	}
 
-	/* Inside the data centre the header's words are light. A flight there can pass a white tray or floor behind them, where
-	   they would vanish, so the header keeps a faint ground of the hall's own night, there and only there. Phones have a
-	   ground of their own. */
+	/*
+	 * On a desk the header is one band across the window, frosted so the world shows through it: the sky's light by day,
+	 * the hall's own night inside the data centre, the room's colour on a side trip. Its words never land on a white tray
+	 * or floor, and a prop that reaches up behind it softens instead of cutting through them. Phones have a ground of
+	 * their own.
+	 */
 	@media (min-aspect-ratio: 9/10) {
-		.journey:not(.tripping) .bar::before {
+		.bar {
+			padding-block: 10px;
+		}
+		.bar::after {
 			content: '';
 			position: absolute;
-			inset: 0 0 -36px;
+			inset: 0;
 			z-index: -1;
 			pointer-events: none;
-			background: linear-gradient(to bottom, rgb(6 15 38 / 0.72) 30%, rgb(6 15 38 / 0));
-			opacity: 0;
-			transition: opacity 0.5s;
+			background-color: rgb(238 247 255 / 0.4);
+			-webkit-backdrop-filter: blur(16px) saturate(1.3);
+			backdrop-filter: blur(16px) saturate(1.3);
+			box-shadow:
+				inset 0 -1px 0 rgb(255 255 255 / 0.6),
+				0 1px 0 rgb(40 80 140 / 0.06);
+			transition:
+				opacity 0.6s,
+				background-color 0.5s,
+				box-shadow 0.5s;
 		}
-		.journey.dark:not(.tripping) .bar::before {
-			opacity: 1;
+		.journey.dark:not(.tripping) .bar::after {
+			background-color: rgb(6 15 38 / 0.55);
+			box-shadow:
+				inset 0 -1px 0 rgb(255 255 255 / 0.09),
+				0 1px 0 rgb(0 0 0 / 0.2);
+		}
+		.tripping .bar::after {
+			background-color: rgb(var(--ground, 214 234 251) / 0.55);
+		}
+		/* The title page is the open sky: the band comes in with the story. */
+		.bar.at-title::after {
+			opacity: 0;
 		}
 	}
 
@@ -4856,7 +4878,6 @@
 		.stepper button[data-step='next']:global(.ready) :global(svg),
 		.stepper .talk.playing :global(svg),
 		.stepper .talk.waiting :global(svg),
-		.spine li.now,
 		.begin::after,
 		.begin.live,
 		.stage {
@@ -4864,64 +4885,14 @@
 		}
 	}
 
-	/* Where the request is: a dot for each of its twelve forms, and the one it's in now is the token, in amber. */
-	.spine ol {
-		display: flex;
-		align-items: center;
-		gap: 5px;
-		list-style: none;
-		margin: 0;
-		padding: 0;
-	}
-	.spine li {
-		width: 14px;
-		height: 6px;
-		border-radius: 3px;
-		background: var(--rail);
-		transition:
-			background 0.3s,
-			width 0.35s cubic-bezier(0.2, 1.4, 0.4, 1);
-	}
-	.spine li.on {
-		background: var(--ink);
-	}
-	.spine li.now {
-		width: 24px;
-		height: 8px;
-		border-radius: 3px;
-		background: #ffb921;
-		box-shadow: inset 0 -2px 0 rgb(176 104 0 / 0.45);
-		animation: hop-in 0.5s cubic-bezier(0.3, 0.7, 0.4, 1);
-	}
-	/* The request takes a new form: its token hops into the next place, the way the loader's tokens hop. */
-	@keyframes hop-in {
-		0% {
-			transform: none;
-		}
-		35% {
-			transform: translateY(-7px) scale(0.9, 1.15);
-		}
-		70% {
-			transform: scale(1.12, 0.82);
-		}
-		100% {
-			transform: none;
-		}
-	}
-	/* On a narrower desktop the dots give up some width, so the name beside them stays on one line. */
+	/* On a narrower desktop the header's pieces close up, so the form's name stays on one line. */
 	@media (min-aspect-ratio: 9/10) and (max-width: 1240px) {
-		.spine li {
-			width: 10px;
-		}
-		.spine li.now {
-			width: 20px;
-		}
 		.bar-end {
 			gap: 12px;
 		}
 	}
-	/* Narrower still, the count leaves the screen and the name stays: the dots above it already say how far along it
-	   is. A screen reader still hears it. */
+	/* Narrower still, the count leaves the screen and the name stays: the map in the corner already says how far along
+	   it is. A screen reader still hears it. */
 	@media (min-aspect-ratio: 9/10) and (max-width: 1120px) {
 		.spine p span {
 			position: absolute;
@@ -5169,10 +5140,6 @@
 		.stepper .talk::before {
 			display: none;
 		}
-		.spine li.now {
-			forced-color-adjust: none;
-			background: Highlight;
-		}
 	}
 
 	/*
@@ -5226,7 +5193,7 @@
 	@media (min-aspect-ratio: 9/10) {
 		.driven .pin.right::after {
 			content: '';
-			flex: 0 1 calc(118px * var(--ui, 1));
+			flex: 0 1 calc(150px * var(--ui, 1));
 			min-height: 0;
 		}
 	}
@@ -6227,7 +6194,7 @@
 		.bar-end {
 			display: contents;
 		}
-		/* A phone keeps the dots and the form's name, and lets the count leave the screen: a screen reader still hears it. */
+		/* A phone keeps the form's name, and lets the count leave the screen: a screen reader still hears it. */
 		.spine p span {
 			position: absolute;
 			width: 1px;
@@ -6311,15 +6278,9 @@
 		.bar.at-title::before {
 			opacity: 0;
 		}
-		/* Small enough that the dots stop short of the panel, with the map beside it. */
-		.bar .spine ol {
-			gap: 3px;
-		}
-		.spine li {
-			width: 8px;
-		}
-		.spine li.now {
-			width: 14px;
+		/* The context's gauge needs the width of a desk: a phone has the map for where it is, and the form's name. */
+		.bar :global(.context) {
+			display: none;
 		}
 		.stepper {
 			gap: 2px;
@@ -6329,7 +6290,7 @@
 		.stepper button {
 			width: 37px;
 		}
-		/* A phone has the panel's four keys, the dots and the form's name to fit side by side, so the map's key keeps
+		/* A phone has the panel's four keys and the form's name to fit side by side, so the map's key keeps
 		   only its mark, and the keys give up a little width. */
 		@media (max-width: 440px) {
 			.brand .map-chip {
@@ -6347,26 +6308,14 @@
 				width: 34px;
 			}
 		}
-		/* The narrowest phones tighten the dots and the keys a little more. */
+		/* The narrowest phones tighten the keys a little more. */
 		@media (max-width: 380px) {
-			.bar .spine li {
-				width: 6px;
-			}
-			.bar .spine li.now {
-				width: 12px;
-			}
 			.bar .stepper button {
 				width: 31px;
 			}
 		}
 		/* And the very smallest, the first iPhone SE's width, a notch more again. */
 		@media (max-width: 340px) {
-			.bar .spine li {
-				width: 5px;
-			}
-			.bar .spine li.now {
-				width: 10px;
-			}
 			.bar .stepper button {
 				width: 29px;
 			}
