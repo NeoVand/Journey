@@ -30,6 +30,28 @@ test('the tokenizer cuts what you type', async ({ page }) => {
 	await expect(sheet).toBeHidden();
 });
 
+test("the header's gauge fills as the harness packs, and opens to show what the model is sent", async ({ page }) => {
+	test.setTimeout(120_000);
+	await page.goto('/?still');
+	await page.waitForFunction(() => '__journey' in window, null, { timeout: 90_000 });
+	const seek = (T: number) => page.evaluate((T) => (window as unknown as { __journey: { seek(T: number): void } }).__journey.seek(T), T);
+	const gauge = page.locator('.context .gauge');
+	await seek(1);
+	await expect(page.locator('.context')).toBeHidden();
+	await seek(3.4);
+	await expect(gauge).toHaveAccessibleName(/21,000 of 200,000 tokens/);
+	await gauge.hover();
+	const card = page.locator('.context .card');
+	await expect(card).toBeVisible();
+	await expect(card.getByText('Tools')).toBeVisible();
+	await expect(card).toContainText('14,000');
+	// At the press the gauge reads a long session, nearly full, then a third of it once the summary is in.
+	await seek(26.47);
+	await expect(gauge).toHaveAccessibleName(/^A long session: 19\d,\d{3} of 200,000/);
+	await seek(26.7);
+	await expect(card).toContainText('Summary');
+});
+
 test('a drawer in the scene can be pulled out', async ({ page }) => {
 	test.setTimeout(120_000);
 	type Debug = { __journey: { seek(T: number): void }; __world: { harness: { drawerHits: { getWorldPosition(v: unknown): { project(c: unknown): { x: number; y: number } }; position: { constructor: new () => unknown } }[] }; stage: { camera: unknown } } };
@@ -258,6 +280,27 @@ test('a side trip opens over the story and brings the reader back to the same pl
 	await expect(trip).toBeHidden({ timeout: 10_000 });
 	expect(await page.evaluate(() => scrollY)).toBe(before);
 	await expect(page.locator('.spine p')).toContainText('Form');
+});
+
+test("Play on a side trip plays the trip's own cards, voices and all", async ({ page }) => {
+	test.setTimeout(150_000);
+	await page.goto('/#the-harness-wakes-up');
+	await page.waitForFunction(() => document.querySelector('main.driven') && scrollY > innerHeight, null, { timeout: 90_000 });
+	await page.getByRole('button', { name: 'How MCP connects' }).first().click();
+	await expect(page.getByRole('region', { name: 'Side trip: How MCP connects' })).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'A server is its own program' })).toBeVisible();
+	const play = page.getByRole('button', { name: /^Play the side trip, How MCP connects/ });
+	await play.click();
+	const film = page.locator('button.film');
+	await expect(film).toHaveAttribute('aria-pressed', 'true');
+	// A breath after the scene lands, Nora and Theo start on the trip's first card.
+	await expect(page.locator('button.talk')).toHaveClass(/\bon\b/, { timeout: 20_000 });
+	await page.keyboard.press('k');
+	await expect(film).toHaveAttribute('aria-pressed', 'false');
+	// Going home stops a trip's film; the key plays the whole story again.
+	await page.keyboard.press('Escape');
+	await expect(page.locator('[data-trip]')).toHaveCount(0, { timeout: 10_000 });
+	await expect(page.getByRole('button', { name: 'Play the whole story, like a film' })).toBeVisible();
 });
 
 test('a side trip ends by itself when the reader scrolls on past its last card', async ({ page }) => {

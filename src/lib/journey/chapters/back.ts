@@ -10,6 +10,7 @@ import { createSign, fitting, grown, SIGN_PHONE, signWidth, standSign } from '..
 import { bell, bounceDown, clamp, hash, inOut, lerp, outBack, outCubic, seg, smooth, spring } from '../kit/math';
 import { createCastShadow } from '../props/island';
 import { TEN_AT, TEN_STEP, TEN_TURNS, CALL_IDS, CALLS, HARNESSES, type HarnessId } from '../content';
+import { PILE_FULL, PRESS_REACH, PRESS_SQUEEZE, SLIP_FROM, SLIP_FULL, SLIP_OLD, SLIP_OLD_T, SLIP_STEP, SLIPS, SUMMARY_T, type SlipKind } from '../context';
 import { GATE_ICON } from '../icons';
 import { EASEL_POS, EASEL_TILT, LOWER, STREAM_BOTTOM } from '../layout';
 import { callPath, RETURN_ROLLER, returnPath } from '../cables';
@@ -82,12 +83,9 @@ const S_HOME = { az: 24, el: 15, target: [1.2, 1.9, 0.6] as V3, radius: 6.1, ry:
 const S_COMPACT = { az: 14, el: 15, target: rel(C_POS, 0, 2.6, 0), radius: 5.9, ry: 3.8, wide: RIGHT, tall: TALL };
 
 /**
- * What the compaction press holds is the request, message by message. Instructions and tools lie at the bottom and
- * never change; on them your prompt, then turn after turn of call, result and the model's own words, creeping up
- * towards the context window's limit. Each slip is as thick as roughly how much it holds: a file read is thick, a call
- * is thin.
+ * What the compaction press holds is the request, message by message (see context.ts, which the header's context bar
+ * reads too, so the two always agree).
  */
-type SlipKind = 'base' | 'prompt' | 'call' | 'result' | 'text';
 const SLIP_TINT: Record<SlipKind | 'summary', string> = {
 	base: color.cream,
 	prompt: '#cfe2ff',
@@ -96,26 +94,6 @@ const SLIP_TINT: Record<SlipKind | 'summary', string> = {
 	text: color.paper,
 	summary: color.amber
 };
-const SLIP_TURNS = 12;
-/** The latest turns, which go on as they are. */
-const SLIP_KEEP = 2;
-const SLIPS: { kind: SlipKind; t: number }[] = [
-	{ kind: 'base', t: 0.32 },
-	{ kind: 'prompt', t: 0.07 },
-	...Array.from({ length: SLIP_TURNS }, (_, n) => [
-		{ kind: 'call' as const, t: 0.05 },
-		{ kind: 'result' as const, t: 0.07 + hash(n * 3.7 + 1) * 0.13 },
-		{ kind: 'text' as const, t: 0.04 }
-	]).flat()
-];
-/** Everything from your prompt up to the latest turns: what the summary stands in for. */
-const SLIP_OLD = [1, SLIPS.length - SLIP_KEEP * 3];
-const SLIP_OLD_T = SLIPS.slice(SLIP_OLD[0], SLIP_OLD[1]).reduce((s, x) => s + x.t, 0);
-const SLIP_FULL = SLIPS.reduce((s, x) => s + x.t, 0);
-const SUMMARY_T = 0.3;
-/** Each message after your prompt lands at its own moment; the score's paper sounds land with them. */
-const SLIP_FROM = 26.08;
-const SLIP_STEP = (26.46 - SLIP_FROM) / (SLIPS.length - 2);
 /** The slips' footprint, and the height of the press's base they lie on. */
 const SLIP_W = 2.7;
 const SLIP_D = 3.3;
@@ -2142,8 +2120,8 @@ export class Back {
 			const bx = cx - 2.4;
 			// The plate comes down onto the pile, then squeezes only the older messages: your prompt and the early turns
 			// fold into one summary, while the latest turns ride down on top of them, as they were.
-			const reach = inOut(seg(T, 26.48, 26.53));
-			const q = inOut(seg(T, 26.53, 26.6));
+			const reach = inOut(seg(T, PRESS_REACH[0], PRESS_REACH[1]));
+			const q = inOut(seg(T, PRESS_SQUEEZE[0], PRESS_SQUEEZE[1]));
 			const lift = inOut(seg(T, 26.64, 26.76));
 			const folded = q >= 1;
 			const oldK = lerp(1, SUMMARY_T / SLIP_OLD_T, q);
@@ -2201,7 +2179,7 @@ export class Back {
 			this.ram.forEach((stage, i) => (stage.position.y = cy + RAM_SLEEVE - (reachDown * (i + 1)) / this.ram.length + RAM_STAGE / 2));
 
 			// The context window's gauge reads the pile: close to its limit before, about a third after.
-			const level = ((top - PRESS_FLOOR) / SLIP_FULL) * 3.92;
+			const level = ((top - PRESS_FLOOR) / SLIP_FULL) * PILE_FULL * 4;
 			this.gaugeFill.scale.y = Math.max(0.01, level);
 			const danger = seg(level, 2.6, 3.7);
 			this.gaugeMat.color.set('#35d17f').lerp(new THREE.Color('#f0473c'), danger);

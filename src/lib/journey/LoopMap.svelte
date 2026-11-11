@@ -76,6 +76,7 @@
 			<span class="mark" style:left="{mark.x * 100}%" style:top="{mark.y * 100}%" aria-hidden="true"></span>
 		{/if}
 	</div>
+	<span class="cloud" aria-hidden="true"></span>
 	<button type="button" class="whole" aria-label="Open the map of the trip" onclick={onopen}></button>
 	<p class="caption">
 		{#if !done}<b>{here + 1}</b>{/if}
@@ -84,31 +85,85 @@
 </nav>
 
 <style>
-	/* A cream key like the controls, standing still in the corner while the story moves past it. */
+	/*
+	 * A glimpse of the whole loop far below, through a gap in the clouds: no frame, the picture clear in the middle and
+	 * thinning to nothing towards its edges, with cloud drifting over them. Pointed at, the gap opens and it comes up
+	 * clear. The opening is a registered property, so it eases.
+	 */
+	@property --clear {
+		syntax: '<percentage>';
+		inherits: true;
+		initial-value: 56%;
+	}
 	.loop-map {
+		--clear: 56%;
+		--puff: 255 255 255;
+		--halo: 255 255 255;
 		position: fixed;
 		z-index: 9;
-		right: clamp(14px, 2.2vw, 30px);
-		bottom: max(14px, env(safe-area-inset-bottom));
+		right: clamp(8px, 1.4vw, 20px);
+		bottom: max(8px, env(safe-area-inset-bottom));
 		box-sizing: border-box;
-		width: 176px;
-		padding: 7px 7px 5px;
-		border-radius: 16px;
-		background: linear-gradient(#fffaf0, #fbefd6);
-		box-shadow:
-			inset 0 1px 0 #fff,
-			inset 0 -3px 0 #e4cfa6,
-			0 1px 2px rgb(60 40 10 / 0.14),
-			0 10px 26px rgb(20 60 130 / 0.16);
+		width: 236px;
 		color: #33415c;
 		font: 650 12px/1.2 var(--sans);
+		transition: --clear 0.5s cubic-bezier(0.3, 0.8, 0.3, 1);
+	}
+	.loop-map:hover,
+	.loop-map:focus-within {
+		--clear: 74%;
+	}
+	/* At night the cloud is the hall's haze, and the caption's words are light. */
+	:global(.journey.dark) .loop-map {
+		--puff: 96 116 158;
+		--halo: 6 15 38;
+		color: #e3ebf9;
 	}
 	.view {
 		position: relative;
-		border-radius: 10px;
-		overflow: hidden;
 		background: linear-gradient(#a9d3f6, #e3f2fd);
-		box-shadow: inset 0 0 0 1px rgb(40 70 120 / 0.12);
+		-webkit-mask-image: radial-gradient(closest-side, #000 var(--clear), transparent);
+		mask-image: radial-gradient(closest-side, #000 var(--clear), transparent);
+		opacity: 0.88;
+		transition: opacity 0.4s;
+	}
+	.loop-map:hover .view,
+	.loop-map:focus-within .view {
+		opacity: 1;
+	}
+	/* Puffs of cloud round the gap's rim, thickest where the picture thins, parting a little when it opens. */
+	.cloud {
+		position: absolute;
+		inset: -14% -10% 2%;
+		pointer-events: none;
+		background:
+			radial-gradient(closest-side, rgb(var(--puff) / 0.85), rgb(var(--puff) / 0)) 0% 18% / 38% 46% no-repeat,
+			radial-gradient(closest-side, rgb(var(--puff) / 0.7), rgb(var(--puff) / 0)) 34% 0% / 46% 34% no-repeat,
+			radial-gradient(closest-side, rgb(var(--puff) / 0.8), rgb(var(--puff) / 0)) 92% 4% / 44% 40% no-repeat,
+			radial-gradient(closest-side, rgb(var(--puff) / 0.75), rgb(var(--puff) / 0)) 104% 58% / 30% 50% no-repeat,
+			radial-gradient(closest-side, rgb(var(--puff) / 0.85), rgb(var(--puff) / 0)) 78% 104% / 52% 38% no-repeat,
+			radial-gradient(closest-side, rgb(var(--puff) / 0.7), rgb(var(--puff) / 0)) 20% 100% / 50% 36% no-repeat,
+			radial-gradient(closest-side, rgb(var(--puff) / 0.75), rgb(var(--puff) / 0)) -4% 74% / 32% 48% no-repeat;
+		filter: blur(3px);
+		opacity: 0.75;
+		transition:
+			opacity 0.5s,
+			transform 0.6s cubic-bezier(0.3, 0.8, 0.3, 1);
+	}
+	/* At night the world below is still by day, so the gap shows it dimmer, with only a little haze. */
+	:global(.journey.dark) .cloud {
+		opacity: 0.3;
+	}
+	:global(.journey.dark) .view {
+		filter: brightness(0.86);
+	}
+	:global(.journey.dark) .loop-map:not(:hover, :focus-within) .view {
+		opacity: 0.7;
+	}
+	.loop-map:hover .cloud,
+	.loop-map:focus-within .cloud {
+		opacity: 0.5;
+		transform: scale(1.1);
 	}
 	canvas {
 		display: block;
@@ -191,10 +246,15 @@
 	.whole {
 		display: none;
 	}
+	/* Where you are, written on the cloud under the gap. */
 	.caption {
-		margin: 4px 0 0;
+		position: relative;
+		margin: -4px 0 0;
 		text-align: center;
 		white-space: nowrap;
+		text-shadow:
+			0 0 4px rgb(var(--halo)),
+			0 0 10px rgb(var(--halo) / 0.9);
 	}
 	.caption b {
 		display: inline-grid;
@@ -208,18 +268,18 @@
 		font-size: 10.5px;
 	}
 
-	/* A phone: a small picture under the header on the right, above the words. Its stops are too close to press, so a tap opens the map. */
+	/* A phone: a small glimpse under the header on the right, above the words, fading into the sky with no cloud of its
+	   own. Its stops are too close to press, so a tap opens the map. */
 	@media (max-aspect-ratio: 9/10) {
 		.loop-map {
-			top: calc(env(safe-area-inset-top) + 68px);
+			--clear: 58%;
+			top: calc(env(safe-area-inset-top) + 62px);
 			bottom: auto;
-			right: 12px;
-			width: 96px;
-			padding: 4px;
-			border-radius: 12px;
+			right: 6px;
+			width: 112px;
 		}
-		.view {
-			border-radius: 8px;
+		.cloud {
+			display: none;
 		}
 		.presses {
 			display: none;

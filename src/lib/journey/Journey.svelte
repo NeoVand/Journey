@@ -5,6 +5,8 @@
 	import { resolve } from '$app/paths';
 	import TripMap from './TripMap.svelte';
 	import LoopMap from './LoopMap.svelte';
+	import ContextBar from './ContextBar.svelte';
+	import { contextAt, type Context } from './context';
 	import { Pointer } from './pointer.svelte';
 	import Subtitles from './Subtitles.svelte';
 	import TalkPlayer from './TalkPlayer.svelte';
@@ -68,6 +70,8 @@
 	let check = $state(-1);
 	let gate = $state(-1);
 	let dark = $state(false);
+	/** What the model is sent at the reader's place in the story, for the gauge in the header. */
+	let context = $state.raw<Context | null>(null);
 	/** The title page is up: it brings its own ground, so the header's fade stays out of its heading. */
 	let atTitle = $state(true);
 	/** Set while a card's words reach down into the corner the source key sits in. */
@@ -477,6 +481,8 @@
 	 * under the Play key scrubs it either way, voices and all. Set going once the page has measured itself.
 	 */
 	let filming = $state(false);
+	/** Which side trip the film is playing, or null for the main road. On a trip, Play plays that trip's cards. */
+	let filmIn: TrackId | null = null;
 	/** Where the film is, in seconds, how long it is, and where that is along its rail, 0 to 1. */
 	let filmAt = $state(0);
 	let filmTotal = $state(0);
@@ -561,7 +567,7 @@
 
 	/** K plays and pauses the film, as it does on most video players, unless something being typed in wants it. */
 	function filmShortcut(event: KeyboardEvent) {
-		if (event.key.toLowerCase() !== 'k' || event.altKey || event.ctrlKey || event.metaKey || event.defaultPrevented || !driven || track) return;
+		if (event.key.toLowerCase() !== 'k' || event.altKey || event.ctrlKey || event.metaKey || event.defaultPrevented || !driven) return;
 		const target = event.target as HTMLElement | null;
 		if (target?.closest('input:not([type="range"]), textarea, select, [contenteditable]') || document.querySelector('dialog[open]')) return;
 		event.preventDefault();
@@ -1191,6 +1197,11 @@
 				});
 				drawer = T > 2.74 ? 4 : dr;
 				pulled = w.pulledDrawer;
+				// The header's gauge keeps the reader's place through a peek, like the form's name.
+				if (peekT === null) {
+					const now = contextAt(T);
+					if (now?.total !== context?.total || now?.parts.length !== context?.parts.length || now?.long !== context?.long) context = now;
+				}
 				check = checkSaid >= 0 && narrator.playing ? checkSaid : T < 5 ? -1 : Math.min(5, Math.floor(((T - 5.04) / 0.58) * 5));
 				// The first call stops at the second gate, and the list has to say so.
 				gate = gateSaid >= 0 && narrator.playing ? gateSaid : T < 20.04 ? -1 : T < 20.4 ? 1 : Math.min(4, Math.floor(((T - 20.4) / 0.58) * 5));
@@ -1556,12 +1567,56 @@
 				if (narrator.id !== id || Math.abs(narrator.time - at) > 0.6 || narrator.done) narrator.seek(id, at);
 				if (play) narrator.play(id);
 			};
-			const runFilm = (dt: number) => {
-				remeasureReel();
-				if (track) {
-					if (filming) stopFilm();
+			/**
+			 * One frame of the hold at stop k, on the main road or on a side trip: a breath, the card's conversation and a
+			 * breath after it, or, without one, `read` seconds to read the card; then `onward`.
+			 */
+			const holdAt = (k: number, id: string | null, read: number, dt: number, onward: () => void) => {
+				if (held !== k) {
+					held = k;
+					heldFor = 0;
+					voiced = false;
+					doneFor = 0;
+					silent = 0;
+				}
+				if (!id) {
+					heldFor += dt;
+					if (heldFor >= read) onward();
 					return;
 				}
+				if (!voiced) {
+					heldFor += dt;
+					if (heldFor < LEAD_IN) return;
+					voiced = true;
+					voice(id, 0, true);
+					return;
+				}
+				if (doneFor > 0 || (narrator.id === id && narrator.done)) {
+					doneFor += dt;
+					heldFor = LEAD_IN + TALKS[id].seconds / narrator.rate + doneFor;
+					if (doneFor >= LEAD_OUT) onward();
+					return;
+				}
+				if (narrator.id === id && narrator.playing) {
+					heldFor = LEAD_IN + narrator.time / narrator.rate;
+					silent = 0;
+					return;
+				}
+				// The reader paused the voices themselves, from the talk key or the lock screen: the film pauses with them.
+				if (!narrator.listening) return stopFilm();
+				// Still waiting for them to arrive. If they can't come, the card is read instead, and the film goes on.
+				silent += dt;
+				if (silent > 8) onward();
+			};
+			const runFilm = (dt: number) => {
+				remeasureReel();
+				// A film plays where it was started: the main road, or the side trip it was started on. Going into a trip,
+				// or out of one, stops it.
+				if (filming && filmIn !== track) {
+					stopFilm();
+					held = -1;
+				}
+				if (track) return runTripFilm(dt);
 				if (scrubbing) return scrub(dt);
 				if (voyage) {
 					filmAt = reel.when(T);
@@ -1580,45 +1635,11 @@
 					return;
 				}
 				if (!still) return;
-				const id = talkFor(k);
-				if (held !== k) {
-					held = k;
-					heldFor = 0;
-					voiced = false;
-					doneFor = 0;
-					silent = 0;
-				}
-				if (!id) {
-					heldFor += dt;
-					if (heldFor >= reel.hold(k)) advance(k);
-					return;
-				}
-				if (!voiced) {
-					heldFor += dt;
-					if (heldFor < LEAD_IN) return;
-					voiced = true;
-					voice(id, 0, true);
-					return;
-				}
-				if (doneFor > 0 || (narrator.id === id && narrator.done)) {
-					doneFor += dt;
-					heldFor = LEAD_IN + TALKS[id].seconds / narrator.rate + doneFor;
-					if (doneFor >= LEAD_OUT) advance(k);
-					return;
-				}
-				if (narrator.id === id && narrator.playing) {
-					heldFor = LEAD_IN + narrator.time / narrator.rate;
-					silent = 0;
-					return;
-				}
-				// The reader paused the voices themselves, from the talk key or the lock screen: the film pauses with them.
-				if (!narrator.listening) return stopFilm();
-				// Still waiting for them to arrive. If they can't come, the card is read instead, and the film goes on.
-				silent += dt;
-				if (silent > 8) advance(k);
+				holdAt(k, talkFor(k), reel.hold(k), dt, () => advance(k));
 			};
 			toggleFilm = () => {
-				if (track || !driven) return;
+				if (!driven) return;
+				if (track) return toggleTripFilm();
 				if (filming) {
 					stopFilm();
 					// Part way through a scene, the picture stops where it is; a step or Play sets it going again.
@@ -1627,6 +1648,7 @@
 					return;
 				}
 				filming = true;
+				filmIn = null;
 				narrator.led = true;
 				frozen = false;
 				// The card the reader is looking at as the film starts, the title page say, is already there to read: it stays
@@ -2022,6 +2044,98 @@
 				canOn = true;
 			};
 
+			/*
+			 * A side trip as a film: Play there plays the trip's own cards as the main film plays the story's, each scene and
+			 * then its conversation, or time to read it, and stops on the last card, where the way home waits. Stop k > 0
+			 * rests on card k - 1.
+			 */
+			/** Whether the film has played the trip to its end: Play again starts it from its first card. */
+			let tripOver = false;
+			const tripCard = (k: number) => tripPins[Math.max(0, k - 1)] as HTMLElement | undefined;
+			const tripTalk = (k: number) => {
+				const el = tripCard(k);
+				const id = filmTalk && track && el ? talkOf(el, track) : null;
+				return id && TALKS[id] ? id : null;
+			};
+			/** Time to read a trip's card, once its scene has shown it for a while. */
+			const tripRead = (k: number) => {
+				const el = tripCard(k);
+				if (!el || !tripDirector) return 0;
+				const n = [...el.querySelectorAll(READ)].filter((b) => !b.parentElement?.closest(READ)).reduce((sum, b) => sum + countWords(b), 0);
+				return readingHold(n, tripDirector.pace.seconds(k > 1 ? k - 1 + 0.05 : 0, tripDirector.stops[k]));
+			};
+			const tripHoldFor = (k: number) => {
+				const id = tripTalk(k);
+				return id ? LEAD_IN + TALKS[id].seconds / narrator.rate + LEAD_OUT : tripRead(k);
+			};
+			const runTripFilm = (dt: number) => {
+				const d = tripDirector;
+				const head = tripHead;
+				if (!d || !head) return;
+				const t = head.T;
+				const k = d.goal;
+				const still = Math.abs(t - d.target) < 1e-4 && d.hold === null;
+				if (!still) held = -1;
+				// The Play key's rail: each card an equal share, its scene the first half and its hold the second.
+				const from = d.stops[Math.max(0, k - 1)];
+				const scene = k === 0 ? 1 : Math.min(1, Math.max(0, (t - from) / Math.max(1e-4, d.stops[k] - from)));
+				const id = tripTalk(k);
+				const into =
+					held === k ? heldFor : id && narrator.id === id && narrator.time > 0 ? LEAD_IN + (narrator.done ? TALKS[id].seconds : narrator.time) / narrator.rate : 0;
+				const hold = still && k > 0 ? (tripOver && k === d.last ? 1 : Math.min(1, into / Math.max(0.1, tripHoldFor(k)))) : 0;
+				filmRail = k === 0 ? 0 : (k - 1 + scene * 0.5 + hold * 0.5) / d.last;
+				if (!filming || flying || !tripStarted || tripCutting || !still) return;
+				if (k === 0) {
+					d.next(t);
+					alignTrip();
+					return;
+				}
+				holdAt(k, id, tripRead(k), dt, () => {
+					held = -1;
+					if (k >= d.last) {
+						tripOver = true;
+						stopFilm();
+						return;
+					}
+					d.next(t);
+					alignTrip();
+				});
+			};
+			const toggleTripFilm = () => {
+				const d = tripDirector;
+				const head = tripHead;
+				if (!track || !d || !head) return;
+				const k = d.goal;
+				const id = tripTalk(k);
+				if (filming) {
+					stopFilm();
+					if (narrator.playing && narrator.id === id) narrator.pause();
+					return;
+				}
+				filming = true;
+				filmIn = track;
+				narrator.led = true;
+				const resting = Math.abs(head.T - d.target) < 1e-4 && d.hold === null;
+				// Over at the end: the trip again from its first card.
+				if (k === d.last && resting && (tripOver || (!!id && narrator.id === id && narrator.done))) {
+					tripOver = false;
+					held = -1;
+					d.go(1);
+					alignTrip();
+					return;
+				}
+				tripOver = false;
+				// Paused in a hold, or already listening to this card from its own key: on from where the voices are.
+				if (id && resting && narrator.id === id && !narrator.done && narrator.time > 0) {
+					held = k;
+					voiced = true;
+					doneFor = 0;
+					silent = 0;
+					heldFor = LEAD_IN + narrator.time / narrator.rate;
+					narrator.play(id);
+				}
+			};
+
 			enterTrack = async (id) => {
 				if (track || flying) return;
 				homeward = false;
@@ -2040,6 +2154,7 @@
 				tripDirector = new Director(tripStops(), tripPace, touch ? PHONE : DESK);
 				tripHead = new Playhead(tripPace, 0, reduced);
 				tripStarted = false;
+				tripOver = false;
 				w.trackT = 0;
 				w.setTrack(id);
 				const inside = TRACK_AT[id].inside;
@@ -2408,8 +2523,6 @@
 		};
 	};
 
-	const reachedForm = (n: number) => n <= form;
-
 	function restart(event: MouseEvent) {
 		event.preventDefault();
 		cutTo('How a coding agent works');
@@ -2590,24 +2703,16 @@
 			<span class="long">Back to the journey</span>
 			<span class="short">Back</span>
 		</button>
+	{:else}
+		<ContextBar {context} />
 	{/if}
 	<div class="bar-end">
 		<div class="spine" role="status" aria-live="polite">
 			{#if trip}
-				<ol aria-hidden="true">
-					{#each trip.cards as card, n (card.title)}
-						<li class={{ on: n <= trackCard, now: n === trackCard }}></li>
-					{/each}
-				</ol>
 				<p>
 					<span>Side trip {trackCard + 1} of {trip.cards.length}</span> <strong>{trip.name}</strong>
 				</p>
 			{:else}
-				<ol aria-hidden="true">
-					{#each Array.from({ length: 12 }, (_, i) => i + 1) as n (n)}
-						<li class={{ on: reachedForm(n), now: n === form }}></li>
-					{/each}
-				</ol>
 				<p>
 					<span>Form {form} of 12</span>
 					{#key current.name}<strong in:flipIn>{current.name}</strong>{/key}
@@ -2734,7 +2839,7 @@
 					class={['film', { playing: filming }]}
 					style:--done={filmRail}
 					aria-pressed={filming}
-					aria-label={filming ? 'Pause the film' : 'Play the whole story, like a film'}
+					aria-label={filming ? 'Pause the film' : trip ? `Play the side trip, ${trip.name}, like a film` : 'Play the whole story, like a film'}
 					aria-keyshortcuts="K"
 					onpointerdown={(e) => (filmTapped = e.pointerType === 'touch')}
 					onkeydown={() => (filmTapped = false)}
@@ -4346,22 +4451,45 @@
 		--veil-a: 0.97;
 	}
 
-	/* Inside the data centre the header's words are light. A flight there can pass a white tray or floor behind them, where
-	   they would vanish, so the header keeps a faint ground of the hall's own night, there and only there. Phones have a
-	   ground of their own. */
+	/*
+	 * On a desk the header is one band across the window, frosted so the world shows through it: the sky's light by day,
+	 * the hall's own night inside the data centre, the room's colour on a side trip. Its words never land on a white tray
+	 * or floor, and a prop that reaches up behind it softens instead of cutting through them. Phones have a ground of
+	 * their own.
+	 */
 	@media (min-aspect-ratio: 9/10) {
-		.journey:not(.tripping) .bar::before {
+		.bar {
+			padding-block: 10px;
+		}
+		.bar::after {
 			content: '';
 			position: absolute;
-			inset: 0 0 -36px;
+			inset: 0;
 			z-index: -1;
 			pointer-events: none;
-			background: linear-gradient(to bottom, rgb(6 15 38 / 0.72) 30%, rgb(6 15 38 / 0));
-			opacity: 0;
-			transition: opacity 0.5s;
+			background-color: rgb(238 247 255 / 0.4);
+			-webkit-backdrop-filter: blur(16px) saturate(1.3);
+			backdrop-filter: blur(16px) saturate(1.3);
+			box-shadow:
+				inset 0 -1px 0 rgb(255 255 255 / 0.6),
+				0 1px 0 rgb(40 80 140 / 0.06);
+			transition:
+				opacity 0.6s,
+				background-color 0.5s,
+				box-shadow 0.5s;
 		}
-		.journey.dark:not(.tripping) .bar::before {
-			opacity: 1;
+		.journey.dark:not(.tripping) .bar::after {
+			background-color: rgb(6 15 38 / 0.55);
+			box-shadow:
+				inset 0 -1px 0 rgb(255 255 255 / 0.09),
+				0 1px 0 rgb(0 0 0 / 0.2);
+		}
+		.tripping .bar::after {
+			background-color: rgb(var(--ground, 214 234 251) / 0.55);
+		}
+		/* The title page is the open sky: the band comes in with the story. */
+		.bar.at-title::after {
+			opacity: 0;
 		}
 	}
 
@@ -4856,7 +4984,6 @@
 		.stepper button[data-step='next']:global(.ready) :global(svg),
 		.stepper .talk.playing :global(svg),
 		.stepper .talk.waiting :global(svg),
-		.spine li.now,
 		.begin::after,
 		.begin.live,
 		.stage {
@@ -4864,64 +4991,14 @@
 		}
 	}
 
-	/* Where the request is: a dot for each of its twelve forms, and the one it's in now is the token, in amber. */
-	.spine ol {
-		display: flex;
-		align-items: center;
-		gap: 5px;
-		list-style: none;
-		margin: 0;
-		padding: 0;
-	}
-	.spine li {
-		width: 14px;
-		height: 6px;
-		border-radius: 3px;
-		background: var(--rail);
-		transition:
-			background 0.3s,
-			width 0.35s cubic-bezier(0.2, 1.4, 0.4, 1);
-	}
-	.spine li.on {
-		background: var(--ink);
-	}
-	.spine li.now {
-		width: 24px;
-		height: 8px;
-		border-radius: 3px;
-		background: #ffb921;
-		box-shadow: inset 0 -2px 0 rgb(176 104 0 / 0.45);
-		animation: hop-in 0.5s cubic-bezier(0.3, 0.7, 0.4, 1);
-	}
-	/* The request takes a new form: its token hops into the next place, the way the loader's tokens hop. */
-	@keyframes hop-in {
-		0% {
-			transform: none;
-		}
-		35% {
-			transform: translateY(-7px) scale(0.9, 1.15);
-		}
-		70% {
-			transform: scale(1.12, 0.82);
-		}
-		100% {
-			transform: none;
-		}
-	}
-	/* On a narrower desktop the dots give up some width, so the name beside them stays on one line. */
+	/* On a narrower desktop the header's pieces close up, so the form's name stays on one line. */
 	@media (min-aspect-ratio: 9/10) and (max-width: 1240px) {
-		.spine li {
-			width: 10px;
-		}
-		.spine li.now {
-			width: 20px;
-		}
 		.bar-end {
 			gap: 12px;
 		}
 	}
-	/* Narrower still, the count leaves the screen and the name stays: the dots above it already say how far along it
-	   is. A screen reader still hears it. */
+	/* Narrower still, the count leaves the screen and the name stays: the map in the corner already says how far along
+	   it is. A screen reader still hears it. */
 	@media (min-aspect-ratio: 9/10) and (max-width: 1120px) {
 		.spine p span {
 			position: absolute;
@@ -5169,10 +5246,6 @@
 		.stepper .talk::before {
 			display: none;
 		}
-		.spine li.now {
-			forced-color-adjust: none;
-			background: Highlight;
-		}
 	}
 
 	/*
@@ -5226,7 +5299,7 @@
 	@media (min-aspect-ratio: 9/10) {
 		.driven .pin.right::after {
 			content: '';
-			flex: 0 1 calc(118px * var(--ui, 1));
+			flex: 0 1 calc(150px * var(--ui, 1));
 			min-height: 0;
 		}
 	}
@@ -6227,7 +6300,7 @@
 		.bar-end {
 			display: contents;
 		}
-		/* A phone keeps the dots and the form's name, and lets the count leave the screen: a screen reader still hears it. */
+		/* A phone keeps the form's name, and lets the count leave the screen: a screen reader still hears it. */
 		.spine p span {
 			position: absolute;
 			width: 1px;
@@ -6311,15 +6384,9 @@
 		.bar.at-title::before {
 			opacity: 0;
 		}
-		/* Small enough that the dots stop short of the panel, with the map beside it. */
-		.bar .spine ol {
-			gap: 3px;
-		}
-		.spine li {
-			width: 8px;
-		}
-		.spine li.now {
-			width: 14px;
+		/* The context's gauge needs the width of a desk: a phone has the map for where it is, and the form's name. */
+		.bar :global(.context) {
+			display: none;
 		}
 		.stepper {
 			gap: 2px;
@@ -6329,7 +6396,7 @@
 		.stepper button {
 			width: 37px;
 		}
-		/* A phone has the panel's four keys, the dots and the form's name to fit side by side, so the map's key keeps
+		/* A phone has the panel's four keys and the form's name to fit side by side, so the map's key keeps
 		   only its mark, and the keys give up a little width. */
 		@media (max-width: 440px) {
 			.brand .map-chip {
@@ -6347,26 +6414,14 @@
 				width: 34px;
 			}
 		}
-		/* The narrowest phones tighten the dots and the keys a little more. */
+		/* The narrowest phones tighten the keys a little more. */
 		@media (max-width: 380px) {
-			.bar .spine li {
-				width: 6px;
-			}
-			.bar .spine li.now {
-				width: 12px;
-			}
 			.bar .stepper button {
 				width: 31px;
 			}
 		}
 		/* And the very smallest, the first iPhone SE's width, a notch more again. */
 		@media (max-width: 340px) {
-			.bar .spine li {
-				width: 5px;
-			}
-			.bar .spine li.now {
-				width: 10px;
-			}
 			.bar .stepper button {
 				width: 29px;
 			}
