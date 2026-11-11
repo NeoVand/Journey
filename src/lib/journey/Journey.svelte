@@ -481,6 +481,8 @@
 	 * under the Play key scrubs it either way, voices and all. Set going once the page has measured itself.
 	 */
 	let filming = $state(false);
+	/** Which side trip the film is playing, or null for the main road. On a trip, Play plays that trip's cards. */
+	let filmIn: TrackId | null = null;
 	/** Where the film is, in seconds, how long it is, and where that is along its rail, 0 to 1. */
 	let filmAt = $state(0);
 	let filmTotal = $state(0);
@@ -565,7 +567,7 @@
 
 	/** K plays and pauses the film, as it does on most video players, unless something being typed in wants it. */
 	function filmShortcut(event: KeyboardEvent) {
-		if (event.key.toLowerCase() !== 'k' || event.altKey || event.ctrlKey || event.metaKey || event.defaultPrevented || !driven || track) return;
+		if (event.key.toLowerCase() !== 'k' || event.altKey || event.ctrlKey || event.metaKey || event.defaultPrevented || !driven) return;
 		const target = event.target as HTMLElement | null;
 		if (target?.closest('input:not([type="range"]), textarea, select, [contenteditable]') || document.querySelector('dialog[open]')) return;
 		event.preventDefault();
@@ -1565,12 +1567,56 @@
 				if (narrator.id !== id || Math.abs(narrator.time - at) > 0.6 || narrator.done) narrator.seek(id, at);
 				if (play) narrator.play(id);
 			};
-			const runFilm = (dt: number) => {
-				remeasureReel();
-				if (track) {
-					if (filming) stopFilm();
+			/**
+			 * One frame of the hold at stop k, on the main road or on a side trip: a breath, the card's conversation and a
+			 * breath after it, or, without one, `read` seconds to read the card; then `onward`.
+			 */
+			const holdAt = (k: number, id: string | null, read: number, dt: number, onward: () => void) => {
+				if (held !== k) {
+					held = k;
+					heldFor = 0;
+					voiced = false;
+					doneFor = 0;
+					silent = 0;
+				}
+				if (!id) {
+					heldFor += dt;
+					if (heldFor >= read) onward();
 					return;
 				}
+				if (!voiced) {
+					heldFor += dt;
+					if (heldFor < LEAD_IN) return;
+					voiced = true;
+					voice(id, 0, true);
+					return;
+				}
+				if (doneFor > 0 || (narrator.id === id && narrator.done)) {
+					doneFor += dt;
+					heldFor = LEAD_IN + TALKS[id].seconds / narrator.rate + doneFor;
+					if (doneFor >= LEAD_OUT) onward();
+					return;
+				}
+				if (narrator.id === id && narrator.playing) {
+					heldFor = LEAD_IN + narrator.time / narrator.rate;
+					silent = 0;
+					return;
+				}
+				// The reader paused the voices themselves, from the talk key or the lock screen: the film pauses with them.
+				if (!narrator.listening) return stopFilm();
+				// Still waiting for them to arrive. If they can't come, the card is read instead, and the film goes on.
+				silent += dt;
+				if (silent > 8) onward();
+			};
+			const runFilm = (dt: number) => {
+				remeasureReel();
+				// A film plays where it was started: the main road, or the side trip it was started on. Going into a trip,
+				// or out of one, stops it.
+				if (filming && filmIn !== track) {
+					stopFilm();
+					held = -1;
+				}
+				if (track) return runTripFilm(dt);
 				if (scrubbing) return scrub(dt);
 				if (voyage) {
 					filmAt = reel.when(T);
@@ -1589,45 +1635,11 @@
 					return;
 				}
 				if (!still) return;
-				const id = talkFor(k);
-				if (held !== k) {
-					held = k;
-					heldFor = 0;
-					voiced = false;
-					doneFor = 0;
-					silent = 0;
-				}
-				if (!id) {
-					heldFor += dt;
-					if (heldFor >= reel.hold(k)) advance(k);
-					return;
-				}
-				if (!voiced) {
-					heldFor += dt;
-					if (heldFor < LEAD_IN) return;
-					voiced = true;
-					voice(id, 0, true);
-					return;
-				}
-				if (doneFor > 0 || (narrator.id === id && narrator.done)) {
-					doneFor += dt;
-					heldFor = LEAD_IN + TALKS[id].seconds / narrator.rate + doneFor;
-					if (doneFor >= LEAD_OUT) advance(k);
-					return;
-				}
-				if (narrator.id === id && narrator.playing) {
-					heldFor = LEAD_IN + narrator.time / narrator.rate;
-					silent = 0;
-					return;
-				}
-				// The reader paused the voices themselves, from the talk key or the lock screen: the film pauses with them.
-				if (!narrator.listening) return stopFilm();
-				// Still waiting for them to arrive. If they can't come, the card is read instead, and the film goes on.
-				silent += dt;
-				if (silent > 8) advance(k);
+				holdAt(k, talkFor(k), reel.hold(k), dt, () => advance(k));
 			};
 			toggleFilm = () => {
-				if (track || !driven) return;
+				if (!driven) return;
+				if (track) return toggleTripFilm();
 				if (filming) {
 					stopFilm();
 					// Part way through a scene, the picture stops where it is; a step or Play sets it going again.
@@ -1636,6 +1648,7 @@
 					return;
 				}
 				filming = true;
+				filmIn = null;
 				narrator.led = true;
 				frozen = false;
 				// The card the reader is looking at as the film starts, the title page say, is already there to read: it stays
@@ -2031,6 +2044,98 @@
 				canOn = true;
 			};
 
+			/*
+			 * A side trip as a film: Play there plays the trip's own cards as the main film plays the story's, each scene and
+			 * then its conversation, or time to read it, and stops on the last card, where the way home waits. Stop k > 0
+			 * rests on card k - 1.
+			 */
+			/** Whether the film has played the trip to its end: Play again starts it from its first card. */
+			let tripOver = false;
+			const tripCard = (k: number) => tripPins[Math.max(0, k - 1)] as HTMLElement | undefined;
+			const tripTalk = (k: number) => {
+				const el = tripCard(k);
+				const id = filmTalk && track && el ? talkOf(el, track) : null;
+				return id && TALKS[id] ? id : null;
+			};
+			/** Time to read a trip's card, once its scene has shown it for a while. */
+			const tripRead = (k: number) => {
+				const el = tripCard(k);
+				if (!el || !tripDirector) return 0;
+				const n = [...el.querySelectorAll(READ)].filter((b) => !b.parentElement?.closest(READ)).reduce((sum, b) => sum + countWords(b), 0);
+				return readingHold(n, tripDirector.pace.seconds(k > 1 ? k - 1 + 0.05 : 0, tripDirector.stops[k]));
+			};
+			const tripHoldFor = (k: number) => {
+				const id = tripTalk(k);
+				return id ? LEAD_IN + TALKS[id].seconds / narrator.rate + LEAD_OUT : tripRead(k);
+			};
+			const runTripFilm = (dt: number) => {
+				const d = tripDirector;
+				const head = tripHead;
+				if (!d || !head) return;
+				const t = head.T;
+				const k = d.goal;
+				const still = Math.abs(t - d.target) < 1e-4 && d.hold === null;
+				if (!still) held = -1;
+				// The Play key's rail: each card an equal share, its scene the first half and its hold the second.
+				const from = d.stops[Math.max(0, k - 1)];
+				const scene = k === 0 ? 1 : Math.min(1, Math.max(0, (t - from) / Math.max(1e-4, d.stops[k] - from)));
+				const id = tripTalk(k);
+				const into =
+					held === k ? heldFor : id && narrator.id === id && narrator.time > 0 ? LEAD_IN + (narrator.done ? TALKS[id].seconds : narrator.time) / narrator.rate : 0;
+				const hold = still && k > 0 ? (tripOver && k === d.last ? 1 : Math.min(1, into / Math.max(0.1, tripHoldFor(k)))) : 0;
+				filmRail = k === 0 ? 0 : (k - 1 + scene * 0.5 + hold * 0.5) / d.last;
+				if (!filming || flying || !tripStarted || tripCutting || !still) return;
+				if (k === 0) {
+					d.next(t);
+					alignTrip();
+					return;
+				}
+				holdAt(k, id, tripRead(k), dt, () => {
+					held = -1;
+					if (k >= d.last) {
+						tripOver = true;
+						stopFilm();
+						return;
+					}
+					d.next(t);
+					alignTrip();
+				});
+			};
+			const toggleTripFilm = () => {
+				const d = tripDirector;
+				const head = tripHead;
+				if (!track || !d || !head) return;
+				const k = d.goal;
+				const id = tripTalk(k);
+				if (filming) {
+					stopFilm();
+					if (narrator.playing && narrator.id === id) narrator.pause();
+					return;
+				}
+				filming = true;
+				filmIn = track;
+				narrator.led = true;
+				const resting = Math.abs(head.T - d.target) < 1e-4 && d.hold === null;
+				// Over at the end: the trip again from its first card.
+				if (k === d.last && resting && (tripOver || (!!id && narrator.id === id && narrator.done))) {
+					tripOver = false;
+					held = -1;
+					d.go(1);
+					alignTrip();
+					return;
+				}
+				tripOver = false;
+				// Paused in a hold, or already listening to this card from its own key: on from where the voices are.
+				if (id && resting && narrator.id === id && !narrator.done && narrator.time > 0) {
+					held = k;
+					voiced = true;
+					doneFor = 0;
+					silent = 0;
+					heldFor = LEAD_IN + narrator.time / narrator.rate;
+					narrator.play(id);
+				}
+			};
+
 			enterTrack = async (id) => {
 				if (track || flying) return;
 				homeward = false;
@@ -2049,6 +2154,7 @@
 				tripDirector = new Director(tripStops(), tripPace, touch ? PHONE : DESK);
 				tripHead = new Playhead(tripPace, 0, reduced);
 				tripStarted = false;
+				tripOver = false;
 				w.trackT = 0;
 				w.setTrack(id);
 				const inside = TRACK_AT[id].inside;
@@ -2733,7 +2839,7 @@
 					class={['film', { playing: filming }]}
 					style:--done={filmRail}
 					aria-pressed={filming}
-					aria-label={filming ? 'Pause the film' : 'Play the whole story, like a film'}
+					aria-label={filming ? 'Pause the film' : trip ? `Play the side trip, ${trip.name}, like a film` : 'Play the whole story, like a film'}
 					aria-keyshortcuts="K"
 					onpointerdown={(e) => (filmTapped = e.pointerType === 'touch')}
 					onkeydown={() => (filmTapped = false)}

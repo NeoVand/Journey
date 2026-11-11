@@ -282,6 +282,27 @@ test('a side trip opens over the story and brings the reader back to the same pl
 	await expect(page.locator('.spine p')).toContainText('Form');
 });
 
+test("Play on a side trip plays the trip's own cards, voices and all", async ({ page }) => {
+	test.setTimeout(150_000);
+	await page.goto('/#the-harness-wakes-up');
+	await page.waitForFunction(() => document.querySelector('main.driven') && scrollY > innerHeight, null, { timeout: 90_000 });
+	await page.getByRole('button', { name: 'How MCP connects' }).first().click();
+	await expect(page.getByRole('region', { name: 'Side trip: How MCP connects' })).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'A server is its own program' })).toBeVisible();
+	const play = page.getByRole('button', { name: /^Play the side trip, How MCP connects/ });
+	await play.click();
+	const film = page.locator('button.film');
+	await expect(film).toHaveAttribute('aria-pressed', 'true');
+	// A breath after the scene lands, Nora and Theo start on the trip's first card.
+	await expect(page.locator('button.talk')).toHaveClass(/\bon\b/, { timeout: 20_000 });
+	await page.keyboard.press('k');
+	await expect(film).toHaveAttribute('aria-pressed', 'false');
+	// Going home stops a trip's film; the key plays the whole story again.
+	await page.keyboard.press('Escape');
+	await expect(page.locator('[data-trip]')).toHaveCount(0, { timeout: 10_000 });
+	await expect(page.getByRole('button', { name: 'Play the whole story, like a film' })).toBeVisible();
+});
+
 test('a side trip ends by itself when the reader scrolls on past its last card', async ({ page }) => {
 	test.setTimeout(150_000);
 	await page.goto('/#the-harness-wakes-up');
