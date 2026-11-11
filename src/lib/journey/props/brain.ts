@@ -15,14 +15,16 @@ import { createCastShadow } from './island';
  * The model, as Neo Mohsenvand designed it: a brain built like a machine. Glossy cushions in yellow and blue run in waves over each half,
  * the way a brain's folds do, and in the channels between them the works show through: chrome pipes with light strips,
  * copper coils, blocks of electronics with lit bars, rows of cyan lights on the blue, and an eye in each side. The
- * cerebellum is two drums wound in copper; the brainstem a chrome conduit down into the pedestal.
+ * cerebellum is two drums wound in copper; the brainstem a chrome conduit down into the pedestal, with a chrome arm up into
+ * each half and a lit spine between them.
  * Long axis along X with the front at +X, the fissure in the plane z = 0, and the near side facing +Z.
  * Origin at the middle of the brain.
  *
  * Its shape is a real brain's. The far half was laid out in Blender over the left hemisphere of a 25-year-old's MRI, from
  * the UCSF Neuroscape lab's Glass Brain, which they gave to the public domain (NIH 3D, 3DPX-000757): its outer skin,
- * with the cushions running across it by distance from the crest, so they curl round the eye where the temporal lobe
- * swells. The near half is its mirror. See static/models/brain.glb, packed with gltfpack.
+ * calmed, with the cushions laid by how far each point is from the crest towards the base. So they stack front to back
+ * down the side, fan out from the middle at the front and back, and swing in S-curves, as in the drawing. The near half
+ * is its mirror. See static/models/brain.glb, packed with gltfpack.
  */
 
 /** Height of the flat seat the intake stands on, above the brain's centre. */
@@ -45,13 +47,18 @@ const waves = {
 	uWaveColor: { value: new THREE.Color('#62eeff') }
 };
 
+/** The cushions' two colours, sampled from the design, and the floor of the channels between them. */
+const skin = {
+	uYellow: { value: new THREE.Color('#ffb200') },
+	uBlue: { value: new THREE.Color('#06348c') },
+	uFloor: { value: new THREE.Color('#16181d') }
+};
+
 /** What the file holds: one half of each finish, mirrored for the other, and what stands in the middle. */
 type Half = 'shell' | 'chrome' | 'copper' | 'amber' | 'dark' | 'cyan';
 type Middle = 'chrome' | 'amber' | 'dark';
 type Parts = { half: Partial<Record<Half, THREE.BufferGeometry>>; middle: Partial<Record<Middle, THREE.BufferGeometry>> };
 let parts: Parts | null = null;
-
-const smoothstep = (a: number, b: number, v: number) => smooth(seg(v, a, b));
 
 /** Plain float positions (and colours, if any) in the brain's own frame: the file packs them, and keeps each part's placement on its node. */
 function unpack(mesh: THREE.Mesh) {
@@ -244,13 +251,31 @@ vec3 front(float d, float t, float spacing, float along) {
  */
 class Tissue extends THREE.MeshPhysicalMaterial {
 	onBeforeCompile(shader: THREE.WebGLProgramParametersWithUniforms) {
-		Object.assign(shader.uniforms, waves);
+		Object.assign(shader.uniforms, waves, skin);
 		shader.vertexShader = shader.vertexShader
-			.replace('#include <common>', '#include <common>\nattribute float pad;\nattribute vec3 geo;\nvarying float vPad;\nvarying vec3 vGeo;\nvarying float vDepth;')
-			.replace('#include <begin_vertex>', '#include <begin_vertex>\nvPad = pad;\nvGeo = geo;')
+			.replace('#include <common>', '#include <common>\nattribute vec3 look;\nattribute vec3 geo;\nvarying vec3 vLook;\nvarying vec3 vGeo;\nvarying float vDepth;')
+			.replace('#include <begin_vertex>', '#include <begin_vertex>\nvLook = look;\nvGeo = geo;')
 			.replace('#include <project_vertex>', '#include <project_vertex>\nvDepth = -mvPosition.z;');
 		shader.fragmentShader = shader.fragmentShader
-			.replace('#include <common>', '#include <common>\nuniform float uWaveTime;\nuniform float uWaveGain;\nuniform vec3 uWaveColor;\nvarying float vPad;\nvarying vec3 vGeo;\nvarying float vDepth;\n' + FRONT)
+			.replace(
+				'#include <common>',
+				'#include <common>\nuniform float uWaveTime;\nuniform float uWaveGain;\nuniform vec3 uWaveColor;\nuniform vec3 uYellow;\nuniform vec3 uBlue;\nuniform vec3 uFloor;\nvarying vec3 vLook;\nvarying vec3 vGeo;\nvarying float vDepth;\n' +
+					FRONT
+			)
+			// The colours are drawn here from smooth fields baked into the file, so every edge follows the cushion's true
+			// outline across the triangles instead of stepping from corner to corner: which colour (x, a half at the middle of
+			// each gap), how far into the cushion (y, a half at its edge) and how high it stands (z).
+			.replace(
+				'#include <color_fragment>',
+				/* glsl */ `#include <color_fragment>
+				{
+					vec3 tone = mix(uBlue, uYellow, smoothstep(0.35, 0.65, vLook.x));
+					// A little darker low down the walls, where the channels close in.
+					tone *= mix(0.62, 1.0, smoothstep(0.0, 0.6, vLook.z));
+					float w = max(0.025, vDepth * 0.0004);
+					diffuseColor.rgb = mix(uFloor, tone, smoothstep(0.5 - w, 0.5 + w, vLook.y));
+				}`
+			)
 			.replace(
 				'#include <emissivemap_fragment>',
 				/* glsl */ `#include <emissivemap_fragment>
@@ -260,7 +285,7 @@ class Tissue extends THREE.MeshPhysicalMaterial {
 						+ front(vGeo.y, t * 0.82 + 1.7, 7.8, vGeo.z * 0.7 + vGeo.x * 0.5) * (0.5 + 0.5 * sin(t * 0.23 + 2.0))
 						+ front(vGeo.z, t * 0.91 + 3.1, 7.2, vGeo.x * 0.6 - vGeo.y * 0.8) * (0.5 + 0.5 * sin(t * 0.27 + 4.1));
 					// Full in the channels, a rim on the cushions' edges, nothing on their tops.
-					float floorLight = 1.0 - smoothstep(0.15, 0.85, vPad);
+					float floorLight = 1.0 - smoothstep(0.45, 0.72, vLook.y);
 					// The core burns nearly white; the halo and the afterglow stay in the wave's colour.
 					vec3 hot = mix(uWaveColor, vec3(1.0), 0.55);
 					totalEmissiveRadiance += uWaveGain * (hot * w.x + uWaveColor * (w.y + w.z)) * floorLight;
@@ -299,11 +324,6 @@ export function gearShape(teeth: number, pitch: number, holes = 0) {
 	return shape;
 }
 
-/** The cushions' two colours, from the design, and the floor between them. */
-const YELLOW = new THREE.Color('#ffc824');
-const BLUE = new THREE.Color('#2338b5');
-const FLOOR = new THREE.Color('#16181d');
-
 export class Brain {
 	group = new THREE.Group();
 	private tissue: Tissue;
@@ -341,7 +361,6 @@ export class Brain {
 			metalness: 0,
 			clearcoat: 0.85,
 			clearcoatRoughness: 0.14,
-			vertexColors: true,
 			// It shines with its own waves: an emissive colour, at nothing, tells a visit not to light it up in amber as well.
 			emissive: '#7fe6ff',
 			emissiveIntensity: 0
@@ -367,20 +386,9 @@ export class Brain {
 		other.setAttribute('geo', new THREE.BufferAttribute(near, 3));
 		const geo = mergeGeometries([half, other]);
 		other.dispose();
-		const baked = geo.getAttribute('color');
-		const count = baked.count;
-		const tint = new Float32Array(count * 3);
-		const pads = new Float32Array(count);
-		const c = new THREE.Color();
-		for (let i = 0; i < count; i++) {
-			// Red says which colour the cushion is, green how much this point is cushion rather than floor.
-			const pad = smoothstep(0.1, 0.9, baked.getY(i));
-			c.copy(baked.getX(i) > 0.5 ? YELLOW : BLUE).lerp(FLOOR, 1 - pad);
-			c.toArray(tint, i * 3);
-			pads[i] = pad;
-		}
-		geo.setAttribute('color', new THREE.BufferAttribute(tint, 3));
-		geo.setAttribute('pad', new THREE.BufferAttribute(pads, 1));
+		// The file keeps the cushions' fields in the colour channels: which colour, how far into the cushion, how high.
+		geo.setAttribute('look', geo.getAttribute('color'));
+		geo.deleteAttribute('color');
 		geo.computeVertexNormals();
 		geo.computeBoundingSphere();
 		const mesh = new THREE.Mesh(geo, this.tissue);
