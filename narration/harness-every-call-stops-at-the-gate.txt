@@ -1,0 +1,24 @@
+# Every call stops at the gate
+NORA: Three cards came down in one reply, and the gate gave each of them a different answer.
+THEO: Three cards, three answers. That feels a bit staged.
+NORA: [chuckles] A little. But those are the only answers there are: allowed, ask you, or refused.
+THEO: Start with the easy one.
+NORA: Read the test file. Nothing in your rules says no, so the green lamp lights and the cart goes through to the Files bench.
+THEO: And the second one, with the bell?
+NORA: Bash, rm -rf on the pytest cache. Clearing the test cache. Harmless here, but your settings say deleting things needs a person. So the gate holds the card, the amber lamp blinks, the bell rings, and your screen asks whether to allow it. You said yes, and only then did it go.
+THEO: [curious] And the one that went red?
+NORA: Read, .env. That file usually holds secrets, and your rules say never. So the card turns red, gets thrown back out onto the pad, and slides into the tray.
+THEO: Wait. A refusal goes into the tray?
+NORA: It has to. The model asked, so it gets an answer: denied by your rules. On the next turn it reads that and can try another way. If refusals simply vanished, it would never learn why.
+THEO: [amused] Like emailing a colleague who never writes back.
+NORA: You'd keep asking. Exactly.
+THEO: Here's my real question. Nothing ran until the gate said so?
+NORA: Nothing. A tool call is neatly structured text, a name and its arguments, but it's still text. A request. The model can't run anything. Only the harness can, here on your machine.
+THEO: Who decides between the three?
+NORA: Cheap checks first: is it a real tool, do the arguments fit, is the file inside your project. Then your settings. And your hooks.
+THEO: The cable coming out of the left wall.
+NORA: That's them. A hook is your own script, run at fixed moments: before a tool runs, after it runs, and when the agent stops. A pulse ran along that cable before each card was judged. A hook that runs first can block a call, or change it.
+THEO: [thoughtful] So my team's rule, nothing touches the migrations without a human, could live there.
+NORA: Right there. Claude Code's hooks can catch every step, from just before a tool runs to just before the conversation gets squeezed. In Codex, rules in execpolicy do that job for commands, and an approval policy decides when to ask you. Copilot's hooks live in the agent's customization settings, and a confirmation card asks you before risky steps.
+THEO: So the model can ask for anything it likes.
+NORA: [warmly] And every ask stops at the gate. What actually runs is decided here, by rules you set.

@@ -1,0 +1,23 @@
+# Rooms inside rooms
+THEO: [surprised] There's a room in the middle of the room.
+NORA: And another inside that one, and another inside that. Each one is a subagent.
+THEO: Which is what, exactly?
+NORA: A second conversation the model starts for a side quest. Here it wanted every caller of the code it's about to change. That's a lot of searching and reading, and every file it read would land in the tray and ride along on every turn after.
+THEO: So it sends someone else.
+NORA: It asks for the Agent tool, and the cart carries the brief through that door. Inside is the same room again, smaller: its own tray, its own gate, its own benches. A fresh conversation that starts with nothing but the brief.
+THEO: And it runs its own loop.
+NORA: Up its own tube and down its own chute, as many turns as it needs. And it can hand part of the job to a room inside it, which can hand part of that on again.
+THEO: [skeptical] Turtles all the way down?
+NORA: [laughs] Not here. The last room has no subagent tool, so its rail ends at a red buffer. A subagent only gets the tools it's given, and a harness can leave that one out.
+THEO: So what comes back out?
+NORA: Only the report. The smallest room finishes and reports to the room around it, which finishes and reports in turn, and the main cart brings the last report home. Here it's one line: three callers, all safe.
+THEO: All that reading, and one line joins my tray.
+NORA: That's the whole point. The parent's tray stays small, and several subagents can work at the same time.
+THEO: [amused] So it's an intern who hires interns.
+NORA: Pretty much, including the part people forget. "All safe" is a claim, not proof. It's worth a look before the fix is built on it.
+THEO: Do they get their own copy of the code?
+NORA: Not unless they're given one. By default they all work on the same files, so a change one of them makes is a change for everyone. The way out is a worktree: a second working copy of your repository, on its own branch, in another folder.
+THEO: Do all three agents do this?
+NORA: Each in its own way. In Claude Code the Agent tool starts one: an explorer, a planner, a general worker or one you've defined, and it can work in its own git worktree. Codex has a multi-agent mode that runs several at once, and each can work in its own worktree. In Copilot, custom agents can hand work to one another, and a session can run in a worktree of its own.
+THEO: Rooms inside rooms, and only a note comes out.
+NORA: [warmly] A note worth checking.

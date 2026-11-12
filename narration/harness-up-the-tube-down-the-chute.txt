@@ -1,0 +1,24 @@
+# Up the tube, down the chute
+NORA: Every turn in this room is the same small journey. Up the tube, down the chute, out to a bench, and back into the tray.
+THEO: [amused] It sounds like a board game.
+NORA: [chuckles] One with very strict rules. Start with the tube. At the start of a turn a copy of the whole tray is loaded into a capsule, and the capsule shoots up to the model. That's the request: one long piece of text.
+THEO: And the reply comes down the chute.
+NORA: A piece at a time, as it's written. Its words drop onto the pad and slide along the lip into the tray. On the first turn here, the model said: I'll read the scheduler first.
+THEO: And then it reads it.
+NORA: It asks to. A tool call is still only text, a name and some arguments, so the harness prints it as a card: Read, scheduler.py. The card hops onto the cart, and the cart waits inside the gate to be checked.
+THEO: [curious] Where does it go once it's through?
+NORA: Along the rail to the benches on the right wall. Each bench is wired through the wall to something real. Read goes to the Files bench, which reaches your files. A pulse runs out along the wire, and back comes the result: two hundred and twelve lines of the scheduler.
+THEO: Which goes straight up to the model?
+NORA: Not straight away. It rides the cart back and gets tipped into the tray. Then the next turn starts, and the whole tray, result and all, goes up the tube.
+THEO: So the model only sees the file on the next trip up.
+NORA: Exactly. The second turn ran the test twenty times on the Shell bench. Three failed, seventeen passed. A flaky test, caught in the act.
+THEO: [laughs] And the third turn?
+NORA: The third reply came down with words and nothing else. Found it: one lock, taken twice. Shall I fix it?
+THEO: No card.
+NORA: No card, and that's the signal. When a reply asks for no tool, the loop stops and hands the floor back to you.
+THEO: [skeptical] So stopping means it's done?
+NORA: It means the model stopped asking. Here it stopped to ask you something. A model can also stop, sure it's finished, with the bug still there. Whether the work is really done is for the tests to say, and for you.
+THEO: How many trips does a real fix take?
+NORA: Five to thirty, usually. And when a reply asks for several calls that don't depend on each other, the harness can run them side by side.
+THEO: Up the tube, down the chute, out to a bench, into the tray.
+NORA: [warmly] And round again, until a reply asks for nothing.

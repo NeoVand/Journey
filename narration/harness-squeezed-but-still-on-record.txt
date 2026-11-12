@@ -1,0 +1,21 @@
+# Squeezed, but still on record
+THEO: The tray's almost full. What happens when it runs out of room?
+NORA: Then we meet the press. But look along the back edge of the tray first. See the thin strip that runs along it and out through the wall?
+THEO: The one heading for the sign that says "To your disk".
+NORA: That's the record. Every tile that goes into the tray is written there too, and saved on your disk: the transcript. Your prompt, every reply, every call and every result.
+THEO: Why keep two copies?
+NORA: They do different jobs. The tray is what gets sent to the model. The record is what happened, kept so a session can be picked up again later. Claude Code keeps each session as a file under ~/.claude, and claude --resume opens one again. Codex keeps them under ~/.codex, and codex resume does the same.
+THEO: [skeptical] And the tray only ever grows. Every file read, every test run.
+NORA: You just watched it fill. Two turns, sped up: the lock file, the tests, an issue from the MCP server, an edit, the tests again. The tray creeps toward its end stop, and that end is the context window: the most the model can take in at once, measured in tokens.
+THEO: And when it gets there?
+NORA: The press. A separate model call writes a summary of the session: the goal, what was decided, what's left to do. In the tray, that one orange block takes the place of the old turns.
+THEO: So the model forgets how the session went.
+NORA: It keeps the gist and loses the detail. Say the summary notes that three runs out of twenty failed. The model no longer sees the output that said so.
+THEO: [thoughtful] Like reading the minutes instead of sitting in the meeting.
+NORA: Close. Then the files it was working on are read in again, fresh, so it isn't editing from memory. And the start of the tray stays as it was: the tools, the instructions, where you are, and your prompt.
+THEO: And the record on my disk?
+NORA: Keeps everything. The press squeezes what's sent, not what's kept. Every turn is still there.
+THEO: Does every agent have a press?
+NORA: Each its own kind. Claude Code compacts by itself near the limit, or when you type /compact, and a PreCompact hook can save what you need first. In Codex, /compact asks for a summary from your side, and the server can also compact in the middle of a reply and hand back a sealed item. Copilot's summarizer watches the budget and can squeeze the old turns in the background, before the limit bites.
+THEO: Two records, then. A short one that travels, and a full one that stays home.
+NORA: [warmly] Squeezed, but still on record.

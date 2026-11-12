@@ -87,6 +87,7 @@
 		"TaskUpdate": "Task Update",
 		"update_plan": "update plan",
 		"Ctrl+G": "Control G",
-		"Ctrl+T": "Control T"
+		"Ctrl+T": "Control T",
+		"rm -rf": "R M dash R F"
 	}
 }

@@ -1,3 +1,5 @@
+import { ROOM_F3 } from './tracks/room/flag';
+
 export type HarnessId = 'claude' | 'codex' | 'copilot';
 
 export const PROMPT = 'Fix the race condition in the job scheduler.';
@@ -406,80 +408,158 @@ export const TRACK_AT: Record<TrackId, { T: number; nearFrom?: number; nearBefor
 	plans: { T: 25.6, nearFrom: 25.3, nearBefore: 26.06, inside: true }
 };
 
-export const TRACKS: Record<TrackId, Track> = {
-	harness: {
-		name: 'Inside the harness',
-		what: 'The loop at its heart, and what it does each turn.',
-		cards: [
-			{
-				title: 'Bigger on the inside',
-				body: [
-					'This is the program you installed. The model is far away and only ever reads text and writes text. Everything else happens in here, on your machine.',
-					'At its heart is a loop. Around it sit the parts you met from outside: the four drawers, the cables, and the tools.'
-				],
-				note: {
-					claude: 'It’s one program. The terminal, the VS Code extension and the desktop app all run this same loop.',
-					codex: 'The loop is an engine of its own. The terminal runs it inside; the editor and the desktop app talk to it over JSON-RPC.',
-					copilot: 'Since mid-2026 the loop runs in a process of its own, the Agent Host, which can even live on another machine.'
-				}
-			},
-			{
-				title: 'Round and round',
-				body: [
-					'Every turn is the same few steps. Pack everything into one request and send it. Read the reply as it streams in. If it asks for a tool, check the call and run it. Write down what happened, and go round again.',
-					'A real fix takes five to thirty turns. It stops when a reply comes back without asking for a tool.'
-				]
-			},
-			{
-				title: 'Packed fresh, every turn',
-				body: [
-					'Each turn the whole request is built again: the harness’s own instructions, your project’s rules, a snapshot of where you are, every tool, and the conversation so far.',
-					'The parts that never change go first, so the provider can reuse its work on them. [[Skills]] wait on their shelf as a name and a line each, and only the one the task needs is unpacked.'
-				],
-				note: {
-					claude: 'Rules come from CLAUDE.md, and skills from .claude/skills. Whatever changes travels as a note at the end, so the start stays the same.',
-					codex: 'Rules come from AGENTS.md, read once at the start, which is why a change to it needs a restart. Skills live in .agents/skills.',
-					copilot: 'The prompt is rebuilt every turn, with the fixed parts first. Skills are SKILL.md folders, shared with Copilot CLI.'
-				}
-			},
-			{
-				title: 'Asking is not doing',
-				body: [
-					'When a reply asks for a tool, nothing runs yet. The call goes to a gate first: is it allowed, does it need you, or is it refused?',
-					'Your [[hooks]] plug in here. They’re your own scripts, run at fixed moments: before a tool runs, after it runs, and when the agent stops. One that runs first can block a call or change it.'
-				],
-				note: {
-					claude: 'Hooks can catch every step, from PreToolUse and PostToolUse to Stop and PreCompact.',
-					codex: 'Rules in execpolicy do that job for commands, and an approval policy decides when to ask you.',
-					copilot: 'Hooks are set in the agent’s customization settings, and a confirmation card asks you before risky steps.'
-				}
-			},
-			{
-				title: 'Everything is written down',
-				body: [
-					'Each step goes into the [[transcript]], and the transcript is saved, so a session can be picked up again later.',
-					'When the conversation grows too long for the [[context window]], a summary takes the place of the older messages in what’s sent, and the latest turns stay as they were. The saved transcript keeps all of them.'
-				],
-				note: {
-					claude: 'Sessions are saved as files under ~/.claude/projects, and claude --resume picks one up again.',
-					codex: 'Sessions are saved under ~/.codex/sessions, and codex resume picks one up again.',
-					copilot: 'VS Code keeps the chat sessions, and Agent Host sessions outlive closing the folder.'
-				}
-			},
-			{
-				title: 'A loop inside the loop',
-				body: [
-					'A big side quest can go to a [[subagent]]: a smaller loop with its own context and its own tools. It gets a brief, does the work, and hands back a summary, and only the summary joins the parent’s context.',
-					'It works on the same files as everyone else, unless it’s given its own copy. And what it reports still needs checking before anything is built on it.'
-				],
-				note: {
-					claude: 'The Agent tool starts one: an explorer, a planner, a general worker or one of your own, and it can work in its own git worktree.',
-					codex: 'Multi-agent mode runs several at once, and each can work in its own worktree.',
-					copilot: 'Custom agents can hand work to one another, and a session can run in its own worktree.'
-				}
+/** The trip through the old room, shown until the new one replaces it. */
+const HARNESS_ROOM: Track = {
+	name: 'Inside the harness',
+	what: 'The loop at its heart, and what it does each turn.',
+	cards: [
+		{
+			title: 'Bigger on the inside',
+			body: [
+				'This is the program you installed. The model is far away and only ever reads text and writes text. Everything else happens in here, on your machine.',
+				'At its heart is a loop. Around it sit the parts you met from outside: the four drawers, the cables, and the tools.'
+			],
+			note: {
+				claude: 'It’s one program. The terminal, the VS Code extension and the desktop app all run this same loop.',
+				codex: 'The loop is an engine of its own. The terminal runs it inside; the editor and the desktop app talk to it over JSON-RPC.',
+				copilot: 'Since mid-2026 the loop runs in a process of its own, the Agent Host, which can even live on another machine.'
 			}
-		]
-	},
+		},
+		{
+			title: 'Round and round',
+			body: [
+				'Every turn is the same few steps. Pack everything into one request and send it. Read the reply as it streams in. If it asks for a tool, check the call and run it. Write down what happened, and go round again.',
+				'A real fix takes five to thirty turns. It stops when a reply comes back without asking for a tool.'
+			]
+		},
+		{
+			title: 'Packed fresh, every turn',
+			body: [
+				'Each turn the whole request is built again: the harness’s own instructions, your project’s rules, a snapshot of where you are, every tool, and the conversation so far.',
+				'The parts that never change go first, so the provider can reuse its work on them. [[Skills]] wait on their shelf as a name and a line each, and only the one the task needs is unpacked.'
+			],
+			note: {
+				claude: 'Rules come from CLAUDE.md, and skills from .claude/skills. Whatever changes travels as a note at the end, so the start stays the same.',
+				codex: 'Rules come from AGENTS.md, read once at the start, which is why a change to it needs a restart. Skills live in .agents/skills.',
+				copilot: 'The prompt is rebuilt every turn, with the fixed parts first. Skills are SKILL.md folders, shared with Copilot CLI.'
+			}
+		},
+		{
+			title: 'Asking is not doing',
+			body: [
+				'When a reply asks for a tool, nothing runs yet. The call goes to a gate first: is it allowed, does it need you, or is it refused?',
+				'Your [[hooks]] plug in here. They’re your own scripts, run at fixed moments: before a tool runs, after it runs, and when the agent stops. One that runs first can block a call or change it.'
+			],
+			note: {
+				claude: 'Hooks can catch every step, from PreToolUse and PostToolUse to Stop and PreCompact.',
+				codex: 'Rules in execpolicy do that job for commands, and an approval policy decides when to ask you.',
+				copilot: 'Hooks are set in the agent’s customization settings, and a confirmation card asks you before risky steps.'
+			}
+		},
+		{
+			title: 'Everything is written down',
+			body: [
+				'Each step goes into the [[transcript]], and the transcript is saved, so a session can be picked up again later.',
+				'When the conversation grows too long for the [[context window]], a summary takes the place of the older messages in what’s sent, and the latest turns stay as they were. The saved transcript keeps all of them.'
+			],
+			note: {
+				claude: 'Sessions are saved as files under ~/.claude/projects, and claude --resume picks one up again.',
+				codex: 'Sessions are saved under ~/.codex/sessions, and codex resume picks one up again.',
+				copilot: 'VS Code keeps the chat sessions, and Agent Host sessions outlive closing the folder.'
+			}
+		},
+		{
+			title: 'A loop inside the loop',
+			body: [
+				'A big side quest can go to a [[subagent]]: a smaller loop with its own context and its own tools. It gets a brief, does the work, and hands back a summary, and only the summary joins the parent’s context.',
+				'It works on the same files as everyone else, unless it’s given its own copy. And what it reports still needs checking before anything is built on it.'
+			],
+			note: {
+				claude: 'The Agent tool starts one: an explorer, a planner, a general worker or one of your own, and it can work in its own git worktree.',
+				codex: 'Multi-agent mode runs several at once, and each can work in its own worktree.',
+				copilot: 'Custom agents can hand work to one another, and a session can run in its own worktree.'
+			}
+		}
+	]
+};
+
+/** The trip through the room built to plan f3: the model asks; the harness remembers, checks and acts. */
+const HARNESS_F3: Track = {
+	name: 'Inside the harness',
+	what: 'The loop at its heart, and what it does each turn.',
+	cards: [
+		{
+			title: 'Everything but the thinking',
+			body: [
+				'This is the program you installed, seen from inside. The model isn’t in here. It’s far away at the top of the tube, and all it does is read what goes up and write what comes down the chute.',
+				'Your prompt goes into the tray, where the conversation is kept. From here on the model asks, and the harness does the rest: the back wall remembers, the gate checks, and the benches act.'
+			],
+			note: {
+				claude: 'It’s one program. The terminal, the VS Code extension and the desktop app all run this same loop.',
+				codex: 'The loop is an engine of its own. The terminal runs it inside; the editor and the desktop app talk to it over JSON-RPC.',
+				copilot: 'Since mid-2026 the loop runs in a process of its own, the Agent Host, which can even live on another machine.'
+			}
+		},
+		{
+			title: 'Up the tube, down the chute',
+			body: [
+				'Each turn, a copy of the tray goes up the tube and the reply comes down the chute. Its words go in the tray. A tool call becomes a card that the cart takes through the gate to a bench, where your machine does the work.',
+				'The result rides back into the tray, and round it goes. When a reply asks for nothing, as “Shall I fix it?” does, the loop stops and it’s your turn.'
+			]
+		},
+		{
+			title: 'The whole tray, every turn',
+			body: [
+				'Your answer goes in, and the whole tray is copied again, first tile to last. The capsule always comes back empty. Usually nothing up there remembers you, so everything the model should know travels every turn.',
+				'The start stays the same, so the provider can reuse its work on it. [[Skills]] wait on the shelf as a name and a line each. When the model asks for one, its full instructions come down into the tray.'
+			],
+			note: {
+				claude: 'Every turn sends the whole conversation. Whatever changes travels as a note at the end, so the start stays the same.',
+				codex: 'Every turn sends everything, with the model’s reasoning sealed. The API can keep the history on the server instead, depending on the setup.',
+				copilot: 'The prompt is rebuilt from its parts every turn, fixed parts first. Some connections can point to turns kept on the server instead.'
+			}
+		},
+		{
+			title: 'Every call stops at the gate',
+			body: [
+				'A tool call is only a request, and each one stops here first. Reading the test file is allowed. Clearing the test cache needs you, so the bell rings and your screen asks. Reading .env is refused.',
+				'The refusal goes in the tray as the call’s answer, so the model can try another way. Your [[hooks]] plug in here: your own scripts, run before and after each tool. One that runs first can block a call.'
+			],
+			note: {
+				claude: 'Hooks can catch every step, from PreToolUse and PostToolUse to Stop and PreCompact.',
+				codex: 'Rules in execpolicy do that job for commands, and an approval policy decides when to ask you.',
+				copilot: 'Hooks are set in the agent’s customization settings, and a confirmation card asks you before risky steps.'
+			}
+		},
+		{
+			title: 'Squeezed, but still on record',
+			body: [
+				'Every tile in the tray is also written on the record, which runs through the wall to your disk: the [[transcript]]. A long session fills the tray toward its end, the edge of the [[context window]].',
+				'Then the press squeezes the old turns into one summary of the goal, the decisions and what’s left to do, and the files it was working on are read again. The record on your disk still keeps every turn.'
+			],
+			note: {
+				claude: 'It compacts by itself near the limit or on /compact, and a PreCompact hook can save what you need first.',
+				codex: 'Typing /compact asks for a summary from your side. The server can also compact in the middle of a reply and hand back a sealed item.',
+				copilot: 'A summarizer watches the budget and can squeeze the old turns in the background, before the limit bites.'
+			}
+		},
+		{
+			title: 'Rooms inside rooms',
+			body: [
+				'A big side quest can go to a [[subagent]]: the room again, smaller, with its own tray and tools. It gets a brief, runs its own loop, and only its report comes back into the tray.',
+				'It may start one of its own, if it has the tool. The last one here doesn’t, so its rail ends at a red buffer. They all work on the same files, and a report is only a claim until it’s checked.'
+			],
+			note: {
+				claude: 'The Agent tool starts one: an explorer, a planner, a general worker or one of your own, and it can work in its own git worktree.',
+				codex: 'Multi-agent mode runs several at once, and each can work in its own worktree.',
+				copilot: 'Custom agents can hand work to one another, and a session can run in its own worktree.'
+			}
+		}
+	]
+};
+
+export const TRACKS: Record<TrackId, Track> = {
+	harness: ROOM_F3 ? HARNESS_F3 : HARNESS_ROOM,
 	mcp: {
 		name: 'How MCP connects',
 		what: 'How an outside program lends the agent new tools.',

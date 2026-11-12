@@ -1,0 +1,23 @@
+# The whole tray, every turn
+THEO: Here's what I've never understood. I say "yes, fix it", and the whole conversation goes up again. The model saw all of it a minute ago.
+NORA: Did it, though? Watch the capsule when it comes back down the tube.
+THEO: [surprised] It's empty.
+NORA: Every time. Usually nothing up there remembers you between turns. The provider runs the model on whatever arrives and sends the reply back, and that's the end of it. So everything the model should know has to travel, every turn.
+THEO: The whole tray.
+NORA: First tile to last. When you answered, a ripple ran along the tray as it was copied, and each drawer on the back wall lit up as its part went by: the tools, the instructions, the snapshot of where you are, then the conversation.
+THEO: [skeptical] By turn twenty, that's an awful lot of text to keep sending.
+NORA: It would be, without one trick. The provider can reuse the work it already did on the start of a request, if that start matches a recent one exactly, and its saved work is still kept, usually for a few minutes.
+THEO: So something up there does remember.
+NORA: Only the work it did on those exact words. Not you, and not the conversation. Change one comma near the start, and the saved work is no use.
+THEO: So the order of the tray matters.
+NORA: The order is the trick. The parts that never change go first, and the conversation only grows at the end. Turn twenty begins with the same tiles as turn nineteen, plus a few more.
+THEO: And if something at the start does change? The date, say.
+NORA: Claude Code leaves its opening alone and sends the change as a note at the end. Codex can go further: depending on the setup, the server can keep the history and take only what's new. Copilot rebuilds its prompt from parts every turn, fixed parts first.
+THEO: [curious] And the shelf up there, with the little cards?
+NORA: Skills. A skill is a folder of instructions for one kind of task: debugging, reviewing, a migration. You can have dozens, so they don't all ride along. Each one waits on the shelf as a name and a line.
+THEO: Until the model wants one.
+NORA: Right. Here it asked for the debugging skill. That call went up to the shelf, a copy of the skill's full instructions came down onto the cart, and it was tipped into the tray. From then on it travels with everything else.
+THEO: [thoughtful] So it's like briefing a new colleague every single turn, from the top.
+NORA: A colleague who reads very fast, because the first pages never change.
+THEO: Packed whole every time, and mostly the same every time.
+NORA: [warmly] And the empty capsule is why.

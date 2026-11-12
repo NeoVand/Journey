@@ -1,0 +1,19 @@
+# Everything but the thinking
+THEO: [amused] I came in here expecting a brain, and I've found a train set.
+NORA: [laughs] The brain isn't in here. That's the first thing to notice. This room is the harness, the program you installed, and the model is far away in a data center, at the top of that tube.
+THEO: So what does the model actually do, from in here?
+NORA: One thing. It reads what goes up the tube, and it writes what comes down the chute. Text up, text down. Everything else in this room happens on your machine.
+THEO: Everything else being?
+NORA: Start with your prompt. You typed "fix the flaky scheduler test" on your screen, there in the left wall. It came out, round the front of the gate, and slid along the lip into the tray.
+THEO: And the tray is what, my chat history?
+NORA: The conversation, laid out in the order it'll be sent. And your prompt didn't land in an empty tray. Three tiles were already waiting: the tools the model may ask for, the harness's instructions, and a snapshot of where you are.
+THEO: [curious] So before I've said a word, there's a request half packed.
+NORA: Exactly. And the room has a shape you can read. The back wall remembers: the drawers, the shelf of skills, and the record running out to your disk. The left side checks: the gate, right by your screen, where every call is allowed, refused, or brought to you. The right side acts: the benches, wired through the wall to your files, your shell and an MCP server.
+THEO: Remembers, checks, acts. And the model?
+NORA: The model asks. That's its whole job in here. It asks to read a file, to run the tests, to make an edit. What happens next is up to the harness, and to you.
+THEO: [skeptical] People say the model's the brain and the harness is the body.
+NORA: That breaks in a useful place. A body does what the brain tells it. This one doesn't always. Every request stops at the gate first, and some get turned away.
+THEO: Is it the same room whichever agent I use?
+NORA: Same shape, different buildings. Claude Code is one program: the terminal, the VS Code extension and the desktop app all run this same loop. Codex makes the loop an engine of its own, and the editor and the desktop app talk to it over JSON-RPC, a small message format one program uses to ask another to run something. Copilot, since the middle of twenty twenty-six, runs its loop in a process of its own, the Agent Host, which can even live on another machine.
+THEO: So the model does the thinking.
+NORA: [warmly] And the harness does everything but. Which is most of the work.
