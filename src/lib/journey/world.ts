@@ -23,6 +23,9 @@ import { createBelt, createChatTemplate, Gantry, GANTRY_REAR, SafetyArch, Tile, 
 import { HARNESSES, PROMPT, TOKENS, type HarnessId, type TrackId } from './content';
 import { McpTrack, MCP_SHOTS, type HarnessPose } from './tracks/mcp';
 import { HarnessRoom, ROOF, ROOM_AT, ROOM_SHOTS, ROOM_SKY } from './tracks/harness';
+import { ROOM_F3 } from './tracks/room/flag';
+import { RoomF3 } from './tracks/room/room';
+import { F3_SHOTS } from './tracks/room/shots';
 import { GLASS_ROOF, SandboxStage, STAGE_AT, STAGE_SHOTS, STAGE_SKY } from './tracks/sandbox';
 import { CABINET_ROOF, MemoryStage, MEMORY_AT, MEMORY_SHOTS, MEMORY_SKY } from './tracks/memory';
 import { PlansStage, PLANS_AT, PLANS_SHOTS, PLANS_SKY, SCREEN_ROOF } from './tracks/plans';
@@ -272,7 +275,7 @@ export class World {
 	 * The places side trips drop into. Each is built the first time a reader goes there, not before: together they cost
 	 * tens of megabytes of textures and geometry, and a phone's browser closes a page that holds too much.
 	 */
-	private places: { harness?: HarnessRoom; sandbox?: SandboxStage; memory?: MemoryStage; plans?: PlansStage } = {};
+	private places: { harness?: HarnessRoom | RoomF3; sandbox?: SandboxStage; memory?: MemoryStage; plans?: PlansStage } = {};
 	/**
 	 * Where an inside trip's way in is, in the story: the harness's roof hatch, the top of the glass, the memory cabinet,
 	 * the laptop's screen.
@@ -283,6 +286,8 @@ export class World {
 	private camFrom = new THREE.Vector3();
 	private focusFrom = new THREE.Vector3();
 	private focusTo = new THREE.Vector3();
+	/** While building: where to put the camera instead, set from the console as `__world.debugEye = { eye, look }`. */
+	debugEye: { eye: [number, number, number]; look: [number, number, number]; fov?: number } | null = null;
 	/** What the camera is looking at this frame, and a scratch point: where sounds are heard from. */
 	private ear = new THREE.Vector3();
 	private hear = new THREE.Vector3();
@@ -451,7 +456,7 @@ export class World {
 
 		this.trackRigs = {
 			mcp: new Rig(this.stage.camera, MCP_SHOTS),
-			harness: new Rig(this.stage.camera, ROOM_SHOTS),
+			harness: new Rig(this.stage.camera, ROOM_F3 ? F3_SHOTS : ROOM_SHOTS),
 			sandbox: new Rig(this.stage.camera, STAGE_SHOTS),
 			memory: new Rig(this.stage.camera, MEMORY_SHOTS),
 			plans: new Rig(this.stage.camera, PLANS_SHOTS)
@@ -1183,8 +1188,8 @@ export class World {
 	private place<K extends Inside>(id: K) {
 		let made = this.places[id];
 		if (!made) {
-			const built = id === 'harness' ? new HarnessRoom() : id === 'sandbox' ? new SandboxStage() : id === 'memory' ? new MemoryStage() : new PlansStage();
-			if (!(built instanceof HarnessRoom)) built.setHarness(this.harnessId);
+			const built = id === 'harness' ? (ROOM_F3 ? new RoomF3() : new HarnessRoom()) : id === 'sandbox' ? new SandboxStage() : id === 'memory' ? new MemoryStage() : new PlansStage();
+			if (!(built instanceof HarnessRoom) && !(built instanceof RoomF3)) built.setHarness(this.harnessId);
 			built.group.visible = false;
 			this.stage.scene.add(built.group);
 			this.stage.renderer.compile(built.group, this.stage.camera);
@@ -1505,6 +1510,7 @@ export class World {
 			this.stage.setSky(sky.top, sky.mid, sky.low);
 			this.place(id).update(this.trackT, time);
 			this.visits.apply(dt, time);
+			this.lookFromDebugEye();
 			this.stage.render();
 			return;
 		}
@@ -1598,7 +1604,20 @@ export class World {
 			const seen = this.voyage.apply(this.stage.camera, this.flight, this.stage.width, this.stage.height);
 			this.stage.focusLight(seen.look, seen.reach);
 		}
+		this.lookFromDebugEye();
 		this.stage.render();
+	}
+
+	/** While building: a camera of one's own, from the console. */
+	private lookFromDebugEye() {
+		if (!this.debugEye) return;
+		const cam = this.stage.camera;
+		cam.position.set(...this.debugEye.eye);
+		cam.lookAt(...this.debugEye.look);
+		if (this.debugEye.fov) cam.fov = this.debugEye.fov;
+		cam.clearViewOffset();
+		cam.updateProjectionMatrix();
+		this.stage.focusLight(new THREE.Vector3(...this.debugEye.look), 8);
 	}
 
 	/**

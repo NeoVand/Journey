@@ -1879,6 +1879,8 @@
 			let tripEl: HTMLElement | null = null;
 			let tripPins: HTMLElement[] = [];
 			let tripHead: Playhead | null = null;
+			/** In debug, a moment of the trip to hold the picture at, for looking closely: `__trip.hold(t)`. */
+			let tripHold: number | null = null;
 			let tripDirector: Director | null = null;
 			/** A trip's scroll bar keeps count the same way: a screen of it per beat. */
 			let tripBeat = 1;
@@ -2022,7 +2024,7 @@
 						}, placeOf(track).cover);
 					}
 				}
-				const t = tripHead.T;
+				const t = tripHold ?? tripHead.T;
 				w.trackT = t;
 				let most = 0;
 				let at = 0;
@@ -2459,6 +2461,7 @@
 				(window as unknown as { __world: unknown; __head: unknown }).__head = head;
 				(window as unknown as { __pointer: unknown; __narrator: unknown }).__pointer = pointer;
 				(window as unknown as { __pointer: unknown; __narrator: unknown }).__narrator = narrator;
+				(window as unknown as { __trip: unknown }).__trip = { hold: (t: number | null) => (tripHold = t) };
 				(window as unknown as { __film: unknown }).__film = {
 					reel,
 					director,

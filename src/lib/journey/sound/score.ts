@@ -10,6 +10,8 @@ import type { HarnessId, TrackId } from '../content';
 import type { Bed, Cue, Heard, Where } from './conductor';
 import { chime, harp, key, low, note, porcelain, tick, whoosh } from './synth';
 import { PUCK_MOVES, puckPoint, roomPoint } from '../tracks/harness';
+import { ROOM_F3 } from '../tracks/room/flag';
+import { insideTheRoom } from './room';
 import { STAGE_AT } from '../tracks/sandbox';
 import { MEMORY_AT } from '../tracks/memory';
 import { DONES, PAGES, PLANS_AT, PLANS_SPOTS, STARTS } from '../tracks/plans';
@@ -829,7 +831,7 @@ function plansAndLists(agent: HarnessId): { cues: Cue[]; beds: Bed[] } {
 
 export function tripScore(id: TrackId, w: World): { cues: Cue[]; beds: Bed[] } {
 	if (id === 'plans') return plansAndLists(w.agent);
-	if (id === 'harness') return insideHarness();
+	if (id === 'harness') return ROOM_F3 ? insideTheRoom() : insideHarness();
 	if (id === 'sandbox') return permissionAndSandbox();
 	if (id === 'memory') return memoryAndRewinding();
 	return howMcpConnects();
