@@ -614,6 +614,9 @@ export function solve(gyri: Gyrus[], balls: Ball[], fit: Fit = FIT): Cushions {
 			paired();
 			if (!drew) break;
 		}
+		// Drawn in here and there, the run of reaches is made smooth again: only ever shorter.
+		eased(reach, true, 3);
+		paired();
 
 		// How high it stands along its length: as high as designed where it is wide enough, lower where it narrows.
 		const tall = g.height ?? 0.5;
