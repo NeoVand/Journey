@@ -25,11 +25,15 @@ import { createCastShadow } from './island';
  * muscle, the lights flare, the coils run hot, and the collar flashes when the token is written. At rest it breathes and
  * ticks over with a quiet pass now and then; as the tokens pour in, it beats once a second, a token a pass.
  *
- * Its shape is a real brain's, made rounder, as in the drawing. The far half was laid out in Blender over the left
- * hemisphere of a 25-year-old's MRI, from the UCSF Neuroscape lab's Glass Brain, which they gave to the public domain
- * (NIH 3D, 3DPX-000757): its outer skin, calmed, is the core, and each cushion is a tube laid along a layer at an even
- * distance from the crest, so they stack front to back down the side, fan out from the middle at the front and back, and
- * curve round the big eye, as in the drawing. The near half is its mirror. See static/models/brain.glb, packed with gltfpack.
+ * It is built from the drawing itself. The core is the outer skin of the left hemisphere of a 25-year-old's MRI, from the
+ * UCSF Neuroscape lab's Glass Brain, which they gave to the public domain (NIH 3D, 3DPX-000757), calmed and bent until
+ * its outline is the drawing's: from the side, from above and from the front, at the page's size, with the stem as long
+ * as drawn. Over it lies one even pattern of stripes, grown on the skin along the way each drawing's bands run and held
+ * to the drawings' own yellow and blue, firmest where the side view shows it; each stripe is raised into a round cushion,
+ * and the channels between them are the core's floor. The machines, eyes and cyan rows sit where the drawing has them,
+ * the cushions stopping short of them, and more fill the widest gaps. The near half is the far half's mirror. The file
+ * also carries a light copy of the core, never drawn, that the waves and passes measure their way over. See
+ * static/models/brain.glb, packed with gltfpack.
  */
 
 /** Height of the flat seat the intake stands on, above the brain's centre. */
@@ -62,7 +66,7 @@ const skin = {
 /** How fast a pass runs over the brain, in its own units a second: from the intake to the collar in about a second and a half. */
 const PASS_SPEED = 9;
 /** Where the brainstem comes out from between the halves, underneath. */
-const STEM_TOP: [number, number, number] = [-0.8, -1.7, 0];
+const STEM_TOP: [number, number, number] = [-0.2, -2.0, 0];
 /** Which way an eye looks in its own frame. */
 const FORWARD = new THREE.Vector3(0, 0, 1);
 /** Where every pass starts: under the intake, on the crest. */
@@ -101,10 +105,11 @@ vec3 passAt(float d) {
 `;
 
 /**
- * What the file holds: one half of each finish, mirrored for the other, and what stands in the middle. The cushions lie on
- * a dark core; the eyes come apart, each in its own frame (where it sits, with Z the way it looks), so they can turn.
+ * What the file holds: one half of each finish, mirrored for the other, and what stands in the middle. The shell is the
+ * cushions and the channels' floor in one skin; the guide, a light copy of the core beneath, is only measured over. The
+ * eyes come apart, each in its own frame (where it sits, with Z the way it looks), so they can turn.
  */
-type Half = 'shell' | 'core' | 'chrome' | 'copper' | 'amber' | 'dark' | 'cyan';
+type Half = 'shell' | 'guide' | 'chrome' | 'copper' | 'amber' | 'dark' | 'cyan';
 type Middle = 'chrome' | 'amber' | 'dark';
 type EyePart = 'dark' | 'amber' | 'chrome';
 type Parts = {
@@ -284,7 +289,7 @@ function overSurface(geo: THREE.BufferGeometry, sets: [number, number, number][]
 /**
  * The nearest point of the far half's skin to any point of the brain, and how far it is. A pass reaches a point as far
  * on as it has come at that nearest point, and then straight on from there: machinery in a channel takes the channel's
- * reach, a cushion its core's, and the brainstem, below it all, is reached last. The near half is the far half's mirror,
+ * reach, a cushion the core's beneath it, and the brainstem, below it all, is reached last. The near half is the far half's mirror,
  * so its points ask about their mirror image.
  */
 function nearest(skin: ArrayLike<number>) {
@@ -547,9 +552,9 @@ export class Brain {
 	private collarReach = 14;
 	/**
 	 * The eyes, each turning in its socket: where it looks now, where it means to look as an offset from the reader, when
-	 * it next glances somewhere else, and the lit iris that opens as it thinks.
+	 * it next glances somewhere else. Its lit iris brightens with the other lights as it thinks.
 	 */
-	private eyes: { look: THREE.Object3D; iris?: THREE.Mesh; glance: THREE.Vector3; next: number; seed: number }[] = [];
+	private eyes: { look: THREE.Object3D; glance: THREE.Vector3; next: number; seed: number }[] = [];
 	/** The camera that last drew the brain: the eyes look at the reader. */
 	private viewer: THREE.Camera | null = null;
 	private finish!: { chrome: Works; copper: Works; dark: Works; amber: Lit; cyan: Lit };
@@ -596,7 +601,7 @@ export class Brain {
 		const brain = new THREE.Group();
 		brain.name = 'brain';
 		this.group.add(brain);
-		this.buildShell(brain, from.half.shell!, from.half.core);
+		this.buildShell(brain, from.half.shell!, from.half.guide);
 		this.buildWorks(brain, from);
 		this.buildEyes(brain, from.eyes);
 		this.buildSeat();
@@ -604,10 +609,10 @@ export class Brain {
 	}
 
 	/* ---- the cushions, both halves, and the floor of the channels between them ---- */
-	private buildShell(brain: THREE.Group, shell: THREE.BufferGeometry, core?: THREE.BufferGeometry) {
-		// The waves run over the core, the one unbroken skin: the three kinds, and how far each point is from the intake,
-		// where every pass starts.
-		const skin = core ?? shell;
+	private buildShell(brain: THREE.Group, shell: THREE.BufferGeometry, guide?: THREE.BufferGeometry) {
+		// The waves run over the core (its light copy, the guide, if the file has one; it is never drawn): the three kinds,
+		// and how far each point is from the intake, where every pass starts.
+		const skin = guide ?? shell;
 		const all = overSurface(skin, [...SOURCES, [INTAKE]]);
 		const n = all.length / 4;
 		const far = new Float32Array(n * 3);
@@ -626,8 +631,8 @@ export class Brain {
 		};
 		skin.setAttribute('geo', new THREE.BufferAttribute(far, 3));
 		skin.setAttribute('pass', new THREE.BufferAttribute(pass, 1));
-		if (core) {
-			// Each cushion takes its waves from the core beneath it, and every pass a moment after the core.
+		if (guide) {
+			// Each point of the skin takes its waves from the core beneath it, and every pass a moment after the core.
 			const p = shell.getAttribute('position');
 			const geo = new Float32Array(p.count * 3);
 			const reach = new Float32Array(p.count);
@@ -639,7 +644,7 @@ export class Brain {
 			shell.setAttribute('geo', new THREE.BufferAttribute(geo, 3));
 			shell.setAttribute('pass', new THREE.BufferAttribute(reach, 1));
 		}
-		const half = core ? mergeGeometries([core, shell]) : shell;
+		const half = shell;
 		const other = mirrored(half);
 		// The near half takes the same three distances in another order, so the two halves never pulse alike.
 		const g = other.getAttribute('geo') as THREE.BufferAttribute;
@@ -698,7 +703,11 @@ export class Brain {
 		add([...both(from.half.cyan)], 'cyan', 'leds');
 	}
 
-	/* ---- the eyes: each turns in its chrome housing to look at the reader, and its iris opens as it thinks ---- */
+	/*
+	 * ---- the eyes: a chrome housing that stays put, and in its bore a glass dome that is part of one sphere, with the lit
+	 * iris lying on it. The dome turns about that sphere's middle, so it only ever moves within itself: nothing passes
+	 * through the housing, and at its furthest turn the iris is still well inside the bore. ----
+	 */
 	private buildEyes(brain: THREE.Group, eyes: Parts['eyes']) {
 		const glass = new THREE.MeshPhysicalMaterial({ color: '#05070b', roughness: 0.08, metalness: 0.3, clearcoat: 1, clearcoatRoughness: 0.04 });
 		const mirror = new THREE.Matrix4().makeScale(1, 1, -1);
@@ -725,7 +734,6 @@ export class Brain {
 					mesh.castShadow = name !== 'amber';
 					look.add(mesh);
 					if (name === 'amber') {
-						entry.iris = mesh;
 						this.lights.push({ mesh, rest: 1.8, beat: 0.3 + i });
 					}
 				}
@@ -848,11 +856,11 @@ export class Brain {
 			const level = light.rest * (0.75 + beat * 0.25) * (1 + busy * 0.5 + this.excited) + (light.flash ? flash * 5 : 0);
 			for (const mat of (Array.isArray(light.mesh.material) ? light.mesh.material : [light.mesh.material]) as THREE.MeshStandardMaterial[]) mat.emissiveIntensity = level;
 		}
-		this.turnEyes(time, dt, busy);
+		this.turnEyes(time, dt);
 	}
 
-	/** The eyes look at the reader, glance away now and then and come back, and their irises open as it thinks. */
-	private turnEyes(time: number, dt: number, busy: number) {
+	/** The eyes look at the reader, and glance away now and then and come back. */
+	private turnEyes(time: number, dt: number) {
 		const seen = this.viewer?.getWorldPosition(new THREE.Vector3());
 		const dir = new THREE.Vector3();
 		const turn = new THREE.Quaternion();
@@ -867,7 +875,7 @@ export class Brain {
 			if (seen) frame.worldToLocal(dir.copy(seen)).normalize();
 			else dir.set(0, 0, 1);
 			dir.add(eye.glance).normalize();
-			// Never further round than its socket lets it: the lens stays inside the housing's rim.
+			// Never further round than the file's eyes were made for (TURN in its build): the iris stays inside the bore.
 			const most = 0.26;
 			if (Math.acos(clamp(dir.z, -1, 1)) > most) {
 				const across = Math.hypot(dir.x, dir.y) || 1;
@@ -876,10 +884,6 @@ export class Brain {
 			turn.setFromUnitVectors(FORWARD, dir);
 			// A glance is quick, as an eye's is.
 			eye.look.quaternion.slerp(turn, 1 - Math.exp(-dt * 14));
-			if (eye.iris) {
-				const open = 0.85 + 0.2 * busy + 0.3 * this.excited;
-				eye.iris.scale.set(open, open, 1);
-			}
 		}
 	}
 }
