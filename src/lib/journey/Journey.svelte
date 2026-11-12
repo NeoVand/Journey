@@ -1891,6 +1891,8 @@
 			let tripT: number | null = null;
 			let flying = false;
 			let afterFlight: (() => void) | null = null;
+			/** Cutting into a trip from afar: the cover is up and the trip's own moment hasn't been set yet. */
+			let entering = false;
 			/** Inside a room: how far the drop from above has come, 0 to 1, where it's heading, and what follows. */
 			let arrive = 1;
 			let arriveGoal = 1;
@@ -2181,8 +2183,10 @@
 					afterFlight = inside ? () => swap(goIn, placeOf(id).cover) : () => (flying = false);
 				} else {
 					if (inside && !reduced && !still) flying = true;
+					entering = true;
 					swap(
 						() => {
+							entering = false;
 							tripT = TRACK_AT[id].T;
 							blend = blendGoal = 1;
 							if (inside) goIn();
@@ -2197,6 +2201,7 @@
 				const dropping = w.trackIn && arriveGoal === 1;
 				if (!track || (flying && !atOnce && !dropping)) return;
 				const done = () => {
+					entering = false;
 					w.setTrack(null);
 					w.trackIn = false;
 					arrive = arriveGoal = 1;
@@ -2215,6 +2220,11 @@
 					comeBackTo?.focus({ preventScroll: true });
 				};
 				if (atOnce) return done();
+				// Turned round during the cut in: the reader never arrived, so the cut goes straight home instead.
+				if (entering) {
+					entering = false;
+					return swap(done, TRACK_AT[track].inside ? placeOf(track).cover : undefined);
+				}
 				if (w.trackIn) {
 					// Up out of the room, back through the roof, and then home the way the reader came in.
 					const out = () => {
