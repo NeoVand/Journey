@@ -85,6 +85,33 @@ Prompts are next to each set in `prompts/`; references in `refs/`.
   adding the next tile. **The tray (`context-r1b-2`) is my pick**: it is literally the token sequence (the journey's
   tiles), it can be the page's context bar as-is, and compaction becomes tiles squeezed into one summary block. In the
   build the cover should run up to the last turn, not stop after the prompt as drawn.
+- **r5 (2026-11-11), the sharpening:** the tray is the hero, in the header gauge's colours and order, packed from the
+  four drawers; one station per real step of the loop (pack, send, the reply, check with lamps and a bell for "ask
+  you", run through ports to files, terminal and MCP, the result tile back into the tray) and a filing drawer for the
+  transcript; satin porcelain and keycap tiles, no glow, no robot arms. `inside-r5a-*` is the room (calm and right,
+  but small and pale); `cutaway-r5b-*` the cabinet opened on the main road (one shelf, a capsule carrying a copy of
+  the tray up through the roof); `board-r5c-*` a round board with the loop as one groove, the most legible.
+- **r6 and r7 (2026-11-11), drawn from `DESIGN.md`:** every object in the design, placed as its layout says.
+  `room-r6a/b-*` and `board-r6c-*` were the first pass; `room-r7b-1` is the pick so far (the room mid-turn, with the
+  hooks box outside, rules and dial on the gate, checkpoints by the transcript, the subagent as a tiny copy of the
+  room). `room-r7a-*` is turn one on a 1M tray (a sliver of tiles); `gate-r7-*` is card 4 (allowed, ask, refused at
+  once); `press-r7-*` is card 5 (the summary block, the start kept, the record still whole). `board-r6c-1` is the
+  alternative layout: things outside the harness on their own cloud islands.
+- **Plan and hill climb (2026-11-11):** the room was laid out as a plan before more images. `plan-r1` (Claude),
+  then `plan-f1` (Fable), then four rounds in `hill/` agreed the description: *the model asks; the harness remembers
+  (the back), checks (the left, by you) and acts (the right, by your machine)*. `plan-f2` draws it.
+- **r8 and r9, plan f2 rendered:** `room-r8a-*` at today's camera and `room-r8b-*` from high above follow the plan
+  closely. They showed a large empty floor in the front middle; `room-r9b-*` (a shallower room) fixes it and leaves
+  the card's third calm; `room-r9a-*` moves the subagent's room to the middle instead.
+- **r10, the user's pick (subagent in the middle):** `plan-f3` puts the subagent's room in the middle of the front,
+  and it nests: three layers, as Claude Code allows by default, the last with no door. `room-r10a-*` is the wide
+  shot; `sub-r10b-*` is card 6 close up (a brief goes in by the door; only a summary should come out, which the
+  renders don't show yet).
+- **r11 and r12, the six cards** in that room, collected in `cards-r11.png`: card 1 `card1-r11-2` (turn one, a sliver
+  of a 1M tray), card 2 `card2-r11-2` (one turn in motion), card 3 `card3-r11-2` (the cover over what didn't change;
+  a skill's body arrives as jade, a result), card 4 `card4-r12-1` (allowed, asked, refused at once; the refusal goes
+  into the tray, never up the chute), card 5 `card5-r11-2` (the press is the end stop; the ribbon keeps every tile),
+  card 6 `sub-r10b-2`.
 - **`system-r1-*` (what runs where)**: three islands. Your laptop (harness cut open showing the context and its loop;
   files and a terminal beside it: tools run here), a small MCP server island, and the provider's building far away
   (key-card gate, two inspection arches for the classifiers, the tokenizer machine, the server hall with the model;

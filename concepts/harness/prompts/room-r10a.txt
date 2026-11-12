@@ -1,0 +1,5 @@
+Edit the second reference image (this exact room; the first reference is the site's agreed art direction). Keep everything in it exactly as it is (the room, camera, light, materials, every station, the rail and the cart, the benches, the ledge outside the right wall), and change only the small miniature room in the middle of the front:
+1. It becomes truly recursive: inside it, at its front middle, stands a smaller copy of the same room (its own tiny tray, tube, chute, gate and benches), and inside THAT one, at its front middle, a still smaller copy. Three rooms, one inside the next. The smallest has no room inside it.
+2. The miniature rooms have low walls and soft, slightly paler colours, so the big tray at the back stays the largest, brightest thing in the picture; the miniature reads as an echo of the room, not a rival.
+3. The brass rail ends at a small door in the right side of the first miniature room.
+No text, letters or numbers anywhere. No people.

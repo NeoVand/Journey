@@ -1,0 +1,10 @@
+Concept art for one scene of an interactive 3D explainer website: the inside of a coding agent's harness, the program on your laptop that runs the agent, at the very start of a session. The first reference is the agreed art direction for the whole site. The second reference is this exact room: keep its room, walls, materials, light, camera and every station where it is (the chute at the back left, the four drawers and the skill shelf on the back wall, the tall glass tube at the back right, the ribbon out of the right wall to the filing cabinet, the gate at the front centre, the three ports at the front right with cables to a folder, a terminal and a server, the laptop outside the left wall, the small room-in-a-room at the front left, the press parked by the end stop).
+
+What changes: this is turn one, and everything is at rest.
+- The tray is the same long tray, but its tiles are SMALL: about eighty of them would fit in a row. Only five tiles sit at the far LEFT end, packed edge to edge: two caramel-tan tiles (the tools), one pale wheat tile (instructions and your rules), one pale sky-blue tile (facts about your machine), one cobalt-blue tile (your prompt), under a short frosted glass cover. All the rest of the long tray is empty, clean and gleaming, with its ruler ticks running all the way to the brass end stop: a million tokens of room, and turn one uses a sliver.
+- The capsule waits at the bottom of the glass tube, empty. The chute is empty. No tiles in flight anywhere.
+- The gate's three lamps are soft and unlit; a small dome beacon on its top; a slim rack of three small cards on its post (your rules); its one soft cable runs out through the front wall to a little porcelain plug-box outside the room (your hooks).
+- Outside, next to the filing cabinet, a short neat stack of thin folders (copies of your files, one per prompt).
+- A small amber puck rests in the floor groove by the drawers, ready to go.
+
+Calm, warm daylight, satin porcelain and brass, no glow, no text, letters or numbers anywhere, no people.

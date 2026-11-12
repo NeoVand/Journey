@@ -1,0 +1,18 @@
+Concept art for one scene of an interactive 3D explainer website: the inside of a coding agent's harness, the program on your laptop that runs the agent. The first reference is the agreed art direction for the whole site; the second is today's version of this room (keep its cut-away cream room on a porcelain base and its three-quarter view from above; lose its scattered boxes); the third is the closest earlier concept; the fourth is the hero object. Materials: satin porcelain, cream keycap tiles, small brass fittings, matte soft cables, frosted glass. Warm soft daylight, gentle contact shadows, calm. Friendly and precise, like a beautifully made porcelain-and-brass toy: no glowing tubes, no robot arms, no hazard stripes, no chevrons, no screens full of glow.
+
+The room has low walls (so the things outside it are visible beyond them) and fills the right two-thirds of the frame. The left third of the frame is calm, empty sky-blue for a text card.
+
+THE HERO, across the middle of the floor from left to right: the context, everything the model will read this turn. A very long, low porcelain tray with a fine ruler of tick marks along its front rim and a firm brass end stop at its far right end (the most it can ever hold). This is the very first turn, so only the first short stretch at the tray's LEFT end holds tiles, packed edge to edge, rounded keycap tiles in this order: two caramel-tan tiles (the tools the agent may ask for), one pale wheat tile (its instructions and your rules), one pale sky-blue tile (facts about your machine), one cobalt-blue tile (your prompt). The rest of the long tray, nearly all of it, is empty and gleaming: there is room for a very long conversation. A thin frosted glass cover lies over the first tiles. Parked at the tray's far right end, by the end stop, sits a small porcelain press on wheels that ride the tray's rims (it will squeeze the tray when it gets full).
+
+AROUND THE TRAY, each station a single large, simple shape:
+- Back wall, left: four drawers set into the wall, each pulled out a little and holding tiles of its colour (caramel, wheat, sky blue, cobalt). Next to them a small shelf with a row of little folded cards standing closed (skills), one of them unfolding.
+- Back right corner: a round brass hatch at the top of the wall with a clear glass tube rising up out of the room into the sky: the request goes up to the model, far away.
+- Left side, near the back: a slim glass chute coming down from the sky into the room: the reply comes down here.
+- Just outside the left wall, a laptop on the porcelain base, its screen turned toward the room: your screen.
+- Front, centre: a slim porcelain arch, the gate, with a small dome beacon on top, three small lamps (green, amber, red), a little brass bell, a round dial on its post, and one soft cable plugged into its side.
+- Front right: three round brass ports in the low wall, with soft cables running out of the room to a paper folder, a small terminal, and a tiny server box further away.
+- Right wall: a slot through which a long ribbon of thin cards runs out to a small porcelain filing cabinet outside the room (everything is written down on disk).
+- Front left corner: a small cut-away room-in-a-room, a miniature of this one with its own tiny tray.
+- One soft groove in the floor joins the stations in order: from the chute along the front to the gate, to the ports, round to the tray, and on to the hatch. A small amber puck rests in the groove by the drawers.
+
+No text, letters or numbers anywhere. No people. Every object means something; the whole room reads at a glance; the tray is the largest, brightest, most detailed thing.

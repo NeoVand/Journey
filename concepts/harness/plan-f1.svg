@@ -1,0 +1,466 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1860" height="1930" viewBox="0 0 1860 1930">
+<defs>
+<marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" fill="#b08a3e"/></marker>
+<marker id="arrRed" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" fill="#d9453d"/></marker>
+<marker id="arrBlue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" fill="#2f6fe0"/></marker>
+<marker id="arrGrey" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" fill="#8d99ad"/></marker>
+<marker id="arrAmber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" fill="#d99a10"/></marker>
+<marker id="arrGreen" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" fill="#2a9a5f"/></marker>
+<pattern id="frost" width="6" height="6" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill="#ffffff" opacity="0.55"/></pattern>
+</defs>
+<rect width="1860" height="1930" fill="#fbf4e6"/>
+<text x="60" y="58" font-size="40" font-weight="700" fill="#3a2d19" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >Inside the harness: floor plan f1</text>
+<text x="60" y="90" font-size="16" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >Claude Code. Top view, to the room’s real proportions (14.4 wide, 12 deep, walls 6.1 tall, open at the front). One unit = one square.</text>
+<text x="60" y="112" font-size="16" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >Everything on the floor reads left to right, like a line of text. The model’s round trip is the carriage return: up on the right, down on the left.</text>
+<rect x="160" y="240" width="1008" height="840" rx="0" fill="#fdf9f0" stroke="none" stroke-width="1.6"  />
+<line x1="174" y1="240" x2="174" y2="1080" stroke="#e6dcc6" stroke-width="0.8"/>
+<line x1="244" y1="240" x2="244" y2="1080" stroke="#e6dcc6" stroke-width="0.8"/>
+<line x1="314" y1="240" x2="314" y2="1080" stroke="#e6dcc6" stroke-width="0.8"/>
+<line x1="384" y1="240" x2="384" y2="1080" stroke="#e6dcc6" stroke-width="0.8"/>
+<line x1="454" y1="240" x2="454" y2="1080" stroke="#e6dcc6" stroke-width="0.8"/>
+<line x1="524" y1="240" x2="524" y2="1080" stroke="#e6dcc6" stroke-width="0.8"/>
+<line x1="594" y1="240" x2="594" y2="1080" stroke="#e6dcc6" stroke-width="0.8"/>
+<line x1="664" y1="240" x2="664" y2="1080" stroke="#e6dcc6" stroke-width="0.8"/>
+<line x1="734" y1="240" x2="734" y2="1080" stroke="#e6dcc6" stroke-width="0.8"/>
+<line x1="804" y1="240" x2="804" y2="1080" stroke="#e6dcc6" stroke-width="0.8"/>
+<line x1="874" y1="240" x2="874" y2="1080" stroke="#e6dcc6" stroke-width="0.8"/>
+<line x1="944" y1="240" x2="944" y2="1080" stroke="#e6dcc6" stroke-width="0.8"/>
+<line x1="1014" y1="240" x2="1014" y2="1080" stroke="#e6dcc6" stroke-width="0.8"/>
+<line x1="1084" y1="240" x2="1084" y2="1080" stroke="#e6dcc6" stroke-width="0.8"/>
+<line x1="1154" y1="240" x2="1154" y2="1080" stroke="#e6dcc6" stroke-width="0.8"/>
+<line x1="160" y1="310" x2="1168" y2="310" stroke="#e6dcc6" stroke-width="0.8"/>
+<line x1="160" y1="380" x2="1168" y2="380" stroke="#e6dcc6" stroke-width="0.8"/>
+<line x1="160" y1="450" x2="1168" y2="450" stroke="#e6dcc6" stroke-width="0.8"/>
+<line x1="160" y1="520" x2="1168" y2="520" stroke="#e6dcc6" stroke-width="0.8"/>
+<line x1="160" y1="590" x2="1168" y2="590" stroke="#e6dcc6" stroke-width="0.8"/>
+<line x1="160" y1="660" x2="1168" y2="660" stroke="#e6dcc6" stroke-width="0.8"/>
+<line x1="160" y1="730" x2="1168" y2="730" stroke="#e6dcc6" stroke-width="0.8"/>
+<line x1="160" y1="800" x2="1168" y2="800" stroke="#e6dcc6" stroke-width="0.8"/>
+<line x1="160" y1="870" x2="1168" y2="870" stroke="#e6dcc6" stroke-width="0.8"/>
+<line x1="160" y1="940" x2="1168" y2="940" stroke="#e6dcc6" stroke-width="0.8"/>
+<line x1="160" y1="1010" x2="1168" y2="1010" stroke="#e6dcc6" stroke-width="0.8"/>
+<rect x="139" y="219" width="1050" height="20.999999999999986" rx="0" fill="#e6d3ae" stroke="#b9975a" stroke-width="1.6"  />
+<rect x="139" y="219" width="20.999999999999986" height="861" rx="0" fill="#e6d3ae" stroke="#b9975a" stroke-width="1.6"  />
+<rect x="1168" y="219" width="20.999999999999986" height="861" rx="0" fill="#e6d3ae" stroke="#b9975a" stroke-width="1.6"  />
+<line x1="139" y1="1080" x2="1189" y2="1080" stroke="#b9975a" stroke-width="1.6" stroke-dasharray="8 7"/>
+<text x="664" y="1102.4" font-size="13" font-weight="400" fill="#73604a" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >open front: the reader looks in from here</text>
+<text x="149.50000000000003" y="723" font-size="12" font-weight="600" fill="#6f5a33" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif" transform="rotate(-90 149.50000000000003 723)" letter-spacing="1.5" >LEFT WALL: YOU</text>
+<text x="1178.5" y="933" font-size="12" font-weight="600" fill="#6f5a33" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif" transform="rotate(90 1178.5 933)" letter-spacing="1.5" >RIGHT WALL: YOUR MACHINE</text>
+<text x="664" y="232.29999999999998" font-size="12" font-weight="600" fill="#6f5a33" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif" letter-spacing="1.5" >BACK WALL: THE PARTS</text>
+<text x="1000" y="232.29999999999998" font-size="12" font-weight="600" fill="#6f5a33" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif" letter-spacing="1.5" >YOUR DISK</text>
+<text x="160" y="210.6" font-size="11" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >x −7.2</text>
+<text x="1168" y="210.6" font-size="11" font-weight="400" fill="#73604a" text-anchor="end" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >x 7.2</text>
+<text x="132.00000000000003" y="246.99999999999997" font-size="11" font-weight="400" fill="#73604a" text-anchor="end" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >z −6</text>
+<text x="132.00000000000003" y="1076.5" font-size="11" font-weight="400" fill="#73604a" text-anchor="end" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >z 6</text>
+<rect x="342" y="219" width="209.99999999999997" height="41.99999999999997" rx="4" fill="#fffdf8" stroke="#9c7d4d" stroke-width="1.8"  />
+<rect x="345" y="222" width="46.5" height="36" rx="3" fill="#ecd29a" stroke="none" stroke-width="1.6"  opacity="0.9"/>
+<rect x="397.5" y="222" width="46.5" height="36" rx="3" fill="#9fcbf3" stroke="none" stroke-width="1.6"  opacity="0.9"/>
+<rect x="450" y="222" width="46.5" height="36" rx="3" fill="#c9a271" stroke="none" stroke-width="1.6"  opacity="0.9"/>
+<rect x="502.5" y="222" width="46.5" height="36" rx="3" fill="#b9c4d8" stroke="none" stroke-width="1.6"  opacity="0.9"/>
+<path d="M342,261 L552,261 L461.00000000000006,380 L342,380 z" fill="#efe3c8" stroke="none"/>
+<path d="M503,275 L454,369.5" fill="none" stroke="#b08a3e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"  marker-end="url(#arr)" />
+<text x="345.5" y="243.5" font-size="20" font-weight="600" fill="#3a2d19" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >Drawers</text>
+<circle cx="324.5" cy="241.39999999999998" r="13" fill="#c59a3f" stroke="#9a7322" stroke-width="1.2"  />
+<text x="324.5" y="246.89999999999998" font-size="15" font-weight="600" fill="#fff" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >1</text>
+<text x="352.5" y="280.6" font-size="12" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >Instructions · Environment</text>
+<text x="352.5" y="294.6" font-size="12" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >Tools · Conversation</text>
+<text x="352.5" y="310" font-size="11.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >stacked in the wall; tipped into the tray’s start</text>
+<rect x="776" y="219" width="182" height="27.999999999999964" rx="4" fill="#fffdf8" stroke="#9c7d4d" stroke-width="1.6"  />
+<rect x="786.5" y="221.8" width="18.2" height="22.400000000000002" rx="2" fill="#ecd29a" stroke="#9c7d4d" stroke-width="1"  />
+<rect x="811" y="221.8" width="18.2" height="22.400000000000002" rx="2" fill="#ecd29a" stroke="#9c7d4d" stroke-width="1"  />
+<rect x="835.5" y="221.8" width="18.2" height="22.400000000000002" rx="2" fill="#ecd29a" stroke="#9c7d4d" stroke-width="1"  />
+<rect x="860" y="221.8" width="18.2" height="22.400000000000002" rx="2" fill="#ecd29a" stroke="#9c7d4d" stroke-width="1"  />
+<rect x="884.5" y="221.8" width="18.2" height="22.400000000000002" rx="2" fill="#ecd29a" stroke="#9c7d4d" stroke-width="1"  />
+<rect x="909" y="221.8" width="18.2" height="22.400000000000002" rx="2" fill="#ecd29a" stroke="#9c7d4d" stroke-width="1"  />
+<rect x="933.5" y="221.8" width="18.2" height="22.400000000000002" rx="2" fill="#ecd29a" stroke="#9c7d4d" stroke-width="1"  />
+<path d="M797,250.50000000000003Q769,310 734,373" fill="none" stroke="#b08a3e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="4 4" marker-end="url(#arr)" />
+<text x="818" y="278.5" font-size="20" font-weight="600" fill="#3a2d19" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >Skills</text>
+<circle cx="800.5" cy="273.6" r="13" fill="#c59a3f" stroke="#9a7322" stroke-width="1.2"  />
+<text x="800.5" y="279.1" font-size="15" font-weight="600" fill="#fff" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >2</text>
+<text x="818" y="294.6" font-size="12" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >one unfolds into the tray</text>
+<rect x="342" y="380" width="616" height="84.00000000000001" rx="6" fill="#fffaf1" stroke="#9c7d4d" stroke-width="2.2"  />
+<line x1="342" y1="380" x2="342" y2="389" stroke="#9c7d4d" stroke-width="1"/>
+<line x1="403.6" y1="380" x2="403.6" y2="385" stroke="#9c7d4d" stroke-width="1"/>
+<line x1="465.2000000000001" y1="380" x2="465.2000000000001" y2="385" stroke="#9c7d4d" stroke-width="1"/>
+<line x1="526.8" y1="380" x2="526.8" y2="385" stroke="#9c7d4d" stroke-width="1"/>
+<line x1="588.4000000000001" y1="380" x2="588.4000000000001" y2="385" stroke="#9c7d4d" stroke-width="1"/>
+<line x1="650" y1="380" x2="650" y2="389" stroke="#9c7d4d" stroke-width="1"/>
+<line x1="711.6" y1="380" x2="711.6" y2="385" stroke="#9c7d4d" stroke-width="1"/>
+<line x1="773.2000000000002" y1="380" x2="773.2000000000002" y2="385" stroke="#9c7d4d" stroke-width="1"/>
+<line x1="834.8000000000001" y1="380" x2="834.8000000000001" y2="385" stroke="#9c7d4d" stroke-width="1"/>
+<line x1="896.4" y1="380" x2="896.4" y2="385" stroke="#9c7d4d" stroke-width="1"/>
+<line x1="958.0000000000001" y1="380" x2="958.0000000000001" y2="389" stroke="#9c7d4d" stroke-width="1"/>
+<text x="345" y="402" font-size="10.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >0</text>
+<rect x="345.5" y="401" width="31.5" height="42" rx="4" fill="#c9a271" stroke="none" stroke-width="1.6"  />
+<rect x="378.4" y="401" width="25.2" height="42" rx="4" fill="#ecd29a" stroke="none" stroke-width="1.6"  />
+<rect x="405" y="401" width="16.8" height="42" rx="4" fill="#ecd29a" stroke="none" stroke-width="1.6"  />
+<rect x="423.20000000000005" y="401" width="16.8" height="42" rx="4" fill="#9fcbf3" stroke="none" stroke-width="1.6"  />
+<rect x="441.40000000000003" y="401" width="15.4" height="42" rx="4" fill="#2f6fe0" stroke="none" stroke-width="1.6"  />
+<rect x="461.00000000000006" y="401" width="14" height="42" rx="4" fill="#ffbc2e" stroke="none" stroke-width="1.6"  opacity="0.35"/>
+<rect x="476.40000000000003" y="401" width="29.4" height="42" rx="4" fill="#3cc47e" stroke="none" stroke-width="1.6"  opacity="0.35"/>
+<rect x="507.20000000000005" y="401" width="16.8" height="42" rx="4" fill="#b9c4d8" stroke="none" stroke-width="1.6"  opacity="0.35"/>
+<rect x="525.4000000000001" y="401" width="14" height="42" rx="4" fill="#ffbc2e" stroke="none" stroke-width="1.6"  opacity="0.35"/>
+<rect x="540.8" y="401" width="35" height="42" rx="4" fill="#3cc47e" stroke="none" stroke-width="1.6"  opacity="0.35"/>
+<rect x="577.2" y="401" width="21" height="42" rx="4" fill="#b9c4d8" stroke="none" stroke-width="1.6"  opacity="0.35"/>
+<rect x="343.4" y="392.6" width="168" height="58.8" rx="8" fill="#ffffff" stroke="#8fb6dc" stroke-width="1.2"  opacity="0.5"/>
+<text x="350.40000000000003" y="459.8" font-size="10.5" font-weight="400" fill="#5d7a96" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >frosted cover: the cached prefix</text>
+<rect x="955" y="376" width="6" height="92" rx="2" fill="#c59a3f" stroke="#9a7322" stroke-width="1"  />
+<text x="356" y="511.59999999999997" font-size="24" font-weight="600" fill="#3a2d19" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >The tray</text>
+<circle cx="335" cy="506" r="13" fill="#c59a3f" stroke="#9a7322" stroke-width="1.2"  />
+<text x="335" y="511.5" font-size="15" font-weight="600" fill="#fff" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >3</text>
+<text x="471.5" y="511.59999999999997" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >the context this turn, read left to right in the request’s order.</text>
+<text x="356" y="529.8" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >The end stop is the window’s limit (1,000,000 tokens); turn one fills about 2%. The lip: new tiles</text>
+<text x="356" y="546.5999999999999" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >slide to the open end; the model’s words, your prompt and refusals from the left,</text>
+<text x="356" y="563.4000000000001" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >results from the right. The frosted cover is the cached prefix, reused by the provider.</text>
+<rect x="342" y="469.6" width="616" height="15.400000000000013" rx="3" fill="#f6ecd6" stroke="#9c7d4d" stroke-width="1.2"  />
+<path d="M391,477.3 L426,477.3" fill="none" stroke="#b08a3e" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"  marker-end="url(#arr)" />
+<path d="M482.00000000000006,477.3 L517,477.3" fill="none" stroke="#b08a3e" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"  marker-end="url(#arr)" />
+<path d="M573,477.3 L608,477.3" fill="none" stroke="#b08a3e" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"  marker-end="url(#arr)" />
+<path d="M664,477.3 L699.0000000000001,477.3" fill="none" stroke="#b08a3e" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"  marker-end="url(#arr)" />
+<path d="M755,477.3 L790,477.3" fill="none" stroke="#b08a3e" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"  marker-end="url(#arr)" />
+<path d="M846,477.3 L881,477.3" fill="none" stroke="#b08a3e" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"  marker-end="url(#arr)" />
+<path d="M937.0000000000001,477.3 L972.0000000000001,477.3" fill="none" stroke="#b08a3e" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"  marker-end="url(#arr)" />
+<circle cx="902" cy="422" r="39.2" fill="#e8f1fa" stroke="#8fb6dc" stroke-width="2"  opacity="0.9"/>
+<circle cx="902" cy="422" r="28" fill="none" stroke="#8fb6dc" stroke-width="1.2" stroke-dasharray="3 3" />
+<text x="902" y="429" font-size="26" font-weight="700" fill="#4a6f93" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >↑</text>
+<text x="800.5" y="429" font-size="20" font-weight="600" fill="#3a2d19" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >Send ↑</text>
+<circle cx="781.6" cy="424.1" r="13" fill="#c59a3f" stroke="#9a7322" stroke-width="1.2"  />
+<text x="781.6" y="429.6" font-size="15" font-weight="600" fill="#fff" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >4</text>
+<text x="856.5" y="457" font-size="11.5" font-weight="400" fill="#73604a" text-anchor="end" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >a copy of the whole tray goes up; the tray stays</text>
+<rect x="963.6" y="380" width="50.399999999999984" height="84.00000000000001" rx="4" fill="#f3e6c9" stroke="#9a7322" stroke-width="1.6"  />
+<circle cx="988.8" cy="422" r="14" fill="#c59a3f" stroke="#9a7322" stroke-width="1.2"  />
+<line x1="965" y1="422" x2="1014" y2="422" stroke="#9a7322" stroke-width="1.2"/>
+<text x="968.5" y="511.59999999999997" font-size="20" font-weight="600" fill="#3a2d19" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >Press</text>
+<circle cx="949.6000000000001" cy="506" r="13" fill="#c59a3f" stroke="#9a7322" stroke-width="1.2"  />
+<text x="949.6000000000001" y="511.5" font-size="15" font-weight="600" fill="#fff" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >10</text>
+<text x="968.5" y="527" font-size="11.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >the end stop</text>
+<text x="968.5" y="539.6" font-size="11.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >is a ram</text>
+<rect x="905.5" y="354.79999999999995" width="49.000000000000014" height="23.100000000000005" rx="3" fill="#fffdf8" stroke="#9c7d4d" stroke-width="1.4"  />
+<path d="M954.5000000000001,366Q1007.0000000000001,366 1014,327.5L1028,320.5" fill="none" stroke="#c9b48a" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="5 4"  />
+<path d="M954.5000000000001,366Q1007.0000000000001,366 1014,327.5L1028,320.5" fill="none" stroke="#9c7d4d" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"   />
+<rect x="1028" y="254" width="87.5" height="97.99999999999996" rx="4" fill="#fffdf8" stroke="#9c7d4d" stroke-width="1.8"  />
+<circle cx="1052.5" cy="299.5" r="15.4" fill="#f3e6c9" stroke="#9c7d4d" stroke-width="1.6"  />
+<circle cx="1052.5" cy="299.5" r="4.9" fill="#c59a3f" stroke="none" stroke-width="1.6"  />
+<rect x="1080.5" y="271.5" width="26.6" height="35" rx="2" fill="#fff7e4" stroke="#9c7d4d" stroke-width="1"  />
+<rect x="1082.5" y="268.5" width="26.6" height="35" rx="2" fill="#fff7e4" stroke="#9c7d4d" stroke-width="1"  />
+<rect x="1084.5" y="265.5" width="26.6" height="35" rx="2" fill="#fff7e4" stroke="#9c7d4d" stroke-width="1"  />
+<rect x="1045.5" y="219" width="55.999999999999986" height="20.999999999999986" rx="2" fill="#5e4a2c" stroke="#9a7322" stroke-width="1.2"  />
+<text x="888" y="341.5" font-size="18" font-weight="600" fill="#3a2d19" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >Write down</text>
+<circle cx="870.5" cy="336.6" r="13" fill="#c59a3f" stroke="#9a7322" stroke-width="1.2"  />
+<text x="870.5" y="342.1" font-size="15" font-weight="600" fill="#fff" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >9</text>
+<path d="M1147,502.5Q1157.5,422 1115.5,338" fill="none" stroke="#6f8f6a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"   />
+<circle cx="1147" cy="502.5" r="4.9" fill="#c59a3f" stroke="#9a7322" stroke-width="1"  />
+<circle cx="1115.5" cy="338" r="4.9" fill="#c59a3f" stroke="#9a7322" stroke-width="1"  />
+<rect x="160" y="390.5" width="52.5" height="56.00000000000002" rx="4" fill="#e8f1fa" stroke="#8fb6dc" stroke-width="2"  />
+<text x="185.9" y="426.9" font-size="26" font-weight="700" fill="#4a6f93" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >↓</text>
+<rect x="247.5" y="429" width="94.50000000000004" height="55.999999999999986" rx="4" fill="#f6ecd6" stroke="#9c7d4d" stroke-width="1.4"  />
+<path d="M212.5,408 L247.5,432.5 L247.5,481.5 L212.5,429 z" fill="#efe3c8" stroke="none"/>
+<circle cx="296.5" cy="457" r="7.7" fill="#c59a3f" stroke="#9a7322" stroke-width="1.2"  />
+<text x="170.50000000000003" y="380" font-size="20" font-weight="600" fill="#3a2d19" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >Reply ↓</text>
+<circle cx="153.00000000000003" cy="375.09999999999997" r="13" fill="#c59a3f" stroke="#9a7322" stroke-width="1.2"  />
+<text x="153.00000000000003" y="380.59999999999997" font-size="15" font-weight="600" fill="#fff" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >5</text>
+<text x="223.00000000000003" y="499" font-size="11" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >turn marker</text>
+<rect x="139" y="506" width="20.999999999999986" height="112" rx="2" fill="#dfe9f7" stroke="#2f6fe0" stroke-width="2"  />
+<path d="M247.5,453.5Q195,460.5 160,516.5" fill="none" stroke="#8d99ad" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"  marker-end="url(#arrGrey)" />
+<path d="M160,537.5Q202.00000000000003,478 247.5,471" fill="none" stroke="#2f6fe0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"  marker-end="url(#arrBlue)" />
+<text x="174" y="593.5" font-size="18" font-weight="600" fill="#3a2d19" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >Your screen</text>
+<circle cx="153.00000000000003" cy="588.6" r="13" fill="#c59a3f" stroke="#9a7322" stroke-width="1.2"  />
+<text x="153.00000000000003" y="594.1" font-size="15" font-weight="600" fill="#fff" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >6</text>
+<path d="M314,485Q314,618 331.5,730" fill="none" stroke="#d99a10" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"  marker-end="url(#arrAmber)" />
+<path d="M317.5,730Q300,618 300,485" fill="none" stroke="#d9453d" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="5 4" marker-end="url(#arrRed)" />
+<rect x="268.5" y="730" width="119.00000000000001" height="59.50000000000001" rx="5" fill="#f7eed9" stroke="#9a7322" stroke-width="2"  />
+<rect x="268.5" y="730" width="28.000000000000025" height="59.50000000000001" rx="3" fill="#fffdf8" stroke="#9a7322" stroke-width="1.2"  />
+<rect x="359.5" y="730" width="27.999999999999964" height="59.50000000000001" rx="3" fill="#fffdf8" stroke="#9a7322" stroke-width="1.2"  />
+<circle cx="310.5" cy="740.5" r="5.6000000000000005" fill="#3cc47e" stroke="none" stroke-width="1.6"  />
+<circle cx="328" cy="740.5" r="5.6000000000000005" fill="#ffbc2e" stroke="none" stroke-width="1.6"  />
+<circle cx="345.5" cy="740.5" r="5.6000000000000005" fill="#d9453d" stroke="none" stroke-width="1.6"  />
+<circle cx="310.5" cy="768.5" r="9.8" fill="#fffdf8" stroke="#9a7322" stroke-width="1.4"  />
+<line x1="310.5" y1="768.5" x2="316.1" y2="760.8" stroke="#9a7322" stroke-width="1.6"/>
+<circle cx="345.5" cy="768.5" r="7.7" fill="#c59a3f" stroke="#9a7322" stroke-width="1.2"  />
+<line x1="273.4" y1="742.5999999999999" x2="291.6" y2="742.5999999999999" stroke="#3cc47e" stroke-width="3"/>
+<line x1="273.4" y1="756.6" x2="291.6" y2="756.6" stroke="#ffbc2e" stroke-width="3"/>
+<line x1="273.4" y1="770.6" x2="291.6" y2="770.6" stroke="#d9453d" stroke-width="3"/>
+<circle cx="373.5" cy="744" r="6.3" fill="#e8f1fa" stroke="#8fb6dc" stroke-width="1.4"  />
+<circle cx="268.5" cy="777.6" r="4.9" fill="#c59a3f" stroke="#9a7322" stroke-width="1"  />
+<path d="M268.5,777.6Q209,800 160,838.5" fill="none" stroke="#8a7a5c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"   />
+<circle cx="160" cy="838.5" r="7" fill="#fffdf8" stroke="#9a7322" stroke-width="1.4"  />
+<circle cx="268.5" cy="744" r="4.9" fill="#c59a3f" stroke="#9a7322" stroke-width="1"  />
+<path d="M268.5,744Q195,723 160,628.5" fill="none" stroke="#8a7a5c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"   />
+<circle cx="160" cy="628.5" r="7" fill="#fffdf8" stroke="#9a7322" stroke-width="1.4"  />
+<text x="401.5" y="723" font-size="24" font-weight="600" fill="#3a2d19" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >Gate</text>
+<circle cx="384" cy="718.1" r="13" fill="#c59a3f" stroke="#9a7322" stroke-width="1.2"  />
+<text x="384" y="723.6" font-size="15" font-weight="600" fill="#fff" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >7</text>
+<text x="401.5" y="740.5" font-size="12.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >every tool call, before any port: rules, mode dial, bell, hooks, periscope.</text>
+<text x="401.5" y="756.5" font-size="12.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >refused: the card turns red and goes back to the lip; it never reaches a port.</text>
+<text x="230" y="859.5" font-size="11.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >to your hooks</text>
+<text x="177.5" y="660" font-size="11.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >ask</text>
+<path d="M328,789.5L328,814Q328,842 356,842L1014,842Q1042,842 1042,814L1042,520Q1042,478 1007.0000000000001,478L961.5,478" fill="none" stroke="#e9dcbd" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"   />
+<path d="M328,789.5L328,814Q328,842 356,842L1014,842Q1042,842 1042,814L1042,520Q1042,478 1007.0000000000001,478L961.5,478" fill="none" stroke="#b08a3e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="7 5"  />
+<path d="M524,842 L559,842" fill="none" stroke="#b08a3e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"  marker-end="url(#arr)" />
+<path d="M699,842 L734,842" fill="none" stroke="#b08a3e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"  marker-end="url(#arr)" />
+<path d="M874,842 L909,842" fill="none" stroke="#b08a3e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"  marker-end="url(#arr)" />
+<path d="M1042,730 L1042,695" fill="none" stroke="#b08a3e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"  marker-end="url(#arr)" />
+<path d="M1042,597 L1042,562" fill="none" stroke="#b08a3e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"  marker-end="url(#arr)" />
+<text x="342" y="873.5" font-size="12" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >the rail: an allowed card rides to its port; its result rides back</text>
+<rect x="1073.5" y="590" width="94.50000000000004" height="140" rx="4" fill="#e8f1fa" stroke="#8fb6dc" stroke-width="1.8" stroke-dasharray="6 4" opacity="0.8"/>
+<rect x="1070.5" y="644.6" width="6" height="30.8" fill="#fdf9f0" stroke="none"/>
+<rect x="1098" y="700.6" width="20.999999999999986" height="19.6" rx="2" fill="#f3e6c9" stroke="#9c7d4d" stroke-width="1"  />
+<rect x="1098" y="506" width="45.499999999999964" height="70.00000000000001" rx="4" fill="#fffdf8" stroke="#9c7d4d" stroke-width="1.6"  />
+<rect x="1105" y="528.4000000000001" width="12.6" height="25.2" rx="2" fill="#ffbc2e" stroke="none" stroke-width="1.6"  />
+<rect x="1122.5" y="528.4000000000001" width="12.6" height="25.2" rx="2" fill="#3cc47e" stroke="none" stroke-width="1.6"  />
+<path d="M1143.5,555Q1161,555 1168,541" fill="none" stroke="#8a7a5c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"   />
+<circle cx="1178.5" cy="541" r="11.9" fill="#5e4a2c" stroke="#c59a3f" stroke-width="2.2"  />
+<path d="M1049,532.5999999999999 L1091,532.5999999999999" fill="none" stroke="#d99a10" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"  marker-end="url(#arrAmber)" />
+<path d="M1091,549.4 L1049,549.4" fill="none" stroke="#2a9a5f" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"  marker-end="url(#arrGreen)" />
+<rect x="1098" y="625" width="45.499999999999964" height="70" rx="4" fill="#fffdf8" stroke="#9c7d4d" stroke-width="1.6"  />
+<rect x="1105" y="647.4000000000001" width="12.6" height="25.2" rx="2" fill="#ffbc2e" stroke="none" stroke-width="1.6"  />
+<rect x="1122.5" y="647.4000000000001" width="12.6" height="25.2" rx="2" fill="#3cc47e" stroke="none" stroke-width="1.6"  />
+<path d="M1143.5,674Q1161,674 1168,660" fill="none" stroke="#8a7a5c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"   />
+<circle cx="1178.5" cy="660" r="11.9" fill="#5e4a2c" stroke="#c59a3f" stroke-width="2.2"  />
+<path d="M1049,651.5999999999999 L1091,651.5999999999999" fill="none" stroke="#d99a10" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"  marker-end="url(#arrAmber)" />
+<path d="M1091,668.4000000000001 L1049,668.4000000000001" fill="none" stroke="#2a9a5f" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"  marker-end="url(#arrGreen)" />
+<rect x="1098" y="744" width="45.499999999999964" height="70.00000000000001" rx="4" fill="#fffdf8" stroke="#9c7d4d" stroke-width="1.6"  />
+<rect x="1105" y="766.4" width="12.6" height="25.2" rx="2" fill="#ffbc2e" stroke="none" stroke-width="1.6"  />
+<rect x="1122.5" y="766.4" width="12.6" height="25.2" rx="2" fill="#3cc47e" stroke="none" stroke-width="1.6"  />
+<path d="M1143.5,793Q1161,793 1168,779" fill="none" stroke="#8a7a5c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"   />
+<circle cx="1178.5" cy="779" r="11.9" fill="#5e4a2c" stroke="#c59a3f" stroke-width="2.2"  />
+<path d="M1049,770.6 L1091,770.6" fill="none" stroke="#d99a10" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"  marker-end="url(#arrAmber)" />
+<path d="M1091,787.4 L1049,787.4" fill="none" stroke="#2a9a5f" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"  marker-end="url(#arrGreen)" />
+<text x="1052.5" y="467.5" font-size="20" font-weight="600" fill="#3a2d19" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >Ports</text>
+<circle cx="1035" cy="462.6" r="13" fill="#c59a3f" stroke="#9a7322" stroke-width="1.2"  />
+<text x="1035" y="468.1" font-size="15" font-weight="600" fill="#fff" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >8</text>
+<text x="1080.5" y="612.4000000000001" font-size="10.5" font-weight="400" fill="#5d7a96" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >sandbox fence</text>
+<rect x="720" y="912" width="252.00000000000003" height="147" rx="3" fill="#fbf3e2" stroke="#b9975a" stroke-width="4"  />
+<line x1="718" y1="1059" x2="974.0000000000001" y2="1059" stroke="#fdf9f0" stroke-width="6"/>
+<line x1="727" y1="1059" x2="965" y2="1059" stroke="#b9975a" stroke-width="1.6" stroke-dasharray="6 5"/>
+<rect x="825" y="909" width="42" height="7" fill="#fdf9f0"/>
+<rect x="748" y="954" width="189" height="24.499999999999975" rx="3" fill="#fffaf1" stroke="#9c7d4d" stroke-width="1.4"  />
+<rect x="751.5" y="958.9" width="14" height="14.7" rx="2" fill="#c9a271" stroke="none" stroke-width="1.6"  />
+<rect x="766.2" y="958.9" width="11.200000000000001" height="14.7" rx="2" fill="#ecd29a" stroke="none" stroke-width="1.6"  />
+<rect x="778.1" y="958.9" width="8.4" height="14.7" rx="2" fill="#9fcbf3" stroke="none" stroke-width="1.6"  />
+<rect x="787.2" y="958.9" width="7" height="14.7" rx="2" fill="#2f6fe0" stroke="none" stroke-width="1.6"  />
+<rect x="794.9" y="958.9" width="7" height="14.7" rx="2" fill="#ffbc2e" stroke="none" stroke-width="1.6"  />
+<rect x="802.6" y="958.9" width="14" height="14.7" rx="2" fill="#3cc47e" stroke="none" stroke-width="1.6"  />
+<circle cx="912.5" cy="965.9000000000001" r="14" fill="#e8f1fa" stroke="#8fb6dc" stroke-width="1.4"  />
+<text x="912.5" y="970.1" font-size="13" font-weight="700" fill="#4a6f93" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >↑</text>
+<circle cx="734" cy="965.9000000000001" r="11.9" fill="#e8f1fa" stroke="#8fb6dc" stroke-width="1.4"  />
+<text x="734" y="970.1" font-size="13" font-weight="700" fill="#4a6f93" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >↓</text>
+<rect x="758.5" y="1003" width="41.99999999999999" height="20.999999999999986" rx="3" fill="#f7eed9" stroke="#9a7322" stroke-width="1.2"  />
+<path d="M839,852.5 L839,905" fill="none" stroke="#d99a10" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"  marker-end="url(#arrAmber)" />
+<path d="M856.5,905 L856.5,852.5" fill="none" stroke="#2a9a5f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"  marker-end="url(#arrGreen)" />
+<text x="744.5" y="1048.5" font-size="18" font-weight="600" fill="#3a2d19" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >Subagent</text>
+<circle cx="723.5" cy="1043.6" r="13" fill="#c59a3f" stroke="#9a7322" stroke-width="1.2"  />
+<text x="723.5" y="1049.1" font-size="15" font-weight="600" fill="#fff" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >11</text>
+<text x="842.5" y="1048.5" font-size="12" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >a loop inside the loop, in miniature</text>
+<rect x="65.49999999999996" y="523.5" width="49" height="35" rx="3" fill="#dfe9f7" stroke="#2f6fe0" stroke-width="1.6"  />
+<rect x="58.499999999999986" y="558.5" width="63" height="8.4" rx="3" fill="#e8e2d3" stroke="#9c7d4d" stroke-width="1.2"  />
+<text x="90.00000000000006" y="586.5" font-size="14" font-weight="600" fill="#73604a" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >you</text>
+<text x="90.00000000000006" y="602.5999999999999" font-size="11.5" font-weight="400" fill="#73604a" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >your terminal</text>
+<rect x="69.00000000000001" y="821" width="35" height="42" rx="3" fill="#fffdf8" stroke="#9c7d4d" stroke-width="1.4"  />
+<line x1="74.60000000000002" y1="831.5" x2="95.60000000000007" y2="831.5" stroke="#9c7d4d" stroke-width="1.4"/>
+<line x1="74.60000000000002" y1="842" x2="95.60000000000007" y2="842" stroke="#9c7d4d" stroke-width="1.4"/>
+<line x1="74.60000000000002" y1="852.5" x2="95.60000000000007" y2="852.5" stroke="#9c7d4d" stroke-width="1.4"/>
+<text x="86.50000000000001" y="884" font-size="12.5" font-weight="600" fill="#73604a" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >your hooks</text>
+<text x="86.50000000000001" y="899.4" font-size="11.5" font-weight="400" fill="#73604a" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >(scripts)</text>
+<rect x="1206.5" y="520" width="42" height="35" rx="3" fill="#ffbc2e" stroke="#c48d12" stroke-width="1.4"  />
+<rect x="1206.5" y="515" width="21" height="8" rx="2" fill="#ffbc2e" stroke="#c48d12" stroke-width="1.2"  />
+<text x="1227.5" y="576" font-size="12.5" font-weight="600" fill="#73604a" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >your files</text>
+<rect x="1206.5" y="639" width="42" height="35" rx="3" fill="#4a4a52" stroke="#2b2b30" stroke-width="1.4"  />
+<text x="1212.5" y="659" font-size="13" font-weight="700" fill="#3cc47e" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >>_</text>
+<text x="1227.5" y="695" font-size="12.5" font-weight="600" fill="#73604a" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >your shell</text>
+<rect x="1206.5" y="758" width="42" height="35" rx="3" fill="#e8e2d3" stroke="#9c7d4d" stroke-width="1.4"  />
+<line x1="1212.5" y1="766" x2="1236.5" y2="766" stroke="#9c7d4d" stroke-width="1.4"/>
+<line x1="1212.5" y1="775" x2="1236.5" y2="775" stroke="#9c7d4d" stroke-width="1.4"/>
+<line x1="1212.5" y1="784" x2="1236.5" y2="784" stroke="#9c7d4d" stroke-width="1.4"/>
+<text x="1227.5" y="814" font-size="12.5" font-weight="600" fill="#73604a" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >MCP servers</text>
+<text x="1227.5" y="828" font-size="11" font-weight="400" fill="#73604a" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >(separate programs)</text>
+<text x="1227.5" y="590" font-size="11" font-weight="400" fill="#73604a" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >reads · edits</text>
+<ellipse cx="1073.5" cy="166.50000000000003" rx="24" ry="8" fill="#e8e2d3" stroke="#9c7d4d" stroke-width="1.4"/>
+<path d="M1049.5,166.50000000000003 L1049.5,190.50000000000003 A24,8 0 0 0 1097.5,190.50000000000003 L1097.5,166.50000000000003" fill="#e8e2d3" stroke="#9c7d4d" stroke-width="1.4"/>
+<text x="1126" y="163.00000000000003" font-size="12.5" font-weight="600" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >your disk  ~/.claude</text>
+<text x="1126" y="176.99999999999997" font-size="11" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >transcript (30 days) · checkpoints</text>
+<path d="M1042,187.5 L482,187.5 L482,213.4" fill="none" stroke="#8a7a5c" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="5 5" marker-end="url(#arrGrey)" />
+<text x="678" y="176.99999999999997" font-size="11.5" font-weight="400" fill="#73604a" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >on resume, /branch or a rewind: the record refills the Conversation drawer</text>
+<text x="902" y="210.6" font-size="11.5" font-weight="400" fill="#4a6f93" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >↑ to the model, upstairs</text>
+<text x="279" y="210.6" font-size="11.5" font-weight="400" fill="#4a6f93" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >↓ from the model</text>
+<path d="M664,632 L552,1146.5" stroke="#8d99ad" stroke-width="1.2" stroke-dasharray="4 5"/>
+<rect x="536" y="1136.5" width="32" height="20" rx="4" fill="#5e4a2c" stroke="#9a7322" stroke-width="1.4"  />
+<circle cx="552" cy="1146.5" r="6" fill="#e8e2d3" stroke="#9a7322" stroke-width="1.2"  />
+<text x="578" y="1151.5" font-size="12" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >camera: from the front, 16° to the right, 38° above. On desktop the text card covers the screen’s left third,</text>
+<text x="578" y="1168.5" font-size="12" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >so the left strip (x &lt; −5) sits at the card’s edge: the “you” wall is there on purpose; the tray and the gate stay clear.</text>
+<text x="1335" y="200" font-size="20" font-weight="700" fill="#3a2d19" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >What stands where, in the order a turn visits it</text>
+<circle cx="1348" cy="239" r="13" fill="#c59a3f" stroke="#9a7322" stroke-width="1.2"  />
+<text x="1348" y="244.5" font-size="15" font-weight="600" fill="#fff" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >1</text>
+<text x="1371" y="244" font-size="17" font-weight="700" fill="#3a2d19" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >Drawers</text>
+<text x="1371" y="265" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >the four parts, in the back wall, the same four as on the</text>
+<text x="1371" y="282" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >cabinet’s front outside. Each tips what it holds into the</text>
+<text x="1371" y="299" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >tray’s start.</text>
+<circle cx="1348" cy="331" r="13" fill="#c59a3f" stroke="#9a7322" stroke-width="1.2"  />
+<text x="1348" y="336.5" font-size="15" font-weight="600" fill="#fff" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >2</text>
+<text x="1371" y="336" font-size="17" font-weight="700" fill="#3a2d19" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >Skills</text>
+<text x="1371" y="357" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >the shelf of closed cards; one unfolds into the tray.</text>
+<circle cx="1348" cy="389" r="13" fill="#c59a3f" stroke="#9a7322" stroke-width="1.2"  />
+<text x="1348" y="394.5" font-size="15" font-weight="600" fill="#fff" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >3</text>
+<text x="1371" y="394" font-size="17" font-weight="700" fill="#3a2d19" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >The tray</text>
+<text x="1371" y="415" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >the hero: the context, read left to right in the request’s</text>
+<text x="1371" y="432" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >real order; the end stop is the window’s limit (1M tokens);</text>
+<text x="1371" y="449" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >the lip is where new tiles arrive; the frosted cover is the</text>
+<text x="1371" y="466" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >cached prefix. Same object, colours and order as the header gauge.</text>
+<circle cx="1348" cy="498" r="13" fill="#c59a3f" stroke="#9a7322" stroke-width="1.2"  />
+<text x="1348" y="503.5" font-size="15" font-weight="600" fill="#fff" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >4</text>
+<text x="1371" y="503" font-size="17" font-weight="700" fill="#3a2d19" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >Send ↑</text>
+<text x="1371" y="524" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >a copy of the whole tray goes up through the ceiling to the</text>
+<text x="1371" y="541" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >model, upstairs and far away. The tray stays here.</text>
+<circle cx="1348" cy="573" r="13" fill="#c59a3f" stroke="#9a7322" stroke-width="1.2"  />
+<text x="1348" y="578.5" font-size="15" font-weight="600" fill="#fff" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >5</text>
+<text x="1371" y="578" font-size="17" font-weight="700" fill="#3a2d19" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >Reply ↓</text>
+<text x="1371" y="599" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >the reply comes down the left wall as tiles onto the lip’s start:</text>
+<text x="1371" y="616" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >words, and sometimes an amber card (a tool call).</text>
+<circle cx="1348" cy="648" r="13" fill="#c59a3f" stroke="#9a7322" stroke-width="1.2"  />
+<text x="1348" y="653.5" font-size="15" font-weight="600" fill="#fff" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >6</text>
+<text x="1371" y="653" font-size="17" font-weight="700" fill="#3a2d19" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >Your screen</text>
+<text x="1371" y="674" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >the one window to you: words out, your prompt in,</text>
+<text x="1371" y="691" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >the gate’s questions. Your hooks plug in beside it.</text>
+<circle cx="1348" cy="723" r="13" fill="#c59a3f" stroke="#9a7322" stroke-width="1.2"  />
+<text x="1348" y="728.5" font-size="15" font-weight="600" fill="#fff" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >7</text>
+<text x="1371" y="728" font-size="17" font-weight="700" fill="#3a2d19" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >Gate</text>
+<text x="1371" y="749" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >every call, before any port: rules, mode dial, bell, hooks,</text>
+<text x="1371" y="766" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >periscope to a second model. Refusals go back red.</text>
+<circle cx="1348" cy="798" r="13" fill="#c59a3f" stroke="#9a7322" stroke-width="1.2"  />
+<text x="1348" y="803.5" font-size="15" font-weight="600" fill="#fff" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >8</text>
+<text x="1371" y="803" font-size="17" font-weight="700" fill="#3a2d19" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >Ports</text>
+<text x="1371" y="824" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >where tools run, on your machine, through the right wall:</text>
+<text x="1371" y="841" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >files, shell (in the glass fence when the sandbox is on),</text>
+<text x="1371" y="858" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >MCP servers. Three benches: calls can run side by side.</text>
+<circle cx="1348" cy="890" r="13" fill="#c59a3f" stroke="#9a7322" stroke-width="1.2"  />
+<text x="1348" y="895.5" font-size="15" font-weight="600" fill="#fff" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >9</text>
+<text x="1371" y="895" font-size="17" font-weight="700" fill="#3a2d19" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >Write down</text>
+<text x="1371" y="916" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >the record of every tile and the checkpoints of your files,</text>
+<text x="1371" y="933" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >out through the back wall to your disk. Resume refills</text>
+<text x="1371" y="950" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >the Conversation drawer from it.</text>
+<circle cx="1348" cy="982" r="13" fill="#c59a3f" stroke="#9a7322" stroke-width="1.2"  />
+<text x="1348" y="987.5" font-size="15" font-weight="600" fill="#fff" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >10</text>
+<text x="1371" y="987" font-size="17" font-weight="700" fill="#3a2d19" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >Press</text>
+<text x="1371" y="1008" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >the end stop pushes in: the conversation becomes one</text>
+<text x="1371" y="1025" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >summary block; tools, instructions and rules stay.</text>
+<circle cx="1348" cy="1057" r="13" fill="#c59a3f" stroke="#9a7322" stroke-width="1.2"  />
+<text x="1348" y="1062.5" font-size="15" font-weight="600" fill="#fff" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >11</text>
+<text x="1371" y="1062" font-size="17" font-weight="700" fill="#3a2d19" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >Subagent</text>
+<text x="1371" y="1083" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >the same room in miniature, in the front right: a brief in,</text>
+<text x="1371" y="1100" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >a summary out, and only that joins the tray.</text>
+<text x="1335" y="1141" font-size="20" font-weight="700" fill="#3a2d19" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >The walls</text>
+<text x="1335" y="1167" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >Left wall: you (your screen, your hooks). Right wall: your machine’s</text>
+<text x="1335" y="1184" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >programs (files, shell, MCP). Back wall: where the parts come from</text>
+<text x="1335" y="1201" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >(drawers, skills) and your disk. Ceiling: the model. Nothing from outside</text>
+<text x="1335" y="1218" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >stands inside; it is reached through a wall or the ceiling, by a cable or a</text>
+<text x="1335" y="1235" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >tube with a fitting at each end. The subagent is inside: it is the harness.</text>
+<text x="1335" y="1278" font-size="20" font-weight="700" fill="#3a2d19" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >Tile colours (the gauge’s)</text>
+<rect x="1335" y="1304" width="22" height="18" rx="3" fill="#c9a271" stroke="none" stroke-width="1.6"  />
+<text x="1365" y="1318" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >tools</text>
+<rect x="1495" y="1304" width="22" height="18" rx="3" fill="#ecd29a" stroke="none" stroke-width="1.6"  />
+<text x="1525" y="1318" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >instructions</text>
+<rect x="1655" y="1304" width="22" height="18" rx="3" fill="#9fcbf3" stroke="none" stroke-width="1.6"  />
+<text x="1685" y="1318" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >environment</text>
+<rect x="1335" y="1334" width="22" height="18" rx="3" fill="#2f6fe0" stroke="none" stroke-width="1.6"  />
+<text x="1365" y="1348" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >your prompt</text>
+<rect x="1495" y="1334" width="22" height="18" rx="3" fill="#ffbc2e" stroke="none" stroke-width="1.6"  />
+<text x="1525" y="1348" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >tool call</text>
+<rect x="1655" y="1334" width="22" height="18" rx="3" fill="#3cc47e" stroke="none" stroke-width="1.6"  />
+<text x="1685" y="1348" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >result</text>
+<rect x="1335" y="1364" width="22" height="18" rx="3" fill="#b9c4d8" stroke="none" stroke-width="1.6"  />
+<text x="1365" y="1378" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >model’s words</text>
+<rect x="1495" y="1364" width="22" height="18" rx="3" fill="#ff9a1f" stroke="none" stroke-width="1.6"  />
+<text x="1525" y="1378" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >summary</text>
+<rect x="1655" y="1364" width="22" height="18" rx="3" fill="#d9453d" stroke="none" stroke-width="1.6"  />
+<text x="1685" y="1378" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >refusal</text>
+<text x="1335" y="1424" font-size="20" font-weight="700" fill="#3a2d19" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >One turn, as the marker walks it</text>
+<text x="1335" y="1450" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >tray packed (1, 2, 6)  →  copy up (4)  →  reply down (5): words to</text>
+<text x="1335" y="1467" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >your screen (6), tiles onto the lip (3)  →  amber card to the gate (7)</text>
+<text x="1335" y="1484" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >→  allowed: a port (8) or the subagent (11)  →  result tile rides the</text>
+<text x="1335" y="1501" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >rail back to the open end (3)  →  written down (9)  →  round again,</text>
+<text x="1335" y="1518" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >until a reply has no amber card. Then the marker stops at the lip’s start.</text>
+<text x="139" y="1235" font-size="20" font-weight="700" fill="#3a2d19" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >Front section, looking at the back wall (cut at z = −2): up on the right, down on the left</text>
+<text x="139" y="1258" font-size="13.5" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >The gate, the rail, the ports and the subagent are in front of the cut and not drawn here.</text>
+<rect x="139" y="1422" width="1050" height="133" rx="0" fill="#eef3f9" stroke="none" stroke-width="1.6"  />
+<text x="552" y="1313.5" font-size="14" font-weight="600" fill="#4a6f93" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >the model, upstairs: far away, outside the room. It keeps nothing between turns.</text>
+<path d="M902,1373 Q545,1310 184.50000000000003,1373" fill="none" stroke="#8fb6dc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6 5" marker-end="url(#arrGrey)" />
+<text x="545" y="1359" font-size="12" font-weight="400" fill="#4a6f93" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >request → model → reply</text>
+<rect x="160" y="1443" width="1008" height="427" rx="0" fill="#f3e7cd" stroke="none" stroke-width="1.6"  />
+<rect x="139" y="1870" width="1050" height="17.5" rx="0" fill="#e6d3ae" stroke="#b9975a" stroke-width="1.6"  />
+<rect x="139" y="1443" width="21" height="427" rx="0" fill="#e6d3ae" stroke="#b9975a" stroke-width="1.6"  />
+<rect x="1168" y="1443" width="21" height="427" rx="0" fill="#e6d3ae" stroke="#b9975a" stroke-width="1.6"  />
+<line x1="139" y1="1443" x2="1189" y2="1443" stroke="#b9975a" stroke-width="1.6" stroke-dasharray="8 6"/>
+<text x="314" y="1432.5" font-size="12" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >ceiling: the roof you dropped in through</text>
+<text x="131" y="1874" font-size="11" font-weight="400" fill="#73604a" text-anchor="end" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >y 0</text>
+<text x="131" y="1734" font-size="11" font-weight="400" fill="#73604a" text-anchor="end" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >y 2</text>
+<text x="131" y="1594" font-size="11" font-weight="400" fill="#73604a" text-anchor="end" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >y 4</text>
+<text x="131" y="1454" font-size="11" font-weight="400" fill="#73604a" text-anchor="end" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >y 6</text>
+<rect x="342" y="1513" width="210" height="56" rx="5" fill="#fffdf8" stroke="#9c7d4d" stroke-width="1.8"  />
+<rect x="349" y="1520" width="17.5" height="42" rx="3" fill="#ecd29a" stroke="none" stroke-width="1.6"  />
+<circle cx="534.5" cy="1541" r="5" fill="#c59a3f" stroke="#9a7322" stroke-width="1"  />
+<text x="377" y="1547" font-size="15" font-weight="600" fill="#3a2d19" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >Instructions</text>
+<text x="559" y="1546" font-size="12" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >read 2nd (then your rules)</text>
+<rect x="342" y="1583" width="210" height="56" rx="5" fill="#fffdf8" stroke="#9c7d4d" stroke-width="1.8"  />
+<rect x="349" y="1590" width="17.5" height="42" rx="3" fill="#9fcbf3" stroke="none" stroke-width="1.6"  />
+<circle cx="534.5" cy="1611" r="5" fill="#c59a3f" stroke="#9a7322" stroke-width="1"  />
+<text x="377" y="1617" font-size="15" font-weight="600" fill="#3a2d19" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >Environment</text>
+<text x="559" y="1616" font-size="12" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >read 3rd</text>
+<rect x="342" y="1653" width="210" height="56" rx="5" fill="#fffdf8" stroke="#9c7d4d" stroke-width="1.8"  />
+<rect x="349" y="1660" width="17.5" height="42" rx="3" fill="#c9a271" stroke="none" stroke-width="1.6"  />
+<circle cx="534.5" cy="1681" r="5" fill="#c59a3f" stroke="#9a7322" stroke-width="1"  />
+<text x="377" y="1687" font-size="15" font-weight="600" fill="#3a2d19" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >Tools</text>
+<text x="559" y="1686" font-size="12" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >read 1st</text>
+<rect x="342" y="1723" width="210" height="56" rx="5" fill="#fffdf8" stroke="#9c7d4d" stroke-width="1.8"  />
+<rect x="349" y="1730" width="17.5" height="42" rx="3" fill="#b9c4d8" stroke="none" stroke-width="1.6"  />
+<circle cx="534.5" cy="1751" r="5" fill="#c59a3f" stroke="#9a7322" stroke-width="1"  />
+<text x="377" y="1757" font-size="15" font-weight="600" fill="#3a2d19" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >Conversation</text>
+<text x="559" y="1756" font-size="12" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >empty on a fresh start; full on resume</text>
+<text x="342" y="1495.5" font-size="14" font-weight="600" fill="#3a2d19" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >Drawers: the four parts, seen from inside</text>
+<rect x="776" y="1723" width="182" height="7" rx="2" fill="#c59a3f" stroke="#9a7322" stroke-width="1"  />
+<rect x="786.5" y="1691.5" width="18.2" height="31.5" rx="2" fill="#ecd29a" stroke="#9c7d4d" stroke-width="1"  />
+<rect x="811" y="1691.5" width="18.2" height="31.5" rx="2" fill="#ecd29a" stroke="#9c7d4d" stroke-width="1"  />
+<rect x="835.5" y="1691.5" width="18.2" height="31.5" rx="2" fill="#ecd29a" stroke="#9c7d4d" stroke-width="1"  />
+<rect x="860" y="1691.5" width="18.2" height="31.5" rx="2" fill="#ecd29a" stroke="#9c7d4d" stroke-width="1"  />
+<rect x="884.5" y="1691.5" width="18.2" height="31.5" rx="2" fill="#ecd29a" stroke="#9c7d4d" stroke-width="1"  />
+<rect x="909" y="1691.5" width="18.2" height="31.5" rx="2" fill="#ecd29a" stroke="#9c7d4d" stroke-width="1"  />
+<rect x="933.5" y="1691.5" width="18.2" height="31.5" rx="2" fill="#ecd29a" stroke="#9c7d4d" stroke-width="1"  />
+<text x="776" y="1677.5" font-size="14" font-weight="600" fill="#3a2d19" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >Skills</text>
+<rect x="342" y="1835" width="616" height="35" rx="5" fill="#fffaf1" stroke="#9c7d4d" stroke-width="2.2"  />
+<rect x="345.5" y="1840.6" width="31.5" height="23.8" rx="3" fill="#c9a271" stroke="none" stroke-width="1.6"  />
+<rect x="378.4" y="1840.6" width="25.2" height="23.8" rx="3" fill="#ecd29a" stroke="none" stroke-width="1.6"  />
+<rect x="405" y="1840.6" width="16.8" height="23.8" rx="3" fill="#ecd29a" stroke="none" stroke-width="1.6"  />
+<rect x="423.20000000000005" y="1840.6" width="16.8" height="23.8" rx="3" fill="#9fcbf3" stroke="none" stroke-width="1.6"  />
+<rect x="441.40000000000003" y="1840.6" width="15.4" height="23.8" rx="3" fill="#2f6fe0" stroke="none" stroke-width="1.6"  />
+<rect x="955" y="1828" width="6" height="42" rx="2" fill="#c59a3f" stroke="#9a7322" stroke-width="1"  />
+<rect x="963.6" y="1821" width="50.4" height="49" rx="4" fill="#f3e6c9" stroke="#9a7322" stroke-width="1.6"  />
+<text x="650" y="1858.1" font-size="13" font-weight="400" fill="#73604a" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >the tray, low on the floor: one long line, read left to right</text>
+<text x="988.8" y="1810.5" font-size="11.5" font-weight="400" fill="#73604a" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >press</text>
+<rect x="905.5" y="1814" width="49" height="21" rx="3" fill="#fffdf8" stroke="#9c7d4d" stroke-width="1.4"  />
+<rect x="1028" y="1807" width="87.5" height="63" rx="4" fill="#fffdf8" stroke="#9c7d4d" stroke-width="1.8"  />
+<rect x="1045.5" y="1824.5" width="56" height="21" rx="2" fill="#5e4a2c" stroke="#9a7322" stroke-width="1.2"  />
+<text x="1073.5" y="1793" font-size="12" font-weight="400" fill="#73604a" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >write down → slot → your disk</text>
+<rect x="863.5" y="1380" width="77" height="392" rx="8" fill="#e8f1fa" stroke="#8fb6dc" stroke-width="2"  opacity="0.85"/>
+<rect x="870.5" y="1569" width="63" height="38.5" rx="6" fill="#fffaf1" stroke="#9c7d4d" stroke-width="1.4"  />
+<rect x="873.5799999999999" y="1578.1" width="8.820000000000002" height="21" rx="2" fill="#c9a271" stroke="none" stroke-width="1.6"  />
+<rect x="882.792" y="1578.1" width="7.056" height="21" rx="2" fill="#ecd29a" stroke="none" stroke-width="1.6"  />
+<rect x="890.24" y="1578.1" width="4.704000000000001" height="21" rx="2" fill="#ecd29a" stroke="none" stroke-width="1.6"  />
+<rect x="895.336" y="1578.1" width="4.704000000000001" height="21" rx="2" fill="#9fcbf3" stroke="none" stroke-width="1.6"  />
+<rect x="900.432" y="1578.1" width="4.312" height="21" rx="2" fill="#2f6fe0" stroke="none" stroke-width="1.6"  />
+<path d="M961.5,1758 L961.5,1464" fill="none" stroke="#8fb6dc" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"  marker-end="url(#arrGrey)" />
+<text x="972.0000000000001" y="1618" font-size="14" font-weight="600" fill="#4a6f93" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >Send: a copy</text>
+<text x="972.0000000000001" y="1639" font-size="14" font-weight="600" fill="#4a6f93" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >of the whole</text>
+<text x="972.0000000000001" y="1660" font-size="14" font-weight="600" fill="#4a6f93" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >tray goes up</text>
+<rect x="160" y="1380" width="52.5" height="423.5" rx="8" fill="#e8f1fa" stroke="#8fb6dc" stroke-width="2"  opacity="0.85"/>
+<rect x="160" y="1803.5" width="91" height="31.5" rx="6" fill="#e8f1fa" stroke="#8fb6dc" stroke-width="2"  opacity="0.85"/>
+<rect x="174" y="1478" width="24.5" height="35" rx="3" fill="#b9c4d8" stroke="none" stroke-width="1.6"  />
+<rect x="174" y="1541" width="24.5" height="35" rx="3" fill="#b9c4d8" stroke="none" stroke-width="1.6"  />
+<rect x="174" y="1618" width="24.5" height="35" rx="3" fill="#ffbc2e" stroke="none" stroke-width="1.6"  />
+<rect x="174" y="1688" width="24.5" height="35" rx="3" fill="#b9c4d8" stroke="none" stroke-width="1.6"  />
+<rect x="174" y="1758" width="24.5" height="35" rx="3" fill="#b9c4d8" stroke="none" stroke-width="1.6"  />
+<path d="M230,1464 L230,1744" fill="none" stroke="#8fb6dc" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"  marker-end="url(#arrGrey)" />
+<text x="240.50000000000003" y="1562" font-size="14" font-weight="600" fill="#4a6f93" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >Reply: tiles</text>
+<text x="240.50000000000003" y="1583" font-size="14" font-weight="600" fill="#4a6f93" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >come down</text>
+<text x="240.50000000000003" y="1604" font-size="14" font-weight="600" fill="#4a6f93" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >to the lip</text>
+<rect x="139" y="1660" width="21" height="112" rx="2" fill="#dfe9f7" stroke="#2f6fe0" stroke-width="1.6" stroke-dasharray="4 3" />
+<text x="139" y="1905" font-size="12" font-weight="400" fill="#73604a" text-anchor="start" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif"  >dashed, in the left wall: your screen, a window seen edge-on here. The gate stands in front of it, by the chute, so a question is one short cable away.</text>
+</svg>
