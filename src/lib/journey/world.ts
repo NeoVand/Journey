@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import { breathe, Stage } from './stage';
 import { Rig, type Shot } from './rig';
-import { bell, inOut, lerp, outBack, outCubic, seg, smooth, smoother, spring, inCubic } from './kit/math';
+import { bell, clamp, inOut, lerp, outBack, outCubic, seg, smooth, smoother, spring, inCubic } from './kit/math';
 import { contactShadow, Label, loadFonts, Surface } from './kit/print';
-import { bends, extrude, frameAt, PartOf, rbox, ring, roundedRect } from './kit/geometry';
+import { bends, frameAt, PartOf, rbox, ring } from './kit/geometry';
 import { mats, color } from './kit/materials';
 import { Batch } from './kit/batch';
 import { fitting, leaving } from './kit/parts';
@@ -12,7 +12,7 @@ import { createCastShadow, createIsland } from './props/island';
 import { Cloudscape } from './props/sky';
 import { LAPTOP_PORT, Laptop } from './props/laptop';
 import { McpServer } from './props/mcp';
-import { Brain, BRAIN_FOOT, BRAIN_SEAT } from './props/brain';
+import { Brain, BRAIN_FOOT, BRAIN_SEAT, INTAKE_RISE, INTAKE_WELL } from './props/brain';
 import { SkillShelf } from './props/skills';
 import { Poker } from './poke';
 import { Harness, HW, PORT_KEYS_Z, PORT_MCP_Z, PORT_OUT_Z, PORT_Y } from './props/harness';
@@ -96,12 +96,10 @@ const SLOT_X = TEMPLATE_X + 1.06;
 const BELT_END = C_X + 10.7;
 // As far along the path as both its feet still stand on the island.
 const SAFETY_X = C_X + 11.45;
-/** The roof of the model's brain, at the top of the axis, where the intake stands. */
+/** Where the intake is seated in the model's brain, at the top of the axis: deep in the fissure, at the bottom of its throat. */
 const MODEL_ROOF = MODEL_ISLAND_Y + BRAIN_FOOT + BRAIN_SEAT;
-/** The intake's mouth: its inner half-width, and how tall it stands on the roof. */
-const INTAKE_HALF = 1.15;
-const INTAKE_H = 1.45;
-const INTAKE_TOP = MODEL_ROOF + INTAKE_H;
+/** The rim of the intake's mouth, at the brain's crown. */
+const INTAKE_TOP = MODEL_ROOF + INTAKE_RISE;
 /**
  * The token hose: its radius, and where it climbs, clamped up a mast at the end of the row. At the top it goes over a
  * wheel, hangs across the sky to a second wheel over the model's intake, and drops off that into a nozzle above the well.
@@ -359,7 +357,7 @@ export class World {
 	 * loader can show how far it has got: `progress` hears 0 to 1.
 	 */
 	static async create(canvas: HTMLCanvasElement, progress: (k: number) => void = () => {}) {
-		await Promise.all([loadFonts(), Brain.load()]);
+		await loadFonts();
 		const w = new World(canvas);
 		let done = 0;
 		for (const [share, step] of w.steps()) {
@@ -388,7 +386,9 @@ export class World {
 			() => {
 				this.laptop = new Laptop();
 				this.harness = new Harness();
-				this.brain = new Brain();
+				// The intake's own arms hold the hose's wheel and its nozzle: the brain is told where the hose comes to it.
+				const brainY = MODEL_ROOF - BRAIN_SEAT;
+				this.brain = new Brain({ wheel: [MODEL_WHEEL[0] - MODEL_X, MODEL_WHEEL[1] - brainY, LINE_Z - MODEL_Z], wheelR: WHEEL_R, hoseR: LIFT_R, nozzle: NOZZLE_Y - brainY, lip: LIP_Y - brainY });
 				this.skills = new SkillShelf();
 				this.doc = new RequestDoc();
 			}
@@ -943,7 +943,7 @@ export class World {
 	}
 
 	/**
-	 * The model, at the top of the axis through your laptop: the brain on its pedestal, the intake on its roof, and the
+	 * The model, at the top of the axis through your laptop: the brain on its pedestal, the intake at its crown, and the
 	 * reply's glass column, straight down out of the underside of its island into the harness's roof. The column stands
 	 * from the first frame, like the green loop, and is explained when it's used.
 	 */
@@ -953,21 +953,13 @@ export class World {
 		const z = MODEL_Z;
 		this.brain.group.position.set(x, MODEL_ROOF - BRAIN_SEAT, z);
 		this.root.add(this.brain.group);
-		this.buildIntake(x, MODEL_ROOF, z);
-		// A gantry on the intake's rim: two legs, an axle across them with the hose's wheel on it, and a nozzle on an arm
-		// below the wheel, where the hose ends and the tokens fall out into the well.
-		const post = new Batch();
-		const [wx, wy] = MODEL_WHEEL;
-		const leg = wy + 0.2 - INTAKE_TOP;
-		for (const s of [-1.48, 1.48]) post.add(rbox(0.14, leg, 0.14, 0.03, 2), m.steelSoft, { p: [wx, INTAKE_TOP + leg / 2, z + s] });
-		post.add(new THREE.CylinderGeometry(0.08, 0.08, 3.1, 14), m.steelSoft, { p: [wx, wy, z], r: [Math.PI / 2, 0, 0] });
-		buildWheel(post, MODEL_WHEEL, WHEEL_R, 1.0);
-		const armY = NOZZLE_Y - 0.25;
-		post.add(rbox(0.1, 0.1, 2.96, 0.03, 1), m.steelSoft, { p: [wx, armY, z] });
-		post.add(rbox(wx - x - 0.45, 0.1, 0.1, 0.03, 1), m.steelSoft, { p: [(wx + x + 0.45) / 2, armY, z] });
-		post.add(new THREE.CylinderGeometry(LIFT_R + 0.1, LIFT_R + 0.06, NOZZLE_Y - LIP_Y + 0.1, 28, 1, true), m.steel, { p: [x, (NOZZLE_Y + LIP_Y) / 2, z] });
-		post.add(ring(LIFT_R + 0.2, LIFT_R + 0.02, 0.18), m.steel, { p: [x, NOZZLE_Y + 0.02, z] });
-		this.root.add(post.build('chute-post'));
+		// The way in is the brain's own: a port at its crown, in the fissure, whose arms hold the hose's wheel and the nozzle
+		// the tokens fall from. At the bottom of its throat, nothing: the colour the screen fades to on the way in.
+		const floor = new THREE.Mesh(new THREE.CircleGeometry(INTAKE_WELL.r, 40), new THREE.MeshBasicMaterial({ color: DARK }));
+		floor.rotation.x = -Math.PI / 2;
+		floor.position.set(x, MODEL_ROOF + INTAKE_WELL.floor, z);
+		WELL_FLOOR_Y = floor.position.y;
+		this.root.add(floor);
 
 		const stream = new THREE.LineCurve3(new THREE.Vector3(...STREAM_TOP), new THREE.Vector3(...STREAM_BOTTOM));
 		this.stream = stream;
@@ -985,103 +977,6 @@ export class World {
 		hoops.add(ring(0.74, 0.52, 0.26), m.steel, { p: [ax, top + 0.05, az] });
 		hoops.add(ring(0.68, 0.52, 0.2), m.steel, { p: [ax, bottom + 0.1, az] });
 		this.root.add(hoops.build('stream-hoops'));
-	}
-
-	/**
-	 * The way in. A hatch standing on the roof with a real well inside it: walls that step inward and
-	 * fall away into the dark, lit rings, and at the bottom a first glimpse of the boards inside.
-	 */
-	private buildIntake(x: number, roof: number, z: number) {
-		const m = mats();
-		const H = INTAKE_H;
-		const IX = INTAKE_HALF * 2;
-		const IZ = 2.5;
-		const OX = 3.2;
-		const OZ = 3.4;
-		const top = roof + H;
-
-		const collar = roundedRect(OX, OZ, 0.3);
-		const opening = new THREE.Path();
-		roundedRect(IX, IZ, 0.1).getPoints(6).reverse().forEach((p, i) => (i ? opening.lineTo(p.x, p.y) : opening.moveTo(p.x, p.y)));
-		opening.closePath();
-		collar.holes.push(opening);
-		const b = new Batch();
-		b.add(extrude(collar, H, 0.07, 4, 10), m.cream, { p: [x, roof + H / 2, z], r: [-Math.PI / 2, 0, 0] });
-		b.add(rbox(OX + 0.34, 0.1, OZ + 0.34, 0.04, 3), m.steelSoft, { p: [x, roof + 0.05, z] });
-		// A steel lip around the mouth, so its edge catches the light.
-		for (const s of [-1, 1]) {
-			b.add(rbox(IX + 0.26, 0.05, 0.13, 0.02, 2), m.steel, { p: [x, top + 0.01, z + s * (IZ / 2 + 0.065)] });
-			b.add(rbox(0.13, 0.05, IZ + 0.26, 0.02, 2), m.steel, { p: [x + s * (IX / 2 + 0.065), top + 0.01, z] });
-		}
-		this.root.add(b.build('intake'));
-		const c = contactShadow(OX + 0.5, OZ + 0.5, 0.18, 0.4);
-		c.position.set(x, roof + 0.006, z);
-		this.root.add(c);
-
-		// The well: each tier narrower and darker than the last.
-		const tiers: [number, number, number, string, string][] = [
-			[IX, IZ, top, '#4b70c4', '#1f3478'],
-			[1.96, 2.14, top - 0.36, '#1f3478', '#0e1c4a'],
-			[1.64, 1.8, top - 0.72, '#0e1c4a', '#081233'],
-			[1.34, 1.48, top - 1.04, '#081233', DARK],
-			[1.06, 1.18, roof + 0.13, DARK, DARK]
-		];
-		const pos: number[] = [];
-		const col: number[] = [];
-		const a = new THREE.Color();
-		for (let i = 0; i < tiers.length - 1; i++) {
-			const [w0, d0, y0, c0] = tiers[i];
-			const [w1, d1, y1] = tiers[i + 1];
-			const c1 = tiers[i][4];
-			const ring: [number, number][] = [
-				[-1, -1],
-				[1, -1],
-				[1, 1],
-				[-1, 1]
-			];
-			for (let k = 0; k < 4; k++) {
-				const [sa, ta] = ring[k];
-				const [sb, tb] = ring[(k + 1) % 4];
-				const A = [x + (sa * w0) / 2, y0, z + (ta * d0) / 2];
-				const B = [x + (sb * w0) / 2, y0, z + (tb * d0) / 2];
-				const C = [x + (sb * w1) / 2, y1, z + (tb * d1) / 2];
-				const D = [x + (sa * w1) / 2, y1, z + (ta * d1) / 2];
-				// The far walls catch the light from the mouth, the near ones are in their own shade.
-				const shade = k === 0 ? 1.12 : k === 2 ? 0.7 : 0.92;
-				[A, B, C, A, C, D].forEach((v, n) => {
-					pos.push(v[0], v[1], v[2]);
-					a.set(n === 0 || n === 1 || n === 3 ? c0 : c1).multiplyScalar(shade);
-					col.push(a.r, a.g, a.b);
-				});
-			}
-		}
-		const geo = new THREE.BufferGeometry();
-		geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-		geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-		this.root.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide })));
-
-		// Rings of light in the throat, the deeper the dimmer.
-		const rings = new Batch();
-		[
-			[1, 2.4],
-			[2, 1.2],
-			[3, 0.5]
-		].forEach(([i, power]) => {
-			const [w, d, yy] = tiers[i];
-			const mat = new THREE.MeshStandardMaterial({ color: '#ffd9a8', emissive: color.orange, emissiveIntensity: power });
-			for (const s of [-1, 1]) {
-				rings.add(rbox(w + 0.02, 0.022, 0.03, 0.01, 1), mat, { p: [x, yy, z + s * (d / 2 - 0.012)] });
-				rings.add(rbox(0.03, 0.022, d, 0.01, 1), mat, { p: [x + s * (w / 2 - 0.012), yy, z] });
-			}
-		});
-		this.root.add(rings.build('intake-rings'));
-
-		// At the bottom, nothing: the colour the screen fades to on the way in.
-		const floor = new THREE.Mesh(new THREE.PlaneGeometry(1.06, 1.18), new THREE.MeshBasicMaterial({ color: DARK }));
-		floor.rotation.x = -Math.PI / 2;
-		floor.position.set(x, roof + 0.13, z);
-		WELL_FLOOR_Y = floor.position.y;
-		this.root.add(floor);
 	}
 
 	setTurn(turn: number) {
@@ -1921,9 +1816,10 @@ export class World {
 			// A hair above the floor once it's in the channel, because the channel twists and a tile can't.
 			frame(s, tile.group, rest * low * size + (1 - size) * 0.08 + pop + hop + bounce + idle + leap);
 			tile.group.rotateX((flip + turned) * Math.PI);
-			tile.group.scale.set((1 + squash * 0.04) * size, low * size, (1 + squash * 0.12) * size);
+			const left = this.sunk(s, tile.group.position.y);
+			tile.group.scale.set((1 + squash * 0.04) * size * left, low * size * left, (1 + squash * 0.12) * size * left);
 			// Behind the slot it's still inside the template, and drawn nowhere: it isn't anywhere either.
-			tile.group.visible = feed > 0 && s + tile.width / 2 > 0 && !this.fallenIn(s, tile.group.position.y);
+			tile.group.visible = feed > 0 && s + tile.width / 2 > 0 && left > 0;
 		});
 
 		// The gantry walks from one boundary to the next, then stamps.
@@ -1961,7 +1857,7 @@ export class World {
 			} else {
 				const size = small(s);
 				frame(s, d, TILE_H * 0.46 * size + (1 - size) * 0.08);
-				d.scale.setScalar(this.fallenIn(s, d.position.y) ? 0 : size);
+				d.scale.setScalar(size * this.sunk(s, d.position.y));
 			}
 			d.updateMatrix();
 			this.rest.setMatrixAt(j, d.matrix);
@@ -1980,9 +1876,13 @@ export class World {
 		return [2, 4, 5, 7, 18, 20, 22, 25, 1e9].findIndex((from) => T < from);
 	}
 
-	/** Whether something riding the token path at s has gone over the lip and down past the bottom of the well. */
-	private fallenIn(s: number, y: number) {
-		return s > this.lipS && y < WELL_FLOOR_Y - 0.85;
+	/**
+	 * How much of its size something riding the token path at s still has as it falls down the intake's throat: all of it
+	 * at the mouth, and less and less as it nears the dark at the bottom, as a thing does that falls a long way. It is gone
+	 * before it gets there, so nothing ever passes through the floor of the well.
+	 */
+	private sunk(s: number, y: number) {
+		return s > this.lipS ? clamp((y - WELL_FLOOR_Y - 0.15) / 0.75) : 1;
 	}
 
 	/* ---------- the map in the corner: the world itself, from far off ---------- */
