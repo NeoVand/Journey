@@ -5,7 +5,6 @@
  * what rides with a half (its boss on the axle, its collars on the pins, its saddle round the intake, its drum) goes with it.
  */
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { rbox } from '../kit/geometry';
 import { AXLE, DRUM, FISSURE_BLOCKS, HOSE, over, PORT } from './design';
 import { FISSURE, locate, profile, ROLL, shell, type V3 } from './shell';
@@ -250,25 +249,38 @@ export function under() {
 		parts.add('chrome', flat);
 	}
 
-	// The cerebellum: a blue lid over a drum wound in copper, which turns under it. The lid hangs from the core on a stalk.
-	const c = DRUM.at;
-	const top = c[1] + DRUM.half;
-	const lid: [number, number][] = [
-		[DRUM.r + 0.045, top - 0.3],
-		[DRUM.r + 0.14, top - 0.28],
-		[DRUM.r + 0.2, top - 0.14],
-		[DRUM.r + 0.16, top + 0.03],
-		[DRUM.r + 0.04, top + 0.1],
-		[0.6, top + 0.13],
-		[0, top + 0.14],
-		[0, top + 0.05],
-		[DRUM.r + 0.045, top + 0.05],
-		[DRUM.r + 0.045, top - 0.3]
-	];
-	const stalk = locate(c[0], c[1] + 2, c[2] + 0.1);
-	shell(stalk[0], stalk[1], p, n);
-	const drum = wound(DRUM.r, DRUM.half);
-	return { parts, lid: turned([c[0], 0, c[2]], lid, 64), stalk: rod([c[0], top + 0.2, c[2]], [p[0], p[1], p[2]], 0.2, 18), drum };
+	// The cerebellum: copper wound round an egg that turns about its own leaning axis, under a thick blue brim that stays.
+	// Inside the brim a dark cap covers the top of the egg, and a short neck goes from the cap up into the core.
+	const seat = drumSeat();
+	const { from, to, r: rim, bore } = DRUM.brim;
+	const round = 0.15;
+	const brim: [number, number][] = [[bore, from]];
+	// Out along the bottom, up the outside round two soft corners, in along the top, and back down the bore.
+	for (let i = 0; i <= 6; i++) {
+		const a = -Math.PI / 2 + (i / 6) * (Math.PI / 2);
+		brim.push([rim - round + round * Math.cos(a), from + round + round * Math.sin(a)]);
+	}
+	for (let i = 0; i <= 6; i++) {
+		const a = (i / 6) * (Math.PI / 2);
+		brim.push([rim - round + round * Math.cos(a), to - round + round * Math.sin(a)]);
+	}
+	brim.push([bore, to], [bore, from]);
+	const lid = turned([0, 0, 0], brim, 72).applyMatrix4(seat);
+	const cap = to - 0.07;
+	parts.add('dark', turned([0, 0, 0], [[bore, cap - 0.03], [bore, cap], [0, cap]], 48), seat);
+	// The neck stands square on the cap, along the egg's own axis, and ends inside the core.
+	parts.add('dark', turned([0, 0, 0], [[0.4, cap], [0.4, cap + 0.5]], 28), seat);
+	// A row of lights let into the brim's outer face, on the side that shows.
+	for (let k = 0; k < 4; k++) {
+		const at = new THREE.Matrix4().makeRotationY(-(1.72 + (k - 1.5) * 0.085)).multiply(new THREE.Matrix4().makeTranslation(rim + 0.004, (from + to) / 2, 0));
+		parts.add('cyan', rbox(0.03, 0.13, 0.05, 0.012, 1), seat.clone().multiply(at));
+	}
+	return { parts, lid, drum: wound(DRUM.r, DRUM.tall, to - 0.17), seat };
+}
+
+/** The cerebellum's own frame in its half: its axis leans forward. */
+export function drumSeat() {
+	return new THREE.Matrix4().makeRotationZ(-DRUM.lean).setPosition(DRUM.at[0], DRUM.at[1], DRUM.at[2]);
 }
 
 /** A solid of revolution about a line across the fissure: its outline is radius and distance along z. */
@@ -282,33 +294,36 @@ function turnedZ(at: V3, outline: [number, number][], sides = 28) {
 }
 
 /**
- * The drum: copper wound round and round a bowl, turn on turn from its rim down to its foot, with a dark band and a
- * terminal on it so that it can be seen to turn. Built about its own axis, at the origin: it is turned in its place.
+ * The cerebellum's egg: copper wound round and round it, turn on turn from under its cap down to its foot, with a dark
+ * band round its middle and one chrome clamp on the windings, so that it can be seen to turn. Built about its own axis,
+ * at the origin: it is turned in its place.
  */
-function wound(r: number, half: number) {
-	const turns = 16;
+function wound(r: number, tall: number, top: number) {
+	const turns = 19;
 	const per = 5;
-	// Down the bowl from its rim to its foot: straight-sided at first, then rounding in. Each turn of the winding is a small
-	// round bump on that curve. A strap lies on the windings, a hair proud of them.
-	const bowl = (k: number, proud: number): [number, number] => {
-		const a = (Math.max(0, k - 0.22) / 0.78) * (Math.PI / 2) * 0.92;
-		return [(r - 0.04) * Math.cos(a) + proud * Math.cos(a), half - 2 * half * (k < 0.22 ? k : 0.22 + 0.78 * Math.sin(a) * 1.02) - proud * Math.sin(a)];
+	// Down the egg from where its cap hides it to its foot. Each turn of the winding is a small round bump on that curve;
+	// `proud` stands a point that far off the egg.
+	const first = Math.asin(top / tall);
+	const at = (k: number, proud: number): [number, number] => {
+		const a = first - k * (first + Math.PI / 2);
+		const nx = Math.cos(a) / r;
+		const ny = Math.sin(a) / tall;
+		const l = Math.hypot(nx, ny);
+		return [r * Math.cos(a) + (proud * nx) / l, tall * Math.sin(a) + (proud * ny) / l];
 	};
-	const outline: [number, number][] = [];
-	for (let i = 0; i <= turns * per; i++) outline.push(bowl(i / (turns * per), 0.036 * Math.sin(((i % per) / per) * Math.PI)));
-	outline.push([0, outline[outline.length - 1][1]]);
-	const lathe = (pts: [number, number][], from = 0, sweep = Math.PI * 2, sides = 64) =>
+	const lathe = (pts: [number, number][], sides = 72) =>
 		new THREE.LatheGeometry(
 			pts
 				.slice()
 				.reverse()
 				.map(([radius, y]) => new THREE.Vector2(Math.max(radius, 0.0005), y)),
-			sides,
-			from,
-			sweep
+			sides
 		);
-	const strap: [number, number][] = [];
-	for (let i = 0; i <= 24; i++) strap.push(bowl(0.3 + (0.62 * i) / 24, 0.05));
-	const straps = [0, 1, 2].map((i) => lathe(strap, (i / 3) * Math.PI * 2, 0.09, 2));
-	return { copper: lathe(outline), dark: mergeGeometries(straps)! };
+	const outline: [number, number][] = [[0, top]];
+	for (let i = 0; i <= turns * per; i++) outline.push(at(i / (turns * per), 0.034 * Math.sin(((i % per) / per) * Math.PI)));
+	const band: [number, number][] = [];
+	for (let i = 0; i <= 6; i++) band.push(at(0.5 + (0.07 * i) / 6, i === 0 || i === 6 ? 0.02 : 0.046));
+	const [cx, cy] = at(0.36, 0.03);
+	const clamp = rbox(0.1, 0.26, 0.2, 0.025, 2).applyMatrix4(new THREE.Matrix4().makeTranslation(cx, cy, 0));
+	return { copper: lathe(outline), dark: lathe(band), chrome: clamp };
 }

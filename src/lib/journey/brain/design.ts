@@ -379,8 +379,13 @@ export const FISSURE_BLOCKS: { at: [number, number]; lean: number; size: V3; bar
 	{ at: [1.42, 3.3], lean: 97, size: [0.3, 0.32, 0.26], bars: 2 },
 	{ at: [-1.72, 3.22], lean: 106, size: [0.3, 0.32, 0.26], bars: 2 }
 ];
-/** The copper drum of the cerebellum under the back of each half: its middle, its radius, and half its height. */
-export const DRUM = { at: [-3.0, -3.27, 1.78] as V3, r: 1.26, half: 0.62 };
+/**
+ * The cerebellum under the back of each half, as the drawings have it: copper wound round an egg that turns about its
+ * own axis, tucked up under the brain, with a thick blue brim round its top. Where its middle is, how far its axis leans
+ * forward (so the brim lies along the underside of the brain, which rises towards the back), the egg's radius and half
+ * its height, and the brim: from where to where along the axis, and its radius.
+ */
+export const DRUM = { at: [-2.62, -2.94, 1.8] as V3, lean: 0.28, r: 1.28, tall: 0.9, brim: { from: 0.15, to: 0.55, r: 1.56, bore: 1.33 } };
 /** The axle across the top of the brainstem that both halves ride on: where it is, and how far it reaches each way. */
 export const AXLE = { x: 0.35, y: -2.84, reach: 1.62, r: 0.085 };
 
@@ -391,6 +396,8 @@ const between: Ball[] = [];
 for (let y = PORT.floor + 0.3; y <= PORT.rim; y += 0.1) between.push({ at: [PORT.x, y, 0], r: PORT.r + BULGE + 0.1 });
 // The top of the brainstem, under the middle: its ribs, and the axle across them.
 for (const x of [0.2, 0.75, 1.3]) for (const z of [0.2, 0.75, 1.25]) between.push({ at: [x, AXLE.y + 0.1, z], r: 0.42 });
+// The cerebellum's brim lies close under the back of the half: the cushions there part round it.
+for (const up of [0.4, 0.95]) between.push({ at: [DRUM.at[0] + Math.sin(DRUM.lean) * up, DRUM.at[1] + Math.cos(DRUM.lean) * up, DRUM.at[2]], r: DRUM.brim.r - 0.02 });
 // The blocks in the fissure are a little wider than the fissure, so the cushions' walls part round each.
 for (const b of FISSURE_BLOCKS) {
 	const a = (b.lean * Math.PI) / 180;

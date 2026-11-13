@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { between, NOTCHES, PART, under } from './chassis';
 import { clearance, shifted, soup, together, type Soup } from './clearance';
 import { core } from './core';
-import { BALLS, DRUM, GYRI, MACHINES, PORT } from './design';
+import { BALLS, GYRI, MACHINES, PORT } from './design';
 import { trace, type Machine } from './machines';
 import { LIFT, MOST, rise } from './motion';
 import { FIT, solve, type Cushions } from './solve';
@@ -27,6 +27,7 @@ let machines: { m: Machine; fixed: Soup; wound: Soup | null }[];
 /** What rides under a half, what stands between the halves, and the two turning things there. */
 let below: Soup;
 let drum: Soup;
+let drumAt: (angle: number) => Soup;
 let mid: Soup;
 let ring: Soup;
 /** What stands between the halves and goes into neither core (the pins do), and a core itself. */
@@ -54,9 +55,13 @@ beforeAll(() => {
 		return { m, fixed: all(built.parts), wound: built.coils ? soup(built.coils) : null };
 	});
 	const u = under();
-	below = together([all(u.parts), soup(u.lid), soup(u.stalk)]);
-	const place = new THREE.Matrix4().makeTranslation(...DRUM.at);
-	drum = together([soup(u.drum.copper, place), soup(u.drum.dark, place)]);
+	below = together([all(u.parts), soup(u.lid)]);
+	// The cerebellum's egg, turned about its own axis and stood in its place.
+	drumAt = (angle: number) => {
+		const place = u.seat.clone().multiply(new THREE.Matrix4().makeRotationY(angle));
+		return together([soup(u.drum.copper, place), soup(u.drum.dark, place), soup(u.drum.chrome, place)]);
+	};
+	drum = drumAt(0);
 	const b = between();
 	fixed = all(b.parts);
 	mid = together([fixed, all(b.pins)]);
@@ -225,8 +230,8 @@ describe('the brain as a machine', () => {
 				expect(inner, `coil ${x.m.name}`).toBeGreaterThan(x.m.r + 0.01);
 			}
 		}
-		// A drum and the intake's ring are turned about an upright axis: each is measured against what is round it at every
-		// stage of a turn that brings it back to where it began.
+		// The intake's ring is turned about an upright axis, and the cerebellum's egg about its own: each is measured against
+		// what is round it at every stage of a turn that brings it back to where it began.
 		const turned = (thing: Soup, cx: number, cz: number, angle: number) => {
 			const p = new Float32Array(thing.p.length);
 			const c = Math.cos(angle);
@@ -242,10 +247,8 @@ describe('the brain as a machine', () => {
 		};
 		const cushions = together(plates.map((p) => p.solid));
 		const round = together([below, mid, cushions, ...machines.map((x) => x.fixed)]);
-		for (let k = 0; k < 8; k++) {
-			// The drum has three straps, the ring a mark at each notch: a third of a turn and a notch bring each back.
-			expect(clearance(turned(drum, DRUM.at[0], DRUM.at[2], (k / 8) * ((Math.PI * 2) / 3)), round, 0.1).gap, 'drum').toBeGreaterThan(0.02);
-			expect(clearance(turned(ring, PORT.x, 0, (k / 8) * ((Math.PI * 2) / NOTCHES)), together([mid, cushions]), 0.1).gap, 'ring').toBeGreaterThan(0.004);
-		}
+		// The egg carries one clamp, so only a whole turn brings it back; the ring has a mark at each notch.
+		for (let k = 0; k < 12; k++) expect(clearance(drumAt((k / 12) * Math.PI * 2), round, 0.1).gap, 'the cerebellum').toBeGreaterThan(0.02);
+		for (let k = 0; k < 8; k++) expect(clearance(turned(ring, PORT.x, 0, (k / 8) * ((Math.PI * 2) / NOTCHES)), together([mid, cushions]), 0.1).gap, 'ring').toBeGreaterThan(0.004);
 	});
 });

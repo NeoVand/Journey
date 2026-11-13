@@ -5,7 +5,7 @@ import { mats } from '../kit/materials';
 import { clamp, hash, lerp, outBack, seg, smooth } from '../kit/math';
 import { islandAt, machine, shadowOn } from '../kit/machines';
 import { createCastShadow } from './island';
-import { between, NOTCHES, PART, under, type Hose } from '../brain/chassis';
+import { between, drumSeat, NOTCHES, PART, under, type Hose } from '../brain/chassis';
 import { core as buildCoreMesh } from '../brain/core';
 import { BALLS, DRUM, GYRI, HOSE, MACHINES, PORT, ROWS } from '../brain/design';
 
@@ -326,7 +326,7 @@ export class Brain {
 	private viewer: THREE.Camera | null = null;
 	/** The blue of the cushions, for what is blue and is not one: the cerebellum's lids. */
 	private blue = new THREE.MeshPhysicalMaterial({ color: skin.uBlue.value, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.1 });
-	private drum!: { copper: THREE.BufferGeometry; dark: THREE.BufferGeometry };
+	private drum!: { copper: THREE.BufferGeometry; dark: THREE.BufferGeometry; chrome: THREE.BufferGeometry };
 	private finish: Record<Finish, THREE.Material>;
 	/** The two halves, which draw apart along the fissure's pins, and how far apart they are now, 0 to 1. */
 	private halves: THREE.Group[] = [];
@@ -464,10 +464,10 @@ export class Brain {
 			}
 			add(g, material, finish === 'cyan' ? 'leds' : 'works');
 		}
-		// Under the half: its boss on the brainstem's axle, its collars on the keel's pins, and the cerebellum's lid.
+		// Under the half: its boss on the brainstem's axle, its collars on the keel's pins, its saddle round the intake, and the
+		// cerebellum's brim, with its lights.
 		const below = under();
-		for (const finish of ['chrome', 'dark'] as const) add(setReach(below.parts.take(finish)!), this.finish[finish], 'works');
-		add(setReach(below.stalk), this.finish.dark, 'works');
+		for (const finish of ['chrome', 'dark', 'cyan'] as const) add(setReach(below.parts.take(finish)!), this.finish[finish], finish === 'cyan' ? 'leds' : 'works');
 		const lid = new THREE.Mesh(setReach(below.lid), this.blue);
 		lid.name = 'cerebellum';
 		meshes.push(lid);
@@ -497,16 +497,20 @@ export class Brain {
 		for (const finish of ['chrome', 'dark'] as const) add(this.ring, setReach(ring.take(finish)!, 0), this.finish[finish], 'intake');
 		this.ring.position.x = PORT.x;
 		brain.add(this.ring);
-		// The cerebellum's drums: each turns about its own upright axis, under its half's lid.
+		// The cerebellum: each half's egg of wound copper turns about its own leaning axis, under its half's brim.
 		for (const half of this.halves) {
+			const seat = new THREE.Group();
+			seat.applyMatrix4(drumSeat());
 			const drum = new THREE.Group();
-			drum.position.set(...DRUM.at);
+			seat.add(drum);
 			const reach = reachOf(...DRUM.at);
+			// The whole egg warms at once as a pass comes down to it: gently, so its windings still show.
 			const copper = (this.finish.copper as Works).clone();
-			copper.heat = 1;
+			copper.heat = 0.3;
 			add(drum, setReach(this.drum.copper.clone(), reach), copper, 'cerebellum');
 			add(drum, setReach(this.drum.dark.clone(), reach), this.finish.dark, 'cerebellum');
-			half.add(drum);
+			add(drum, setReach(this.drum.chrome.clone(), reach), this.finish.chrome, 'cerebellum');
+			half.add(seat);
 			this.drums.push(drum);
 		}
 	}
