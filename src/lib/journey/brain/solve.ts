@@ -13,6 +13,13 @@
  * Then the reaches along each side are made one smooth run that is nowhere longer than what was walked, so a cushion's
  * edge is a clean curve and still clears everything; a cushion that tapers to a thread is cut back to a round end; and
  * where a cushion rolls over into the fissure it is cut off flat, so the two halves face each other with level walls.
+ *
+ * That is the rule where no drawing sees. Where one does, which is nearly everywhere, the first of the three is the
+ * drawings' instead (tones.ts): a place belongs to a cushion while it is inside the cushion as drawn. Two things are
+ * read into the drawings there. A yellow and a blue drawn close together are two cushions pressed into a crease, and
+ * each comes out to the line half-way between them, less half a hairline; and the edge a cushion gets is the fair
+ * curve through what was measured, not the measurements. Middle lines are moved to the middle of the cushion as drawn
+ * and run on to its tip, and a cushion that is ended by another, not by its own tip, stops short and closes round.
  */
 import { chartStep, RIM, shell, type V3 } from './shell';
 import { drawn, shared, sight, type Tone } from './tones';

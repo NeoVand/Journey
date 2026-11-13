@@ -389,7 +389,7 @@ for (const x of [0.2, 0.75, 1.3]) for (const z of [0.2, 0.75, 1.25]) BETWEEN.pus
 // The blocks in the fissure are a little wider than the fissure, so the cushions' walls part round each.
 for (const b of FISSURE_BLOCKS) {
 	const a = (b.lean * Math.PI) / 180;
-	for (let k = -1; k <= 1; k++) BETWEEN.push({ at: [b.at[0] + Math.cos(a) * k * b.size[0] * 0.3, b.at[1] + Math.sin(a) * k * b.size[0] * 0.3, 0], r: b.size[2] / 2 + 0.36 });
+	for (let k = -1; k <= 1; k++) BETWEEN.push({ at: [b.at[0] + Math.cos(a) * k * b.size[0] * 0.3, b.at[1] + Math.sin(a) * k * b.size[0] * 0.3, 0], r: b.size[2] / 2 + 0.2 });
 }
 
 // The intake's saddle lies on the core round the intake, under the cushions there.
