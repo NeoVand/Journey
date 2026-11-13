@@ -33,6 +33,8 @@ export interface VisitCue {
 	wide?: boolean;
 	/** Seen from the side it faces, like a screen or a sign that has to be read, rather than from where the camera is. */
 	front?: boolean;
+	/** Frames a small thing tightly, filling the picture, where the room round it isn't the point: a nested room, say. */
+	close?: boolean;
 }
 
 /** Seconds to get there, and to come back; a pull back to see a whole takes longer, so the reveal can be read. */
@@ -130,7 +132,7 @@ export class Visits {
 		const cam = this.stage.camera;
 		this.boundsOf(things).getBoundingSphere(this.sphere);
 		const centre = this.sphere.center.clone();
-		const radius = Math.max(0.7, this.sphere.radius);
+		const radius = Math.max(cue.close ? 0.3 : 0.7, this.sphere.radius);
 		const fromPos = this.v ? this.lastPos.clone() : cam.position.clone();
 		const fromLook = this.v ? this.lastLook.clone() : this.lookOf(cam, centre, new THREE.Vector3());
 		// Close enough that it fills a good part of the picture, and never further than the camera was: a visit always
@@ -140,7 +142,7 @@ export class Visits {
 		// in its place; a whole machine can fill more of it.
 		const fill = Math.min(1, Math.max(0.25, cam.userData.fill ?? 1));
 		// A whole is fitted by the sphere round it, which already leaves room at a long shape's ends: it needs no more.
-		const margin = cue.wide ? 1 : 2.2 - 0.9 * Math.min(1, Math.max(0, (radius - 1) / 1.5));
+		const margin = cue.wide ? 1 : cue.close ? 1.4 : 2.2 - 0.9 * Math.min(1, Math.max(0, (radius - 1) / 1.5));
 		const fit = (radius / (fill * Math.tan((cam.fov * Math.PI) / 360))) * margin;
 		const away = this.v1.copy(fromPos).sub(centre);
 		// Coming closer than the shot, but never so close the thing overflows the picture: a shot already near it stays.
@@ -169,7 +171,23 @@ export class Visits {
 			}
 			if (!found) at(az0, el0);
 		} else {
-			toPos.copy(away.normalize()).multiplyScalar(Math.min(fromPos.distanceTo(centre) * 0.75, fit)).add(centre);
+			toPos.copy(away).normalize().multiplyScalar(Math.min(fromPos.distanceTo(centre) * 0.75, fit)).add(centre);
+			// A screen to be read is met face on, a little above it and turned towards where the camera is, if nothing
+			// in the room stands in the way; otherwise it's seen along the line the shot already looks down.
+			if (cue.front) {
+				const facing = things[0].getWorldDirection(this.v2);
+				const az0 = Math.atan2(facing.x, facing.z);
+				const side = Math.sign(away.x * facing.z - away.z * facing.x) || 1;
+				const at = new THREE.Vector3();
+				for (const turn of [0.3, 0, 0.6]) {
+					const az = az0 + side * turn;
+					at.set(Math.sin(az) * Math.cos(0.18), Math.sin(0.18), Math.cos(az) * Math.cos(0.18)).multiplyScalar(dist).add(centre);
+					if (this.clear(centre, at, radius, things)) {
+						toPos.copy(at);
+						break;
+					}
+				}
+			}
 		}
 		// What glowed for the last visit fades as this one's glow comes up, and the shade carries on from where it is.
 		this.fadeGlow();

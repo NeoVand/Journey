@@ -50,7 +50,9 @@ it feels like a friend with a pointer who knows when to use it. Done badly, it's
   `"stop"` with `index` 0 to 8 walks the last chapter's token round to that stop of the nine (its chip lights), and 9
   finishes the lap. Beats can be as many as the words need: they move nothing but the card.
   Landing part way through a conversation, the card catches up with the latest beat of each kind.
-- `front` (optional): sees the thing from the side it faces, for a screen or a sign whose words are the point, however
+- `close` (optional): frames a small thing tightly, nearly filling the picture, instead of leaving room round it to
+  be read in its place. For a thing whose detail is the point, like the smallest of the subagent's nested rooms.
+- `front` (optional): sees the thing from the side it faces (inside a room too, when nothing stands in the way), for a screen or a sign whose words are the point, however
   the card's own shot looks at it. A far flight takes a little longer by itself, so it never lurches.
 
 ## Names

@@ -1342,7 +1342,7 @@ export class World {
 	 * tiles, wakes the brain, spins the wheel. False if there's nothing by those names in the scene now. cutBack is for a
 	 * peek at another moment of the story, which the page ends with a cut.
 	 */
-	visit(cue: { names: string[]; together?: boolean; hold?: number; act?: string; index?: number; cutBack?: boolean; still?: boolean; wide?: boolean; front?: boolean }) {
+	visit(cue: { names: string[]; together?: boolean; hold?: number; act?: string; index?: number; cutBack?: boolean; still?: boolean; wide?: boolean; front?: boolean; close?: boolean }) {
 		return this.visits.start({
 			names: cue.names,
 			together: cue.together,
@@ -1351,6 +1351,7 @@ export class World {
 			still: cue.still,
 			wide: cue.wide,
 			front: cue.front,
+			close: cue.close,
 			act: this.actFor(cue.act, cue.index),
 			fly: !this.trackIn
 		});

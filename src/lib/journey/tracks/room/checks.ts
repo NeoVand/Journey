@@ -189,6 +189,8 @@ export class Screen {
 		this.group.add(b.build('screen-frame'));
 		this.surface = new Surface(1100, Math.round((1100 * h) / w));
 		const glassFace = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: this.surface.texture, toneMapped: false }));
+		// Named for the conversations to show: it faces into the room, so a look at it can be met face on.
+		glassFace.name = 'your-screen';
 		glassFace.rotation.y = Math.PI / 2;
 		glassFace.position.set(-SIDE_X + 0.085, cy, cz);
 		this.group.add(glassFace);
