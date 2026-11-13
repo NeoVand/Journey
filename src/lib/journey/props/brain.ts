@@ -5,9 +5,11 @@ import { mats } from '../kit/materials';
 import { clamp, hash, lerp, outBack, seg, smooth } from '../kit/math';
 import { islandAt, machine, shadowOn } from '../kit/machines';
 import { createCastShadow } from './island';
-import { between, drumSeat, NOTCHES, PART, under, type Hose } from '../brain/chassis';
+import { between, NOTCHES, PART, under, type Hose } from '../brain/chassis';
+import { DIP, LOBE, RECESS } from '../brain/cerebellum';
+import { FISSURE } from '../brain/shell';
 import { core as buildCoreMesh } from '../brain/core';
-import { BALLS, DRUM, GYRI, HOSE, MACHINES, PORT, ROWS } from '../brain/design';
+import { BALLS, GYRI, HOSE, MACHINES, PORT, ROWS } from '../brain/design';
 
 import { LIFT, PASS_SPEED, RISE_GLSL } from '../brain/motion';
 import { solve } from '../brain/solve';
@@ -249,6 +251,11 @@ class Core extends THREE.MeshStandardMaterial {
 				'#include <color_fragment>',
 				/* glsl */ `#include <color_fragment>
 				{
+					// The recess under the back of the half, where the cerebellum sits up into the brain: the core is hollow there.
+					if (vAt.z > ${(FISSURE + 0.004).toFixed(3)} && vAt.y < ${RECESS.top.toFixed(4)}) {
+						vec2 q = (vAt.xz - vec2(${RECESS.x.toFixed(4)}, ${RECESS.z.toFixed(4)})) / vec2(${RECESS.a.toFixed(4)}, ${RECESS.b.toFixed(4)});
+						if (dot(q, q) < 1.0) discard;
+					}
 					// Ribs across the brain's length, ${RIB} apart, each a flat land between two narrow grooves; every fifth groove is wider.
 					float along = vAt.x / ${RIB.toFixed(3)};
 					float wide = fwidth(along) * 1.2;
@@ -326,7 +333,7 @@ export class Brain {
 	private viewer: THREE.Camera | null = null;
 	/** The blue of the cushions, for what is blue and is not one: the cerebellum's lids. */
 	private blue = new THREE.MeshPhysicalMaterial({ color: skin.uBlue.value, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.1 });
-	private drum!: { copper: THREE.BufferGeometry; dark: THREE.BufferGeometry; chrome: THREE.BufferGeometry };
+	private drum!: { copper: THREE.BufferGeometry; dark: THREE.BufferGeometry };
 	private finish: Record<Finish, THREE.Material>;
 	/** The two halves, which draw apart along the fissure's pins, and how far apart they are now, 0 to 1. */
 	private halves: THREE.Group[] = [];
@@ -337,9 +344,9 @@ export class Brain {
 	private clicked = -1e9;
 	/** When it was last pressed open. */
 	private opened = -1e9;
-	/** The cerebellum's two drums. */
+	/** The cerebellum's two lobes, and how far they have dipped, 0 to 1. */
 	private drums: THREE.Group[] = [];
-	private drumTurn = 0;
+	private dip = 0;
 	/** The ring of light where the brainstem goes down into its collar: it flashes as each pass arrives. */
 	private collar!: THREE.Mesh;
 
@@ -497,20 +504,16 @@ export class Brain {
 		for (const finish of ['chrome', 'dark'] as const) add(this.ring, setReach(ring.take(finish)!, 0), this.finish[finish], 'intake');
 		this.ring.position.x = PORT.x;
 		brain.add(this.ring);
-		// The cerebellum: each half's egg of wound copper turns about its own leaning axis, under its half's brim.
+		// The cerebellum: each half's lobe of wound copper hangs under its half's brim, and dips as a pass comes down to it.
 		for (const half of this.halves) {
-			const seat = new THREE.Group();
-			seat.applyMatrix4(drumSeat());
 			const drum = new THREE.Group();
-			seat.add(drum);
-			const reach = reachOf(...DRUM.at);
-			// The whole egg warms at once as a pass comes down to it: gently, so its windings still show.
+			const reach = reachOf(LOBE.x, LOBE.top, LOBE.z);
+			// The whole lobe warms at once: gently, so its windings still show.
 			const copper = (this.finish.copper as Works).clone();
 			copper.heat = 0.3;
 			add(drum, setReach(this.drum.copper.clone(), reach), copper, 'cerebellum');
 			add(drum, setReach(this.drum.dark.clone(), reach), this.finish.dark, 'cerebellum');
-			add(drum, setReach(this.drum.chrome.clone(), reach), this.finish.chrome, 'cerebellum');
-			half.add(seat);
+			half.add(drum);
 			this.drums.push(drum);
 		}
 	}
@@ -640,7 +643,7 @@ export class Brain {
 		life.uPassAge.value.fromArray(this.passAge);
 		life.uPassGain.value.fromArray(this.passGain);
 		life.uFlow.value += dt * (0.35 + 1.2 * busy + 1.5 * this.excited);
-		// The coils and the drums turn slowly at rest, and each pass gives them a push that dies away.
+		// The coils turn slowly at rest, and each pass gives them a push that dies away; the cerebellum's lobes dip with it.
 		let push = 0;
 		let flash = 0;
 		for (let i = 0; i < 4; i++) {
@@ -650,8 +653,8 @@ export class Brain {
 			flash += this.passGain[i] * Math.exp(-x * x * 0.3);
 		}
 		life.uTurn.value += dt * (0.2 + 5.5 * push);
-		this.drumTurn += dt * (0.08 + 1.6 * push);
-		for (const drum of this.drums) drum.rotation.y = this.drumTurn;
+		this.dip += (Math.min(1, push) - this.dip) * (1 - Math.exp(-dt * 9));
+		for (const drum of this.drums) drum.position.y = -DIP * this.dip;
 		// The ratchet ring clicks round to its notch: quickly, a little past it, and back.
 		const click = clamp((time - this.clicked) / 0.2);
 		this.ring.rotation.y = ((this.notch - 1 + outBack(click, 2.4)) * Math.PI * 2) / NOTCHES;

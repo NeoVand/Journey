@@ -8,14 +8,12 @@
  * over the side, in a long S. The machines are drawn where the drawing has them, and then each settles into the pocket
  * or channel the cushions leave there (see `settle`), so nothing is built until it fits.
  */
-import { chartStep, locate, RIM, shell, silhouette, CX, CY, type V3 } from './shell';
-import { envelope, SLEEVE, type Machine, type Spot } from './machines';
-import { through, type Ball, type Gyrus, type Tone } from './solve';
+import { chartStep, locate, RIM, shell, silhouette, stretch, CX, CY, type V3 } from './shell';
+import { clearOfDrawn, MID_X, MID_Y, PX } from './tones';
+import { TRACED } from './traced';
+import { envelope, SLEEVE, trace, type Machine, type Spot } from './machines';
+import type { Ball, Gyrus, Tone } from './solve';
 
-/** The side drawing's scale and middle: its pixels to the brain's units. */
-const PX = 97.7;
-const MID_X = 834.5;
-const MID_Y = 416;
 /** Cushions stand about this far off the core, which is what the drawing shows the top of. */
 const TOP = 0.42;
 /** A traced line follows the bright middle of a cushion; its foot is this many pixels further out. */
@@ -81,6 +79,13 @@ export function fromTop(x: number, y: number): [number, number] {
 /** The place on the top of the core over which a point stands, `high` off it, that is at x and z seen from above. */
 export function over(x: number, z: number, high: number): [number, number] {
 	return seen((p) => [p[0], p[2]], [x, z], locate(x, 3.4, z), high);
+}
+
+/** The place on the underside of the core under which a point hangs, `low` off it, that is at x and z seen from below; or null where the core has no underside there. */
+export function beneath(x: number, z: number, low = 0): [number, number] | null {
+	const [u, v] = seen((p) => [p[0], p[2]], [x, z], locate(x, -3.4, z), low);
+	shell(u, v, at, out);
+	return out[1] < -0.05 && Math.hypot(at[0] + out[0] * low - x, at[2] + out[2] * low - z) < 0.02 ? [u, v] : null;
 }
 
 /** The same for the drawing from the front, and from the back. */
@@ -237,11 +242,11 @@ const ARCH: Spot = pinAt(607, 205);
 
 /** The works in the pockets and channels of one half, where the side drawing has them. */
 const DRAWN: Machine[] = [
-	{ kind: 'eye', name: 'big', at: eyeAt(744, 446), r: 0.47, dish: 0.76 },
-	{ kind: 'eye', name: 'small', at: eyeAt(1147, 259), r: 0.3, dish: 0.56 },
+	{ kind: 'eye', name: 'big', at: eyeAt(736, 456), r: 0.84 },
+	{ kind: 'eye', name: 'small', at: eyeAt(1158, 254), r: 0.55 },
 	// Copper: over the big eye, low at the back, and by the block at the front.
 	{ kind: 'coil', name: 'over the eye', path: [coilAt(722, 352), coilAt(758, 350), coilAt(794, 356), coilAt(826, 370)], r: 0.27 },
-	{ kind: 'coil', name: 'at the back', path: [coilAt(466, 578), coilAt(522, 561), coilAt(588, 549)], r: 0.3 },
+	{ kind: 'coil', name: 'at the back', path: [coilAt(470, 566), coilAt(524, 550), coilAt(586, 539)], r: 0.25 },
 	{ kind: 'coil', name: 'at the front', path: [coilAt(1166, 426), coilAt(1182, 458), coilAt(1195, 492)], r: 0.17 },
 	// Electronics: under the yellow arch at the back, beside the big eye, and at the front.
 	{ kind: 'block', name: 'back', at: blockAt(478, 383), toward: blockAt(478, 300), size: [0.7, 0.44, 0.36], face: 'bars', count: 3 },
@@ -258,72 +263,64 @@ const DRAWN: Machine[] = [
 	{ kind: 'arm', name: 'arch', path: [armAt(505, 214), armAt(545, 205), armAt(578, 201), ARCH], w: [0.07, 0.1], held: true },
 	// Links: from the end of that arm down to the coil over the eye, low at the back, and by the block at the front.
 	{ kind: 'link', name: 'arch', pins: [ARCH, pinAt(652, 290), pinAt(700, 306)], r: 0.12 },
-	{ kind: 'link', name: 'back', pins: [pinAt(640, 556), pinAt(700, 640)], r: 0.13 },
+	{ kind: 'link', name: 'back', pins: [pinAt(640, 552), pinAt(682, 600)], r: 0.12 },
 	{ kind: 'link', name: 'front', pins: [pinAt(1190, 520), pinAt(1226, 500)], r: 0.11 }
 ];
 
 /*
- * A drawing is not a machine: drawn, a pipe may lie half under the cushion beside it. So every machine but the eyes
- * settles before anything is built. Each place on its line moves over the core, away from the nearest cushion's body,
- * until the machine has room there or stands midway between the cushions on either side; what room it still lacks,
- * the cushions on both sides then give in equal shares when they are solved. The eyes stay where they are drawn, and
- * the cushions part round them.
+ * The cushions' edges are the drawing's own (see tones.ts), so the pockets and channels between them are the drawing's
+ * too. Every machine settles into its pocket before anything is built: each place on its line moves over the core,
+ * the clearest way, until the machine has its clearance from every drawn cushion, and a machine too big for its
+ * channel is made a little smaller.
  */
 
-/** Every cushion's designed body, as balls along its middle line. */
-const BODIES: number[] = GYRI.flatMap((g) =>
-	through(g.line, 8).flatMap(([u, v, w]) => {
-		shell(u, v, at, out);
-		return [at[0], at[1], at[2], w];
-	})
-);
 const jac: number[] = [];
 
-/** How far a place on the core is outside every cushion's designed body, and which ball of them is nearest. */
-function roomAt(u: number, v: number): [number, number] {
+/** What has settled already: each machine after it keeps clear of these too. */
+const settledSoFar: Ball[] = [];
+
+/** How far a place on the core is outside every cushion the drawing has (below zero, under one), and every machine that has settled. */
+function roomAt(u: number, v: number): number {
 	shell(u, v, at, out);
-	let room = Infinity;
-	let k = 0;
-	for (let i = 0; i < BODIES.length; i += 4) {
-		const d = Math.hypot(at[0] - BODIES[i], at[1] - BODIES[i + 1], at[2] - BODIES[i + 2]) - BODIES[i + 3];
-		if (d < room) {
-			room = d;
-			k = i;
-		}
-	}
-	return [room, k];
+	let room = clearOfDrawn(at, out) ?? 9;
+	for (const b of settledSoFar) room = Math.min(room, Math.hypot(at[0] - b.at[0], at[1] - b.at[1], at[2] - b.at[2]) - b.r + CLEAR - 0.02);
+	return room;
 }
 
-/** The nearest place to a spot, within reach, that is `need` clear of every cushion's body, or as clear as can be had; and how clear it is. */
+/** The nearest place to a spot, within reach, that is `need` clear of every drawn cushion, or as clear as can be had; and how clear it is. */
 function settled(spot: Spot, need: number, most = 0.45): [Spot, number] {
 	let [u, v] = spot;
-	let best: Spot = [u, v];
-	let bestRoom = -Infinity;
+	let room = roomAt(u, v);
 	let gone = 0;
-	for (let step = 0; step < 60 && gone < most; step++) {
-		const [room, k] = roomAt(u, v);
-		if (room > bestRoom) {
-			bestRoom = room;
-			best = [u, v];
+	const stride = 0.02;
+	while (room < need && gone < most) {
+		// Whichever way along the core is clearest, a stride at a time; and no further once no way is clearer.
+		stretch(u, v, jac);
+		const along = Math.hypot(jac[0], jac[1], jac[2]) || 1;
+		const t: V3 = [jac[0] / along, jac[1] / along, jac[2] / along];
+		shell(u, v, at, out);
+		const b: V3 = [out[1] * t[2] - out[2] * t[1], out[2] * t[0] - out[0] * t[2], out[0] * t[1] - out[1] * t[0]];
+		let best = room;
+		let to: Spot | null = null;
+		for (let k = 0; k < 12; k++) {
+			const c = Math.cos((k * Math.PI) / 6) * stride;
+			const d = Math.sin((k * Math.PI) / 6) * stride;
+			const [du, dv] = chartStep(u, v, t[0] * c + b[0] * d, t[1] * c + b[1] * d, t[2] * c + b[2] * d, jac);
+			const there = roomAt(u + du, v + dv);
+			if (there > best) {
+				best = there;
+				to = [u + du, v + dv];
+			}
 		}
-		if (room >= need) break;
-		// Straight away from the nearest body, along the core.
-		const away: V3 = [at[0] - BODIES[k], at[1] - BODIES[k + 1], at[2] - BODIES[k + 2]];
-		const lift = away[0] * out[0] + away[1] * out[1] + away[2] * out[2];
-		const flat: V3 = [away[0] - out[0] * lift, away[1] - out[1] * lift, away[2] - out[2] * lift];
-		const far = Math.hypot(flat[0], flat[1], flat[2]) || 1;
-		const stride = Math.min(0.02, need - room);
-		const [du, dv] = chartStep(u, v, (flat[0] / far) * stride, (flat[1] / far) * stride, (flat[2] / far) * stride, jac);
-		u += du;
-		v += dv;
+		if (!to) break;
+		[u, v] = to;
+		room = best;
 		gone += stride;
 	}
-	return [best, bestRoom];
+	return [[u, v], room];
 }
 
 const CLEAR = 0.07;
-/** A machine too big for its channel is made smaller, but never by more than this share: the cushions give the rest. */
-const LEAST = 0.8;
 
 /** A place two machines share settles once, for both. */
 const shared = new Map<Spot, Spot>();
@@ -334,29 +331,46 @@ function put(q: Spot, need: number): Spot {
 }
 
 function settle(m: Machine): Machine {
-	if (m.kind === 'eye') return m;
+	if (m.kind === 'eye') {
+		// An eye's housing fills its pocket: it sits where the pocket is widest near where it is drawn, as large as that lets it be.
+		const [to, room] = settled(m.at, m.r + CLEAR, 0.2);
+		return { ...m, at: to, r: Math.min(m.r, room - CLEAR) };
+	}
 	if (m.kind === 'coil') {
-		// A coil is stiff: it moves as one, by as much as its places would move on average, and is then as thick as that leaves room for.
-		const to = m.path.map((q) => settled(q, m.r + SLEEVE + CLEAR)[0]);
-		const du = to.reduce((sum, q, i) => sum + q[0] - m.path[i][0], 0) / to.length;
-		const dv = to.reduce((sum, q, i) => sum + q[1] - m.path[i][1], 0) / to.length;
-		const path = m.path.map(([u, v]): Spot => [u + du, v + dv]);
-		const room = Math.min(...path.map(([u, v]) => roomAt(u, v)[0]));
-		return { ...m, path, r: Math.min(m.r, Math.max(m.r * LEAST, room - SLEEVE - CLEAR)) };
+		// A coil is stiff: it moves as one, a little at a time, the way its places would on average, and is then as thick as
+		// the room it has found. The cushions are the drawing's: it is the coil that gives.
+		let path = m.path;
+		for (let round = 0; round < 24; round++) {
+			const to = path.map((q) => settled(q, m.r + SLEEVE + CLEAR, 0.04)[0]);
+			const du = to.reduce((sum, q, i) => sum + q[0] - path[i][0], 0) / to.length;
+			const dv = to.reduce((sum, q, i) => sum + q[1] - path[i][1], 0) / to.length;
+			if (Math.hypot(du, dv) < 1e-5) break;
+			path = path.map(([u, v]): Spot => [u + du, v + dv]);
+		}
+		const room = Math.min(...trace(path, 0.05).map((st) => roomAt(st.u, st.v)));
+		return { ...m, path, r: Math.max(0.09, Math.min(m.r, room - SLEEVE - CLEAR)) };
 	}
 	if (m.kind === 'pipe') {
-		const to = m.path.map((q) => settled(q, m.r + SLEEVE + CLEAR));
-		const room = Math.min(...to.map(([, r]) => r));
-		return { ...m, path: to.map(([q]) => q), r: Math.min(m.r, Math.max(m.r * LEAST, room - SLEEVE - CLEAR)) };
+		const path = m.path.map((q) => settled(q, m.r + SLEEVE + CLEAR)[0]);
+		const room = Math.min(...trace(path, 0.05).map((st) => roomAt(st.u, st.v)));
+		return { ...m, path, r: Math.max(0.05, Math.min(m.r, room - SLEEVE - CLEAR)) };
 	}
 	if (m.kind === 'arm') return { ...m, path: m.path.map((q, i) => put(q, m.w[0] + ((m.w[1] - m.w[0]) * i) / (m.path.length - 1) + CLEAR)) };
 	if (m.kind === 'link') return { ...m, pins: m.pins.map((q) => put(q, m.r + CLEAR)) };
-	const [to] = settled(m.at, Math.hypot(m.size[0], m.size[1]) * 0.42 + CLEAR, 0.2);
-	return { ...m, at: to, toward: [m.toward[0] + to[0] - m.at[0], m.toward[1] + to[1] - m.at[1]] };
+	// A block sits where its pocket is widest near where it is drawn, and is made smaller if the pocket is.
+	const half = Math.hypot(m.size[0], m.size[1]) * 0.42;
+	const [to, room] = settled(m.at, half + CLEAR, 0.2);
+	const k = Math.max(0.45, Math.min(1, (room - CLEAR) / half));
+	return { ...m, at: to, toward: [m.toward[0] + to[0] - m.at[0], m.toward[1] + to[1] - m.at[1]], size: [m.size[0] * k, m.size[1] * k, m.size[2] * Math.max(k, 0.7)] };
 }
 
-/** The works of one half, each settled into its pocket or channel. */
-export const MACHINES: Machine[] = DRAWN.map(settle);
+/** The works of one half, each settled into its pocket or channel, in turn: each keeps clear of those before it. */
+export const MACHINES: Machine[] = DRAWN.map((m) => {
+	const placed = settle(m);
+	// (The arm along the arch and the links below it share a pivot: they are one thing, and do not keep clear of each other.)
+	if (!(m.kind === 'arm' && m.name === 'arch')) settledSoFar.push(...envelope(placed));
+	return placed;
+});
 
 /*
  * What stands in the fissure, between the halves, and under them. The cushions of each half are solved to keep clear of
@@ -379,13 +393,8 @@ export const FISSURE_BLOCKS: { at: [number, number]; lean: number; size: V3; bar
 	{ at: [1.42, 3.3], lean: 97, size: [0.3, 0.32, 0.26], bars: 2 },
 	{ at: [-1.72, 3.22], lean: 106, size: [0.3, 0.32, 0.26], bars: 2 }
 ];
-/**
- * The cerebellum under the back of each half, as the drawings have it: copper wound round an egg that turns about its
- * own axis, tucked up under the brain, with a thick blue brim round its top. Where its middle is, how far its axis leans
- * forward (so the brim lies along the underside of the brain, which rises towards the back), the egg's radius and half
- * its height, and the brim: from where to where along the axis, and its radius.
- */
-export const DRUM = { at: [-2.62, -2.94, 1.8] as V3, lean: 0.28, r: 1.28, tall: 0.9, brim: { from: 0.15, to: 0.55, r: 1.56, bore: 1.33 } };
+/** The cerebellum under the back of each half: how far out from the fissure's middle its own middle is, and how wide it is for its length (from the drawing from behind). */
+export const CEREBELLUM = { out: 1.36, wide: 0.72 };
 /** The axle across the top of the brainstem that both halves ride on: where it is, and how far it reaches each way. */
 export const AXLE = { x: 0.35, y: -2.84, reach: 1.62, r: 0.085 };
 
@@ -396,8 +405,26 @@ const between: Ball[] = [];
 for (let y = PORT.floor + 0.3; y <= PORT.rim; y += 0.1) between.push({ at: [PORT.x, y, 0], r: PORT.r + BULGE + 0.1 });
 // The top of the brainstem, under the middle: its ribs, and the axle across them.
 for (const x of [0.2, 0.75, 1.3]) for (const z of [0.2, 0.75, 1.25]) between.push({ at: [x, AXLE.y + 0.1, z], r: 0.42 });
-// The cerebellum's brim lies close under the back of the half: the cushions there part round it.
-for (const up of [0.4, 0.95]) between.push({ at: [DRUM.at[0] + Math.sin(DRUM.lean) * up, DRUM.at[1] + Math.cos(DRUM.lean) * up, DRUM.at[2]], r: DRUM.brim.r - 0.02 });
+// The cerebellum, as drawn, sits up under the back of the half in a recess of its own: the cushions there part round it,
+// all the way round its brim.
+{
+	let x0 = Infinity;
+	let x1 = -Infinity;
+	let top = -Infinity;
+	for (let i = 0; i < TRACED.brim.length; i += 2) {
+		const x = (TRACED.brim[i] / 2 - MID_X) / PX;
+		x0 = Math.min(x0, x);
+		x1 = Math.max(x1, x);
+		top = Math.max(top, (MID_Y - TRACED.brim[i + 1] / 2) / PX);
+	}
+	const mid = (x0 + x1) / 2;
+	const half = (x1 - x0) / 2 + 0.06;
+	for (const k of [0.3, 0.5, 0.7]) between.push({ at: [x0 + (x1 - x0) * k, top - 1.02, CEREBELLUM.out], r: 1.1 });
+	for (let k = 0; k < 14; k++) {
+		const a = (k / 14) * Math.PI * 2;
+		between.push({ at: [mid + half * Math.cos(a), top - 0.3, CEREBELLUM.out + half * CEREBELLUM.wide * Math.sin(a)], r: 0.46 });
+	}
+}
 // The blocks in the fissure are a little wider than the fissure, so the cushions' walls part round each.
 for (const b of FISSURE_BLOCKS) {
 	const a = (b.lean * Math.PI) / 180;

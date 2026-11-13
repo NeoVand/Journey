@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { between, NOTCHES, PART, under } from './chassis';
+import { DIP } from './cerebellum';
 import { clearance, shifted, soup, together, type Soup } from './clearance';
 import { core } from './core';
 import { BALLS, GYRI, MACHINES, PORT } from './design';
@@ -27,7 +28,7 @@ let machines: { m: Machine; fixed: Soup; wound: Soup | null }[];
 /** What rides under a half, what stands between the halves, and the two turning things there. */
 let below: Soup;
 let drum: Soup;
-let drumAt: (angle: number) => Soup;
+let drumAt: (dip: number) => Soup;
 let mid: Soup;
 let ring: Soup;
 /** What stands between the halves and goes into neither core (the pins do), and a core itself. */
@@ -56,11 +57,9 @@ beforeAll(() => {
 	});
 	const u = under();
 	below = together([all(u.parts), soup(u.lid)]);
-	// The cerebellum's egg, turned about its own axis and stood in its place.
-	drumAt = (angle: number) => {
-		const place = u.seat.clone().multiply(new THREE.Matrix4().makeRotationY(angle));
-		return together([soup(u.drum.copper, place), soup(u.drum.dark, place), soup(u.drum.chrome, place)]);
-	};
+	// The cerebellum's lobe, dipped by a share of all it ever dips.
+	const lobeAt = together([soup(u.drum.copper), soup(u.drum.dark)]);
+	drumAt = (k: number) => shifted(lobeAt, [0, -DIP * k, 0]);
 	drum = drumAt(0);
 	const b = between();
 	fixed = all(b.parts);
@@ -86,7 +85,7 @@ describe('the brain as a machine', () => {
 		expect(rise(1.5)).toBeCloseTo(0, 6);
 	});
 
-	it('keeps the same gap between every two cushions', () => {
+	it('keeps a gap between every two cushions', () => {
 		let least = Infinity;
 		let where = '';
 		for (let a = 0; a < plates.length; a++)
@@ -95,8 +94,9 @@ describe('the brain as a machine', () => {
 				const { gap } = clearance(plates[a].solid, plates[b].solid, 0.3);
 				if (gap < least) [least, where] = [gap, `${solved.plates[a].name} and ${solved.plates[b].name}`];
 			}
-		// Never tighter than the design's gap, give or take the rounding of corners and the size of a triangle.
-		expect(least, `tightest between ${where}`).toBeGreaterThan(FIT.gap - 0.02);
+		// On the side of the brain the gaps are the drawing's own, which are not all one width; nowhere do two cushions come
+		// nearer than this.
+		expect(least, `tightest between ${where}`).toBeGreaterThan(0.035);
 	});
 
 	it('lets every plate rise and settle without meeting a neighbour', () => {
@@ -121,7 +121,7 @@ describe('the brain as a machine', () => {
 			}
 		// Two plates of one cushion are a hairline apart and stay so; two cushions keep most of their gap.
 		expect(seam).toBeGreaterThan(FIT.seam * 0.5);
-		expect(other, `tightest between ${where}`).toBeGreaterThan(FIT.gap * 0.6);
+		expect(other, `tightest between ${where}`).toBeGreaterThan(0.03);
 	});
 
 	it('keeps every plate clear of every machine, seated or risen', () => {
@@ -247,8 +247,8 @@ describe('the brain as a machine', () => {
 		};
 		const cushions = together(plates.map((p) => p.solid));
 		const round = together([below, mid, cushions, ...machines.map((x) => x.fixed)]);
-		// The egg carries one clamp, so only a whole turn brings it back; the ring has a mark at each notch.
-		for (let k = 0; k < 12; k++) expect(clearance(drumAt((k / 12) * Math.PI * 2), round, 0.1).gap, 'the cerebellum').toBeGreaterThan(0.02);
+		// The lobe dips straight down and comes back; the ring has a mark at each notch.
+		for (const k of [0, 0.5, 1]) expect(clearance(drumAt(k), round, 0.1).gap, 'the cerebellum').toBeGreaterThan(0.012);
 		for (let k = 0; k < 8; k++) expect(clearance(turned(ring, PORT.x, 0, (k / 8) * ((Math.PI * 2) / NOTCHES)), together([mid, cushions]), 0.1).gap, 'ring').toBeGreaterThan(0.004);
 	});
 });
