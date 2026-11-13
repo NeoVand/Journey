@@ -9,6 +9,7 @@
  * cushions leave there (see `settle`), so nothing is built until it fits.
  */
 import { chartStep, locate, RIM, shell, silhouette, stretch, CX, CY, type V3 } from './shell';
+import { CHANNELS, POCKETS } from './channels';
 import { LINES, RUNS_ON } from './lines';
 import { clearOfDrawn, MID_X, MID_Y, PX } from './tones';
 import { TRACED } from './traced';
@@ -312,8 +313,19 @@ function settle(m: Machine): Machine {
 	return { ...m, at: to, toward: [m.toward[0] + to[0] - m.at[0], m.toward[1] + to[1] - m.at[1]], size: [m.size[0] * k, m.size[1] * k, m.size[2] * Math.max(k, 0.7)] };
 }
 
+/*
+ * And what the drawings' pockets and channels have besides, where the side drawing's own machines leave room: a pipe
+ * down each channel that is one, and a block of electronics in each roomy place of a pocket, each as big as its place
+ * (channels.ts, found by measuring). They settle after the others, so they give way to them.
+ */
+const FACES = ['bars', 'cells', 'fins'] as const;
+const FOUND: Machine[] = [
+	...CHANNELS.map((c, i): Machine => ({ kind: 'pipe', name: `run ${i + 1}`, path: c.path as Spot[], r: c.r, lit: [0.36, 0.64] })),
+	...POCKETS.map((b, i): Machine => ({ kind: 'block', name: `pocket ${i + 1}`, at: b.at as Spot, toward: b.toward as Spot, size: b.size as V3, face: FACES[i % 3], count: Math.max(2, Math.round(b.size[0] / (i % 3 === 2 ? 0.09 : 0.17))) }))
+];
+
 /** The works of one half, each settled into its pocket or channel, in turn: each keeps clear of those before it. */
-export const MACHINES: Machine[] = DRAWN.map((m) => {
+export const MACHINES: Machine[] = [...DRAWN, ...FOUND].map((m) => {
 	const placed = settle(m);
 	// (The arm along the arch and the links below it share a pivot: they are one thing, and do not keep clear of each other.)
 	if (!(m.kind === 'arm' && m.name === 'arch')) settledSoFar.push(...envelope(placed));
