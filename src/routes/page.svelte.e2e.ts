@@ -326,7 +326,7 @@ test('the trip inside the harness goes in through the roof and comes back out', 
 	const before = await page.evaluate(() => scrollY);
 	await page.getByRole('button', { name: 'Inside the harness' }).first().click();
 	await expect(page.getByRole('region', { name: 'Side trip: Inside the harness' })).toBeVisible();
-	await expect(page.getByRole('heading', { name: 'Bigger on the inside' })).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'Everything but the thinking' })).toBeVisible();
 	// The camera flies to the roof first, and only then is the world swapped for the room. Leaving while still
 	// dropping in turns straight round.
 	await page.waitForFunction(() => (window as unknown as Debug).__world.trackIn, null, { timeout: 60_000 });

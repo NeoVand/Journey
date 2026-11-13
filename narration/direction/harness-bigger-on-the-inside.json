@@ -1,6 +1,0 @@
-{
-	"cues": [
-		{ "at": "At the heart of it, a loop", "show": ["loop"], "hold": 5 },
-		{ "at": "Everything the request is packed from", "show": ["front:Instructions", "front:Environment", "front:Tools", "front:Conversation"], "together": true, "hold": 6 }
-	]
-}

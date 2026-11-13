@@ -1,6 +1,0 @@
-{
-	"cues": [
-		{ "at": "so it runs", "show": ["Run"], "hold": 2.4 },
-		{ "at": "That's where hooks plug in", "show": ["Your hooks", "hook-fittings"], "together": true, "hold": 4 }
-	]
-}

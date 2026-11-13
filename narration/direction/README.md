@@ -60,7 +60,7 @@ it feels like a friend with a pointer who knows when to use it. Done badly, it's
 `narration-lab/catalog.json` (made by `node scripts/narration/catalog.mjs` with the dev server running) lists, for
 every card, the named things in the world at that moment (`all`) and those the card's shot frames (`onScreen`). Side
 trips are listed card by card with `trip` set. A conversation's id is its card's title through `slug()`. A side trip's
-id has the trip's id in front: `harness-round-and-round`.
+id has the trip's id in front: `harness-up-the-tube-down-the-chute`.
 
 - Machines and signs go by their words: `Harness`, `MCP`, `Laptop`, `Skills`, `Front door`, `Tokenizer`,
   `KV cache`, `Router`, `Your hooks`, `Subagent`, `Git host`, `sign:Proxy`, `sign:Saved transcript`.

@@ -1,5 +1,0 @@
-{
-	"cues": [
-		{ "at": "Another loop", "show": ["Subagent", "sub-pad"], "together": true, "hold": 3.6 }
-	]
-}

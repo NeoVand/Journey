@@ -1,11 +1,10 @@
 /**
- * The new room inside the harness, heard: every sound placed on a moment of the trip's script (tracks/room/turns.ts),
+ * The room inside the harness, heard: every sound placed on a moment of the trip's script (tracks/room/turns.ts),
  * so it plays when the picture does it. Recorded sounds for the machines, porcelain notes for what the reader should
  * notice: a call let through, a ring for you, a "no".
  */
 import * as THREE from 'three';
-import { ROOM_AT } from '../tracks/harness';
-import { BENCHES, CHUTE, DOCK, GATE_X, GATE_Z, HOOK_PORT, PAD, RAIL_WEST_Z, skillAt, SUB, TRAY_Z, TUBE } from '../tracks/room/layout';
+import { BENCHES, CHUTE, DOCK, GATE_X, GATE_Z, HOOK_PORT, PAD, RAIL_WEST_Z, ROOM_AT, skillAt, SUB, TRAY_Z, TUBE } from '../tracks/room/layout';
 import { cartAt, CART, CARDS, COMPACT, NESTS, RAIL_LEN, RAIL_PATH, REREAD, RESULTS, RIDES, slotX, TURNS } from '../tracks/room/turns';
 import type { Bed, Cue, Heard, Where } from './conductor';
 import { chime, key, low, note, porcelain, tick, whoosh } from './synth';

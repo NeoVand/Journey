@@ -9,8 +9,6 @@ import type { World } from '../world';
 import type { HarnessId, TrackId } from '../content';
 import type { Bed, Cue, Heard, Where } from './conductor';
 import { chime, harp, key, low, note, porcelain, tick, whoosh } from './synth';
-import { PUCK_MOVES, puckPoint, roomPoint } from '../tracks/harness';
-import { ROOM_F3 } from '../tracks/room/flag';
 import { insideTheRoom } from './room';
 import { STAGE_AT } from '../tracks/sandbox';
 import { MEMORY_AT } from '../tracks/memory';
@@ -442,93 +440,6 @@ export function score(w: World): { cues: Cue[]; beds: Bed[] } {
 	};
 }
 
-/* ---------- inside the harness ---------- */
-
-/** One note per station, so a lap round the loop plays a little rising tune. */
-const STATION_NOTE = { pack: 0, send: 1, read: 2, check: 3, run: 4, write: 5 } as const;
-
-function insideHarness(): { cues: Cue[]; beds: Bed[] } {
-	const cues: Cue[] = [];
-	const at = (T: number, sound: Cue['sound'], where?: Where | (() => Where), more: Partial<Cue> = {}) => cues.push({ T, sound, at: where, ...more });
-
-	// The turn: a little motor each time it sets off, and a porcelain note as it arrives at each station.
-	const order = ['send', 'read', 'check', 'run', 'write', 'pack'] as const;
-	PUCK_MOVES.forEach(({ from, to }, i) => {
-		at(from, 'servo', () => puckPoint(from + 0.01), { gain: 0.5, rate: 1 + (i % 3) * 0.04, minor: true });
-		const station = to < 2 ? order[i % 6] : undefined;
-		if (station) at(to, porcelain(note(STATION_NOTE[station] + 2)), roomPoint(station), { gain: 0.5 });
-	});
-
-	// Out to the model and back: air down the orange pipe, then up the green one, on each turn the trip watches.
-	for (const card of [1, 3]) {
-		const out = card === 1 ? 0.14 : 0.12;
-		at(card + out, 'tube', roomPoint('send'), { gain: 0.7 });
-		at(card + out + 0.01, whoosh(0.7, 2200), roomPoint('send'), { gain: 0.35 });
-		at(card + out + 0.1, whoosh(0.7, 1400), roomPoint('read'), { gain: 0.35 });
-		// The reply types itself on Read's screen.
-		const typeFrom = card === 1 ? 1.3 : 3.28;
-		for (let k = 0; k < 10; k++) at(typeFrom + k * 0.008, tick(1.3), roomPoint('read'), { gain: 0.35, minor: true });
-	}
-
-	// The lap's tool: Read comes out of its slot, a pulse runs to your files, and the transcript winds on.
-	at(1.64, 'latch', roomPoint('run'), { gain: 0.7 });
-	at(1.65, whoosh(0.5, 1600), roomPoint('files'), { gain: 0.25 });
-	at(1.8, 'paper-roll', roomPoint('reel'), { gain: 0.5 });
-
-	// Packing: each hatch slides out, its sheet lands in Pack's row, the hatch goes back. Then the skill.
-	for (let i = 0; i < 4; i++) {
-		const a = 2 + 0.08 + i * 0.12;
-		at(a, 'drawer-out', roomPoint('pack', i + 1), { gain: 0.8 });
-		at(a + 0.115, 'paper-land', roomPoint('pack'), { gain: 0.7, rate: 1 + i * 0.03 });
-		at(a + 0.1, 'drawer-in', roomPoint('pack', i + 1), { gain: 0.6 });
-	}
-	at(2.6, 'paper-slide', roomPoint('shelf'), { gain: 0.6 });
-	at(2.775, 'paper-land', roomPoint('pack'), { gain: 0.8, rate: 1.08 });
-	at(2.8, chime([0, 2, 4]), roomPoint('pack'), { gain: 0.45, dip: 0.3 });
-
-	// The gate: the call stands up on the turn, a hook runs, Ask, then Allow, and the arm lifts.
-	at(3.31, 'paper-slide', () => puckPoint(3.31), { gain: 0.5, rate: 1.2 });
-	at(3.44, whoosh(0.6, 2600), roomPoint('hooks'), { gain: 0.3 });
-	at(3.52, porcelain(note(6), 0.6), roomPoint('hooks'), { gain: 0.45 });
-	at(3.53, porcelain(note(5), 1.2), roomPoint('check'), { gain: 0.5 });
-	at(3.58, porcelain(note(5), 1.2), roomPoint('check'), { gain: 0.4 });
-	at(3.63, chime([2, 4, 7]), roomPoint('check'), { gain: 0.5, dip: 0.35 });
-	at(3.645, 'servo', roomPoint('check'), { gain: 0.7, rate: 0.9 });
-	at(3.88, 'servo', roomPoint('check'), { gain: 0.5, rate: 0.95 });
-
-	// Run, then written down: the call goes in, Edit comes out, the tape winds, pages pile up and get pressed.
-	at(4.11, 'paper-slide', roomPoint('run'), { gain: 0.5, rate: 0.9 });
-	at(4.12, 'latch', roomPoint('run'), { gain: 0.8 });
-	at(4.14, whoosh(0.5, 1600), roomPoint('files'), { gain: 0.25 });
-	for (let i = 0; i < 5; i++) at(4.32 + i * 0.05 + 0.035, 'paper-land', roomPoint('write'), { gain: 0.5, rate: 0.96 + i * 0.03, minor: true });
-	at(4.6, 'press', roomPoint('write'), { gain: 0.9, dip: 0.4 });
-	at(4.69, chime([4, 2, 0]), roomPoint('write'), { gain: 0.35 });
-	at(4.72, 'servo', roomPoint('write'), { gain: 0.45, rate: 1.1 });
-
-	// The subagent: a quick next turn, the Agent tool, a brief down the line, its own laps, and a report back.
-	at(5.02, 'servo', () => puckPoint(5.05), { gain: 0.6, rate: 1.15 });
-	at(5.2, 'latch', roomPoint('run'), { gain: 0.8 });
-	at(5.24, whoosh(0.7, 2000), roomPoint('sub'), { gain: 0.3 });
-	at(5.33, 'paper-slide', roomPoint('sub'), { gain: 0.5 });
-	for (const k of [5.38, 5.5]) at(k, 'servo', roomPoint('sub'), { gain: 0.35, rate: 1.35 });
-	at(5.46, whoosh(0.6, 1500), roomPoint('files'), { gain: 0.22 });
-	at(5.63, 'paper-slide', roomPoint('sub'), { gain: 0.5, rate: 1.1 });
-	at(5.7, whoosh(0.7, 1500), roomPoint('run'), { gain: 0.3 });
-	at(5.79, 'paper-land', roomPoint('run'), { gain: 0.7 });
-	at(5.82, chime([0, 4, 7]), roomPoint('run'), { gain: 0.4 });
-	at(5.86, 'latch', roomPoint('run'), { gain: 0.6, rate: 0.95 });
-
-	return {
-		cues,
-		beds: [
-			{ sound: 'pad-room', from: 0, to: 6.1, level: 1, fade: 0.05 },
-			{ sound: 'room', from: 0, to: 6.1, level: 0.1, fade: 0.05 },
-			// The transcript winding onto its reel, for as long as it winds.
-			{ sound: 'reel', from: 4.3, to: 4.9, level: 0.35, fade: 0.04 }
-		]
-	};
-}
-
 /* ---------- how MCP connects ---------- */
 
 /** The harness and the server on the first island, in the story's coordinates. */
@@ -831,7 +742,7 @@ function plansAndLists(agent: HarnessId): { cues: Cue[]; beds: Bed[] } {
 
 export function tripScore(id: TrackId, w: World): { cues: Cue[]; beds: Bed[] } {
 	if (id === 'plans') return plansAndLists(w.agent);
-	if (id === 'harness') return ROOM_F3 ? insideTheRoom() : insideHarness();
+	if (id === 'harness') return insideTheRoom();
 	if (id === 'sandbox') return permissionAndSandbox();
 	if (id === 'memory') return memoryAndRewinding();
 	return howMcpConnects();

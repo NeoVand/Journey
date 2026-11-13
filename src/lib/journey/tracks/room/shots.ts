@@ -1,6 +1,5 @@
 import type { Region, Shot } from '../../rig';
-import { ROOM_AT } from '../harness';
-import { CHILD, SUB } from './layout';
+import { CHILD, ROOM_AT, SUB } from './layout';
 import { COMPACT, NESTS, RESULTS, TURNS } from './turns';
 
 /*
@@ -58,7 +57,18 @@ const deny = turn(5).cards.find((k) => k.call.verdict === 'deny')!;
 const nest = (n: number) => NESTS[n - 1];
 const report = RESULTS.find((r) => r.span === 2)!;
 
-export const F3_SHOTS: Shot[] = [
+/** Looking straight down onto the harness's roof hatch, from outside: the way in. In the story's coordinates. */
+export const ROOF: Omit<Shot, 'T'> = {
+	az: 18,
+	el: 64,
+	target: [1.1, 3.9, -0.75],
+	radius: 0.62,
+	ry: 0.5,
+	wide: box(0, 0, 1, 1),
+	tall: box(0, 0, 1, 1)
+};
+
+export const ROOM_SHOTS: Shot[] = [
 	// Cards 1 and 2: the whole room, drifting a little as the loop goes round.
 	{ T: 0, ...ROOM },
 	{ T: 0.86, ...ROOM, az: 19 },

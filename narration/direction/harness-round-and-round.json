@@ -1,6 +1,0 @@
-{
-	"cues": [
-		{ "at": "it packs everything into one request", "show": ["Pack"], "hold": 3.4 },
-		{ "at": "It writes down what happened", "show": ["Write down"], "hold": 4 }
-	]
-}

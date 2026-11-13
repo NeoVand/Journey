@@ -1,6 +1,0 @@
-{
-	"cues": [
-		{ "at": "The harness's own instructions", "show": ["front:Instructions", "front:Environment"], "together": true, "hold": 7 },
-		{ "at": "A skill waits on its shelf", "show": ["skills-shelf", "skill-folder"], "together": true, "hold": 3.6 }
-	]
-}

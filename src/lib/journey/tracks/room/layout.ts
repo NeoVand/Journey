@@ -1,10 +1,18 @@
 import * as THREE from 'three';
 
 /*
- * Where everything stands in the new room, as plan f3 lays it out (concepts/harness/plan-f3.md). Room units: x to the
+ * Where everything stands in the room, as plan f3 lays it out (concepts/harness/plan-f3.md). Room units: x to the
  * right, z toward the camera, y up; the floor's top is y 0. The room is 14.4 wide and 12 deep, open at the front.
  * The building, the motion and the cameras all read these numbers, so they can never disagree.
  */
+
+/**
+ * Where the room is built: far above everything else, so nothing outside can be seen from in here. The world shows it
+ * instead of the rest, once the reader has dived in through the roof.
+ */
+export const ROOM_AT = new THREE.Vector3(0, 300, 0);
+/** The room's colours where a sky would be: the warm light inside a cream cabinet. */
+export const ROOM_SKY = { top: new THREE.Color('#f3dfb6'), mid: new THREE.Color('#f8ead0'), low: new THREE.Color('#fdf6e8') };
 
 export const W = 14.4;
 export const D = 12;

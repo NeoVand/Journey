@@ -1,5 +1,3 @@
-import { ROOM_F3 } from './tracks/room/flag';
-
 export type HarnessId = 'claude' | 'codex' | 'copilot';
 
 export const PROMPT = 'Fix the race condition in the job scheduler.';
@@ -408,83 +406,8 @@ export const TRACK_AT: Record<TrackId, { T: number; nearFrom?: number; nearBefor
 	plans: { T: 25.6, nearFrom: 25.3, nearBefore: 26.06, inside: true }
 };
 
-/** The trip through the old room, shown until the new one replaces it. */
-const HARNESS_ROOM: Track = {
-	name: 'Inside the harness',
-	what: 'The loop at its heart, and what it does each turn.',
-	cards: [
-		{
-			title: 'Bigger on the inside',
-			body: [
-				'This is the program you installed. The model is far away and only ever reads text and writes text. Everything else happens in here, on your machine.',
-				'At its heart is a loop. Around it sit the parts you met from outside: the four drawers, the cables, and the tools.'
-			],
-			note: {
-				claude: 'It’s one program. The terminal, the VS Code extension and the desktop app all run this same loop.',
-				codex: 'The loop is an engine of its own. The terminal runs it inside; the editor and the desktop app talk to it over JSON-RPC.',
-				copilot: 'Since mid-2026 the loop runs in a process of its own, the Agent Host, which can even live on another machine.'
-			}
-		},
-		{
-			title: 'Round and round',
-			body: [
-				'Every turn is the same few steps. Pack everything into one request and send it. Read the reply as it streams in. If it asks for a tool, check the call and run it. Write down what happened, and go round again.',
-				'A real fix takes five to thirty turns. It stops when a reply comes back without asking for a tool.'
-			]
-		},
-		{
-			title: 'Packed fresh, every turn',
-			body: [
-				'Each turn the whole request is built again: the harness’s own instructions, your project’s rules, a snapshot of where you are, every tool, and the conversation so far.',
-				'The parts that never change go first, so the provider can reuse its work on them. [[Skills]] wait on their shelf as a name and a line each, and only the one the task needs is unpacked.'
-			],
-			note: {
-				claude: 'Rules come from CLAUDE.md, and skills from .claude/skills. Whatever changes travels as a note at the end, so the start stays the same.',
-				codex: 'Rules come from AGENTS.md, read once at the start, which is why a change to it needs a restart. Skills live in .agents/skills.',
-				copilot: 'The prompt is rebuilt every turn, with the fixed parts first. Skills are SKILL.md folders, shared with Copilot CLI.'
-			}
-		},
-		{
-			title: 'Asking is not doing',
-			body: [
-				'When a reply asks for a tool, nothing runs yet. The call goes to a gate first: is it allowed, does it need you, or is it refused?',
-				'Your [[hooks]] plug in here. They’re your own scripts, run at fixed moments: before a tool runs, after it runs, and when the agent stops. One that runs first can block a call or change it.'
-			],
-			note: {
-				claude: 'Hooks can catch every step, from PreToolUse and PostToolUse to Stop and PreCompact.',
-				codex: 'Rules in execpolicy do that job for commands, and an approval policy decides when to ask you.',
-				copilot: 'Hooks are set in the agent’s customization settings, and a confirmation card asks you before risky steps.'
-			}
-		},
-		{
-			title: 'Everything is written down',
-			body: [
-				'Each step goes into the [[transcript]], and the transcript is saved, so a session can be picked up again later.',
-				'When the conversation grows too long for the [[context window]], a summary takes the place of the older messages in what’s sent, and the latest turns stay as they were. The saved transcript keeps all of them.'
-			],
-			note: {
-				claude: 'Sessions are saved as files under ~/.claude/projects, and claude --resume picks one up again.',
-				codex: 'Sessions are saved under ~/.codex/sessions, and codex resume picks one up again.',
-				copilot: 'VS Code keeps the chat sessions, and Agent Host sessions outlive closing the folder.'
-			}
-		},
-		{
-			title: 'A loop inside the loop',
-			body: [
-				'A big side quest can go to a [[subagent]]: a smaller loop with its own context and its own tools. It gets a brief, does the work, and hands back a summary, and only the summary joins the parent’s context.',
-				'It works on the same files as everyone else, unless it’s given its own copy. And what it reports still needs checking before anything is built on it.'
-			],
-			note: {
-				claude: 'The Agent tool starts one: an explorer, a planner, a general worker or one of your own, and it can work in its own git worktree.',
-				codex: 'Multi-agent mode runs several at once, and each can work in its own worktree.',
-				copilot: 'Custom agents can hand work to one another, and a session can run in its own worktree.'
-			}
-		}
-	]
-};
-
-/** The trip through the room built to plan f3: the model asks; the harness remembers, checks and acts. */
-const HARNESS_F3: Track = {
+/** The trip inside the harness, through the room built to plan f3: the model asks; the harness remembers, checks and acts. */
+const HARNESS: Track = {
 	name: 'Inside the harness',
 	what: 'The loop at its heart, and what it does each turn.',
 	cards: [
@@ -559,7 +482,7 @@ const HARNESS_F3: Track = {
 };
 
 export const TRACKS: Record<TrackId, Track> = {
-	harness: ROOM_F3 ? HARNESS_F3 : HARNESS_ROOM,
+	harness: HARNESS,
 	mcp: {
 		name: 'How MCP connects',
 		what: 'How an outside program lends the agent new tools.',

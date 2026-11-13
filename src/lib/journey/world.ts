@@ -22,10 +22,9 @@ import { Gateway, GW } from './props/gateway';
 import { createBelt, createChatTemplate, Gantry, GANTRY_REAR, SafetyArch, Tile, TILE_D, TILE_H } from './props/tokenizer';
 import { HARNESSES, PROMPT, TOKENS, type HarnessId, type TrackId } from './content';
 import { McpTrack, MCP_SHOTS, type HarnessPose } from './tracks/mcp';
-import { HarnessRoom, ROOF, ROOM_AT, ROOM_SHOTS, ROOM_SKY } from './tracks/harness';
-import { ROOM_F3 } from './tracks/room/flag';
-import { RoomF3 } from './tracks/room/room';
-import { F3_SHOTS } from './tracks/room/shots';
+import { ROOM_AT, ROOM_SKY } from './tracks/room/layout';
+import { HarnessRoom } from './tracks/room/room';
+import { ROOF, ROOM_SHOTS } from './tracks/room/shots';
 import { GLASS_ROOF, SandboxStage, STAGE_AT, STAGE_SHOTS, STAGE_SKY } from './tracks/sandbox';
 import { CABINET_ROOF, MemoryStage, MEMORY_AT, MEMORY_SHOTS, MEMORY_SKY } from './tracks/memory';
 import { PlansStage, PLANS_AT, PLANS_SHOTS, PLANS_SKY, SCREEN_ROOF } from './tracks/plans';
@@ -275,7 +274,7 @@ export class World {
 	 * The places side trips drop into. Each is built the first time a reader goes there, not before: together they cost
 	 * tens of megabytes of textures and geometry, and a phone's browser closes a page that holds too much.
 	 */
-	private places: { harness?: HarnessRoom | RoomF3; sandbox?: SandboxStage; memory?: MemoryStage; plans?: PlansStage } = {};
+	private places: { harness?: HarnessRoom; sandbox?: SandboxStage; memory?: MemoryStage; plans?: PlansStage } = {};
 	/**
 	 * Where an inside trip's way in is, in the story: the harness's roof hatch, the top of the glass, the memory cabinet,
 	 * the laptop's screen.
@@ -456,7 +455,7 @@ export class World {
 
 		this.trackRigs = {
 			mcp: new Rig(this.stage.camera, MCP_SHOTS),
-			harness: new Rig(this.stage.camera, ROOM_F3 ? F3_SHOTS : ROOM_SHOTS),
+			harness: new Rig(this.stage.camera, ROOM_SHOTS),
 			sandbox: new Rig(this.stage.camera, STAGE_SHOTS),
 			memory: new Rig(this.stage.camera, MEMORY_SHOTS),
 			plans: new Rig(this.stage.camera, PLANS_SHOTS)
@@ -1188,8 +1187,8 @@ export class World {
 	private place<K extends Inside>(id: K) {
 		let made = this.places[id];
 		if (!made) {
-			const built = id === 'harness' ? (ROOM_F3 ? new RoomF3() : new HarnessRoom()) : id === 'sandbox' ? new SandboxStage() : id === 'memory' ? new MemoryStage() : new PlansStage();
-			if (!(built instanceof HarnessRoom) && !(built instanceof RoomF3)) built.setHarness(this.harnessId);
+			const built = id === 'harness' ? new HarnessRoom() : id === 'sandbox' ? new SandboxStage() : id === 'memory' ? new MemoryStage() : new PlansStage();
+			if (!(built instanceof HarnessRoom)) built.setHarness(this.harnessId);
 			built.group.visible = false;
 			this.stage.scene.add(built.group);
 			this.stage.renderer.compile(built.group, this.stage.camera);

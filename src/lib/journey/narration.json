@@ -39,18 +39,6 @@
 		"title": "Finding the code",
 		"seconds": 203.8
 	},
-	"harness-a-loop-inside-the-loop": {
-		"title": "A loop inside the loop",
-		"seconds": 151.4
-	},
-	"harness-asking-is-not-doing": {
-		"title": "Asking is not doing",
-		"seconds": 155.1
-	},
-	"harness-bigger-on-the-inside": {
-		"title": "Bigger on the inside",
-		"seconds": 155.4
-	},
 	"harness-every-call-stops-at-the-gate": {
 		"title": "Every call stops at the gate",
 		"seconds": 168.2
@@ -59,21 +47,9 @@
 		"title": "Everything but the thinking",
 		"seconds": 159.1
 	},
-	"harness-everything-is-written-down": {
-		"title": "Everything is written down",
-		"seconds": 152.3
-	},
-	"harness-packed-fresh-every-turn": {
-		"title": "Packed fresh, every turn",
-		"seconds": 157.5
-	},
 	"harness-rooms-inside-rooms": {
 		"title": "Rooms inside rooms",
 		"seconds": 154.2
-	},
-	"harness-round-and-round": {
-		"title": "Round and round",
-		"seconds": 160.3
 	},
 	"harness-squeezed-but-still-on-record": {
 		"title": "Squeezed, but still on record",

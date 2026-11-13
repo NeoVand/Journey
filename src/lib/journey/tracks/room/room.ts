@@ -6,10 +6,9 @@ import { Lamp, color, mats } from '../../kit/materials';
 import { clamp, inOut, lerp } from '../../kit/math';
 import { createSign } from '../../kit/parts';
 import { drawIcon, font, Surface } from '../../kit/print';
-import { ROOM_AT } from '../harness';
 import { buildBenches, buildLedge, buildRail, Cart } from './acts';
 import { buildHooks, Gate, printed, Screen } from './checks';
-import { BACK_Z, D, LIP, PAD, SHELF, SIDE_X, skillAt, SKILLS, SUB, TRAY, TRAY_Z, W, WALL_H } from './layout';
+import { BACK_Z, D, LIP, PAD, ROOM_AT, SHELF, SIDE_X, skillAt, SKILLS, SUB, TRAY, TRAY_Z, W, WALL_H } from './layout';
 import { buildChute, buildTube, Capsule } from './loop';
 import { SubRoom } from './subagent';
 import { KEPT, SLOTS, TILE_COLOR, trayAt, type Tray } from './tray';
@@ -97,7 +96,7 @@ function recordMaterial() {
 	return new THREE.MeshStandardMaterial({ map: s.texture, roughness: 0.85, side: THREE.DoubleSide });
 }
 
-export class RoomF3 {
+export class HarnessRoom {
 	group = new THREE.Group();
 	/** For looking closely while building: pose the room at this trip time, whatever the camera is doing. */
 	debugT: number | null = null;
