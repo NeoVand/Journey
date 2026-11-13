@@ -250,7 +250,7 @@ export function under() {
 	}
 
 	// The cerebellum: copper wound round an egg that turns about its own leaning axis, under a thick blue brim that stays.
-	// Inside the brim a dark cap covers the top of the egg, and a short neck goes from the cap up into the core.
+	// Inside the brim a dark cap covers the top of the egg, and a hood goes from there up into the core.
 	const seat = drumSeat();
 	const { from, to, r: rim, bore } = DRUM.brim;
 	const round = 0.15;
@@ -268,8 +268,9 @@ export function under() {
 	const lid = turned([0, 0, 0], brim, 72).applyMatrix4(seat);
 	const cap = to - 0.07;
 	parts.add('dark', turned([0, 0, 0], [[bore, cap - 0.03], [bore, cap], [0, cap]], 48), seat);
-	// The neck stands square on the cap, along the egg's own axis, and ends inside the core.
-	parts.add('dark', turned([0, 0, 0], [[0.4, cap], [0.4, cap + 0.5]], 28), seat);
+	// A dark hood rises from inside the brim, narrowing, and ends inside the core: what the cerebellum hangs by, and all that
+	// shows between the brim and the brain.
+	parts.add('dark', turned([0, 0, 0], [[bore - 0.02, cap], [bore - 0.12, to + 0.06], [0.82, to + 0.4], [0.55, to + 1.05]], 48), seat);
 	// A row of lights let into the brim's outer face, on the side that shows.
 	for (let k = 0; k < 4; k++) {
 		const at = new THREE.Matrix4().makeRotationY(-(1.72 + (k - 1.5) * 0.085)).multiply(new THREE.Matrix4().makeTranslation(rim + 0.004, (from + to) / 2, 0));
@@ -322,7 +323,7 @@ function wound(r: number, tall: number, top: number) {
 	const outline: [number, number][] = [[0, top]];
 	for (let i = 0; i <= turns * per; i++) outline.push(at(i / (turns * per), 0.034 * Math.sin(((i % per) / per) * Math.PI)));
 	const band: [number, number][] = [];
-	for (let i = 0; i <= 6; i++) band.push(at(0.5 + (0.07 * i) / 6, i === 0 || i === 6 ? 0.02 : 0.046));
+	for (let i = 0; i <= 4; i++) band.push(at(0.52 + (0.03 * i) / 4, i === 0 || i === 4 ? 0.02 : 0.044));
 	const [cx, cy] = at(0.36, 0.03);
 	const clamp = rbox(0.1, 0.26, 0.2, 0.025, 2).applyMatrix4(new THREE.Matrix4().makeTranslation(cx, cy, 0));
 	return { copper: lathe(outline), dark: lathe(band), chrome: clamp };
