@@ -140,6 +140,27 @@ describe('the brain as a machine', () => {
 		expect(least, where).toBeGreaterThan(0.02);
 	});
 
+	it('seats every cushion in a gasket that nothing else touches', () => {
+		// (Only the points its faces use: where a cushion has no seat, the seat has points and no faces.)
+		const use = new Map<number, number>();
+		for (const i of solved.seat.index) if (!use.has(i)) use.set(i, use.size);
+		const points = new Float32Array(use.size * 3);
+		for (const [i, k] of use) points.set(solved.seat.position.subarray(i * 3, i * 3 + 3), k * 3);
+		const seat: Soup = { p: points, tri: solved.seat.index.map((i) => use.get(i)!) };
+		// A plate stands a hair inside its own seat and a gap from any other, at rest and risen.
+		let least = Infinity;
+		let where = '';
+		for (let k = 0; k < plates.length; k++)
+			for (const share of [0, 1]) {
+				const { gap, at } = clearance(raised(k, share), seat, 0.05);
+				if (gap < least) [least, where] = [gap, `${solved.plates[k].name} at ${at.map((x) => x.toFixed(2))}`];
+			}
+		expect(least, where).toBeGreaterThan(0.006);
+		const works = together([...machines.map((x) => x.fixed), ...machines.flatMap((x) => (x.wound ? [x.wound] : [])), below, drum, mid]);
+		const { gap, at } = clearance(seat, works, 0.05);
+		expect(gap, `a seat and the works at ${at.map((x) => x.toFixed(2))}`).toBeGreaterThan(0.004);
+	});
+
 	it('stands every machine clear of every other, and of what holds the halves', () => {
 		// Two machines may share one pivot, where the design says so: the arm along the arch ends on the first pin of the links.
 		const joined = (a: Machine, b: Machine) => a.name === 'arch' && b.name === 'arch';

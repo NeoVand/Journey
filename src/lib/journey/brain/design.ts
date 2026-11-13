@@ -203,9 +203,9 @@ export const GYRI: Gyrus[] = [
 		R(5.1, 0.58, 0.22), R(4.5, 0.64, 0.24), R(3.8, 0.66, 0.24), R(3.1, 0.68, 0.24), R(2.4, 0.64, 0.24), R(1.8, 0.44, 0.26), R(1.2, 0.2, 0.3), R(0.5, 0.14, 0.31), R(-0.1, 0.14, 0.28)
 	]),
 	gyrus('R', 'yellow', [R(5.2, -0.1, 0.26), R(4.6, -0.1, 0.31), R(3.9, -0.1, 0.32), R(3.2, -0.1, 0.32), R(2.5, -0.08, 0.3), R(1.95, -0.04, 0.24)]),
-	// The yellow arch over the small eye, which goes on down the front and takes the fissure after the blue.
+	// The yellow round the front, past the small eye, which takes the fissure after the blue.
 	gyrus('D2', 'yellow', [
-		S(1094, 196, 12), R(2.95, 1.5, 0.3), R(2.55, 1.32, 0.36), R(2.05, 1.26, 0.38), R(1.55, 1.24, 0.38), R(1.05, 1.16, 0.36), R(0.55, 0.9, 0.33), R(0.1, 0.68, 0.3), R(-0.4, 0.42, 0.29),
+		R(2.95, 1.5, 0.3), R(2.55, 1.32, 0.36), R(2.05, 1.26, 0.38), R(1.55, 1.24, 0.38), R(1.05, 1.16, 0.36), R(0.55, 0.9, 0.33), R(0.1, 0.68, 0.3), R(-0.4, 0.42, 0.29),
 		R(-0.9, 0.22, 0.29), R(-1.45, 0.16, 0.26)
 	]),
 	// The yellow arch at the back, over the block there.
@@ -428,8 +428,11 @@ for (const x of [0.2, 0.75, 1.3]) for (const z of [0.2, 0.75, 1.25]) between.pus
 // The blocks in the fissure are a little wider than the fissure, so the cushions' walls part round each.
 for (const b of FISSURE_BLOCKS) {
 	const a = (b.lean * Math.PI) / 180;
-	for (let k = -1; k <= 1; k++) between.push({ at: [b.at[0] + Math.cos(a) * k * b.size[0] * 0.3, b.at[1] + Math.sin(a) * k * b.size[0] * 0.3, 0], r: b.size[2] / 2 + 0.2 });
+	for (let k = -1; k <= 1; k++) between.push({ at: [b.at[0] + Math.cos(a) * k * b.size[0] * 0.3, b.at[1] + Math.sin(a) * k * b.size[0] * 0.3, 0], r: b.size[2] / 2 + 0.28 });
 }
+
+// The intake's saddle lies on the core round the intake, under the cushions there.
+between.push({ at: [PORT.x, PORT.rim - 0.8, 0], r: PORT.r + 0.82, low: true });
 
 /** What the cushions must keep clear of. */
 export const BALLS: Ball[] = [...MACHINES.flatMap(envelope), ...between];

@@ -16,7 +16,7 @@ export const MID_Y = 416;
 /** The drawing shows a cushion's edge where its top turns over into its side: about this far off the core. */
 const EDGE = 0.2;
 /** The drawing sees a place only while it faces the drawing at least this much; nearer the horizon it is not to be trusted. */
-const FACING = 0.3;
+export const FACING = 0.2;
 /** Nothing is ever said to be further from an edge than this, in pixels. */
 const FAR = 90;
 const CELL = 30;

@@ -423,7 +423,14 @@ export class Brain {
 		const cushions = new THREE.Mesh(geo, tissue);
 		cushions.name = 'cushions';
 		cushions.onBeforeRender = (_r, _s, camera) => (this.viewer = camera);
-		const meshes: THREE.Mesh[] = [cushions, this.buildCore()];
+		// The seats the cushions sit in: dark rubber, fixed to the core.
+		const seatGeo = new THREE.BufferGeometry();
+		seatGeo.setAttribute('position', new THREE.BufferAttribute(solved.seat.position, 3));
+		seatGeo.setIndex(new THREE.BufferAttribute(solved.seat.index, 1));
+		seatGeo.computeVertexNormals();
+		const seats = new THREE.Mesh(seatGeo, new THREE.MeshStandardMaterial({ color: '#12141b', roughness: 0.42, metalness: 0.25, side: THREE.DoubleSide }));
+		seats.name = 'seats';
+		const meshes: THREE.Mesh[] = [cushions, this.buildCore(), seats];
 
 		// The works: every machine's parts by finish.
 		const built = build(MACHINES);

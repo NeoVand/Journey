@@ -15,7 +15,7 @@
  * where a cushion rolls over into the fissure it is cut off flat, so the two halves face each other with level walls.
  */
 import { chartStep, RIM, shell, type V3 } from './shell';
-import { drawn, type Tone } from './tones';
+import { drawn, FACING, type Tone } from './tones';
 
 export type { Tone };
 
@@ -33,6 +33,8 @@ export interface Gyrus {
 export interface Ball {
 	at: V3;
 	r: number;
+	/** Not in a cushion's way: something low lies on the core inside this ball, which the cushions float over. They have no seats there. */
+	low?: boolean;
 }
 
 export interface Fit {
@@ -65,7 +67,7 @@ export interface Fit {
 	inset: number;
 }
 
-export const FIT: Fit = { gap: 0.1, clear: 0.07, grow: 0.3, slack: 0.1, seam: 0.022, plate: 1.25, trim: RIM - 0.004, face: 0.17, drawn, inset: 0.03 };
+export const FIT: Fit = { gap: 0.1, clear: 0.07, grow: 0.3, slack: 0.1, seam: 0.022, plate: 1.25, trim: RIM - 0.004, face: 0.17, drawn, inset: 0.02 };
 
 /** How far apart the stations along a middle line are, and how many steps a cushion's side takes from foot to crest. */
 const STATION = 0.085;
@@ -85,6 +87,10 @@ const FAN = 14;
 const SEATED = 0.09;
 /** How stiff the fair curve of a cushion's width is: it follows what is longer than about one of the brain's units and lets go of what is shorter. */
 const STIFF = 14;
+/** How stiff the fair curve of a middle line is: it keeps bends longer than about three quarters of a unit and takes out anything shorter. */
+const SWEEP = 4;
+/** A seat: how far it stands off its cushion's foot, how wide it may be, and how high. It is never nearer another cushion's foot or a machine than its own standing-off. */
+const SEAT = { off: 0.012, wide: 0.1, high: 0.088 };
 /** A walk stopped by the drawing's own edge: a measurement of the cushion as drawn. */
 const DRAWN = 6;
 /** In the drawing's sight no cushion reaches further from its middle line than this: it would be in another cushion of its colour. */
@@ -117,6 +123,11 @@ export interface Cushions {
 	/** Per vertex: which plate it belongs to. */
 	plate: Uint16Array;
 	index: Uint32Array;
+	/**
+	 * The seats: a low dark gasket round the foot of every cushion, fixed to the core. A plate rises out of its seat and
+	 * settles back into it; the seat stays. Its faces have points of their own, so they meet in edges.
+	 */
+	seat: { position: Float32Array; index: Uint32Array };
 	plates: Plate[];
 	/**
 	 * Each cushion's solved outline, as places on the chart, for drawing the plan: and for each place on it, what stopped
@@ -215,24 +226,35 @@ function stations(g: Gyrus, fit: Fit, room: (st: Station, tone: Tone) => number)
 	// In the drawing's sight a middle line belongs inside a cushion of its own colour. Where ours runs beside one, it is
 	// moved sideways into it, by the least that will do.
 	if (fit.drawn) {
-		for (const st of traced) {
-			const seen = fit.drawn(g.tone, st.p, st.n);
-			if (seen === null || seen > SEATED) continue;
+		const off = traced.map((st) => {
+			const seen = fit.drawn!(g.tone, st.p, st.n);
+			if (seen === null || seen > SEATED) return 0;
 			let best = seen;
-			let to: [number, number] | null = null;
+			let to = 0;
 			search: for (let d = 0.03; d <= 0.5; d += 0.03)
 				for (const side of [1, -1]) {
 					const [du, dv] = chartStep(st.u, st.v, st.b[0] * d * side, st.b[1] * d * side, st.b[2] * d * side, jac);
 					shell(st.u + du, st.v + dv, spot, face);
-					const there = fit.drawn(g.tone, spot, face);
+					const there = fit.drawn!(g.tone, spot, face);
 					if (there === null || there <= best) continue;
 					best = there;
-					to = [st.u + du, st.v + dv];
+					to = d * side;
 					if (there > SEATED) break search;
 				}
 			// (Where the cushion is too narrow to be well inside anywhere, the middle of it will do.)
-			if (to) [st.u, st.v] = to;
+			return to;
+		});
+		// The line moves over as a whole, smoothly: each place by about what its neighbours need too, so it stays one sweep.
+		for (let pass = 0; pass < 30; pass++) {
+			const was = off.slice();
+			for (let i = 0; i < off.length; i++) off[i] = (was[Math.max(0, i - 1)] + 2 * was[i] + was[Math.min(off.length - 1, i + 1)]) / 4;
 		}
+		traced.forEach((st, i) => {
+			if (Math.abs(off[i]) < 1e-4) return;
+			const [du, dv] = chartStep(st.u, st.v, st.b[0] * off[i], st.b[1] * off[i], st.b[2] * off[i], jac);
+			st.u += du;
+			st.v += dv;
+		});
 		frame(traced);
 	}
 	// A middle line may be drawn through a machine's pocket or out over the rim. The cushion is each stretch of it that has
@@ -426,7 +448,7 @@ function walk(near: Near, me: number, u: number, v: number, dir: V3, fit: Fit, m
 			// of the same colour, where the drawing runs two together, its gap.
 			// Near the edge of the drawing's sight, where a cushion beside it may be one the drawing cannot place, it also keeps
 			// to its own side of the line between their two middles, as it does out of sight; well in sight that falls away.
-			const edge = Math.max(0, (face[2] - 0.3) / 0.25) * 9;
+			const edge = Math.max(0, (face[2] - FACING - 0.1) / 0.2);
 			rooms = [9, Math.min((near.same - near.mine - fit.gap) / 2, (near.other - near.mine - fit.gap) / 2 + edge), near.machine - fit.clear, (fit.trim - rho) * 2.5, Math.min(most, WIDEST) - t, fit.keep ? fit.keep(spot) : 9, seen - fit.inset];
 		} else {
 			// Where it has grown past its designed shape it keeps further from the works, by more the further it has grown.
@@ -515,28 +537,30 @@ export function fair(y: number[], stiff: number) {
 }
 
 /**
- * Makes a run of reaches a smooth one without ever lengthening any: each first takes the least of its neighbours within
- * `half` either side, and then, twice over, the average of its neighbours, over stretches that add up to no more than
- * that. Every reach in an average is then one that was no longer than the reach it replaces.
+ * Makes a run of reaches a clean one without ever lengthening any: the fair curve through them, lowered just where it
+ * would pass over one, by a bump that is itself smooth. Out of the drawing's sight a cushion's reach is set by what
+ * stands near it, and must not grow; but its edge should be one sweep there too, and not the trace of every neighbour.
  */
 function eased(reach: number[], closed: boolean, half = 4) {
 	const n = reach.length;
-	const pick = (list: number[], j: number) => (closed ? list[((j % n) + n) % n] : list[Math.max(0, Math.min(n - 1, j))]);
-	let now = reach.map((_, i) => {
-		let least = Infinity;
-		for (let k = -half; k <= half; k++) least = Math.min(least, pick(reach, i + k));
-		return least;
+	if (n < 5) return;
+	// Round a closed run the curve is found with some of the run laid on at either end, so it has no ends.
+	const lap = closed ? Math.min(n, 12) : 0;
+	const long = closed ? [...reach.slice(n - lap), ...reach, ...reach.slice(0, lap)] : reach;
+	const curve = fair(long, STIFF * (half / 4) ** 2);
+	const over = long.map((r, i) => Math.max(0, curve[i] - r));
+	const m = long.length;
+	const pick = (list: number[], j: number) => list[Math.max(0, Math.min(m - 1, j))];
+	const most = over.map((_, i) => {
+		let top = 0;
+		for (let k = -half; k <= half; k++) top = Math.max(top, pick(over, i + k));
+		return top;
 	});
-	for (const span of [Math.ceil(half / 2), Math.floor(half / 2)]) {
-		if (!span) continue;
-		const was = now;
-		now = was.map((_, i) => {
-			let sum = 0;
-			for (let k = -span; k <= span; k++) sum += pick(was, i + k);
-			return sum / (2 * span + 1);
-		});
+	for (let i = 0; i < n; i++) {
+		let sum = 0;
+		for (let k = -half; k <= half; k++) sum += pick(most, i + lap + k);
+		reach[i] = Math.max(0, Math.min(reach[i], curve[i + lap] - sum / (2 * half + 1)));
 	}
-	for (let i = 0; i < n; i++) reach[i] = now[i];
 }
 
 /* ---- the plates ---- */
@@ -599,7 +623,9 @@ function raised(u: number, v: number, h: number, face = -Infinity): V3 {
 }
 
 /** Solves every cushion and builds its plates. */
-export function solve(gyri: Gyrus[], balls: Ball[], fit: Fit = FIT): Cushions {
+export function solve(gyri: Gyrus[], every: Ball[], fit: Fit = FIT): Cushions {
+	const balls = every.filter((b) => !b.low);
+	const low = every.filter((b) => b.low);
 	// What stands in the way of a middle line: the machines, and the rim.
 	const guard = new Near();
 	for (const b of balls) guard.add(b.at, b.r, -1);
@@ -643,6 +669,8 @@ export function solve(gyri: Gyrus[], balls: Ball[], fit: Fit = FIT): Cushions {
 	if (cut) near = gather();
 
 	const mesh = new Mesh();
+	const seatAt: number[] = [];
+	const seatIndex: number[] = [];
 	const plates: Plate[] = [];
 	const outlines: Cushions['outlines'] = [];
 	const crests: Cushions['crests'] = [];
@@ -699,6 +727,29 @@ export function solve(gyri: Gyrus[], balls: Ball[], fit: Fit = FIT): Cushions {
 				}
 				frame(list);
 			}
+		}
+
+		// Moved here and there to sit in its cushion, the middle line is made one sweep again: the fair curve through its
+		// stations, with the stations set evenly along it. (A cushion's edges are measured out from this line, square to it: a
+		// kink in the line would be a tear in the cushion.)
+		if (fit.drawn && list.length >= 5) {
+			const us = fair(list.map((st) => st.u), SWEEP);
+			const vs = fair(list.map((st) => st.v), SWEEP);
+			const at: V3[] = us.map((u, i) => {
+				shell(u, vs[i], spot, face);
+				return [spot[0], spot[1], spot[2]];
+			});
+			const far = [0];
+			for (let i = 1; i < at.length; i++) far.push(far[i - 1] + Math.hypot(at[i][0] - at[i - 1][0], at[i][1] - at[i - 1][1], at[i][2] - at[i - 1][2]));
+			let j = 0;
+			list.forEach((st, i) => {
+				const want = (far[far.length - 1] * i) / (list.length - 1);
+				while (j < far.length - 2 && far[j + 1] < want) j++;
+				const k = Math.max(0, Math.min(1, (want - far[j]) / (far[j + 1] - far[j] || 1)));
+				st.u = us[j] + (us[j + 1] - us[j]) * k;
+				st.v = vs[j] + (vs[j + 1] - vs[j]) * k;
+			});
+			frame(list);
 		}
 
 		// A middle line that has come out of its own colour in the drawing has no cushion there: the cushion is its longest
@@ -849,14 +900,116 @@ export function solve(gyri: Gyrus[], balls: Ball[], fit: Fit = FIT): Cushions {
 		eased(reach, true, 3);
 		rays.forEach((_, i) => exact[i] && (reach[i] = folded[i]));
 		paired();
+		// A cut's two faces are a seam apart at the middle line, and stay so out along the section only while the core does not
+		// turn away under them. Where it does, round the roll into the fissure, the section there is drawn in until its two
+		// faces are a seam apart at their feet as well.
+		for (const i of starts)
+			for (const side of [(k: number) => k, leftOf]) {
+				for (let pass = 0; pass < 16; pass++) {
+					const a = raised(...along(rays[side(i - 1)].walk, reach[side(i - 1)]), 0);
+					const b = raised(...along(rays[side(i)].walk, reach[side(i)]), 0);
+					if (Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) > fit.seam * 0.75) break;
+					reach[side(i)] = reach[side(i - 1)] = reach[side(i)] * 0.9;
+				}
+			}
 
 		// How high it stands along its length: as high as designed where it is wide enough, lower where it narrows.
-		const tall = g.height ?? 0.31;
+		const tall = g.height ?? 0.35;
 		const high = list.map((_, i) => Math.min(tall, 0.06 + 1.1 * Math.min(reach[i], reach[2 * n + FAN - 2 - i])));
 		eased(high, false);
 		for (const i of starts) high[i] = high[i - 1] = Math.min(high[i], high[i - 1]);
 
 		outlines.push({ name: g.name, tone: g.tone, edge: rays.map((r, i) => along(r.walk, reach[i])), spine: list.map((st) => [st.u, st.v]), why: rays.map((r) => r.walk.why), walked: rays.map((r) => r.walk.reach), reach: reach.slice() });
+
+		// The seat round this cushion: out from each line's foot, as wide as there is room for before another cushion's foot
+		// or a machine; then that width made one sweep round the cushion, never wider.
+		{
+			const other: Tone = g.tone === 'yellow' ? 'blue' : 'yellow';
+			const wide = rays.map((ray, ri) => {
+				let got = 0;
+				for (let d = 0.025; d <= SEAT.wide + 1e-6; d += 0.0125) {
+					const [u, v] = along(ray.walk, reach[ri] + d);
+					shell(u, v, spot, face);
+					near.measure(spot, me);
+					if (near.machine < SEAT.off || Math.hypot(u, v) > fit.trim) break;
+					const seen = fit.drawn ? fit.drawn(other, spot, face) : null;
+					// (The same rules the cushions themselves were cut by, each a seat's standing-off short of the next cushion's foot.)
+					const between = (near.other - near.mine - fit.gap) / 2;
+					const edge = Math.max(0, (face[2] - FACING - 0.1) / 0.2);
+					if (seen !== null ? seen > -SEAT.off || (near.same - near.mine - fit.gap) / 2 < -(fit.gap - SEAT.off) || between + edge < -(fit.gap - SEAT.off) : between < -(fit.gap - SEAT.off)) break;
+					got = d;
+				}
+				return got;
+			});
+			eased(wide, true, 3);
+			const m = rays.length;
+			const base = seatAt.length / 3;
+			// The seat stands its hair off the cushion's foot measured square to the foot's edge. Where the edge runs askew to
+			// the lines out from the middle, as it does round a tip, that is further along the line.
+			const feet = rays.map((ray, ri) => raised(...along(ray.walk, reach[ri]), 0));
+			const off = rays.map((ray, ri) => {
+				const edge = sub(feet[(ri + 1) % m], feet[(ri + m - 1) % m]);
+				const out = sub(feet[ri], list[ray.st].p);
+				const square = Math.hypot(...cross(edge, out)) / (Math.hypot(...edge) * Math.hypot(...out) || 1);
+				return Math.min(0.07, SEAT.off / Math.max(0.17, square));
+			});
+			// And measured, not trusted: each place of the seat's inside wall against the whole edge of the foot. Where it comes
+			// nearer than its hair, it stands further off along its line, until it does not.
+			const toFoot = (q: V3) => {
+				let least = Infinity;
+				for (let k = 0; k < m; k++) {
+					const a = feet[k];
+					if (Math.abs(a[0] - q[0]) + Math.abs(a[1] - q[1]) + Math.abs(a[2] - q[2]) > 0.5) continue;
+					const ab = sub(feet[(k + 1) % m], a);
+					const t = Math.max(0, Math.min(1, dot(sub(q, a), ab) / (dot(ab, ab) || 1)));
+					least = Math.min(least, Math.hypot(q[0] - a[0] - ab[0] * t, q[1] - a[1] - ab[1] * t, q[2] - a[2] - ab[2] * t));
+				}
+				return least;
+			};
+			const wallAt = (ri: number) => raised(...along(rays[ri].walk, reach[ri] + off[ri]), 0);
+			rays.forEach((_, ri) => {
+				for (let pass = 0; pass < 8 && toFoot(wallAt(ri)) < SEAT.off * 0.92; pass++) off[ri] = off[ri] * 1.3 + 0.002;
+			});
+			// The other way about as well: each corner of the foot against the stretches of the wall beside it.
+			for (let pass = 0; pass < 8; pass++) {
+				let moved = false;
+				const wall = rays.map((_, ri) => wallAt(ri));
+				for (let k = 0; k < m; k++)
+					for (let j = k - 3; j <= k + 2; j++) {
+						const a = wall[(j + m) % m];
+						const ab = sub(wall[(j + 1 + m) % m], a);
+						const t = Math.max(0, Math.min(1, dot(sub(feet[k], a), ab) / (dot(ab, ab) || 1)));
+						if (Math.hypot(feet[k][0] - a[0] - ab[0] * t, feet[k][1] - a[1] - ab[1] * t, feet[k][2] - a[2] - ab[2] * t) >= SEAT.off * 0.92) continue;
+						for (const r of [(j + m) % m, (j + 1 + m) % m]) off[r] = off[r] * 1.25 + 0.002;
+						moved = true;
+					}
+				if (!moved) break;
+			}
+			const bare: boolean[] = [];
+			rays.forEach((ray, ri) => {
+				const gone = (bare[ri] = wide[ri] < off[ri] + 0.02 || low.some((b) => Math.hypot(feet[ri][0] - b.at[0], feet[ri][1] - b.at[1], feet[ri][2] - b.at[2]) < b.r));
+				const w = gone ? off[ri] : wide[ri];
+				const top = gone ? 0 : Math.min(SEAT.high, FLOAT + 0.9 * high[ray.st]);
+				const r = reach[ri];
+				// Inside wall, top, and the slope down to the core: two points for each, so each face is its own.
+				const section: [number, number][] = [
+					[r + off[ri], 0],
+					[r + off[ri], top],
+					[r + off[ri], top],
+					[r + off[ri] + (w - off[ri]) * 0.5, top],
+					[r + off[ri] + (w - off[ri]) * 0.5, top],
+					[r + w, 0.003]
+				];
+				for (const [out, up] of section) seatAt.push(...raised(...along(ray.walk, out), up, fit.face));
+			});
+			for (let ri = 0; ri < m; ri++) {
+				const a = base + ri * 6;
+				const b = base + ((ri + 1) % m) * 6;
+				// (Where there is no seat on either hand, there is nothing.)
+				if (bare[ri] && bare[(ri + 1) % m]) continue;
+				for (const f of [0, 2, 4]) seatIndex.push(a + f, b + f, b + f + 1, a + f, b + f + 1, a + f + 1);
+			}
+		}
 		const plateOf: number[] = [];
 		cuts.forEach((to, k) => {
 			while (plateOf.length < to) plateOf.push(plates.length + k);
@@ -955,5 +1108,5 @@ export function solve(gyri: Gyrus[], balls: Ball[], fit: Fit = FIT): Cushions {
 		});
 	});
 
-	return { position: new Float32Array(mesh.position), rise: new Float32Array(mesh.rise), plate: new Uint16Array(mesh.plate), index: new Uint32Array(mesh.index), plates, outlines, crests };
+	return { position: new Float32Array(mesh.position), rise: new Float32Array(mesh.rise), plate: new Uint16Array(mesh.plate), index: new Uint32Array(mesh.index), seat: { position: new Float32Array(seatAt), index: new Uint32Array(seatIndex) }, plates, outlines, crests };
 }
