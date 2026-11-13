@@ -15,7 +15,7 @@
  * where a cushion rolls over into the fissure it is cut off flat, so the two halves face each other with level walls.
  */
 import { chartStep, RIM, shell, type V3 } from './shell';
-import { drawn, sight, type Tone } from './tones';
+import { drawn, shared, sight, type Tone } from './tones';
 
 export type { Tone };
 
@@ -320,31 +320,25 @@ function laid(fine: Station[], fit: Fit): { list: Station[]; cuts: number[] } {
 
 /* ---- who is near a place ---- */
 
-/**
- * Every cushion's designed shape and every machine's envelope as balls, sorted into a grid: for a place, how far it is
- * inside or outside one cushion's shape, the nearest other cushion's, and the nearest machine's.
- */
-class Near {
+/** How far off a ball's surface a place can be and the ball still be looked for. */
+const REACH = 0.9;
+
+/** Balls sorted into a grid, so that those near a place are found without going through them all. */
+class Grid {
 	private cell = 0.6;
 	private lo: V3 = [Infinity, Infinity, Infinity];
 	private size: [number, number, number] = [1, 1, 1];
-	private start!: Int32Array;
-	private items!: Int32Array;
-	private x: number[] = [];
-	private y: number[] = [];
-	private z: number[] = [];
-	private r: number[] = [];
-	private owner: number[] = [];
-	/** Each cushion's colour, by its number. */
-	tones: Tone[] = [];
-	/** The widest ball: a search need go no further than this past what it has found. */
-	private widest = 0;
-	self = 0;
-	mine = 0;
-	other = 0;
-	/** The same as `other`, for the nearest other cushion of this one's own colour. */
-	same = 0;
-	machine = 0;
+	start = new Int32Array(1);
+	items = new Int32Array(0);
+	x: number[] = [];
+	y: number[] = [];
+	z: number[] = [];
+	r: number[] = [];
+	owner: number[] = [];
+	/** The widest ball: a search need go no further than this past what it is looking for. */
+	widest = 0;
+	/** The cells a search found, from and to along each axis. */
+	box = [0, 0, 0, 0, 0, 0];
 
 	add(p: V3, r: number, owner: number) {
 		this.x.push(p[0]);
@@ -357,6 +351,7 @@ class Near {
 
 	build() {
 		const n = this.x.length;
+		if (!n) return;
 		const hi: V3 = [-Infinity, -Infinity, -Infinity];
 		const co = [this.x, this.y, this.z];
 		for (let i = 0; i < n; i++)
@@ -375,48 +370,96 @@ class Near {
 		for (let i = 0; i < n; i++) this.items[fill[home(i)]++] = i;
 	}
 
-	private at(i: number, j: number, k: number) {
+	at(i: number, j: number, k: number) {
 		return (i * this.size[1] + j) * this.size[2] + k;
+	}
+
+	/** The cells within reach of a place (into `box`); false if there are none. */
+	round(p: V3, reach: number) {
+		if (!this.items.length) return false;
+		const c = this.cell;
+		const b = this.box;
+		for (let k = 0; k < 3; k++) {
+			b[k * 2] = Math.max(0, Math.floor((p[k] - reach - this.lo[k]) / c));
+			b[k * 2 + 1] = Math.min(this.size[k] - 1, Math.floor((p[k] + reach - this.lo[k]) / c));
+		}
+		return true;
+	}
+}
+
+/**
+ * Every cushion's designed shape and every machine's envelope as balls: for a place, how far it is inside or outside
+ * one cushion's shape, the nearest other cushion's, and the nearest machine's.
+ */
+class Near {
+	/** The cushions' balls and the machines', each in a grid of its own: they are looked for to different distances. */
+	private cushions = new Grid();
+	private works = new Grid();
+	/** Each cushion's colour, by its number. */
+	tones: Tone[] = [];
+	self = 0;
+	mine = 0;
+	other = 0;
+	/** The same as `other`, for the nearest other cushion of this one's own colour. */
+	same = 0;
+	machine = 0;
+
+	add(p: V3, r: number, owner: number) {
+		(owner < 0 ? this.works : this.cushions).add(p, r, owner);
+	}
+
+	build() {
+		this.cushions.build();
+		this.works.build();
 	}
 
 	/**
 	 * Measures a place for cushion `me`: sets self and machine, each a distance to a surface (negative, inside), and mine
-	 * and other, the distances that say whose a place is between two cushions.
+	 * and other, the distances that say whose a place is between two cushions. Nothing further off than REACH counts:
+	 * whatever is, is said to be 9 away.
 	 */
 	measure(p: V3, me: number) {
-		const reach = this.widest + 0.9;
-		const c = this.cell;
-		const i0 = Math.max(0, Math.floor((p[0] - reach - this.lo[0]) / c));
-		const i1 = Math.min(this.size[0] - 1, Math.floor((p[0] + reach - this.lo[0]) / c));
-		const j0 = Math.max(0, Math.floor((p[1] - reach - this.lo[1]) / c));
-		const j1 = Math.min(this.size[1] - 1, Math.floor((p[1] + reach - this.lo[1]) / c));
-		const k0 = Math.max(0, Math.floor((p[2] - reach - this.lo[2]) / c));
-		const k1 = Math.min(this.size[2] - 1, Math.floor((p[2] + reach - this.lo[2]) / c));
 		let self = 9;
 		let mine = 9;
 		let other = 9;
 		let same = 9;
 		let machine = 9;
 		const tone = this.tones[me];
-		for (let i = i0; i <= i1; i++)
-			for (let j = j0; j <= j1; j++)
-				for (let k = k0; k <= k1; k++) {
-					const cc = this.at(i, j, k);
-					for (let e = this.start[cc]; e < this.start[cc + 1]; e++) {
-						const q = this.items[e];
-						const far = Math.hypot(this.x[q] - p[0], this.y[q] - p[1], this.z[q] - p[2]);
-						const o = this.owner[q];
-						if (o === me) {
-							if (far - this.r[q] < self) self = far - this.r[q];
-							if (far - this.r[q] * SHARE < mine) mine = far - this.r[q] * SHARE;
-						} else if (o < 0) {
-							if (far - this.r[q] < machine) machine = far - this.r[q];
-						} else {
-							if (far - this.r[q] * SHARE < other) other = far - this.r[q] * SHARE;
-							if (far - this.r[q] * SHARE < same && this.tones[o] === tone) same = far - this.r[q] * SHARE;
+		const g = this.cushions;
+		if (g.round(p, g.widest + REACH)) {
+			const b = g.box;
+			for (let i = b[0]; i <= b[1]; i++)
+				for (let j = b[2]; j <= b[3]; j++)
+					for (let k = b[4]; k <= b[5]; k++) {
+						const cc = g.at(i, j, k);
+						for (let e = g.start[cc]; e < g.start[cc + 1]; e++) {
+							const q = g.items[e];
+							const far = Math.hypot(g.x[q] - p[0], g.y[q] - p[1], g.z[q] - p[2]);
+							const o = g.owner[q];
+							if (o === me) {
+								if (far - g.r[q] < self) self = far - g.r[q];
+								if (far - g.r[q] * SHARE < mine) mine = far - g.r[q] * SHARE;
+							} else {
+								if (far - g.r[q] * SHARE < other) other = far - g.r[q] * SHARE;
+								if (far - g.r[q] * SHARE < same && this.tones[o] === tone) same = far - g.r[q] * SHARE;
+							}
 						}
 					}
-				}
+		}
+		const w = this.works;
+		if (w.round(p, w.widest + REACH)) {
+			const b = w.box;
+			for (let i = b[0]; i <= b[1]; i++)
+				for (let j = b[2]; j <= b[3]; j++)
+					for (let k = b[4]; k <= b[5]; k++) {
+						const cc = w.at(i, j, k);
+						for (let e = w.start[cc]; e < w.start[cc + 1]; e++) {
+							const q = w.items[e];
+							const far = Math.hypot(w.x[q] - p[0], w.y[q] - p[1], w.z[q] - p[2]) - w.r[q];
+							if (far < machine) machine = far;
+						}
+					}
+		}
 		this.self = self;
 		this.mine = mine;
 		this.other = other;
@@ -464,7 +507,9 @@ function walk(near: Near, me: number, u: number, v: number, dir: V3, fit: Fit, m
 			// that falls away, and across a real channel, or a pocket, the edge is the drawn edge.
 			// (The hairline is wider on the roll into the fissure: the drawings are measured a little off the core, and there
 			// the core turns so tightly that feet stand closer than what is measured above them.)
-			const apart = APART * (1 + 0.9 * Math.max(0, Math.min(1, (rho - 0.93) / 0.07)));
+			// (And wider where two drawings share the say: what is measured there is a blend of two distances, and can change
+			// faster over the core than either.)
+			const apart = APART * (1 + 0.9 * Math.max(0, Math.min(1, (rho - 0.93) / 0.07)) + 2 * shared(face));
 			let own = seen - fit.inset;
 			if (seen < 0.2) {
 				const beside = fit.drawn!(tone === 'yellow' ? 'blue' : 'yellow', spot, face) ?? -9;
@@ -758,6 +803,29 @@ export function solve(gyri: Gyrus[], every: Ball[], fit: Fit = FIT): Cushions {
 				}
 				frame(list);
 			}
+			// Where it is not its own tip that ends a cushion but the next cushion, or a machine, the line stops short of it: far
+			// enough back for the cushion to close in a round end of its own, and not be cut off square.
+			let drew = false;
+			for (let k = 0; k < 12 && list.length > 8; k++) {
+				const st = far ? list[list.length - 1] : list[0];
+				if (!fit.drawn || fit.drawn(g.tone, st.p, st.n) === null) break;
+				const on: V3 = far ? st.t : [-st.t[0], -st.t[1], -st.t[2]];
+				const ahead = walk(near, me, st.u, st.v, on, fit);
+				if (ahead.why !== 1 && ahead.why !== 2) break;
+				const wide = Math.max(walk(near, me, st.u, st.v, st.b, fit).reach, walk(near, me, st.u, st.v, [-st.b[0], -st.b[1], -st.b[2]], fit).reach);
+				if (ahead.reach >= 0.85 * wide) break;
+				if (far) list.pop();
+				else {
+					list.shift();
+					for (let c = 0; c < cuts.length; c++) cuts[c]--;
+				}
+				drew = true;
+			}
+			if (drew) {
+				const kept = cuts.filter((c, k, all) => c >= 3 && c <= list.length - 3 && c !== all[k - 1]);
+				cuts.splice(0, cuts.length, ...kept, list.length);
+				frame(list);
+			}
 		}
 
 		// Moved here and there to sit in its cushion, the middle line is made one sweep again: the fair curve through its
@@ -969,7 +1037,7 @@ export function solve(gyri: Gyrus[], every: Ball[], fit: Fit = FIT): Cushions {
 					const edge = Math.max(0, (sight(face) - 0.1) / 0.2);
 					// (And where two cushions are pressed together, short of the line half-way between them by more than the other's foot is.)
 					const mine = seen !== null ? (fit.drawn!(g.tone, spot, face) ?? 0) : 0;
-					if (seen !== null ? seen > -SEAT.off || (mine - seen) / 2 < SEAT.off + 0.008 - APART / 2 || (near.same - near.mine - fit.gap) / 2 < -(fit.gap - SEAT.off) || between + edge < -(fit.gap - SEAT.off) : between < -(fit.gap - SEAT.off)) break;
+					if (seen !== null ? seen > -SEAT.off || (mine - seen) / 2 < SEAT.off + 0.008 + shared(face) * 0.04 - APART / 2 || (near.same - near.mine - fit.gap) / 2 < -(fit.gap - SEAT.off - 0.025) || between + edge < -(fit.gap - SEAT.off - 0.025) : between < -(fit.gap - SEAT.off - 0.025)) break;
 					got = d;
 				}
 				return got;

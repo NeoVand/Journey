@@ -9,7 +9,7 @@
  * cushions leave there (see `settle`), so nothing is built until it fits.
  */
 import { chartStep, locate, RIM, shell, silhouette, stretch, CX, CY, type V3 } from './shell';
-import { LINES } from './lines';
+import { LINES, RUNS_ON } from './lines';
 import { clearOfDrawn, MID_X, MID_Y, PX } from './tones';
 import { TRACED } from './traced';
 import { envelope, SLEEVE, trace, type Machine, type Spot } from './machines';
@@ -116,49 +116,61 @@ function gyrus(name: string, tone: Tone, line: [number, number, number][], heigh
 }
 
 /*
- * The cushions the side drawing has. They all flow one way: each comes down off the top and runs forward and down over
- * the side in a long S, nested inside the one before.
+ * The cushions the side drawing has, each by the line down its middle, traced from it by hand. They all flow one way:
+ * each comes down off the top and runs forward and down over the side in a long S, nested inside the one before.
  */
-export const SIDE: Gyrus[] = [
+const TRACED_BY_HAND: [string, Tone, [number, number, number][]][] = [
 	// The great yellow S: over the top and down the middle of the side.
-	gyrus('A', 'yellow', [
+	['A', 'yellow', [
 		S(642, 82, 30), S(681, 81, 30), S(720, 88, 30),
 		S(759, 102, 32), S(796, 133, 33), S(826, 171, 30), S(865, 193, 29), S(900, 216, 30), S(937, 233, 34), S(973, 252, 38), S(999, 290, 40), S(1029, 328, 37), S(1068, 352, 26),
 		S(1107, 367, 16), S(1146, 384, 9)
-	]),
+	]],
 	// The blue inside it, from the back of the head round the eye's pocket to the underside at the front.
-	gyrus('B', 'blue', [
+	['B', 'blue', [
 		S(492, 181, 20), S(529, 155, 24), S(567, 142, 28), S(605, 141, 33), S(643, 147, 35), S(672, 177, 31), S(693, 214, 27), S(730, 246, 25), S(768, 258, 24),
 		S(806, 268, 23), S(844, 282, 23), S(879, 307, 23), S(900, 341, 24), S(931, 371, 26), S(969, 381, 27), S(1006, 392, 27), S(1038, 415, 29), S(1076, 436, 30), S(1113, 467, 32),
 		S(1132, 504, 33), S(1133, 542, 29), S(1119, 580, 24), S(1112, 618, 20)
-	]),
+	]],
 	// The blue over the great S, down past the small eye and round the block at the front.
-	gyrus('C', 'blue', [
+	['C', 'blue', [
 		S(859, 81, 24), S(896, 115, 22), S(932, 151, 18), S(970, 176, 15), S(1007, 205, 13), S(1041, 236, 13),
 		S(1068, 272, 15), S(1101, 300, 19), S(1136, 318, 20), S(1172, 334, 20), S(1205, 363, 22), S(1224, 401, 21), S(1236, 439, 22), S(1269, 463, 23)
-	]),
+	]],
 	// The yellow down from the crown to the small eye.
-	gyrus('D', 'yellow', [
+	['D', 'yellow', [
 		S(869, 45, 26), S(907, 58, 28), S(945, 82, 28), S(983, 104, 27), S(1019, 124, 28), S(1042, 157, 32), S(1058, 195, 28), S(1074, 235, 22),
 		S(1088, 264, 16)
-	]),
+	]],
 	// The yellow arch at the back, over the block there.
-	gyrus('E', 'yellow', [
+	['E', 'yellow', [
 		S(387, 338, 28), S(422, 305, 34), S(459, 283, 38), S(496, 271, 41), S(533, 270, 44), S(566, 296, 42), S(580, 333, 40), S(590, 372, 34), S(592, 400, 26)
-	]),
+	]],
 	// The long yellow under the eye.
-	gyrus('T', 'yellow', [
+	['T', 'yellow', [
 		S(490, 485, 42), S(523, 476, 43), S(562, 478, 42), S(601, 483, 40), S(640, 496, 39), S(679, 517, 38), S(718, 537, 38), S(755, 553, 37), S(794, 556, 37), S(833, 557, 37),
 		S(872, 562, 39), S(911, 567, 43), S(950, 587, 48), S(989, 619, 49), S(1028, 631, 43), S(1055, 629, 33)
-	]),
-	gyrus('U', 'yellow', [S(1222, 550, 12), S(1193, 561, 15), S(1167, 580, 10)])
+	]],
+	['U', 'yellow', [S(1222, 550, 12), S(1193, 561, 15), S(1167, 580, 10)]]
 ];
 
+/** Those cushions as the side drawing alone has them, from end to end. */
+export const SIDE: Gyrus[] = TRACED_BY_HAND.map(([name, tone, line]) => gyrus(name, tone, line));
+
 /**
- * Every cushion of one half: those, and the ones the drawings from above, from the front and from the back have where the
- * side drawing cannot see, each by the line down its middle as the drawings have it (lines.ts, found by measuring).
+ * Every cushion of one half. A cushion of the side drawing's keeps its hand-traced line as far as the side drawing is
+ * the one to believe; past that, where it runs on over the top or round the front or the back, its line runs on as the
+ * other drawings have the cushion there. And then the cushions those drawings have that the side drawing has not. Both
+ * found by measuring (lines.ts).
  */
-export const GYRI: Gyrus[] = [...SIDE, ...LINES.map((l) => gyrus(l.name, l.tone, l.line as [number, number, number][]))];
+export const GYRI: Gyrus[] = [
+	...TRACED_BY_HAND.map(([name, tone, line]) => {
+		const more = RUNS_ON.find((r) => r.name === name);
+		const run = (pts: number[][]) => pts as [number, number, number][];
+		return gyrus(name, tone, more ? [...run(more.before), ...line.slice(more.from, more.to), ...run(more.after)] : line);
+	}),
+	...LINES.map((l) => gyrus(l.name, l.tone, l.line as [number, number, number][]))
+];
 
 /**
  * A place the side drawing shows, by its pixel. The drawing looks across the brain, and a thing that stands high off

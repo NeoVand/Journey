@@ -24,6 +24,8 @@ const EDGE = 0.2;
 export const FACING = 0.2;
 /** Nothing is ever said to be further from an edge than this, in the brain's units. */
 const FAR = 0.92;
+/** Or, when it is a cushion's own edge that is being looked for and not room for a machine, than this. */
+const NEAR = 0.36;
 const CELL = 30;
 /** The side drawing is the master: where it sees a place at all, it has this many times the say of another that sees it as well. */
 const MASTER = 2;
@@ -43,10 +45,13 @@ class Field {
 	/** The cushions' own edges (not the horizon's), sorted into a grid: x0, y0, x1, y1 of each. */
 	private edges: number[] = [];
 	private grid = new Map<number, number[]>();
+	/** The same, for the edges near at hand only: most askings want no more, and this is much the quicker to go through. */
+	private near = new Map<number, number[]>();
 
 	constructor(
 		outlines: number[][],
-		private far: number
+		private far: number,
+		private close: number
 	) {
 		for (const o of outlines) {
 			const at: number[] = [];
@@ -71,21 +76,27 @@ class Field {
 	private edge(x0: number, y0: number, x1: number, y1: number) {
 		const id = this.edges.length / 4;
 		this.edges.push(x0, y0, x1, y1);
-		const reach = this.far;
-		for (let i = Math.floor((Math.min(x0, x1) - reach) / CELL); i <= Math.floor((Math.max(x0, x1) + reach) / CELL); i++)
-			for (let j = Math.floor((Math.min(y0, y1) - reach) / CELL); j <= Math.floor((Math.max(y0, y1) + reach) / CELL); j++) {
-				const key = i * 4096 + j;
-				const list = this.grid.get(key);
-				if (list) list.push(id);
-				else this.grid.set(key, [id]);
-			}
+		for (const [grid, reach] of [
+			[this.grid, this.far],
+			[this.near, this.close]
+		] as const)
+			for (let i = Math.floor((Math.min(x0, x1) - reach) / CELL); i <= Math.floor((Math.max(x0, x1) + reach) / CELL); i++)
+				for (let j = Math.floor((Math.min(y0, y1) - reach) / CELL); j <= Math.floor((Math.max(y0, y1) + reach) / CELL); j++) {
+					const key = i * 4096 + j;
+					const list = grid.get(key);
+					if (list) list.push(id);
+					else grid.set(key, [id]);
+				}
 	}
 
-	/** How far inside this colour a pixel is (below zero, outside), by the nearest edge that is a cushion's own. */
-	inside(x: number, y: number) {
-		let far = this.far;
+	/**
+	 * How far inside this colour a pixel is (below zero, outside), by the nearest edge that is a cushion's own: as far as
+	 * `far` if `wide`, and otherwise only as far as `close`, beyond which it is said to be just that far.
+	 */
+	inside(x: number, y: number, wide: boolean) {
+		let far = wide ? this.far : this.close;
 		const e = this.edges;
-		for (const id of this.grid.get(Math.floor(x / CELL) * 4096 + Math.floor(y / CELL)) ?? []) {
+		for (const id of (wide ? this.grid : this.near).get(Math.floor(x / CELL) * 4096 + Math.floor(y / CELL)) ?? []) {
 			const ax = e[id * 4];
 			const ay = e[id * 4 + 1];
 			const dx = e[id * 4 + 2] - ax;
@@ -124,8 +135,8 @@ const drawing = (traced: { yellow: number[][]; blue: number[][] }, scale: number
 	x,
 	y,
 	scale,
-	yellow: new Field(traced.yellow, FAR * scale),
-	blue: new Field(traced.blue, FAR * scale)
+	yellow: new Field(traced.yellow, FAR * scale, NEAR * scale),
+	blue: new Field(traced.blue, FAR * scale, NEAR * scale)
 });
 
 /**
@@ -137,6 +148,9 @@ const SHUT = 0.5;
 const SPREAD = 2.2;
 const shut = (z: number) => z - SHUT * Math.max(0, 1 - z / SPREAD);
 
+/** How much less the drawings from the front and from the back see of a place for each part by which it faces down. */
+const LEVEL = 0.5;
+
 /*
  * The drawings from the front and from the back look at the brain level: of a place that faces down they see little, and
  * what they show there is the brainstem and what hangs under the brain, not the brain. (Of the drawings that show both
@@ -145,8 +159,8 @@ const shut = (z: number) => z - SHUT * Math.max(0, 1 - z / SPREAD);
 const DRAWINGS: Drawing[] = [
 	drawing(TRACED, PX, MASTER, (n) => n[2], (p) => MID_X + PX * p[0], (p) => MID_Y - PX * p[1]),
 	drawing(TRACED.top, 54, 1, (n) => n[1], (p) => 548.5 + 53.4 * shut(p[2]), (p) => 307 - 54 * p[0]),
-	drawing(TRACED.front, 72.2, 1, (n) => n[0] + Math.min(0, n[1]), (p) => 551 + 72.2 * shut(p[2]), (p) => 18 + (3.92 - p[1]) * 64.9),
-	drawing(TRACED.back, 66.7, 1, (n) => -n[0] + Math.min(0, n[1]), (p) => 550 + 66.7 * shut(p[2]), (p) => 20 + (3.92 - p[1]) * 64.9)
+	drawing(TRACED.front, 72.2, 1, (n) => n[0] + LEVEL * Math.min(0, n[1]), (p) => 551 + 72.2 * shut(p[2]), (p) => 18 + (3.92 - p[1]) * 64.9),
+	drawing(TRACED.back, 66.7, 1, (n) => -n[0] + LEVEL * Math.min(0, n[1]), (p) => 550 + 66.7 * shut(p[2]), (p) => 20 + (3.92 - p[1]) * 64.9)
 ];
 
 const say = [0, 0, 0, 0];
@@ -154,6 +168,15 @@ const raised: V3 = [0, 0, 0];
 
 /** How much each drawing has to say about a place that faces this way (into `say`); the sum, or zero where none sees it. */
 function weigh(n: V3) {
+	// (Asked several times over about the same place, as a rule: the answer is kept.)
+	if (n[0] === weighed[0] && n[1] === weighed[1] && n[2] === weighed[2]) return weighed[3];
+	weighed[0] = n[0];
+	weighed[1] = n[1];
+	weighed[2] = n[2];
+	return (weighed[3] = weighing(n));
+}
+const weighed = [NaN, NaN, NaN, 0];
+function weighing(n: V3) {
 	let most = 0;
 	for (let k = 0; k < 4; k++) {
 		const w = Math.max(0, DRAWINGS[k].facing(n) - FACING) * DRAWINGS[k].weight;
@@ -171,6 +194,18 @@ function weigh(n: V3) {
 	return sum;
 }
 
+/** Whether, of a place that faces this way, the side drawing is the one with the most say. */
+export function masters(n: V3) {
+	weigh(n);
+	return say[0] > 0 && say[0] >= Math.max(say[1], say[2], say[3]);
+}
+
+/** How much of the say about a place that faces this way is not the leading drawing's: nought where one drawing rules alone, up to a half and more where two or three share it. */
+export function shared(n: V3) {
+	const sum = weigh(n);
+	return sum ? 1 - Math.max(say[0], say[1], say[2], say[3]) / sum : 0;
+}
+
 /** How surely the drawings see a place that faces this way: nought at the edge of what any of them sees, more inside it. */
 export function sight(n: V3) {
 	let most = 0;
@@ -181,7 +216,7 @@ export function sight(n: V3) {
 /** Whether the drawings can be trusted about a place of the core that faces this way. */
 export const sees = (n: V3) => sight(n) > 0;
 
-function measure(tone: Tone | null, p: V3, n: V3): number | null {
+function measure(tone: Tone | null, p: V3, n: V3, wide: boolean): number | null {
 	const sum = weigh(n);
 	if (!sum) return null;
 	raised[0] = p[0] + n[0] * EDGE;
@@ -195,7 +230,7 @@ function measure(tone: Tone | null, p: V3, n: V3): number | null {
 		const d = DRAWINGS[k];
 		const x = d.x(raised);
 		const y = d.y(raised);
-		const far = (tone ? d[tone].inside(x, y) : Math.max(d.yellow.inside(x, y), d.blue.inside(x, y))) / d.scale;
+		const far = (tone ? d[tone].inside(x, y, wide) : Math.max(d.yellow.inside(x, y, wide), d.blue.inside(x, y, wide))) / d.scale;
 		if (k === alone) return far;
 		all += say[k] * Math.max(-BLENDED, Math.min(BLENDED, far));
 	}
@@ -205,12 +240,13 @@ function measure(tone: Tone | null, p: V3, n: V3): number | null {
 /**
  * How far inside the drawings' cushions of one colour a place of the core is, in the brain's units (below zero, outside
  * them), or null where no drawing can say because the place is turned too far from all of them. Distances are measured
- * in a drawing, flat, so on the core they are never less than this.
+ * in a drawing, flat, so on the core they are never less than this; and nothing is said to be further than NEAR from an
+ * edge.
  */
-export const drawn = (tone: Tone, p: V3, n: V3): number | null => measure(tone, p, n);
+export const drawn = (tone: Tone, p: V3, n: V3): number | null => measure(tone, p, n, false);
 
 /** How far outside every drawn cushion a place is (below zero, under one), or null where no drawing can say. */
 export function clearOfDrawn(p: V3, n: V3): number | null {
-	const far = measure(null, p, n);
+	const far = measure(null, p, n, true);
 	return far === null ? null : -far;
 }
