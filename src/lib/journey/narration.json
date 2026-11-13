@@ -51,6 +51,14 @@
 		"title": "Bigger on the inside",
 		"seconds": 155.4
 	},
+	"harness-every-call-stops-at-the-gate": {
+		"title": "Every call stops at the gate",
+		"seconds": 168.2
+	},
+	"harness-everything-but-the-thinking": {
+		"title": "Everything but the thinking",
+		"seconds": 159.1
+	},
 	"harness-everything-is-written-down": {
 		"title": "Everything is written down",
 		"seconds": 152.3
@@ -59,9 +67,25 @@
 		"title": "Packed fresh, every turn",
 		"seconds": 157.5
 	},
+	"harness-rooms-inside-rooms": {
+		"title": "Rooms inside rooms",
+		"seconds": 154.2
+	},
 	"harness-round-and-round": {
 		"title": "Round and round",
 		"seconds": 160.3
+	},
+	"harness-squeezed-but-still-on-record": {
+		"title": "Squeezed, but still on record",
+		"seconds": 162.4
+	},
+	"harness-the-whole-tray-every-turn": {
+		"title": "The whole tray, every turn",
+		"seconds": 158.2
+	},
+	"harness-up-the-tube-down-the-chute": {
+		"title": "Up the tube, down the chute",
+		"seconds": 150.9
 	},
 	"how-a-coding-agent-works": {
 		"title": "How a coding agent works",

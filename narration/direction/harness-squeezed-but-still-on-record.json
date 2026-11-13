@@ -1,0 +1,6 @@
+{
+	"cues": [
+		{ "at": "The one heading for the sign that says", "show": ["record-slot", "sign:To your disk"], "together": true, "hold": 4.5 },
+		{ "at": "The press. A separate model call", "show": ["press"], "hold": 4 }
+	]
+}

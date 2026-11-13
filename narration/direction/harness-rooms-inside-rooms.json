@@ -1,0 +1,6 @@
+{
+	"cues": [
+		{ "at": "There's a room in the middle of the room", "show": ["subagent-1"], "hold": 4 },
+		{ "at": "its rail ends at a red buffer", "show": ["subagent-3"], "close": true, "hold": 4.5 }
+	]
+}

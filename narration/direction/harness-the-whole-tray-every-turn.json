@@ -1,0 +1,6 @@
+{
+	"cues": [
+		{ "at": "Watch the capsule when it comes back down the tube", "show": ["capsule"], "close": true, "hold": 4 },
+		{ "at": "Each one waits on the shelf as a name and a line", "show": ["skill-shelf"], "hold": 4 }
+	]
+}

@@ -1,0 +1,6 @@
+{
+	"cues": [
+		{ "at": "your screen asks whether to allow it", "show": ["your-screen"], "front": true, "hold": 4 },
+		{ "at": "The cable coming out of the left wall", "show": ["hook-port", "hook-socket"], "together": true, "hold": 4.5 }
+	]
+}
