@@ -15,7 +15,7 @@
  * where a cushion rolls over into the fissure it is cut off flat, so the two halves face each other with level walls.
  */
 import { chartStep, RIM, shell, type V3 } from './shell';
-import { drawn, FACING, type Tone } from './tones';
+import { drawn, sight, type Tone } from './tones';
 
 export type { Tone };
 
@@ -93,6 +93,12 @@ const SWEEP = 4;
 const SEAT = { off: 0.012, wide: 0.1, high: 0.088 };
 /** A walk stopped by the drawing's own edge: a measurement of the cushion as drawn. */
 const DRAWN = 6;
+/** The hairline between two cushions of different colours that the drawings have pressed together, foot to foot. */
+const APART = 0.08;
+/** A yellow and a blue drawn nearer each other than the first of these are pressed together; further apart than the second, there is a channel between them. */
+const CREASE = [0.22, 0.4];
+/** How far it is, at the least, to the edge of what the drawings see, for each part by which a place faces them more squarely than they need. */
+const HEM = 0.6;
 /** In the drawing's sight no cushion reaches further from its middle line than this: it would be in another cushion of its colour. */
 const WIDEST = 1.0;
 /** Where across a plate's underside its points are, as shares of its reach: close enough that it follows the core round the roll. */
@@ -436,6 +442,7 @@ function walk(near: Near, me: number, u: number, v: number, dir: V3, fit: Fit, m
 	let t = 0;
 	let d = dir;
 	let why = 0;
+	let cap = 0.1;
 	const tone = near.tones[me];
 	for (let step = 0; step < 90; step++) {
 		shell(u, v, spot, face);
@@ -448,8 +455,24 @@ function walk(near: Near, me: number, u: number, v: number, dir: V3, fit: Fit, m
 			// of the same colour, where the drawing runs two together, its gap.
 			// Near the edge of the drawing's sight, where a cushion beside it may be one the drawing cannot place, it also keeps
 			// to its own side of the line between their two middles, as it does out of sight; well in sight that falls away.
-			const edge = Math.max(0, (face[2] - FACING - 0.1) / 0.2);
-			rooms = [9, Math.min((near.same - near.mine - fit.gap) / 2, (near.other - near.mine - fit.gap) / 2 + edge), near.machine - fit.clear, (fit.trim - rho) * 2.5, Math.min(most, WIDEST) - t, fit.keep ? fit.keep(spot) : 9, seen - fit.inset];
+			// And it ends where the drawings stop seeing: what is past that is the underside, and not a cushion's to take.
+			const sure = sight(face);
+			const edge = Math.max(0, (sure - 0.1) / 0.2);
+			// A yellow and a blue drawn close beside each other are two cushions pressed together: what the drawing has between
+			// them is not a channel but the crease where their sides go down into shadow. So there each comes out past its drawn
+			// edge to the line half-way between them, less half the hairline they keep; where the two are drawn further apart
+			// that falls away, and across a real channel, or a pocket, the edge is the drawn edge.
+			// (The hairline is wider on the roll into the fissure: the drawings are measured a little off the core, and there
+			// the core turns so tightly that feet stand closer than what is measured above them.)
+			const apart = APART * (1 + 0.9 * Math.max(0, Math.min(1, (rho - 0.93) / 0.07)));
+			let own = seen - fit.inset;
+			if (seen < 0.2) {
+				const beside = fit.drawn!(tone === 'yellow' ? 'blue' : 'yellow', spot, face) ?? -9;
+				const channel = -seen - beside;
+				const close = Math.max(0, Math.min(1, (CREASE[1] - channel) / (CREASE[1] - CREASE[0])));
+				own = Math.min(seen - fit.inset * (1 - close) + close * Math.max(0, (channel - apart) / 2), (seen - beside - apart) / 2);
+			}
+			rooms = [sure * HEM, Math.min((near.same - near.mine - fit.gap) / 2, (near.other - near.mine - fit.gap) / 2 + edge), near.machine - fit.clear, (fit.trim - rho) * 2.5, Math.min(most, WIDEST) - t, fit.keep ? fit.keep(spot) : 9, own];
 		} else {
 			// Where it has grown past its designed shape it keeps further from the works, by more the further it has grown.
 			const grown = Math.max(0, near.self) * 1.5;
@@ -458,8 +481,18 @@ function walk(near: Near, me: number, u: number, v: number, dir: V3, fit: Fit, m
 		}
 		const room = Math.min(...rooms);
 		why = rooms.indexOf(room);
+		// Stepped over an edge it could not see coming (where two drawings are blended, an edge can be nearer than either
+		// says): back, and on by half as much.
+		if (room < -0.003 && path.length > 3 && t - path[path.length - 6] > 0.008) {
+			cap = (t - path[path.length - 6]) / 2;
+			path.length -= 3;
+			t = path[path.length - 3];
+			u = path[path.length - 2];
+			v = path[path.length - 1];
+			continue;
+		}
 		if (room < 0.0015) break;
-		const stride = Math.min(room, 0.1);
+		const stride = Math.min(room, cap);
 		// Straight on over the core: the way it was going, laid back down onto the surface here.
 		const k = dot(d, face);
 		d = unit([d[0] - face[0] * k, d[1] - face[1] * k, d[2] - face[2] * k]);
@@ -567,29 +600,27 @@ function eased(reach: number[], closed: boolean, half = 4) {
 
 /**
  * A cushion's section, from its foot in to its crest: how far in from the edge, how high off its seat, and how high as a
- * share of the whole. A cushion is a panel, not a tube: a dark gasket at its foot, a short wall, a turn of one radius
- * at the top of the wall, and then a broad top that is only gently crowned. The turn is the same radius all the way
- * round every cushion, which is what makes an edge read as exact. Where a cushion narrows to a point the whole section
- * scales down with it.
+ * share of the whole. A cushion is a pillow, as the drawings have it: a dark gasket at its foot, and from there one curve
+ * that leaves the foot going straight up, turns over a full shoulder and runs level into the crest. The curve is the one
+ * between an oval and a box (|x|^p + |y|^p = 1): a narrow cushion is nearly an oval, a tube; a broad one has the same
+ * shoulders and a flatter top between them. Where a cushion narrows to a point the whole section scales down with it.
  */
+const TURN = [5, 11, 18, 26, 35, 45, 56, 68, 80].map((deg) => (deg * Math.PI) / 180);
 function section(reach: number, high: number): [number, number, number][] {
-	const crown = Math.min(0.075, 0.25 * high, 0.3 * reach);
-	const shoulder = high - crown;
-	const turn = Math.min(0.11, 0.6 * shoulder, 0.4 * reach);
-	const lean = 0.1 * turn;
-	const wall = shoulder - turn;
-	const gasket = Math.min(0.03, 0.4 * wall);
+	const gasket = Math.min(0.03, 0.12 * high);
+	const body = high - gasket;
+	const power = 2 / Math.max(2.3, Math.min(3.6, 2 + 2.6 * reach));
 	const share = (h: number) => 0.06 + (0.94 * h) / (high || 1);
 	// The gasket's top is two points in one place: the dark ends there and the colour begins, on a line.
 	const out: [number, number, number][] = [
 		[0, 0, 0],
 		[0, gasket, 0.019],
-		[0, gasket, 0.045],
-		[lean, wall, share(wall)]
+		[0, gasket, 0.045]
 	];
-	for (const a of [Math.PI / 8, Math.PI / 4, (Math.PI * 3) / 8, Math.PI / 2]) out.push([lean + turn * (1 - Math.cos(a)), wall + turn * Math.sin(a), share(wall + turn * Math.sin(a))]);
-	const from = lean + turn;
-	for (const t of [1 / 3, 2 / 3]) out.push([from + (reach - from) * t, shoulder + crown * (1 - (1 - t) * (1 - t)), share(shoulder + crown * (1 - (1 - t) * (1 - t)))]);
+	for (const a of TURN) {
+		const h = gasket + body * Math.sin(a) ** power;
+		out.push([reach * (1 - Math.cos(a) ** power), h, share(h)]);
+	}
 	return out;
 }
 
@@ -931,12 +962,14 @@ export function solve(gyri: Gyrus[], every: Ball[], fit: Fit = FIT): Cushions {
 					const [u, v] = along(ray.walk, reach[ri] + d);
 					shell(u, v, spot, face);
 					near.measure(spot, me);
-					if (near.machine < SEAT.off || Math.hypot(u, v) > fit.trim) break;
+					if (near.machine < SEAT.off + 0.012 || Math.hypot(u, v) > fit.trim) break;
 					const seen = fit.drawn ? fit.drawn(other, spot, face) : null;
 					// (The same rules the cushions themselves were cut by, each a seat's standing-off short of the next cushion's foot.)
 					const between = (near.other - near.mine - fit.gap) / 2;
-					const edge = Math.max(0, (face[2] - FACING - 0.1) / 0.2);
-					if (seen !== null ? seen > -SEAT.off || (near.same - near.mine - fit.gap) / 2 < -(fit.gap - SEAT.off) || between + edge < -(fit.gap - SEAT.off) : between < -(fit.gap - SEAT.off)) break;
+					const edge = Math.max(0, (sight(face) - 0.1) / 0.2);
+					// (And where two cushions are pressed together, short of the line half-way between them by more than the other's foot is.)
+					const mine = seen !== null ? (fit.drawn!(g.tone, spot, face) ?? 0) : 0;
+					if (seen !== null ? seen > -SEAT.off || (mine - seen) / 2 < SEAT.off + 0.008 - APART / 2 || (near.same - near.mine - fit.gap) / 2 < -(fit.gap - SEAT.off) || between + edge < -(fit.gap - SEAT.off) : between < -(fit.gap - SEAT.off)) break;
 					got = d;
 				}
 				return got;

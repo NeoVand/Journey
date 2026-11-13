@@ -1,14 +1,15 @@
 /*
- * The design of one half of the brain, as Neo Mohsenvand drew it: where each cushion's middle line runs and how wide
- * it is, and where every machine sits. The side view is the master, so most of it is written in that drawing's own
- * pixels, traced from it; what the side view cannot show, the roll into the fissure and the faces at the front and
- * back, is written as places on the chart (see shell.ts) and follows the other three drawings.
+ * The design of one half of the brain, as Neo Mohsenvand drew it: which cushion is which, and where every machine sits.
+ * The cushions' edges are the drawings' own (tones.ts); what is written here is the line down the middle of each. The
+ * side view is the master: its cushions' lines were traced from it by hand, in that drawing's own pixels. What it cannot
+ * see, the top, the front and the back, has its lines from the other three drawings by measuring (lines.ts), and the
+ * pipes in the channels between cushions likewise (channels.ts).
  *
- * The cushions all flow one way, as in the drawings: each starts along the fissure on top and runs forward and down
- * over the side, in a long S. The machines are drawn where the drawing has them, and then each settles into the pocket
- * or channel the cushions leave there (see `settle`), so nothing is built until it fits.
+ * The machines are drawn where the side drawing has them, and then each settles into the pocket or channel the
+ * cushions leave there (see `settle`), so nothing is built until it fits.
  */
 import { chartStep, locate, RIM, shell, silhouette, stretch, CX, CY, type V3 } from './shell';
+import { LINES } from './lines';
 import { clearOfDrawn, MID_X, MID_Y, PX } from './tones';
 import { TRACED } from './traced';
 import { envelope, SLEEVE, trace, type Machine, type Spot } from './machines';
@@ -69,13 +70,6 @@ export function fromSide(x: number, y: number, high = TOP): [number, number] {
 	return seen((p) => [p[0], p[1]], [tx, ty], [rho * Math.cos(theta), rho * Math.sin(theta)], high);
 }
 
-/** The same for the drawing from above (front at the top of the picture; either half of it). */
-export function fromTop(x: number, y: number): [number, number] {
-	const tx = (307 - y) / 54;
-	const tz = Math.abs(x - 548.5) / 53.4;
-	return seen((p) => [p[0], p[2]], [tx, tz], locate(tx, 3.2, tz));
-}
-
 /** The place on the top of the core over which a point stands, `high` off it, that is at x and z seen from above. */
 export function over(x: number, z: number, high: number): [number, number] {
 	return seen((p) => [p[0], p[2]], [x, z], locate(x, 3.4, z), high);
@@ -86,18 +80,6 @@ export function beneath(x: number, z: number, low = 0): [number, number] | null 
 	const [u, v] = seen((p) => [p[0], p[2]], [x, z], locate(x, -3.4, z), low);
 	shell(u, v, at, out);
 	return out[1] < -0.05 && Math.hypot(at[0] + out[0] * low - x, at[2] + out[2] * low - z) < 0.02 ? [u, v] : null;
-}
-
-/** The same for the drawing from the front, and from the back. */
-export function fromFront(x: number, y: number): [number, number] {
-	const tz = Math.abs(x - 551) / 72.2;
-	const ty = 3.92 - (y - 18) / 64.9;
-	return seen((p) => [p[2], p[1]], [tz, ty], locate(4.6, ty, tz));
-}
-export function fromBack(x: number, y: number): [number, number] {
-	const tz = Math.abs(x - 550) / 66.7;
-	const ty = 3.92 - (y - 20) / 64.9;
-	return seen((p) => [p[2], p[1]], [tz, ty], locate(-4.6, ty, tz));
 }
 
 /**
@@ -111,40 +93,6 @@ const S = (x: number, y: number, half: number): [number, number, number] => {
 	drawnFromSide.add(q);
 	return q;
 };
-/** A place given on the chart, with its half-width in the brain's units. */
-export const C = (u: number, v: number, w: number): [number, number, number] => [u, v, w];
-
-/** How far round the crest each direction of the chart is, every tenth of a degree, starting at the front tip and going up over the top. */
-const ROUND: number[] = (() => {
-	const table = [0];
-	const was: V3 = [0, 0, 0];
-	for (let i = 0; i <= 3600; i++) {
-		const a = (i * Math.PI) / 1800;
-		shell(Math.cos(a), Math.sin(a), at, out);
-		if (i) table.push(table[i - 1] + Math.hypot(at[0] - was[0], at[1] - was[1], at[2] - was[2]));
-		was[0] = at[0];
-		was[1] = at[1];
-		was[2] = at[2];
-	}
-	return table;
-})();
-/** All the way round the crest, where the core turns over into the fissure. */
-export const AROUND = ROUND[3600];
-
-/**
- * A place given by the fissure: `s` is how far round the crest it is, in the brain's units, from the front tip up over
- * the top (the crown is at about 6.4, the back tip 13.1, the middle of the underside 19) and `d` how far in from the
- * crest over the side it lies (below zero, round the roll into the fissure). With its half-width.
- */
-const R = (s: number, d: number, w: number): [number, number, number] => {
-	s = ((s % AROUND) + AROUND) % AROUND;
-	let i = 0;
-	while (i < 3600 && ROUND[i + 1] < s) i++;
-	const a = ((i + (s - ROUND[i]) / (ROUND[i + 1] - ROUND[i] || 1)) * Math.PI) / 1800;
-	const rho = 1 - d / 4.4;
-	return [rho * Math.cos(a), rho * Math.sin(a), w];
-};
-
 /** A cushion from its line. Widths traced from the side drawing are widths as seen: each is made as much wider as the cushion there is turned away. */
 function gyrus(name: string, tone: Tone, line: [number, number, number][], height?: number): Gyrus {
 	const places = line.map(([u, v]) => {
@@ -168,61 +116,49 @@ function gyrus(name: string, tone: Tone, line: [number, number, number][], heigh
 }
 
 /*
- * The cushions all flow one way, as the drawings have them: each comes off the fissure and runs forward and down over
- * the side in a long S, nested inside the one before. Round the front they take the fissure's edge in turn.
+ * The cushions the side drawing has. They all flow one way: each comes down off the top and runs forward and down over
+ * the side in a long S, nested inside the one before.
  */
-export const GYRI: Gyrus[] = [
-	// Along the fissure at the back and over the crown: the blue rim.
-	gyrus('N', 'blue', [R(13.3, -0.08, 0.26), R(12.4, -0.1, 0.32), R(11.2, -0.1, 0.32), R(10.0, -0.1, 0.32), R(8.8, -0.1, 0.32), R(7.9, -0.1, 0.3), R(7.3, -0.12, 0.24)]),
-	// The great yellow S: up the back of the head inside the rim, over the top, and down the middle of the side.
+export const SIDE: Gyrus[] = [
+	// The great yellow S: over the top and down the middle of the side.
 	gyrus('A', 'yellow', [
-		R(13.1, 0.5, 0.26), R(12.5, 0.52, 0.31), R(11.8, 0.55, 0.33), R(11.0, 0.62, 0.34), R(10.2, 0.62, 0.35), R(9.4, 0.58, 0.36), S(642, 82, 30), S(681, 81, 30), S(720, 88, 30),
+		S(642, 82, 30), S(681, 81, 30), S(720, 88, 30),
 		S(759, 102, 32), S(796, 133, 33), S(826, 171, 30), S(865, 193, 29), S(900, 216, 30), S(937, 233, 34), S(973, 252, 38), S(999, 290, 40), S(1029, 328, 37), S(1068, 352, 26),
 		S(1107, 367, 16), S(1146, 384, 9)
 	]),
-	// The blue inside it, from the back of the head round the eye's pocket to the underside at the front, and on along the underside.
+	// The blue inside it, from the back of the head round the eye's pocket to the underside at the front.
 	gyrus('B', 'blue', [
-		R(10.9, 1.22, 0.2), S(492, 181, 20), S(529, 155, 24), S(567, 142, 28), S(605, 141, 33), S(643, 147, 35), S(672, 177, 31), S(693, 214, 27), S(730, 246, 25), S(768, 258, 24),
+		S(492, 181, 20), S(529, 155, 24), S(567, 142, 28), S(605, 141, 33), S(643, 147, 35), S(672, 177, 31), S(693, 214, 27), S(730, 246, 25), S(768, 258, 24),
 		S(806, 268, 23), S(844, 282, 23), S(879, 307, 23), S(900, 341, 24), S(931, 371, 26), S(969, 381, 27), S(1006, 392, 27), S(1038, 415, 29), S(1076, 436, 30), S(1113, 467, 32),
-		S(1132, 504, 33), S(1133, 542, 29), S(1119, 580, 24), S(1112, 618, 20), R(22.15, 0.82, 0.24), R(21.75, 0.5, 0.26), R(21.4, 0.34, 0.25)
+		S(1132, 504, 33), S(1133, 542, 29), S(1119, 580, 24), S(1112, 618, 20)
 	]),
-	// The blue over the great S, from the crown down past the small eye, round the block at the front, to the fissure underneath.
+	// The blue over the great S, down past the small eye and round the block at the front.
 	gyrus('C', 'blue', [
-		R(7.65, 0.4, 0.26), S(745, 52, 20), S(783, 52, 22), S(821, 59, 23), S(859, 81, 24), S(896, 115, 22), S(932, 151, 18), S(970, 176, 15), S(1007, 205, 13), S(1041, 236, 13),
-		S(1068, 272, 15), S(1101, 300, 19), S(1136, 318, 20), S(1172, 334, 20), S(1205, 363, 22), S(1224, 401, 21), S(1236, 439, 22), S(1269, 463, 23), R(24.7, 0.97, 0.26), R(24.3, 0.84, 0.25),
-		R(23.9, 0.84, 0.25), R(23.5, 0.86, 0.26), R(23.1, 0.58, 0.28), R(22.75, 0.22, 0.27)
+		S(859, 81, 24), S(896, 115, 22), S(932, 151, 18), S(970, 176, 15), S(1007, 205, 13), S(1041, 236, 13),
+		S(1068, 272, 15), S(1101, 300, 19), S(1136, 318, 20), S(1172, 334, 20), S(1205, 363, 22), S(1224, 401, 21), S(1236, 439, 22), S(1269, 463, 23)
 	]),
 	// The yellow down from the crown to the small eye.
 	gyrus('D', 'yellow', [
-		R(6.3, 0.52, 0.26), S(869, 45, 26), S(907, 58, 28), S(945, 82, 28), S(983, 104, 27), S(1019, 124, 28), S(1042, 157, 32), S(1058, 195, 28), S(1074, 235, 22),
+		S(869, 45, 26), S(907, 58, 28), S(945, 82, 28), S(983, 104, 27), S(1019, 124, 28), S(1042, 157, 32), S(1058, 195, 28), S(1074, 235, 22),
 		S(1088, 264, 16)
-	]),
-	// In front of the intake the yellow takes the fissure's edge, as the blue does behind it, and the blue runs beside it
-	// and takes the edge in turn round the tip.
-	gyrus('F', 'blue', [
-		R(5.1, 0.58, 0.22), R(4.5, 0.64, 0.24), R(3.8, 0.66, 0.24), R(3.1, 0.68, 0.24), R(2.4, 0.64, 0.24), R(1.8, 0.44, 0.26), R(1.2, 0.2, 0.3), R(0.5, 0.14, 0.31), R(-0.1, 0.14, 0.28)
-	]),
-	gyrus('R', 'yellow', [R(5.2, -0.1, 0.26), R(4.6, -0.1, 0.31), R(3.9, -0.1, 0.32), R(3.2, -0.1, 0.32), R(2.5, -0.08, 0.3), R(1.95, -0.04, 0.24)]),
-	// The yellow round the front, past the small eye, which takes the fissure after the blue.
-	gyrus('D2', 'yellow', [
-		R(2.95, 1.5, 0.3), R(2.55, 1.32, 0.36), R(2.05, 1.26, 0.38), R(1.55, 1.24, 0.38), R(1.05, 1.16, 0.36), R(0.55, 0.9, 0.33), R(0.1, 0.68, 0.3), R(-0.4, 0.42, 0.29),
-		R(-0.9, 0.22, 0.29), R(-1.45, 0.16, 0.26)
 	]),
 	// The yellow arch at the back, over the block there.
 	gyrus('E', 'yellow', [
-		R(12.75, 1.18, 0.24), S(387, 338, 28), S(422, 305, 34), S(459, 283, 38), S(496, 271, 41), S(533, 270, 44), S(566, 296, 42), S(580, 333, 40), S(590, 372, 34), S(592, 400, 26)
+		S(387, 338, 28), S(422, 305, 34), S(459, 283, 38), S(496, 271, 41), S(533, 270, 44), S(566, 296, 42), S(580, 333, 40), S(590, 372, 34), S(592, 400, 26)
 	]),
 	// The long yellow under the eye.
 	gyrus('T', 'yellow', [
 		S(490, 485, 42), S(523, 476, 43), S(562, 478, 42), S(601, 483, 40), S(640, 496, 39), S(679, 517, 38), S(718, 537, 38), S(755, 553, 37), S(794, 556, 37), S(833, 557, 37),
 		S(872, 562, 39), S(911, 567, 43), S(950, 587, 48), S(989, 619, 49), S(1028, 631, 43), S(1055, 629, 33)
 	]),
-	// Low on the back of the head: a blue hairpin, in two, with a yellow lobe between its legs.
-	gyrus('K', 'blue', [R(14.35, 0.2, 0.24), R(13.8, 0.42, 0.28), R(13.2, 1.0, 0.28), R(12.98, 1.36, 0.22)]),
-	gyrus('K2', 'blue', [R(13.05, 1.78, 0.2), R(13.5, 1.8, 0.23), R(14.0, 1.68, 0.24), R(14.5, 1.5, 0.22)]),
-	gyrus('L', 'yellow', [R(13.75, 1.16, 0.22), R(14.1, 0.94, 0.27), R(14.5, 0.78, 0.29), R(14.9, 0.5, 0.28), R(15.25, 0.18, 0.24)]),
 	gyrus('U', 'yellow', [S(1222, 550, 12), S(1193, 561, 15), S(1167, 580, 10)])
 ];
+
+/**
+ * Every cushion of one half: those, and the ones the drawings from above, from the front and from the back have where the
+ * side drawing cannot see, each by the line down its middle as the drawings have it (lines.ts, found by measuring).
+ */
+export const GYRI: Gyrus[] = [...SIDE, ...LINES.map((l) => gyrus(l.name, l.tone, l.line as [number, number, number][]))];
 
 /**
  * A place the side drawing shows, by its pixel. The drawing looks across the brain, and a thing that stands high off
@@ -401,10 +337,11 @@ export const AXLE = { x: 0.35, y: -2.84, reach: 1.62, r: 0.085 };
 /** A cushion leans in over its own foot as it rounds the roll, so the intake keeps the feet this much further off. */
 const BULGE = 0.14;
 
-const between: Ball[] = [];
-for (let y = PORT.floor + 0.3; y <= PORT.rim; y += 0.1) between.push({ at: [PORT.x, y, 0], r: PORT.r + BULGE + 0.1 });
+/** What stands between the halves and under them, as what the cushions keep clear of. */
+export const BETWEEN: Ball[] = [];
+for (let y = PORT.floor + 0.3; y <= PORT.rim; y += 0.1) BETWEEN.push({ at: [PORT.x, y, 0], r: PORT.r + BULGE + 0.1 });
 // The top of the brainstem, under the middle: its ribs, and the axle across them.
-for (const x of [0.2, 0.75, 1.3]) for (const z of [0.2, 0.75, 1.25]) between.push({ at: [x, AXLE.y + 0.1, z], r: 0.42 });
+for (const x of [0.2, 0.75, 1.3]) for (const z of [0.2, 0.75, 1.25]) BETWEEN.push({ at: [x, AXLE.y + 0.1, z], r: 0.42 });
 // The cerebellum, as drawn, sits up under the back of the half in a recess of its own: the cushions there part round it,
 // all the way round its brim.
 {
@@ -419,23 +356,23 @@ for (const x of [0.2, 0.75, 1.3]) for (const z of [0.2, 0.75, 1.25]) between.pus
 	}
 	const mid = (x0 + x1) / 2;
 	const half = (x1 - x0) / 2 + 0.06;
-	for (const k of [0.3, 0.5, 0.7]) between.push({ at: [x0 + (x1 - x0) * k, top - 1.02, CEREBELLUM.out], r: 1.1 });
+	for (const k of [0.3, 0.5, 0.7]) BETWEEN.push({ at: [x0 + (x1 - x0) * k, top - 1.02, CEREBELLUM.out], r: 1.1 });
 	for (let k = 0; k < 14; k++) {
 		const a = (k / 14) * Math.PI * 2;
-		between.push({ at: [mid + half * Math.cos(a), top - 0.3, CEREBELLUM.out + half * CEREBELLUM.wide * Math.sin(a)], r: 0.46 });
+		BETWEEN.push({ at: [mid + half * Math.cos(a), top - 0.3, CEREBELLUM.out + half * CEREBELLUM.wide * Math.sin(a)], r: 0.46 });
 	}
 }
 // The blocks in the fissure are a little wider than the fissure, so the cushions' walls part round each.
 for (const b of FISSURE_BLOCKS) {
 	const a = (b.lean * Math.PI) / 180;
-	for (let k = -1; k <= 1; k++) between.push({ at: [b.at[0] + Math.cos(a) * k * b.size[0] * 0.3, b.at[1] + Math.sin(a) * k * b.size[0] * 0.3, 0], r: b.size[2] / 2 + 0.28 });
+	for (let k = -1; k <= 1; k++) BETWEEN.push({ at: [b.at[0] + Math.cos(a) * k * b.size[0] * 0.3, b.at[1] + Math.sin(a) * k * b.size[0] * 0.3, 0], r: b.size[2] / 2 + 0.36 });
 }
 
 // The intake's saddle lies on the core round the intake, under the cushions there.
-between.push({ at: [PORT.x, PORT.rim - 0.8, 0], r: PORT.r + 0.82, low: true });
+BETWEEN.push({ at: [PORT.x, PORT.rim - 0.8, 0], r: PORT.r + 0.82, low: true });
 
 /** What the cushions must keep clear of. */
-export const BALLS: Ball[] = [...MACHINES.flatMap(envelope), ...between];
+export const BALLS: Ball[] = [...MACHINES.flatMap(envelope), ...BETWEEN];
 
 /** The rows of cyan lights let into the blue cushions: which cushion, and how far along it. */
 export const ROWS = [

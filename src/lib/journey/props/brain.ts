@@ -141,6 +141,8 @@ class Tissue extends THREE.MeshPhysicalMaterial {
 					vec3 tone = mix(uBlue, uYellow, step(0.5, vLook.x));
 					// The foot is dark rubber, and so is the plate underneath.
 					diffuseColor.rgb = mix(uFoot, tone, smoothstep(0.02, 0.04, vLook.y));
+					// Down between two cushions less light gets in: the lower on its side, the deeper the colour.
+					diffuseColor.rgb *= mix(0.42, 1.0, smoothstep(0.04, 0.62, vLook.y));
 				}`
 			)
 			.replace(

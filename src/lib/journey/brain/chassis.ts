@@ -213,7 +213,7 @@ export function under() {
 	{
 		const inner = PORT.r + 0.06;
 		const outer = PORT.r + 0.62;
-		const least = 0.6;
+		const least = 0.78;
 		const rings: [number, number][] = [
 			[inner, 0.004],
 			[inner, DISH + 0.008],
