@@ -1,12 +1,13 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { between, NOTCHES, PART, under } from './chassis';
-import { DIP } from './cerebellum';
+import { DIP, LOBE, WIDE } from './cerebellum';
 import { clearance, shifted, soup, together, type Soup } from './clearance';
 import { core } from './core';
-import { BALLS, GYRI, MACHINES, PORT } from './design';
+import { BALLS, beneath, GYRI, MACHINES, PORT } from './design';
 import { trace, type Machine } from './machines';
 import { LIFT, MOST, rise } from './motion';
+import { FISSURE, shell } from './shell';
 import { FIT, solve, type Cushions } from './solve';
 import { build, EYE_TURN, type Finish } from './works';
 
@@ -56,9 +57,9 @@ beforeAll(() => {
 		return { m, fixed: all(built.parts), wound: built.coils ? soup(built.coils) : null };
 	});
 	const u = under();
-	below = together([all(u.parts), soup(u.lid)]);
-	// The cerebellum's lobe, dipped by a share of all it ever dips.
-	const lobeAt = together([soup(u.drum.copper), soup(u.drum.dark)]);
+	below = all(u.parts);
+	// The cerebellum, lobe and lid, dipped by a share of all it ever dips.
+	const lobeAt = together([soup(u.drum.copper), soup(u.drum.dark), soup(u.drum.blue), soup(u.drum.cyan)]);
 	drumAt = (k: number) => shifted(lobeAt, [0, -DIP * k, 0]);
 	drum = drumAt(0);
 	const b = between();
@@ -271,5 +272,58 @@ describe('the brain as a machine', () => {
 		// The lobe dips straight down and comes back; the ring has a mark at each notch.
 		for (const k of [0, 0.5, 1]) expect(clearance(drumAt(k), round, 0.1).gap, 'the cerebellum').toBeGreaterThan(0.012);
 		for (let k = 0; k < 8; k++) expect(clearance(turned(ring, PORT.x, 0, (k / 8) * ((Math.PI * 2) / NOTCHES)), together([mid, cushions]), 0.1).gap, 'ring').toBeGreaterThan(0.004);
+	});
+
+	it('closes the back: the cerebellum\'s lid sits on its lobe all round and goes up into the body of the brain', () => {
+		const u = under();
+		const blue = u.drum.blue.getAttribute('position').array as Float32Array;
+		const copper = u.drum.copper.getAttribute('position').array as Float32Array;
+		// Round the lobe's own axis: which way a point is from it, and how far (the lobe is an oval, WIDE for its length).
+		// (The directions are counted from a little off the back, so that no row of the lid's points lies on the line
+		// between two of them.)
+		const sectors = 47;
+		const where = (p: ArrayLike<number>, i: number) => {
+			const x = p[i] - LOBE.x;
+			const z = (p[i + 2] - LOBE.z) / WIDE;
+			return { sector: Math.floor(((Math.atan2(z, -x) / (Math.PI * 2) + 1.0019) % 1) * sectors) % sectors, far: Math.hypot(x, z), y: p[i + 1], flat: p[i + 2] < FISSURE + 0.02 };
+		};
+		// The lid's lower edge in each direction, and how near the axis its underside comes in there.
+		const edge = Array.from({ length: sectors }, () => ({ y: Infinity, in: Infinity, flat: false }));
+		let top = -Infinity;
+		for (let i = 0; i < blue.length; i += 3) {
+			const q = where(blue, i);
+			top = Math.max(top, q.y);
+			const e = edge[q.sector];
+			if (q.flat) e.flat = true;
+			if (q.y < e.y - 1e-4) [e.y, e.in] = [q.y, q.far];
+			else if (q.y < e.y + 1e-4) e.in = Math.min(e.in, q.far);
+		}
+		// It sits on the lobe: where its underside ends, in under its edge, there is copper further out than that. (The
+		// copper's skin at the edge's height is between its nearest ring of points above and its nearest below.)
+		const rings = edge.map(() => ({ above: [Infinity, 0], below: [-Infinity, 0] }));
+		for (let i = 0; i < copper.length; i += 3) {
+			const q = where(copper, i);
+			const r = rings[q.sector];
+			const e = edge[q.sector].y;
+			if (q.y >= e && (q.y < r.above[0] - 1e-4 || (q.y < r.above[0] + 1e-4 && q.far > r.above[1]))) r.above = [q.y, q.far];
+			if (q.y < e && (q.y > r.below[0] + 1e-4 || (q.y > r.below[0] - 1e-4 && q.far > r.below[1]))) r.below = [q.y, q.far];
+		}
+		const copperOut = rings.map((r, k) => r.below[1] + ((r.above[1] - r.below[1]) * (edge[k].y - r.below[0])) / (r.above[0] - r.below[0]));
+		// (Not asked of the part cut off flat at the fissure, which is not round.)
+		edge.forEach((e, k) => !e.flat && expect(copperOut[k] - e.in, `the lid's edge on the lobe, direction ${k} of ${sectors}`).toBeGreaterThan(0.005));
+		// And it goes up into the brain: all over its top it is above the core's own underside, by more than it ever dips, and
+		// its lower edge is below it, so that what closes the back is the lid itself and the brain round it.
+		const p: [number, number, number] = [0, 0, 0];
+		const n: [number, number, number] = [0, 0, 0];
+		let covered = 0;
+		for (let i = 0; i < blue.length; i += 3) {
+			if (blue[i + 1] < top - 1e-4 || blue[i + 2] < FISSURE + 0.02) continue;
+			const at = beneath(blue[i], blue[i + 2]);
+			if (!at) continue;
+			shell(at[0], at[1], p, n);
+			covered++;
+			expect(top - DIP - p[1], `the lid's top inside the brain at ${blue[i].toFixed(2)}, ${blue[i + 2].toFixed(2)}`).toBeGreaterThan(0.05);
+		}
+		expect(covered).toBeGreaterThan(100);
 	});
 });

@@ -6,8 +6,7 @@ import { clamp, hash, lerp, outBack, seg, smooth } from '../kit/math';
 import { islandAt, machine, shadowOn } from '../kit/machines';
 import { createCastShadow } from './island';
 import { between, NOTCHES, PART, under, type Hose } from '../brain/chassis';
-import { DIP, LOBE, RECESS } from '../brain/cerebellum';
-import { FISSURE } from '../brain/shell';
+import { DIP, LOBE } from '../brain/cerebellum';
 import { core as buildCoreMesh } from '../brain/core';
 import { BALLS, GYRI, HOSE, MACHINES, PORT, ROWS } from '../brain/design';
 
@@ -253,11 +252,6 @@ class Core extends THREE.MeshStandardMaterial {
 				'#include <color_fragment>',
 				/* glsl */ `#include <color_fragment>
 				{
-					// The recess under the back of the half, where the cerebellum sits up into the brain: the core is hollow there.
-					if (vAt.z > ${(FISSURE + 0.004).toFixed(3)} && vAt.y < ${RECESS.top.toFixed(4)}) {
-						vec2 q = (vAt.xz - vec2(${RECESS.x.toFixed(4)}, ${RECESS.z.toFixed(4)})) / vec2(${RECESS.a.toFixed(4)}, ${RECESS.b.toFixed(4)});
-						if (dot(q, q) < 1.0) discard;
-					}
 					// Ribs across the brain's length, ${RIB} apart, each a flat land between two narrow grooves; every fifth groove is wider.
 					float along = vAt.x / ${RIB.toFixed(3)};
 					float wide = fwidth(along) * 1.2;
@@ -335,7 +329,7 @@ export class Brain {
 	private viewer: THREE.Camera | null = null;
 	/** The blue of the cushions, for what is blue and is not one: the cerebellum's lids. */
 	private blue = new THREE.MeshPhysicalMaterial({ color: skin.uBlue.value, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.1 });
-	private drum!: { copper: THREE.BufferGeometry; dark: THREE.BufferGeometry };
+	private drum!: { copper: THREE.BufferGeometry; dark: THREE.BufferGeometry; blue: THREE.BufferGeometry; cyan: THREE.BufferGeometry };
 	private finish: Record<Finish, THREE.Material>;
 	/** The two halves, which draw apart along the fissure's pins, and how far apart they are now, 0 to 1. */
 	private halves: THREE.Group[] = [];
@@ -480,13 +474,12 @@ export class Brain {
 			}
 			add(g, material, finish === 'cyan' ? 'leds' : 'works');
 		}
-		// Under the half: its boss on the brainstem's axle, its collars on the keel's pins, its saddle round the intake, and the
-		// cerebellum's brim, with its lights.
+		// Under the half: its boss on the brainstem's axle, its collars on the keel's pins and its saddle round the intake.
 		const below = under();
-		for (const finish of ['chrome', 'dark', 'cyan'] as const) add(setReach(below.parts.take(finish)!), this.finish[finish], finish === 'cyan' ? 'leds' : 'works');
-		const lid = new THREE.Mesh(setReach(below.lid), this.blue);
-		lid.name = 'cerebellum';
-		meshes.push(lid);
+		for (const finish of ['chrome', 'dark', 'cyan'] as const) {
+			const geo = below.parts.take(finish);
+			if (geo) add(setReach(geo), this.finish[finish], finish === 'cyan' ? 'leds' : 'works');
+		}
 		this.drum = below.drum;
 		for (const mesh of meshes) {
 			mesh.castShadow = !(mesh.material instanceof Lit);
@@ -513,7 +506,8 @@ export class Brain {
 		for (const finish of ['chrome', 'dark'] as const) add(this.ring, setReach(ring.take(finish)!, 0), this.finish[finish], 'intake');
 		this.ring.position.x = PORT.x;
 		brain.add(this.ring);
-		// The cerebellum: each half's lobe of wound copper hangs under its half's brim, and dips as a pass comes down to it.
+		// The cerebellum: each half's lobe of wound copper and the blue lid seated on it go up into the half's own body, and
+		// dip together as a pass comes down to them.
 		for (const half of this.halves) {
 			const drum = new THREE.Group();
 			const reach = reachOf(LOBE.x, LOBE.top, LOBE.z);
@@ -522,6 +516,8 @@ export class Brain {
 			copper.heat = 0.3;
 			add(drum, setReach(this.drum.copper.clone(), reach), copper, 'cerebellum');
 			add(drum, setReach(this.drum.dark.clone(), reach), this.finish.dark, 'cerebellum');
+			add(drum, setReach(this.drum.blue.clone(), reach), this.blue, 'cerebellum');
+			add(drum, setReach(this.drum.cyan.clone(), reach), this.finish.cyan, 'leds');
 			half.add(drum);
 			this.drums.push(drum);
 		}

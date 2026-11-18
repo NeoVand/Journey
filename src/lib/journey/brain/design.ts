@@ -366,8 +366,8 @@ export const BETWEEN: Ball[] = [];
 for (let y = PORT.floor + 0.3; y <= PORT.rim; y += 0.1) BETWEEN.push({ at: [PORT.x, y, 0], r: PORT.r + BULGE + 0.1 });
 // The top of the brainstem, under the middle: its ribs, and the axle across them.
 for (const x of [0.2, 0.75, 1.3]) for (const z of [0.2, 0.75, 1.25]) BETWEEN.push({ at: [x, AXLE.y + 0.1, z], r: 0.42 });
-// The cerebellum, as drawn, sits up under the back of the half in a recess of its own: the cushions there part round it,
-// all the way round its brim.
+// The cerebellum, as drawn, sits up under the back of the half, its lid going up into the half's own body: the cushions
+// there part round it, all the way round the drawn crescent.
 {
 	let x0 = Infinity;
 	let x1 = -Infinity;

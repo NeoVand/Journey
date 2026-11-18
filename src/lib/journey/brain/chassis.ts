@@ -1,13 +1,13 @@
 /*
  * What holds the two halves: the keel in the fissure that both ride on, with the intake at its crown and the blocks of
  * electronics that show between the halves; the brainstem under it, with the axle across its top; and under the back of
- * each half, the copper drum of the cerebellum. Everything between the halves stays where it is when they draw apart;
+ * each half, the cerebellum (its copper lobe and blue lid). Everything between the halves stays where it is when they draw apart;
  * what rides with a half (its boss on the axle, its collars on the pins, its saddle round the intake, its drum) goes with it.
  */
 import * as THREE from 'three';
 import { rbox } from '../kit/geometry';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { brim, lobe, recess } from './cerebellum';
+import { lid, lobe } from './cerebellum';
 import { AXLE, FISSURE_BLOCKS, HOSE, over, PORT } from './design';
 import { FISSURE, locate, profile, ROLL, shell, type V3 } from './shell';
 import { DISH, Parts } from './works';
@@ -251,13 +251,10 @@ export function under() {
 		parts.add('chrome', flat);
 	}
 
-	// The cerebellum, from the drawing's own curves (cerebellum.ts): its blue brim with its lights and the dark cap inside
-	// it ride with the half; the lobe of wound copper under it dips as each pass comes down, and comes back.
-	const cb = brim();
-	for (const g of cb.lights) parts.add('cyan', g);
-	parts.add('dark', cb.cap);
-	parts.add('dark', recess());
-	return { parts, lid: mergeGeometries(cb.blue)!, drum: lobe() };
+	// The cerebellum, from the drawing's own curves (cerebellum.ts): a lobe of wound copper and the blue lid that sits on
+	// it, with its lights. They are one thing: it dips as each pass comes down, and comes back.
+	const cb = lid();
+	return { parts, drum: { ...lobe(), blue: mergeGeometries(cb.blue)!, cyan: mergeGeometries(cb.lights)! } };
 }
 
 /** A solid of revolution about a line across the fissure: its outline is radius and distance along z. */
