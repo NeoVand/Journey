@@ -285,7 +285,7 @@ describe('the brain as a machine', () => {
 		fitted('plug', 'seat', 0.08);
 		expect(Math.min(...Array.from(of('plug').p).filter((_, i) => i % 3 === 1))).toBeLessThan(STEM.seat - 0.1);
 		// The neck stands in the plug's top; its cheeks hold the spine, the bolt through the keel, and the hubs of the pin and the axle.
-		for (const [a, b] of [['cheek', 'plug rim'], ['spine', 'cheek'], ['keel bolt', 'cheek'], ['hub', 'cheek'], ['pin', 'hub'], ['axle', 'hub']]) fitted(a, b);
+		for (const [a, b] of [['cheek', 'plug rim'], ['spine', 'cheek'], ['keel bolt', 'cheek'], ['hub', 'cheek'], ['pin', 'hub'], ['axle', 'hub'], ['bridge', 'cheek'], ['bridge bolt', 'bridge']]) fitted(a, b);
 		// That bolt goes through the keel's plate, well inside its edge.
 		const edge = Array.from({ length: 720 }, (_, i) => profile((i / 720) * Math.PI * 2, KEEL_IN));
 		let inside = false;

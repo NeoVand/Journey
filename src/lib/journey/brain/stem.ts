@@ -38,7 +38,7 @@ const BEVEL = 0.012;
 export const SLIDE = { from: CHEEK[1] + 0.05, to: AXLE.reach - 0.085 };
 /** How far out along the pin each tine's knuckle is, and how thick a tine is. */
 const KNUCKLE = 0.43;
-const TINE = 0.1;
+const TINE = 0.125;
 
 /** One part of the stem: what it is called, what it is made of, and its shape. */
 export interface Piece {
@@ -329,9 +329,19 @@ function neck(): Piece[] {
 	}
 	out.push({ name: 'spine', finish: 'dark', geo: new THREE.ExtrudeGeometry(shapeOf(CORE), { depth: SPINE * 2, bevelEnabled: false, steps: 1, curveSegments: 1 }).translate(0, 0, -SPINE) });
 	// Down its back, as the drawing has it from behind: two bars side by side, a point, and a bar.
-	for (const z of [-0.062, 0.062]) out.push({ name: 'back light', finish: 'amber', geo: inlay([-1.6, -2.8], 0.22, 0.05, z) });
-	out.push({ name: 'back light', finish: 'amber', geo: inlay([-1.67, -3.12], 0.05, 0.05) });
-	out.push({ name: 'back light', finish: 'amber', geo: inlay([-1.7, -3.44], 0.2, 0.05) });
+	for (const z of [-0.06, 0.06]) out.push({ name: 'back light', finish: 'amber', geo: inlay([-1.6, -2.8], 0.26, 0.055, z) });
+	out.push({ name: 'back light', finish: 'amber', geo: inlay([-1.67, -3.1], 0.06, 0.06) });
+	out.push({ name: 'back light', finish: 'amber', geo: inlay([-1.69, -3.36], 0.2, 0.055) });
+	// A chrome bridge across the spine at the pin's height, behind and in front, bolted to both cheeks: what ties the two
+	// cheeks together where the fork pulls on them.
+	for (const near of [[-1.72, PIN[1]], [-1.02, PIN[1]]] as P2[]) {
+		const { at, along, out: way } = onEdge(near);
+		const x = new THREE.Vector3(along[0], along[1], 0);
+		const y = new THREE.Vector3(way[0], way[1], 0);
+		const place = (up: number, z: number) => new THREE.Matrix4().makeBasis(x, y, new THREE.Vector3().crossVectors(x, y)).setPosition(at[0] + way[0] * up, at[1] + way[1] * up, z);
+		out.push({ name: 'bridge', finish: 'chrome', geo: crisp(rbox(0.13, 0.05, CHEEK[1] * 2 - 0.03, 0.012, 1).applyMatrix4(place(0.03, 0))) });
+		for (const z of [-0.2, 0.2]) out.push({ name: 'bridge bolt', finish: 'dark', geo: rbox(0.05, 0.016, 0.05, 0.02, 2).applyMatrix4(place(0.058, z)) });
+	}
 	// Under its sweep, as the drawing has it from in front: four bars across, each shorter than the one above.
 	const rungs: [P2, number, Finish][] = [
 		[[-0.62, -3.35], 0.27, 'cyan'],
@@ -373,10 +383,10 @@ function fork(): Piece[] {
 	out.push({ name: 'axle', finish: 'chrome', geo: rod([HEAD[0], HEAD[1], -AXLE.reach - 0.085], [HEAD[0], HEAD[1], AXLE.reach + 0.085], AXLE.r, 20) });
 	for (const side of [1, -1]) {
 		const line = tineLine(side);
-		out.push({ name: 'knuckle', finish: 'chrome', geo: collar(PIN[0], PIN[1], side * KNUCKLE, 0.06, 0.165, 0.1) });
+		out.push({ name: 'knuckle', finish: 'chrome', geo: collar(PIN[0], PIN[1], side * KNUCKLE, 0.06, 0.185, 0.105) });
 		out.push({ name: 'pin end', finish: 'chrome', geo: bolt(PIN[0], PIN[1], side * reach, side, 0.085) });
 		out.push({ name: 'tine', finish: 'chrome', geo: new THREE.TubeGeometry(line, 56, TINE, 16, false) });
-		out.push({ name: 'eye', finish: 'chrome', geo: collar(HEAD[0], HEAD[1], side * AXLE.reach, AXLE.r, 0.185, AXLE.reach - SLIDE.to) });
+		out.push({ name: 'eye', finish: 'chrome', geo: collar(HEAD[0], HEAD[1], side * AXLE.reach, AXLE.r, 0.205, AXLE.reach - SLIDE.to) });
 		out.push({ name: 'axle end', finish: 'chrome', geo: bolt(HEAD[0], HEAD[1], side * (AXLE.reach + 0.085), side, 0.1) });
 		// The strip of light: let into the tine's outer side, a little above its middle, from clear of the knuckle to clear of the eye.
 		// It keeps to the side of the tine that looks outward and a little up and forward, whichever way the tine is running.
@@ -388,7 +398,7 @@ function fork(): Piece[] {
 				return line.getPointAt(t).add(fore.clone().addScaledVector(along, -fore.dot(along)).setLength(TINE - 0.004));
 			})
 		);
-		out.push({ name: 'tine light', finish: 'amber', geo: new THREE.TubeGeometry(strip, 48, 0.024, 6, false) });
+		out.push({ name: 'tine light', finish: 'amber', geo: new THREE.TubeGeometry(strip, 48, 0.03, 6, false) });
 	}
 	return out;
 }
