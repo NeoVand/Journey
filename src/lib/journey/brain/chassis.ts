@@ -8,35 +8,14 @@ import * as THREE from 'three';
 import { rbox } from '../kit/geometry';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { lid, lobe } from './cerebellum';
-import { AXLE, FISSURE_BLOCKS, HOSE, over, PORT } from './design';
-import { FISSURE, locate, profile, ROLL, shell, type V3 } from './shell';
+import { AXLE, beneath, FISSURE_BLOCKS, HOSE, over, PORT } from './design';
+import { FISSURE, profile, ROLL, shell, type V3 } from './shell';
+import { rod, tube, turned, turnedZ } from './shapes';
+import { stem } from './stem';
 import { DISH, Parts } from './works';
 
-const Y = new THREE.Vector3(0, 1, 0);
-const v = (p: V3) => new THREE.Vector3(p[0], p[1], p[2]);
-
-function rod(a: V3, b: V3, r: number, sides = 16, r2 = r) {
-	const A = v(a);
-	const B = v(b);
-	const g = new THREE.CylinderGeometry(r2, r, A.distanceTo(B), sides, 1);
-	const q = new THREE.Quaternion().setFromUnitVectors(Y, B.clone().sub(A).normalize());
-	return g.applyMatrix4(new THREE.Matrix4().compose(A.clone().add(B).multiplyScalar(0.5), q, new THREE.Vector3(1, 1, 1)));
-}
-
-function tube(points: V3[], r: number, sides = 12, closed = false) {
-	return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points.map(v), closed, 'centripetal'), Math.max(8, points.length * 3), r, sides, closed);
-}
-
-/** A solid of revolution standing upright at a place: its outline is radius and height, running the way that faces out. */
-function turned(at: V3, outline: [number, number][], sides = 48) {
-	return new THREE.LatheGeometry(
-		outline.map(([r, y]) => new THREE.Vector2(Math.max(r, 0.0005), y)),
-		sides
-	).translate(at[0], at[1], at[2]);
-}
-
 /** How far the keel's edge is drawn in from the core's own outline: inside the roll, and clear of the cushions that come round it. */
-const KEEL_IN = ROLL + 0.2;
+export const KEEL_IN = ROLL + 0.2;
 /** Half the keel's thickness. */
 export const KEEL = 0.08;
 /** Where the pins through the keel are, that the two halves slide on: x and y in the fissure's plane. */
@@ -157,54 +136,35 @@ export function between(hose: Hose = HOSE) {
 	const R = hose.hoseR;
 	parts.add('chrome', turned(at, [[R + 0.02, hose.lip - 0.02], [R + 0.07, hose.lip - 0.02], [R + 0.1, hose.lip + 0.1], [R + 0.1, hose.nozzle - 0.3], [R + 0.2, hose.nozzle - 0.26], [R + 0.2, hose.nozzle - 0.06], [R + 0.14, hose.nozzle], [R + 0.02, hose.nozzle], [R + 0.02, hose.lip - 0.02]], 40));
 
-	// The brainstem: a dark conduit from the collar on the pedestal up and forward to the keel, between two chrome ribs with
-	// a strip of light on each, and chrome rings where it goes into the collar.
-	const spine: V3[] = [
-		[-1.4, -4.7, 0],
-		[-1.4, -4.25, 0],
-		[-1.3, -3.82, 0],
-		[-1.0, -3.4, 0],
-		[-0.5, -3.1, 0],
-		[0.15, -2.92, 0],
-		[0.8, -2.8, 0],
-		[1.3, -2.66, 0]
-	];
-	parts.add('dark', tube(spine, 0.4, 20));
-	for (const s of [-1, 1]) {
-		const rib = spine.map(([x, y], i): V3 => [x, y, s * (0.36 + 0.3 * Math.min(1, i / 4))]);
-		parts.add('chrome', tube(rib, 0.13, 12));
-		parts.add('amber', tube(rib.slice(1, -1).map(([x, y, z]): V3 => [x, y, z + s * 0.118]), 0.022, 5));
-	}
-	for (const [y, radius] of [[-4.55, 0.56], [-4.33, 0.53], [-4.12, 0.5]] as const) parts.add('chrome', new THREE.TorusGeometry(radius, 0.065, 10, 48).rotateX(Math.PI / 2).translate(-1.4, y, 0));
-	// A row of lights on the conduit's back.
-	for (let i = 0; i < 3; i++) parts.add('cyan', rbox(0.1, 0.04, 0.05, 0.015, 1), new THREE.Matrix4().makeRotationZ(0.62).setPosition(-0.98 + i * 0.16, -3.03 + i * 0.105, 0).multiply(new THREE.Matrix4().makeTranslation(0, 0.39, 0)));
-	// The axle across its top, that a boss under each half rides on.
-	parts.add('chrome', rod([AXLE.x, AXLE.y, -AXLE.reach], [AXLE.x, AXLE.y, AXLE.reach], AXLE.r, 18));
-	for (const s of [-1, 1]) parts.add('chrome', rod([AXLE.x, AXLE.y, s * AXLE.reach], [AXLE.x, AXLE.y, s * (AXLE.reach + 0.05)], AXLE.r + 0.04, 18));
-	parts.add('dark', rbox(0.5, 0.34, 1.0, 0.08, 2), new THREE.Matrix4().makeTranslation(AXLE.x, AXLE.y - 0.02, 0));
-	// A chrome bracket between the two drums of the cerebellum, with two lit bars, as the drawing has it from behind.
-	parts.add('chrome', rbox(1.5, 0.9, KEEL * 2, 0.05, 2), new THREE.Matrix4().makeRotationZ(0.35).setPosition(-2.6, -2.75, 0));
-	parts.add('dark', rod([-2.0, -2.5, 0], [-1.25, -3.6, 0], KEEL, 10));
-	for (const s of [-1, 1]) for (const k of [-1, 1]) parts.add('amber', rbox(0.3, 0.05, 0.012, 0.006, 1), new THREE.Matrix4().makeRotationZ(0.35 + Math.PI / 2).setPosition(-3.15 + k * 0.1, -2.95 + k * 0.035, s * (KEEL + 0.004)));
+	// The brainstem (stem.ts): the plug that sits in the stand, the neck up to the keel, and the fork that carries the axle
+	// the halves slide on.
+	for (const piece of stem()) parts.add(piece.finish, piece.geo);
 
 	return { parts, ring, pins };
 }
 
 /** How many notches the intake's ratchet ring has. */
 export const NOTCHES = 36;
+/** How far out along the brainstem's axle each half's bearing is, with the halves closed. */
+export const BEARING = 1.08;
 
-/** What hangs under one half and rides with it: its boss on the brainstem's axle, its sockets on the keel's pins, and its drum. */
+/** What hangs under one half and rides with it: its bearing on the brainstem's axle, its sockets on the keel's pins, and its drum. */
 export function under() {
 	const parts = new Parts();
 	const p: V3 = [0, 0, 0];
 	const n: V3 = [0, 0, 0];
-	// The boss on the axle, and a strut from it up into the core.
-	const z0 = 1.08;
-	parts.add('chrome', turnedZ([AXLE.x, AXLE.y, z0], [[AXLE.r + 0.018, -0.11], [0.2, -0.11], [0.2, 0.11], [AXLE.r + 0.018, 0.11], [AXLE.r + 0.018, -0.11]]));
-	const [u, w] = locate(AXLE.x, AXLE.y + 0.6, z0 + 0.25);
-	shell(u, w, p, n);
-	parts.add('dark', rod([AXLE.x, AXLE.y + 0.18, z0], [p[0], p[1], p[2]], 0.09, 12));
-	parts.add('chrome', rod([p[0] + n[0] * 0.05, p[1] + n[1] * 0.05, p[2] + n[2] * 0.05], [p[0], p[1], p[2]], 0.16, 20));
+	// The half's bearing on the brainstem's axle: a ring that slides along the axle, under a block let up into the core's
+	// underside and held there by two bolts.
+	const z0 = BEARING;
+	parts.add('chrome', turnedZ([AXLE.x, AXLE.y, z0], [[AXLE.r + 0.018, -0.11], [0.185, -0.11], [0.2, -0.095], [0.2, 0.095], [0.185, 0.11], [AXLE.r + 0.018, 0.11], [AXLE.r + 0.018, -0.11]]));
+	const under = beneath(AXLE.x, z0);
+	if (under) {
+		shell(under[0], under[1], p, n);
+		const top = p[1] + 0.06;
+		const low = AXLE.y + 0.12;
+		parts.add('chrome', rbox(0.62, top - low, 0.2, 0.03, 2), new THREE.Matrix4().makeTranslation(AXLE.x, (top + low) / 2, z0));
+		for (const dx of [-0.23, 0.23]) parts.add('dark', rod([AXLE.x + dx, low - 0.02, z0], [AXLE.x + dx, low + 0.02, z0], 0.045, 12));
+	}
 	// A collar on the inner face round each of the keel's pins.
 	for (const [x, y] of PINS) parts.add('chrome', turnedZ([x, y, FISSURE - 0.03], [[0.118, -0.03], [0.2, -0.03], [0.2, 0.03], [0.118, 0.03], [0.118, -0.03]]));
 
@@ -257,12 +217,3 @@ export function under() {
 	return { parts, drum: { ...lobe(), blue: mergeGeometries(cb.blue)!, cyan: mergeGeometries(cb.lights)! } };
 }
 
-/** A solid of revolution about a line across the fissure: its outline is radius and distance along z. */
-function turnedZ(at: V3, outline: [number, number][], sides = 28) {
-	return new THREE.LatheGeometry(
-		outline.map(([r, z]) => new THREE.Vector2(r, z)),
-		sides
-	)
-		.rotateX(Math.PI / 2)
-		.translate(at[0], at[1], at[2]);
-}

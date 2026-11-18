@@ -7,6 +7,7 @@ import { islandAt, machine, shadowOn } from '../kit/machines';
 import { createCastShadow } from './island';
 import { between, NOTCHES, PART, under, type Hose } from '../brain/chassis';
 import { DIP, LOBE } from '../brain/cerebellum';
+import { seat, SEAT_LIGHT, STEM } from '../brain/stem';
 import { core as buildCoreMesh } from '../brain/core';
 import { BALLS, GYRI, HOSE, MACHINES, PORT, ROWS } from '../brain/design';
 
@@ -48,10 +49,10 @@ export const INTAKE_WELL = { floor: PORT.floor - BRAIN_SEAT + 0.012, r: PORT.bor
 /** The stem and pedestal go down this far below the brain's centre, to the island's top. */
 export const BRAIN_FOOT = 7.5;
 
-/** Where the brainstem comes down into its collar on the pedestal. */
-const STEM_X = -1.4;
-/** The collar the brainstem goes down into, on top of the pedestal's neck. */
-const COLLAR_Y = -4.66;
+/** Where the brainstem comes down onto the pedestal. */
+const STEM_X = STEM.x;
+/** The top of the pedestal's neck: the brainstem's seat stands on it. */
+const COLLAR_Y = STEM.seat - 0.1;
 
 /** The cushions' two colours, sampled from the design, and the dark they stand on. */
 const skin = {
@@ -584,12 +585,13 @@ export class Brain {
 			.map(([r, y]) => new THREE.Vector2(r, y));
 		const b = new Batch();
 		b.add(new THREE.LatheGeometry(profile, 48), m.cream, { p: [sx, 0, 0] });
-		b.add(new THREE.TorusGeometry(0.8, 0.075, 12, 56), m.steel, { p: [sx, COLLAR_Y, 0], r: [Math.PI / 2, 0, 0] });
+		// The seat the brainstem's plug goes down into (brain/stem.ts), on the neck's top.
+		b.add(seat(), m.steel, { p: [0, 0, 0] });
 		b.add(new THREE.TorusGeometry(1.0, 0.07, 12, 56), m.steel, { p: [sx, -5.38, 0], r: [Math.PI / 2, 0, 0] });
 		this.group.add(b.build('stem'));
-		// A ring of light round the collar, where the brainstem goes in: it flashes as each pass comes down, a token written.
-		this.collar = new THREE.Mesh(new THREE.TorusGeometry(0.66, 0.035, 8, 56), new THREE.MeshStandardMaterial({ color: '#3a2a12', emissive: '#ffa630', emissiveIntensity: 2 }));
-		this.collar.position.set(sx, COLLAR_Y + 0.05, 0);
+		// A ring of light let into the seat, round the plug: it flashes as each pass comes down, a token written.
+		this.collar = new THREE.Mesh(new THREE.TorusGeometry(SEAT_LIGHT.r, 0.035, 8, 72), new THREE.MeshStandardMaterial({ color: '#3a2a12', emissive: '#ffa630', emissiveIntensity: 2 }));
+		this.collar.position.set(sx, SEAT_LIGHT.y, 0);
 		this.collar.rotation.x = Math.PI / 2;
 		this.group.add(this.collar);
 

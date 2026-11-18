@@ -1,14 +1,15 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { between, NOTCHES, PART, under } from './chassis';
+import { BEARING, between, KEEL_IN, NOTCHES, PART, under } from './chassis';
 import { DIP, LOBE, WIDE } from './cerebellum';
 import { clearance, shifted, soup, together, type Soup } from './clearance';
 import { core } from './core';
 import { BALLS, beneath, GYRI, MACHINES, PORT } from './design';
 import { trace, type Machine } from './machines';
 import { LIFT, MOST, rise } from './motion';
-import { FISSURE, shell } from './shell';
+import { FISSURE, profile, shell } from './shell';
 import { FIT, solve, type Cushions } from './solve';
+import { KEEL_BOLT, seat, SLIDE, stem, STEM } from './stem';
 import { build, EYE_TURN, type Finish } from './works';
 
 /*
@@ -272,6 +273,37 @@ describe('the brain as a machine', () => {
 		// The lobe dips straight down and comes back; the ring has a mark at each notch.
 		for (const k of [0, 0.5, 1]) expect(clearance(drumAt(k), round, 0.1).gap, 'the cerebellum').toBeGreaterThan(0.012);
 		for (let k = 0; k < 8; k++) expect(clearance(turned(ring, PORT.x, 0, (k / 8) * ((Math.PI * 2) / NOTCHES)), together([mid, cushions]), 0.1).gap, 'ring').toBeGreaterThan(0.004);
+	});
+
+	it('seats every part of the brainstem in another, from the stand up to the keel and out to the axle', () => {
+		const named = new Map<string, Soup[]>([['seat', [soup(seat())]]]);
+		for (const piece of stem()) named.set(piece.name, [...(named.get(piece.name) ?? []), soup(piece.geo)]);
+		const of = (name: string) => together(named.get(name)!);
+		// Two parts that are fitted together have surfaces that meet or pass through each other: nothing between them.
+		const fitted = (a: string, b: string, within = 0.04) => expect(clearance(of(a), of(b), 0.4).gap, `${a} and ${b}`).toBeLessThan(within);
+		// The plug's foot stands in the seat's bore, with a little room all round, and goes down past the seat's top.
+		fitted('plug', 'seat', 0.08);
+		expect(Math.min(...Array.from(of('plug').p).filter((_, i) => i % 3 === 1))).toBeLessThan(STEM.seat - 0.1);
+		// The neck stands in the plug's top; its cheeks hold the spine, the bolt through the keel, and the hubs of the pin and the axle.
+		for (const [a, b] of [['cheek', 'plug rim'], ['spine', 'cheek'], ['keel bolt', 'cheek'], ['hub', 'cheek'], ['pin', 'hub'], ['axle', 'hub']]) fitted(a, b);
+		// That bolt goes through the keel's plate, well inside its edge.
+		const edge = Array.from({ length: 720 }, (_, i) => profile((i / 720) * Math.PI * 2, KEEL_IN));
+		let inside = false;
+		let near = Infinity;
+		edge.forEach((a, i) => {
+			const b = edge[(i + 1) % edge.length];
+			if (a[1] > KEEL_BOLT[1] !== b[1] > KEEL_BOLT[1] && KEEL_BOLT[0] < ((b[0] - a[0]) * (KEEL_BOLT[1] - a[1])) / (b[1] - a[1]) + a[0]) inside = !inside;
+			near = Math.min(near, Math.hypot(a[0] - KEEL_BOLT[0], a[1] - KEEL_BOLT[1]));
+		});
+		expect(inside).toBe(true);
+		expect(near).toBeGreaterThan(0.12);
+		// Each tine runs from its knuckle on the pin to its eye on the axle; the pin and the axle are capped.
+		for (const [a, b] of [['knuckle', 'pin'], ['tine', 'knuckle'], ['tine', 'eye'], ['eye', 'axle'], ['pin end', 'pin'], ['axle end', 'axle']]) fitted(a, b);
+		// The lights are let into what they light, and the plug's plates are riveted onto its drum.
+		for (const [a, b] of [['tine light', 'tine'], ['back light', 'spine'], ['front light', 'spine'], ['side light', 'spine'], ['plug light', 'plug'], ['plug drum', 'plug'], ['plug plate', 'plug drum'], ['plug rivet', 'plug plate'], ['plug rim', 'plug plate']]) fitted(a, b);
+		// And each half's bearing has its stretch of the axle to slide on, between the neck's hub and the tine's eye.
+		expect(BEARING - 0.11).toBeGreaterThan(SLIDE.from + 0.05);
+		expect(BEARING + 0.11 + PART).toBeLessThan(SLIDE.to - 0.05);
 	});
 
 	it('closes the back: the cerebellum\'s lid sits on its lobe all round and goes up into the body of the brain', () => {
