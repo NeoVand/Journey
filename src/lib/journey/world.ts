@@ -24,7 +24,7 @@ import { HARNESSES, PROMPT, TOKENS, type HarnessId, type TrackId } from './conte
 import { McpTrack, MCP_SHOTS, type HarnessPose } from './tracks/mcp';
 import { ROOM_AT, ROOM_SKY } from './tracks/room/layout';
 import { HarnessRoom } from './tracks/room/room';
-import { ROOF, ROOM_SHOTS } from './tracks/room/shots';
+import { ROOF, ROOM_SHOTS, TOUR } from './tracks/room/shots';
 import { GLASS_ROOF, SandboxStage, STAGE_AT, STAGE_SHOTS, STAGE_SKY } from './tracks/sandbox';
 import { CABINET_ROOF, MemoryStage, MEMORY_AT, MEMORY_SHOTS, MEMORY_SKY } from './tracks/memory';
 import { PlansStage, PLANS_AT, PLANS_SHOTS, PLANS_SKY, SCREEN_ROOF } from './tracks/plans';
@@ -1236,7 +1236,7 @@ export class World {
 	 * tiles, wakes the brain, spins the wheel. False if there's nothing by those names in the scene now. cutBack is for a
 	 * peek at another moment of the story, which the page ends with a cut.
 	 */
-	visit(cue: { names: string[]; together?: boolean; hold?: number; act?: string; index?: number; cutBack?: boolean; still?: boolean; wide?: boolean; front?: boolean; close?: boolean }) {
+	visit(cue: { names: string[]; together?: boolean; hold?: number; act?: string; index?: number; cutBack?: boolean; still?: boolean; wide?: boolean; front?: boolean; close?: boolean; pose?: string }) {
 		return this.visits.start({
 			names: cue.names,
 			together: cue.together,
@@ -1246,6 +1246,7 @@ export class World {
 			wide: cue.wide,
 			front: cue.front,
 			close: cue.close,
+			pose: cue.pose && this.trackIn ? TOUR[cue.pose] : undefined,
 			act: this.actFor(cue.act, cue.index),
 			fly: !this.trackIn
 		});

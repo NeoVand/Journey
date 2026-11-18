@@ -4,9 +4,10 @@ import { hang } from '../../kit/cable';
 import { extrude, rbox } from '../../kit/geometry';
 import { shadowOn, tube } from '../../kit/machines';
 import { Lamp, color, mats } from '../../kit/materials';
-import { createSign, fitting } from '../../kit/parts';
+import { fitting } from '../../kit/parts';
 import { font, roundRectPath, Surface } from '../../kit/print';
-import { FLOOR, GATE, GATE_X, GATE_Z, HOOK_PORT, SCREEN, SIDE_X } from './layout';
+import { FLOOR, GATE, GATE_X, GATE_Z, HOOK_PORT, SCREEN, SIDE_X, SIGN } from './layout';
+import { roomSign } from './signs';
 
 /*
  * What checks, on the left by you: the gate every call goes through before any bench, your screen in the wall facing
@@ -194,9 +195,9 @@ export class Screen {
 		glassFace.rotation.y = Math.PI / 2;
 		glassFace.position.set(-SIDE_X + 0.085, cy, cz);
 		this.group.add(glassFace);
-		const sign = createSign('Your screen', 0.16);
+		const sign = roomSign('Your screen', 0.16);
 		sign.rotation.y = Math.PI / 2;
-		sign.position.set(-SIDE_X + 0.05, SCREEN.y1 + 0.42, cz);
+		sign.position.set(-SIDE_X + 0.05, SCREEN.y1 + 0.18 + 0.16 * SIGN, cz);
 		this.group.add(sign);
 		this.show(['> fix the flaky scheduler test'], null);
 	}
@@ -276,9 +277,9 @@ export function buildHooks(gate: Gate) {
 		]
 	});
 	group.add(tube(path, 0.05, m.cobalt, 120));
-	const sign = createSign('Your hooks', 0.13);
+	const sign = roomSign('Your hooks', 0.13);
 	sign.rotation.y = Math.PI / 2;
-	sign.position.set(-SIDE_X + 0.05, HOOK_PORT[1] + 0.5, HOOK_PORT[2]);
+	sign.position.set(-SIDE_X + 0.05, HOOK_PORT[1] + 0.3 + 0.13 * SIGN, HOOK_PORT[2]);
 	group.add(sign);
 	return { group, cable: path as THREE.Curve<THREE.Vector3> };
 }

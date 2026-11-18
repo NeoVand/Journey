@@ -1,14 +1,14 @@
 import * as THREE from 'three';
 import { Batch } from '../../kit/batch';
-import { extrude, rbox, roundedRect } from '../../kit/geometry';
+import { extrude, rbox, roundedPoly, roundedRect } from '../../kit/geometry';
 import { shadowOn } from '../../kit/machines';
 import { Lamp, color, mats } from '../../kit/materials';
 import { clamp, inOut, lerp } from '../../kit/math';
-import { createSign } from '../../kit/parts';
 import { drawIcon, font, Surface } from '../../kit/print';
 import { buildBenches, buildLedge, buildRail, Cart } from './acts';
 import { buildHooks, Gate, printed, Screen } from './checks';
-import { BACK_Z, D, LIP, PAD, ROOM_AT, SHELF, SIDE_X, skillAt, SKILLS, SUB, TRAY, TRAY_Z, W, WALL_H } from './layout';
+import { BACK_Z, D, LIP, PAD, ROOM_AT, SHELF, SIDE_X, SIGN, SKILL_SCALE, skillAt, SKILLS, SUB, TRAY, TRAY_Z, W, WALL_H, WALL_T } from './layout';
+import { roomSign } from './signs';
 import { buildChute, buildTube, Capsule } from './loop';
 import { SubRoom } from './subagent';
 import { KEPT, SLOTS, TILE_COLOR, trayAt, type Tray } from './tray';
@@ -26,6 +26,39 @@ import { Play } from './play';
  * where everything stands is in layout.ts.
  */
 
+
+/**
+ * The side walls' outlines, seen from the side, as (z, height). They stand full height in the back corners, where the
+ * chute and the tube are, and are cut down toward the open front, like a dollhouse opened up, so the benches and your
+ * screen can be seen over them. The left keeps its height longer, round your screen; the right comes down before the
+ * first bench.
+ */
+const FRONT_Z = BACK_Z + D;
+const LOW_WALL = 1.6;
+const SIDE_WALL: Record<-1 | 1, { pts: [number, number][]; r: number[] }> = {
+	[-1]: {
+		pts: [
+			[BACK_Z - WALL_T, 0],
+			[FRONT_Z, 0],
+			[FRONT_Z, LOW_WALL],
+			[3.6, LOW_WALL],
+			[-4.5, WALL_H],
+			[BACK_Z - WALL_T, WALL_H]
+		],
+		r: [0.05, 0.05, 0.2, 1.4, 1.4, 0.12]
+	},
+	[1]: {
+		pts: [
+			[BACK_Z - WALL_T, 0],
+			[FRONT_Z, 0],
+			[FRONT_Z, LOW_WALL],
+			[-2.0, LOW_WALL],
+			[-4.5, WALL_H],
+			[BACK_Z - WALL_T, WALL_H]
+		],
+		r: [0.05, 0.05, 0.2, 1.2, 1.2, 0.12]
+	}
+};
 
 /** The slot in the back wall where the record goes out to your disk. */
 const SLOT_AT = new THREE.Vector3(5.1, 1.35, BACK_Z);
@@ -139,7 +172,10 @@ export class HarnessRoom {
 		const room = new Batch();
 		room.add(extrude(roundedRect(W + 0.8, D + 0.8, 0.9), 0.5, 0.14, 4, 10), m.porcelain, { r: [-Math.PI / 2, 0, 0], p: [0, -0.25, 0] });
 		room.add(rbox(W + 0.4, WALL_H, 0.4, 0.12, 3), m.cream, { p: [0, WALL_H / 2, BACK_Z - 0.2] });
-		for (const s of [-1, 1]) room.add(rbox(0.4, WALL_H, D, 0.12, 3), m.cream, { p: [s * (SIDE_X + 0.2), WALL_H / 2, BACK_Z + D / 2] });
+		for (const s of [-1, 1] as const) {
+			const { pts, r } = SIDE_WALL[s];
+			room.add(extrude(roundedPoly(pts, r), WALL_T, 0.1, 3, 14), m.cream, { r: [0, -Math.PI / 2, 0], p: [s * (SIDE_X + WALL_T / 2), 0, 0] });
+		}
 		const walls = room.build('room');
 		walls.traverse((o) => (o.castShadow = false));
 		this.group.add(walls);
@@ -253,8 +289,8 @@ export class HarnessRoom {
 		slot.add(rbox(0.92, 0.42, 0.06, 0.04, 2), m.gold, { p: [SLOT_AT.x, SLOT_AT.y, BACK_Z + 0.02] });
 		slot.add(rbox(0.74, 0.24, 0.06, 0.03, 2), m.recess, { p: [SLOT_AT.x, SLOT_AT.y, BACK_Z + 0.05] });
 		this.group.add(slot.build('record-slot'));
-		const diskSign = createSign('To your disk', 0.14);
-		diskSign.position.set(SLOT_AT.x, SLOT_AT.y + 0.5, BACK_Z + 0.05);
+		const diskSign = roomSign('To your disk', 0.14);
+		diskSign.position.set(SLOT_AT.x, SLOT_AT.y + 0.27 + 0.14 * SIGN, BACK_Z + 0.05);
 		this.group.add(diskSign);
 
 		/* ---- the four drawers, seen from inside: hatches in the back wall over the tray's start ---- */
@@ -283,8 +319,9 @@ export class HarnessRoom {
 			hatch.position.set(DRAWER_X, DRAWER_Y[i], BACK_Z + 0.14);
 			this.group.add(hatch);
 		});
-		const drawersSign = createSign('The four drawers', 0.2);
-		drawersSign.position.set(DRAWER_X, 5.74, BACK_Z + 0.05);
+		// Between the top drawer and the wall's top.
+		const drawersSign = roomSign('The four drawers', 0.2);
+		drawersSign.position.set(DRAWER_X, WALL_H - 0.06 - 0.2 * SIGN, BACK_Z + 0.05);
 		this.group.add(drawersSign);
 
 		/* ---- the skill shelf: a name and a line each, until one is needed ---- */
@@ -309,11 +346,12 @@ export class HarnessRoom {
 			folder.add(label);
 			folder.position.copy(skillAt(i));
 			folder.rotation.x = -0.08;
+			folder.scale.setScalar(SKILL_SCALE);
 			this.group.add(folder);
 			this.skillCards.push(folder);
 		});
-		const skillsSign = createSign('Skills', 0.17);
-		skillsSign.position.set(sx, SHELF.y + 0.9, BACK_Z + 0.05);
+		const skillsSign = roomSign('Skills', 0.17);
+		skillsSign.position.set(sx, SHELF.y + 0.04 + 0.52 * SKILL_SCALE + 0.1 + 0.17 * SIGN, BACK_Z + 0.05);
 		this.group.add(skillsSign);
 
 		/* ---- the loop's ends, what checks, what acts, and the subagent ---- */

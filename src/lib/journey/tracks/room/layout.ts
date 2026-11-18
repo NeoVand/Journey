@@ -21,6 +21,8 @@ export const BACK_Z = -6;
 export const SIDE_X = 7.2;
 /** The walls' thickness: their inner faces are at x ±SIDE_X and z BACK_Z. */
 export const WALL_T = 0.4;
+/** Signs in here are printed this much larger than the story's own, so they can be read from the whole-room view. */
+export const SIGN = 1.5;
 /** The floor slab, which the side walls stand on: it reaches out to the walls' outer faces. */
 export const FLOOR = { x: SIDE_X + WALL_T, z0: BACK_Z - WALL_T, z1: -BACK_Z + WALL_T };
 
@@ -36,10 +38,12 @@ export const LIP = { z0: -2.72, z1: -2.5, y: 0.2 };
 /** The pad at the lip's start, where the reply comes down. Its top is at PAD.y. */
 export const PAD = { x0: -5.95, x1: -4.6, z0: -3.3, z1: -2.5, y: 0.14 };
 /** The skill shelf, on the back wall right of the drawers: a name and a line each, until one is needed. */
-export const SHELF = { x0: 1.4, x1: 3.9, y: 2.0 };
+export const SHELF = { x0: 0.75, x1: 4.28, y: 2.0 };
 export const SKILLS = ['debugging', 'reviewing', 'migrating', 'testing', 'releasing'];
+/** How much larger a skill's card is than the 0.38 by 0.52 it was drawn at, so its name reads from across the room. */
+export const SKILL_SCALE = 1.4;
 /** Where a skill's card stands on the shelf, by its place in the row. */
-export const skillAt = (i: number) => new THREE.Vector3(SHELF.x0 + 0.32 + i * 0.47, SHELF.y + 0.04, BACK_Z + 0.24);
+export const skillAt = (i: number) => new THREE.Vector3(SHELF.x0 + 0.32 * SKILL_SCALE + i * 0.47 * SKILL_SCALE, SHELF.y + 0.04, BACK_Z + 0.24);
 
 /* ---------- the loop: up in the back-right corner, down in the back-left ---------- */
 
@@ -68,18 +72,20 @@ export const HOOK_PORT: [number, number, number] = [-SIDE_X, 0.42, 0.6];
 /** The cart's rail: out of the gate, east along the front of the tray, south past the benches, and west to the subagent. */
 export const RAIL = { z: -1.6, x: 5.45, r: 0.45 };
 /** The three benches against the right wall, each wired through it to the real thing outside. */
-export const BENCH = { x0: 5.95, x1: 6.6, len: 1.0, h: 0.62 };
+export const BENCH = { x0: 5.95, x1: 6.75, len: 1.3, h: 0.78 };
 /** A bench's wire: up out of its top, over, and into a port high in the wall; outside, a short lead down to the thing. */
-export const PORT = { inside: 1.05, outside: 0.2 };
+export const PORT = { inside: 1.2, outside: 0.2 };
 export const BENCHES = [
 	{ name: 'Files', z: -1.7, wire: '#f39a2c', outside: 'Your files' },
 	{ name: 'Shell', z: 0.3, wire: '#2fbf68', outside: 'Your shell' },
 	{ name: 'MCP', z: 2.3, wire: '#2f6fe0', outside: 'MCP server' }
 ] as const;
 /** The ledge outside the right wall, a step down: your files, your shell in its fence, an MCP server. */
-export const LEDGE = { x0: FLOOR.x + 0.02, x1: 8.92, z0: -3.0, z1: 3.6, y: -0.1 };
+export const LEDGE = { x0: FLOOR.x + 0.02, x1: 9.3, z0: -3.0, z1: 3.6, y: -0.1 };
 /** Each real thing stands on a pedestal on the ledge, in line with its bench, plugged in on the side facing the wall. */
 export const PEDESTAL = { x0: 8.1, x1: 8.76, d: 0.66, h: 0.24 };
+/** The real things are drawn at the pedestal's size, then shown this much larger, grown from the pedestal's wall-side foot. */
+export const THING_SCALE = 1.3;
 /** The sandbox's fence round your shell, with the shell's lead through a grommet in its wall-side panel. */
 export const FENCE = { x0: 7.86, x1: 8.86, z0: BENCHES[1].z - 0.55, z1: BENCHES[1].z + 0.62 };
 

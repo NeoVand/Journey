@@ -52,6 +52,11 @@ it feels like a friend with a pointer who knows when to use it. Done badly, it's
   Landing part way through a conversation, the card catches up with the latest beat of each kind.
 - `close` (optional): frames a small thing tightly, nearly filling the picture, instead of leaving room round it to
   be read in its place. For a thing whose detail is the point, like the smallest of the subagent's nested rooms.
+- `pose` (optional, inside the harness room): looks from a stop set by hand in `TOUR`
+  (`src/lib/journey/tracks/room/shots.ts`) instead of working out where to stand. For a tour, where a place's first
+  card shows each thing as the voices name it. A stop that the next one follows closely should be held until it does
+  (`hold` at least the gap less 1.5 seconds), so the camera glides straight on, rising a little on the way; one
+  followed by talk about something else is held a few seconds and the camera goes back to the card's own shot.
 - `front` (optional): sees the thing from the side it faces (inside a room too, when nothing stands in the way), for a screen or a sign whose words are the point, however
   the card's own shot looks at it. A far flight takes a little longer by itself, so it never lurches.
 

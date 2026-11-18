@@ -1,3 +1,15 @@
 {
-	"cues": [{ "at": "on your screen, there in the left wall", "show": ["your-screen"], "front": true, "hold": 4 }]
+	"cues": [
+		{ "at": "at the top of that tube", "show": ["tube", "sign:To the model"], "together": true, "pose": "tube", "hold": 7.5 },
+		{ "at": "what comes down the chute", "show": ["chute", "sign:From the model"], "together": true, "pose": "chute", "hold": 5 },
+		{ "at": "on your screen, there in the left wall", "show": ["your-screen"], "pose": "screen", "hold": 4.2 },
+		{ "at": "slid along the lip into the tray", "show": ["gate", "tray"], "together": true, "pose": "lip", "hold": 10.4 },
+		{ "at": "Three tiles were already waiting", "show": ["tray"], "pose": "tiles", "hold": 6 },
+		{ "at": "The back wall remembers", "show": ["front:Instructions", "front:Environment", "front:Tools", "front:Conversation"], "together": true, "pose": "drawers", "hold": 1.8 },
+		{ "at": "the shelf of skills", "show": ["skill-shelf", "record-slot", "sign:To your disk"], "together": true, "pose": "shelf", "hold": 2.7 },
+		{ "at": "The left side checks", "show": ["gate", "your-screen"], "together": true, "pose": "gate", "hold": 6.3 },
+		{ "at": "The right side acts", "show": ["bench:Files", "bench:Shell", "bench:MCP"], "together": true, "pose": "benches", "hold": 2.7 },
+		{ "at": "your files, your shell and an MCP server", "show": ["your-files", "your-shell", "mcp-server"], "together": true, "pose": "machine", "hold": 5 },
+		{ "at": "Every request stops at the gate first", "show": ["gate"], "pose": "refusal", "hold": 5 }
+	]
 }

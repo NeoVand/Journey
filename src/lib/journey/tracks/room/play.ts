@@ -5,7 +5,7 @@ import { clamp, inCubic, inOut, lerp, outCubic } from '../../kit/math';
 import { font, roundRectPath, Surface } from '../../kit/print';
 import { Cart } from './acts';
 import type { Gate, Screen } from './checks';
-import { BENCH, BENCHES, CAPSULE, CHUTE, LIP, PAD, RAIL_WEST_Z, SCREEN, SIDE_X, skillAt, SUB, TRAY, TRAY_Z, TUBE } from './layout';
+import { BENCH, BENCHES, CAPSULE, CHUTE, LIP, PAD, RAIL_WEST_Z, SCREEN, SIDE_X, SKILL_SCALE, skillAt, SUB, TRAY, TRAY_Z, TUBE } from './layout';
 import type { Capsule } from './loop';
 import type { SubRoom } from './subagent';
 import { TILE_COLOR, type TileKind } from './tiles';
@@ -450,9 +450,9 @@ export class Play {
 		} else if (k.call.where === 'skill') {
 			// Up to the shelf, and in behind the skill it asks for.
 			this.b.copy(skillAt(0));
-			this.b.y += 0.3;
+			this.b.y += 0.3 * SKILL_SCALE;
 			this.b.z -= 0.1;
-			hop(this.a, this.b, inOut(f), 0.8, g.position);
+			hop(this.a, this.b, inOut(f), 0.8 * SKILL_SCALE, g.position);
 			g.scale.setScalar(lerp(1, 0.7, f));
 		} else {
 			// Through the subagent's door, turned to fit it and getting smaller as it goes into the smaller room.
@@ -706,15 +706,18 @@ export class Play {
 		if (t < leave || t >= land) return;
 		const f = (t - leave) / (land - leave);
 		this.copy.visible = true;
+		// It peels off the card's face, wherever the leaning card has its face just then.
+		const mid = 0.26 * SKILL_SCALE;
+		const tilt = shelfCard.rotation.x;
 		this.a.copy(skillAt(0));
-		this.a.y += 0.26;
-		this.a.z += 0.08;
+		this.a.y += mid * Math.cos(tilt);
+		this.a.z += mid * Math.sin(tilt) + 0.06 * SKILL_SCALE + 0.02;
 		this.deckSpot(1, this.b);
 		this.b.y += 0.12;
 		hop(this.a, this.b, inOut(f), 0.6, this.copy.position);
-		// It turns to lie flat as it lands, like a sheet laid on the deck.
-		this.copy.rotation.set(-(Math.PI / 2) * inOut(f), 0, 0);
-		this.copy.scale.setScalar(lerp(1, 0.9, f));
+		// It leaves at the card's own lean, and turns to lie flat as it lands, like a sheet laid on the deck.
+		this.copy.rotation.set(lerp(tilt, -Math.PI / 2, inOut(f)), 0, 0);
+		this.copy.scale.setScalar(lerp(SKILL_SCALE, 0.9, f));
 	}
 }
 

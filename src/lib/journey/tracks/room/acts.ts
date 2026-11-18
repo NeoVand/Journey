@@ -4,10 +4,11 @@ import { hang, type Solid } from '../../kit/cable';
 import { rbox, sweep } from '../../kit/geometry';
 import { shadowOn, tube } from '../../kit/machines';
 import { Lamp, color, mats } from '../../kit/materials';
-import { createSign, fitting, standSign } from '../../kit/parts';
+import { fitting, standSign } from '../../kit/parts';
 import { font, roundRectPath } from '../../kit/print';
 import { printed } from './checks';
-import { BENCH, BENCHES, FENCE, FLOOR, LEDGE, PEDESTAL, PORT, railPath, SIDE_X, WALL_T } from './layout';
+import { BENCH, BENCHES, FENCE, FLOOR, LEDGE, PEDESTAL, PORT, railPath, SIDE_X, SIGN, THING_SCALE, WALL_T } from './layout';
+import { roomSign } from './signs';
 import { glass } from './loop';
 import { TILE_COLOR } from './tiles';
 
@@ -134,7 +135,7 @@ export function buildBenches() {
 		shadowOn(group, cx, 0, bench.z, bw + 0.4, BENCH.len + 0.4, 0.3);
 
 		// Its board, on the front: its name, and what goes in and what comes out.
-		const board = printed(0.52, 0.27, (c, w, h) => {
+		const board = printed(0.72, 0.36, (c, w, h) => {
 			c.fillStyle = color.paper;
 			roundRectPath(c, 0, 0, w, h, 14);
 			c.fill();
@@ -149,7 +150,7 @@ export function buildBenches() {
 			roundRectPath(c, w * 0.6 + h * 0.62, h * 0.25, h * 0.5, h * 0.5, 6);
 			c.fill();
 		});
-		board.position.set(cx, 0.4, bench.z + BENCH.len / 2 + 0.006);
+		board.position.set(cx, 0.1 + (BENCH.h - 0.1) / 2, bench.z + BENCH.len / 2 + 0.006);
 		group.add(board);
 		const lamp = new Lamp(rbox(0.12, 0.04, 0.12, 0.02, 2), color.amber, 0.12);
 		lamp.mesh.position.set(BENCH.x1 - 0.15, BENCH.h + 0.02, bench.z - BENCH.len / 2 + 0.2);
@@ -168,7 +169,19 @@ export function buildBenches() {
 		});
 		group.add(tube(inside, 0.045, wireMat, 60));
 		wires.push(inside);
-		const thing = OUTSIDE[bench.name](group, bench.z);
+		// The real thing, drawn at its pedestal's size and grown from the pedestal's foot on the wall's side.
+		const outside = new THREE.Group();
+		const drawn = OUTSIDE[bench.name](outside, bench.z);
+		const pivot = new THREE.Vector3(PEDESTAL.x0, LEDGE.y, bench.z);
+		outside.scale.setScalar(THING_SCALE);
+		outside.position.copy(pivot).multiplyScalar(1 - THING_SCALE);
+		group.add(outside);
+		const grow = (p: [number, number, number]): [number, number, number] => [
+			pivot.x + (p[0] - pivot.x) * THING_SCALE,
+			pivot.y + (p[1] - pivot.y) * THING_SCALE,
+			pivot.z + (p[2] - pivot.z) * THING_SCALE
+		];
+		const thing: Thing = { socket: grow(drawn.socket), solid: { min: grow(drawn.solid.min), max: grow(drawn.solid.max) }, via: drawn.via && grow(drawn.via) };
 		const lead = hang({
 			from: { at: far, out: [1, 0, 0], low: true },
 			to: { at: thing.socket, out: [-1, 0, 0], low: true },
@@ -186,7 +199,9 @@ export function buildBenches() {
 
 /* ---------- outside: the real things, on the ledge ---------- */
 
-type Thing = { socket: [number, number, number]; solid: Solid; via?: [number, number, number] };
+/** A box, as the cables see it: what a real thing's pedestal is. */
+type Box = Extract<Solid, { min: unknown }>;
+type Thing = { socket: [number, number, number]; solid: Box; via?: [number, number, number] };
 const THING_X = (PEDESTAL.x0 + PEDESTAL.x1) / 2;
 const PED = { w: PEDESTAL.x1 - PEDESTAL.x0, h: PEDESTAL.h, d: PEDESTAL.d };
 
@@ -200,9 +215,11 @@ function pedestal(b: Batch, z: number): Thing {
 	return { socket, solid: { min: [PEDESTAL.x0, y0, z - PED.d / 2], max: [PEDESTAL.x1, y0 + PED.h, z + PED.d / 2] } };
 }
 
+/** A thing's name on a post above it. It's drawn inside the grown thing, so it's printed that much smaller here. */
 function label(group: THREE.Group, text: string, x: number, top: number, z: number) {
-	const sign = standSign(createSign(text, 0.11), 0.11, 0.18);
-	sign.position.set(x, top + 0.18 + 0.11, z);
+	const size = (0.11 * SIGN) / THING_SCALE;
+	const sign = standSign(roomSign(text, 0.11 / THING_SCALE), size, 0.18);
+	sign.position.set(x, top + 0.18 + size, z);
 	group.add(sign);
 }
 
@@ -304,8 +321,9 @@ export function buildLedge() {
 	const d = LEDGE.z1 - LEDGE.z0;
 	b.add(rbox(w, 0.4, d, 0.12, 3), m.cream, { p: [(LEDGE.x0 + LEDGE.x1) / 2, LEDGE.y - 0.2, (LEDGE.z0 + LEDGE.z1) / 2] });
 	group.add(b.build('ledge'));
-	const sign = standSign(createSign('Your machine', 0.15), 0.15, 0.2);
-	sign.position.set((LEDGE.x0 + LEDGE.x1) / 2, LEDGE.y + 0.2 + 0.15, LEDGE.z1 - 0.2);
+	// As wide as the ledge allows: any wider and it would reach back into the wall.
+	const sign = standSign(roomSign('Your machine', 0.12), 0.12 * SIGN, 0.2);
+	sign.position.set((LEDGE.x0 + LEDGE.x1) / 2 + 0.05, LEDGE.y + 0.2 + 0.12 * SIGN, LEDGE.z1 - 0.2);
 	group.add(sign);
 	return { group };
 }

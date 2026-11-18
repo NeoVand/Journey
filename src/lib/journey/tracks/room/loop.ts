@@ -3,8 +3,8 @@ import { Batch } from '../../kit/batch';
 import { rbox, sweep } from '../../kit/geometry';
 import { shadowOn } from '../../kit/machines';
 import { mats } from '../../kit/materials';
-import { createSign } from '../../kit/parts';
-import { BACK_Z, CAPSULE, CHUTE, DOCK, HOUSING, PAD, TRAY_Z, TUBE, WALL_H } from './layout';
+import { BACK_Z, CAPSULE, CHUTE, DOCK, HOUSING, PAD, SIDE_X, TRAY_Z, TUBE, WALL_H } from './layout';
+import { roomSign } from './signs';
 import { TILE_COLOR } from './tiles';
 import type { Tray } from './tray';
 
@@ -101,8 +101,10 @@ export function buildChute() {
 	group.add(posts.build('chute-posts'));
 	shadowOn(group, cx, 0, cz, w + 0.4, d + 0.4, 0.3);
 
-	const sign = createSign('From the model', 0.17);
-	sign.position.set(-5.55, 5.3, BACK_Z + 0.05);
+	// On the left wall just in front of the chute, facing into the room: the back wall has no room left for it.
+	const sign = roomSign('From the model', 0.17);
+	sign.rotation.y = Math.PI / 2;
+	sign.position.set(-SIDE_X + 0.05, 4.7, CHUTE.z1 + 1.15);
 	group.add(sign);
 	return { group, slide };
 }
@@ -234,8 +236,8 @@ export function buildTube() {
 	capsule.group.position.set(TUBE.x, CAPSULE.restY, TUBE.z);
 	group.add(capsule.group);
 
-	const sign = createSign('To the model', 0.17);
-	sign.position.set(4.95, 5.3, BACK_Z + 0.05);
+	const sign = roomSign('To the model', 0.17);
+	sign.position.set(4.8, 5.3, BACK_Z + 0.05);
 	group.add(sign);
 	return { group, capsule, feeder: path };
 }

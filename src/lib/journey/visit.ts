@@ -35,7 +35,15 @@ export interface VisitCue {
 	front?: boolean;
 	/** Frames a small thing tightly, filling the picture, where the room round it isn't the point: a nested room, say. */
 	close?: boolean;
+	/** A place to look from, set by hand, in place of working one out: for a tour through a room, stop by stop. */
+	pose?: Pose;
 }
+
+/**
+ * A look set by hand, like a shot: at target, from az degrees round from the front and el up, close enough that radius
+ * round the target fills the picture beside the words (tallRadius on a phone, where that picture is wider than tall).
+ */
+export type Pose = { target: [number, number, number]; az: number; el: number; radius: number; tallRadius?: number };
 
 /** Seconds to get there, and to come back; a pull back to see a whole takes longer, so the reveal can be read. */
 const GO = 1.5;
@@ -103,6 +111,7 @@ export class Visits {
 	private ahead = new THREE.Vector3();
 	private up = new THREE.Vector3(0, 1, 0);
 	private ray = new THREE.Raycaster();
+	private backOff = new THREE.Vector3();
 
 	constructor(
 		private stage: Stage,
@@ -131,7 +140,8 @@ export class Visits {
 		if (!things.length) return false;
 		const cam = this.stage.camera;
 		this.boundsOf(things).getBoundingSphere(this.sphere);
-		const centre = this.sphere.center.clone();
+		const pose = cue.pose;
+		const centre = pose ? new THREE.Vector3(...pose.target) : this.sphere.center.clone();
 		const radius = Math.max(cue.close ? 0.3 : 0.7, this.sphere.radius);
 		const fromPos = this.v ? this.lastPos.clone() : cam.position.clone();
 		const fromLook = this.v ? this.lastLook.clone() : this.lookOf(cam, centre, new THREE.Vector3());
@@ -148,7 +158,13 @@ export class Visits {
 		// Coming closer than the shot, but never so close the thing overflows the picture: a shot already near it stays.
 		const dist = cue.wide ? fit : Math.max(fit * 0.8, Math.min(fit, away.length() * 0.85));
 		const toPos = new THREE.Vector3();
-		if (cue.fly && cue.wide) {
+		if (pose) {
+			const r = cam.aspect < 0.9 && pose.tallRadius ? pose.tallRadius : pose.radius;
+			const d = r / (fill * Math.tan((cam.fov * Math.PI) / 360));
+			const az = (pose.az * Math.PI) / 180;
+			const el = (pose.el * Math.PI) / 180;
+			toPos.set(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el)).multiplyScalar(d).add(centre);
+		} else if (cue.fly && cue.wide) {
 			// The loop stands upright in the sky, so a whole is seen from in front of it, nearly level, turned a little
 			// towards the side the camera is on: from there nothing stands in the way, and up and down read as they are.
 			const az = Math.max(-0.1, Math.min(0.1, Math.atan2(away.x, away.z)));
@@ -257,6 +273,14 @@ export class Visits {
 			const e = smoother(Math.min(1, v.t / v.go));
 			this.arc(v.fromPos, v.toPos, e, pos);
 			look.lerpVectors(v.fromLook, v.centre, e);
+			// On a tour, from one stop to the next, the camera rises and steps back on the way, so it never skims past a
+			// wall or a sign close enough to fill the picture, and the room shows between the two.
+			if (v.cue.pose) {
+				const k = Math.sin(Math.PI * e);
+				const span = v.fromPos.distanceTo(v.toPos);
+				pos.addScaledVector(this.backOff.copy(pos).sub(look).normalize(), span * 0.3 * k);
+				pos.y += span * 0.12 * k;
+			}
 			k = e;
 			if (v.t >= v.go) {
 				v.phase = 'stay';
@@ -264,7 +288,8 @@ export class Visits {
 			}
 		} else if (v.phase === 'stay' || v.phase === 'held') {
 			// A slow drift round it, so it's seen as a thing with sides.
-			const drift = this.turn * -DRIFT * smooth(Math.min(1, v.t / Math.max(1, v.hold)));
+			// Less on a tour's stop: it's set from further back, where the same turn swings the picture much more.
+			const drift = this.turn * -DRIFT * (v.cue.pose ? 0.35 : 1) * smooth(Math.min(1, v.t / Math.max(1, v.hold)));
 			pos.copy(v.toPos).sub(v.centre).applyAxisAngle(this.up, drift).add(v.centre);
 			look.copy(v.centre);
 			if (!v.acted && v.t > 0.2) {

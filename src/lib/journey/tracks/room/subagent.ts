@@ -2,10 +2,11 @@ import * as THREE from 'three';
 import { Batch } from '../../kit/batch';
 import { extrude, rbox } from '../../kit/geometry';
 import { Lamp, color, mats } from '../../kit/materials';
-import { createSign, standSign } from '../../kit/parts';
+import { standSign } from '../../kit/parts';
 import { Cart } from './acts';
 import { archShape } from './checks';
-import { CHILD, DOOR, LAYERS, railShape, WALL_H, type Rect } from './layout';
+import { CHILD, DOOR, LAYERS, railShape, SIGN, WALL_H, type Rect } from './layout';
+import { roomSign } from './signs';
 import { glass } from './loop';
 import { clamp, inOut, lerp } from '../../kit/math';
 import { SLOTS, TILE_COLOR, TURN_ONE, type TileKind } from './tiles';
@@ -242,8 +243,10 @@ export class SubRoom {
 		this.cartTo(this.homeU);
 
 		if (layer === 1) {
-			const sign = standSign(createSign('Subagent', 0.18), 0.18, 0.14);
-			sign.position.set(cx, y0 + H + 0.14 + 0.18, rect.z0 - wt / 2);
+			// Only a little larger than the story's own: it stands mid-room, in front of every look at the back wall.
+			const size = 0.21;
+			const sign = standSign(roomSign('Subagent', size / SIGN), size, 0.14);
+			sign.position.set(cx, y0 + H + 0.14 + size, rect.z0 - wt / 2);
 			this.group.add(sign);
 		}
 		if (!last) {
