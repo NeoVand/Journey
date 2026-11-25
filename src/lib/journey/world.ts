@@ -275,13 +275,13 @@ const HOME_SHOTS: Shot[] = [
 	// the first capsule to come out. Coming down any sooner, it would swing through the corner tower.
 	{ T: HOME.from + 0.0455, az: 28, el: 50, target: [0.7, 9.6, P.DOOR_Z - 0.6], radius: 4.6, ry: 3.4, wide: WHOLE, tall: WHOLE_TALL },
 	{ T: HOME.from + 0.048, az: 26, el: 22, target: [0.7, 9.2, P.DOOR_Z], radius: 4, ry: 3, wide: WHOLE, tall: WHOLE_TALL },
-	// Down the aqueduct with the first capsule, on the side away from the mast it's passing, so no mast comes between:
-	// the last of them stands on the left, the middle one on the right, the first on the left by your desk.
-	homeShot(HOME.from + 0.054, 30, 24, 3.8),
-	homeShot(HOME.from + 0.06, -8, 20, 3.8),
-	homeShot(HOME.from + 0.072, -16, 20, 3.8),
-	homeShot(HOME.from + 0.084, 18, 20, 3.6),
-	homeShot(HOME.from + 0.092, 28, 22, 3.2),
+	// Down the aqueduct with the first capsule, looking up the lane at it as it comes: the masts stand either side of
+	// the deck, so from here none of them comes between.
+	homeShot(HOME.from + 0.054, 22, 24, 3.8),
+	homeShot(HOME.from + 0.06, 6, 22, 3.8),
+	homeShot(HOME.from + 0.072, -2, 20, 3.8),
+	homeShot(HOME.from + 0.084, 8, 20, 3.6),
+	homeShot(HOME.from + 0.092, 26, 22, 3.2),
 	{ T: HOME.arrive, az: 30, el: 24, target: [0.7, 6.4, -5.2], radius: 2.6, ry: 2.2, wide: WHOLE, tall: WHOLE_TALL }
 ];
 
@@ -1940,7 +1940,8 @@ export class World {
 	mapStops(): { x: number; y: number }[] {
 		const c = this.mapCanvas;
 		if (!c) return [];
-		const at = [0.6, 2.4, 4.4, 5.6, 7.95, 18.97, 20.5, 22.6, 25.08];
+		// The stream's stop is on the way home, over the aqueduct, where the reply's capsules are.
+		const at = [0.6, 2.4, 4.4, 5.6, 7.95, HOME.from + 0.07, 20.5, 22.6, 25.08];
 		return at.map((T) => this.map.where(this.routeAt(T).clone(), c.width, c.height));
 	}
 
