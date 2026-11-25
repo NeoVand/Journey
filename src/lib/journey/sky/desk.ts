@@ -256,20 +256,58 @@ export class Desk {
 		b.add(new THREE.ConeGeometry(0.06, 0.14, 12), c.gold, { p: [rx - 0.33 * Math.cos(1.25 * Math.PI + 0.3 - Math.PI), y0 + 0.36 - 0.36 * Math.sin(0.3 + 0.25 * Math.PI), z0 - 0.12], r: [0, 0, 2.9] });
 	}
 
-	/** The archive: a walnut filing cabinet, its lower drawer pulled out full of cards. */
+	/**
+	 * The archive: a walnut filing cabinet on a plinth under a brass-edged top, two drawers, each with a brass frame
+	 * holding a cream card with its name and a brass bar pull: the transcripts above, the memory files below, pulled
+	 * half out, its index cards standing in it with their tabs up.
+	 */
 	private archive(b: Batch) {
 		const c = palette();
+		const m = mats();
 		const A = P.ARCHIVE;
-		b.add(rbox(A.w, A.h, A.d, 0.18), c.walnut, { p: [A.at.x, A.h / 2, A.at.z] });
-		b.add(rbox(A.w + 0.1, 0.14, A.d + 0.1, 0.05), c.brass, { p: [A.at.x, A.h + 0.07, A.at.z] });
-		for (const y of [A.h * 0.72]) {
-			b.add(rbox(A.w - 0.3, A.h * 0.36, 0.1, 0.04), c.woodEdge, { p: [A.at.x, y, A.at.z + A.d / 2 + 0.02] });
-			b.add(new THREE.TorusGeometry(0.2, 0.05, 8, 24), c.brass, { p: [A.at.x, y, A.at.z + A.d / 2 + 0.1] });
+		const x = A.at.x;
+		const z = A.at.z;
+		const front = z + A.d / 2;
+		// The carcass on its plinth, and its top: walnut over a brass edge.
+		b.add(rbox(A.w + 0.16, 0.16, A.d + 0.16, 0.05, 2), c.walnut, { p: [x, 0.08, z] });
+		b.add(rbox(A.w, A.h - 0.3, A.d, 0.1, 3), c.walnut, { p: [x, 0.16 + (A.h - 0.3) / 2, z] });
+		b.add(rbox(A.w + 0.14, 0.06, A.d + 0.14, 0.02, 2), c.brass, { p: [x, A.h - 0.11, z] });
+		b.add(rbox(A.w + 0.2, 0.12, A.d + 0.2, 0.05, 3), c.woodEdge, { p: [x, A.h - 0.02, z] });
+		const dw = A.w - 0.3;
+		const dh = (A.h - 0.62) / 2;
+		const drawer = (y: number, name: string, out: number) => {
+			const fz = front + out;
+			// Its front: a raised walnut panel in a lighter frame.
+			b.add(rbox(dw, dh, 0.1, 0.04, 2), c.woodEdge, { p: [x, y, fz + 0.03] });
+			b.add(rbox(dw - 0.18, dh - 0.18, 0.06, 0.03, 2), c.walnut, { p: [x, y, fz + 0.09] });
+			// The card in its brass frame, and the bar pull under it on two posts.
+			const cardY = y + dh * 0.22;
+			b.add(rbox(0.86, 0.3, 0.03, 0.01, 1), c.brass, { p: [x, cardY, fz + 0.125] });
+			b.add(rbox(0.78, 0.22, 0.02, 0.008, 1), m.creamLight, { p: [x, cardY, fz + 0.135] });
+			const label = new Label(name, 0.11, { weight: 700 });
+			label.mesh.position.set(x, cardY, fz + 0.147);
+			this.group.add(label.mesh);
+			const pullY = y - dh * 0.2;
+			b.add(new THREE.CylinderGeometry(0.035, 0.035, 0.62, 12), c.brass, { p: [x, pullY, fz + 0.24], r: [0, 0, Math.PI / 2] });
+			for (const s of [-1, 1]) b.add(new THREE.CylinderGeometry(0.03, 0.03, 0.14, 10), c.brass, { p: [x + s * 0.27, pullY, fz + 0.17], r: [Math.PI / 2, 0, 0] });
+			return fz;
+		};
+		const upper = 0.3 + dh * 1.5 + 0.06;
+		const lower = 0.3 + dh / 2;
+		drawer(upper, 'Transcripts', 0);
+		// The memory files' drawer, half out: its sides and floor, and the index cards standing in it, tabs up.
+		const out = 0.9;
+		const fz = drawer(lower, 'Memory', out);
+		const inner = dw - 0.12;
+		const floorY = lower - dh / 2 + 0.06;
+		b.add(rbox(inner, 0.05, out + 0.1, 0.02, 1), c.walnut, { p: [x, floorY, front + out / 2 - 0.02] });
+		for (const s of [-1, 1]) b.add(rbox(0.05, dh - 0.1, out + 0.1, 0.02, 1), c.walnut, { p: [x + s * (inner / 2 - 0.025), lower - 0.03, front + out / 2 - 0.02] });
+		for (let i = 0; i < 6; i++) {
+			const cz = fz - 0.12 - i * 0.13;
+			b.add(rbox(inner - 0.16, dh - 0.24, 0.025, 0.01, 1), c.paper, { p: [x, floorY + (dh - 0.24) / 2 + 0.03, cz] });
+			const tx = x - inner / 2 + 0.3 + ((i * 0.37) % 1) * (inner - 0.6);
+			b.add(rbox(0.26, 0.1, 0.026, 0.01, 1), i % 3 === 0 ? c.amberWindow : m.creamLight, { p: [tx, floorY + dh - 0.16, cz] });
 		}
-		const drawerZ = A.at.z + A.d / 2 + 0.9;
-		b.add(rbox(A.w - 0.3, A.h * 0.36, 2.0, 0.08), c.walnut, { p: [A.at.x, A.h * 0.26, drawerZ - 0.4] });
-		for (let i = 0; i < 9; i++) b.add(rbox(A.w - 0.7, 0.7, 0.04, 0.02), c.paper, { p: [A.at.x, A.h * 0.36 + 0.1, drawerZ - 1.2 + i * 0.18] });
-		b.add(new THREE.TorusGeometry(0.2, 0.05, 8, 24), c.brass, { p: [A.at.x, A.h * 0.26, drawerZ + 0.66] });
 	}
 
 	/** Brass posts at the back corners, for the remote towers' cables. */
