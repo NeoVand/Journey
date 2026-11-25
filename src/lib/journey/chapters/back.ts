@@ -210,8 +210,11 @@ export const BACK_SHOTS: Shot[] = [
 	{ T: 25.9, ...S_HOME, az: 21 },
 	{ T: 26.06, ...S_COMPACT },
 	{ T: 26.9, ...S_COMPACT, az: 10 },
+	// Across to the next island over the top of the one it leaves, never behind its machine.
+	{ T: 26.98, ...S_COMPACT, az: 2, el: 40, target: relW(C_POS, -3.5, 5, 0), radius: 9 * sOf(C_POS), ry: 6 * sOf(C_POS) },
 	{ T: 27.06, ...S_MEM },
 	{ T: 27.92, ...S_MEM, az: -8 },
+	{ T: 27.99, ...S_MEM, az: 2, el: 40, target: relW(M_POS, -3.5, 6, 0), radius: 9 * sOf(M_POS), ry: 6 * sOf(M_POS) },
 	{ T: 28.06, ...S_UNK },
 	{ T: 28.92, ...S_UNK, az: 7 },
 	{ T: 29.06, ...S_TEN },
