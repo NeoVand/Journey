@@ -8,6 +8,8 @@ interface Pokeable {
 	press: (index: number) => void;
 	/** What it sounds like when pressed, by the name the sound score knows it by. */
 	sound?: string;
+	/** What pressing it does, said beside the pointer when it's over it: a side trip's name, say. */
+	tip?: string;
 }
 
 /** A simple shape to aim at, standing in for something too detailed to test every frame. */
@@ -15,6 +17,29 @@ export function hitBox(w: number, h: number, d: number) {
 	const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshBasicMaterial());
 	mesh.visible = false;
 	return mesh;
+}
+
+/**
+ * A box round everything something is made of, in its own space, as its child: a stand-in to aim at that goes wherever
+ * it goes.
+ */
+export function hitAround(object: THREE.Object3D, pad = 0.1) {
+	const box = new THREE.Box3();
+	const part = new THREE.Box3();
+	const into = new THREE.Matrix4();
+	object.updateMatrixWorld(true);
+	const inverse = object.matrixWorld.clone().invert();
+	object.traverse((o) => {
+		const g = (o as THREE.Mesh).geometry;
+		if (!g) return;
+		if (!g.boundingBox) g.computeBoundingBox();
+		box.union(part.copy(g.boundingBox!).applyMatrix4(into.multiplyMatrices(inverse, o.matrixWorld)));
+	});
+	const size = box.getSize(new THREE.Vector3()).addScalar(pad * 2);
+	const hit = hitBox(size.x, size.y, size.z);
+	box.getCenter(hit.position);
+	object.add(hit);
+	return hit;
 }
 
 export function hitBall(radius: number) {
