@@ -76,7 +76,7 @@ export class Foundry {
 		// The furnace block on the hall's provider end: a copper arch round a deep mouth of fire, a copper dome over it.
 		const fx = HALL.x + HALL.w / 2 + 0.9;
 		b.add(rbox(2.0, 4.2, 4.0, 0.16), c.iron, { p: [fx, 2.1, 0] });
-		b.add(new THREE.TorusGeometry(1.35, 0.2, 14, 40, Math.PI), c.copper, { p: [fx + 1.02, 2.1, 0], r: [0, Math.PI / 2, 0] });
+		b.add(new THREE.TorusGeometry(1.35, 0.2, 10, 40, Math.PI), c.copper, { p: [fx + 1.02, 2.1, 0], r: [0, Math.PI / 2, 0] });
 		for (const s of [-1, 1]) b.add(rbox(0.3, 2.1, 0.4, 0.06), c.copper, { p: [fx + 1.02, 1.05, s * 1.35] });
 		for (let i = 0; i <= 10; i++) {
 			const a = (i / 10) * Math.PI;
@@ -84,7 +84,7 @@ export class Foundry {
 		}
 		b.add(extrude(arch(2.3, 3.2), 0.06, 0.02, 2, 24), this.glow, { p: [fx + 1.0, 0, 0], r: [0, Math.PI / 2, 0] });
 		b.add(new THREE.CylinderGeometry(1.4, 1.5, 0.4, 32), c.copper, { p: [fx, 4.4, 0] });
-		b.add(new THREE.SphereGeometry(1.35, 32, 14, 0, Math.PI * 2, 0, Math.PI / 2), c.copper, { p: [fx, 4.6, 0] });
+		b.add(new THREE.SphereGeometry(1.35, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2), c.copper, { p: [fx, 4.6, 0] });
 		b.add(new THREE.SphereGeometry(0.18, 12, 8), c.gold, { p: [fx, 6.05, 0] });
 
 		// The stacks, iron banded in copper, and the big copper pipes bending between the hall and the stacks.
@@ -133,7 +133,7 @@ export class Foundry {
 		for (const dx of [-0.8, 0.8]) car.add(new THREE.CylinderGeometry(0.16, 0.16, 1.1, 14), c.iron, { p: [dx, 0.14, 0], r: [Math.PI / 2, 0, 0] });
 		car.add(capsule, c.glass, { p: [0, 1.15, 0] });
 		car.add(new THREE.TorusGeometry(0.72, 0.05, 8, 32), c.brass, { p: [0, 1.15, 0], r: [0, Math.PI / 2, 0] });
-		const brain = new THREE.SphereGeometry(0.48, 32, 20).scale(1.25, 0.8, 0.95);
+		const brain = new THREE.SphereGeometry(0.48, 28, 14).scale(1.25, 0.8, 0.95);
 		car.add(brain, new THREE.MeshPhysicalMaterial({ color: '#1d44b8', roughness: 0.25, clearcoat: 1, emissive: '#2a52d8', emissiveIntensity: 0.3 }), { p: [0, 1.12, 0] });
 		for (let i = 0; i < 5; i++) car.add(new THREE.TorusGeometry(0.34 - i * 0.03, 0.05, 8, 24, Math.PI * 1.2), c.gold, { p: [-0.35 + i * 0.18, 1.18, 0.12 - i * 0.05], r: [Math.PI / 2, 0.3 * i, 0] });
 		this.carriage.add(car.build('carriage'));

@@ -83,14 +83,14 @@ export class Gatehouse {
 		outline.lineTo(W / 2, WALL);
 		outline.lineTo(-W / 2, WALL);
 		outline.closePath();
-		b.add(extrude(outline, D, 0.08, 3, 48), c.jade);
+		b.add(extrude(outline, D, 0.08, 2, 24), c.jade);
 		// A brass plinth band along its foot, and a cornice along its top.
 		b.add(rbox(W + 0.3, 0.32, D + 0.3, 0.08), c.brass, { p: [0, 0.16, 0] });
 		b.add(rbox(W + 0.5, 0.26, D + 0.5, 0.08), c.brass, { p: [0, WALL + 0.13, 0] });
 
 		// The archivolt, front and back: a thick brass band round the arch, brass jambs down to the floor, rivets all round.
 		for (const z of [D / 2 + 0.12, -D / 2 - 0.12]) {
-			b.add(new THREE.TorusGeometry(DOOR.w / 2 + 0.28, 0.26, 16, 72, Math.PI), c.brass, { p: [0, DOOR.spring, z] });
+			b.add(new THREE.TorusGeometry(DOOR.w / 2 + 0.28, 0.26, 10, 64, Math.PI), c.brass, { p: [0, DOOR.spring, z] });
 			for (const s of [-1, 1]) b.add(new THREE.CylinderGeometry(0.26, 0.3, DOOR.spring, 24), c.brass, { p: [s * (DOOR.w / 2 + 0.28), DOOR.spring / 2, z] });
 			for (let i = 0; i <= 14; i++) {
 				const a = (i / 14) * Math.PI;
@@ -105,15 +105,15 @@ export class Gatehouse {
 		ped.moveTo(-3.2, 0);
 		ped.quadraticCurveTo(0, 2.2, 3.2, 0);
 		ped.closePath();
-		b.add(extrude(ped, 1.2, 0.08, 3, 32), c.jadeDeep, { p: [0, WALL + 0.26, D / 2 - 0.6] });
-		b.add(new THREE.TorusGeometry(0.62, 0.1, 12, 48), c.brass, { p: [0, WALL + 0.85, D / 2 + 0.06] });
+		b.add(extrude(ped, 1.2, 0.08, 2, 24), c.jadeDeep, { p: [0, WALL + 0.26, D / 2 - 0.6] });
+		b.add(new THREE.TorusGeometry(0.62, 0.1, 10, 48), c.brass, { p: [0, WALL + 0.85, D / 2 + 0.06] });
 		b.add(new THREE.CylinderGeometry(0.52, 0.52, 0.12, 40), c.brass, { p: [0, WALL + 0.85, D / 2 + 0.02], r: [Math.PI / 2, 0, 0] });
 		b.add(new THREE.CylinderGeometry(0.3, 0.3, 0.16, 32), c.jade, { p: [0, WALL + 0.85, D / 2 + 0.06], r: [Math.PI / 2, 0, 0] });
 
 		// The glass dome behind it, on a brass drum, with brass ribs and a finial.
 		const domeAt = new THREE.Vector3(0, WALL + 0.26, -0.3);
-		b.add(new THREE.CylinderGeometry(2.1, 2.1, 0.5, 64), c.brass, { p: [domeAt.x, domeAt.y + 0.25, domeAt.z] });
-		b.add(new THREE.SphereGeometry(2.0, 48, 20, 0, Math.PI * 2, 0, Math.PI / 2), c.glass, { p: [domeAt.x, domeAt.y + 0.5, domeAt.z] });
+		b.add(new THREE.CylinderGeometry(2.1, 2.1, 0.5, 48), c.brass, { p: [domeAt.x, domeAt.y + 0.25, domeAt.z] });
+		b.add(new THREE.SphereGeometry(2.0, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2), c.glass, { p: [domeAt.x, domeAt.y + 0.5, domeAt.z] });
 		for (let i = 0; i < 8; i++) {
 			const rib = new THREE.TorusGeometry(2.0, 0.05, 8, 32, Math.PI / 2);
 			b.add(rib, c.brass, { p: [domeAt.x, domeAt.y + 0.5, domeAt.z], r: [0, (i / 8) * Math.PI * 2, Math.PI / 2] });
@@ -130,7 +130,7 @@ export class Gatehouse {
 			b.add(extrude(windowPanel(0.9, 1.9), 0.08, 0.02, 2, 12), c.amberWindow, { p: [x, 1.4, z + TOWER.r - 0.02] });
 			b.add(new THREE.TorusGeometry(0.47, 0.06, 8, 32, Math.PI), c.brass, { p: [x, 1.4 + 1.9 - 0.45, z + TOWER.r + 0.02] });
 			b.add(new THREE.CylinderGeometry(TOWER.r + 0.15, TOWER.r + 0.15, 0.3, 48), c.brass, { p: [x, TOWER.h + 0.15, z] });
-			b.add(new THREE.SphereGeometry(TOWER.r, 40, 18, 0, Math.PI * 2, 0, Math.PI / 2), c.brass, { p: [x, TOWER.h + 0.3, z] });
+			b.add(new THREE.SphereGeometry(TOWER.r, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2), c.brass, { p: [x, TOWER.h + 0.3, z] });
 			b.add(new THREE.CylinderGeometry(0.06, 0.1, 0.7, 12), c.gold, { p: [x, TOWER.h + 0.3 + TOWER.r + 0.3, z] });
 			b.add(new THREE.SphereGeometry(0.2, 16, 12), c.gold, { p: [x, TOWER.h + 0.3 + TOWER.r + 0.7, z] });
 			// A round window high on the front, and an arched one low, between the arch and the tower.

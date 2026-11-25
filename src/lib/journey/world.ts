@@ -466,12 +466,12 @@ export class World {
 			signs: [
 				[P.LAPTOP.at.x - 2.2, 2.6, P.LAPTOP.at.z],
 				[HARNESS_POS.x - 3.0, P.HARNESS.h + 1.0, HARNESS_POS.z],
-				signAt(capsuleAt(4.36), -3.0, 2.6),
+				signAt(capsuleAt(4.62), -3.4, 3.4),
 				tok(TEMPLATE_X + 6, ISLAND_C_Y + 4.2, LINE_Z),
 				[SHAFT_X - 7.5, SEAT_Y + 3, TZ],
 				signAt(DOWN_LANE.getPointAt(0.62).toArray() as V3, 3.4, 2.6),
-				low([-52, -7, 0.7]),
-				low([-27, -5.7, 1]),
+				low([-58, -5, 3]),
+				low([-14, -1.5, 0]),
 				[8.5, 1.4, -5.6]
 			]
 		});

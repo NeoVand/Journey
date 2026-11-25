@@ -8,12 +8,12 @@ export function createIsland(outline: [number, number][], thickness = 0.62) {
 	const m = mats();
 	const b = new Batch();
 	const top = blobShape(outline);
-	const lip = extrude(top, thickness, 0.17, 7, 12);
+	const lip = extrude(top, thickness, 0.17, 4, 10);
 	b.add(lip, m.porcelain, { r: [-Math.PI / 2, 0, 0], p: [0, -thickness / 2, 0] });
 
 	// A second, narrower slab below the lip: the underside tapers away instead of ending flat.
 	const inner = blobShape(outline.map(([x, y]) => shrink(x, y, outline, 0.86)));
-	const under = extrude(inner, 0.5, 0.2, 6, 12);
+	const under = extrude(inner, 0.5, 0.2, 3, 10);
 	b.add(under, m.porcelain, { r: [-Math.PI / 2, 0, 0], p: [0, -thickness - 0.14, 0] });
 
 	const group = b.build('island');

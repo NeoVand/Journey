@@ -111,7 +111,7 @@ export class Hall {
 				const z = H.from - (LEN * (i + 0.5)) / 5;
 				for (const face of [-1, 1]) {
 					const fx = x + face * (THICK / 2 + 0.02);
-					b.add(extrude(archShape(1.15, 2.3), 0.06, 0.015, 2, 16), c.amberWindow, { p: [fx, 1.1, z], r: [0, (face * Math.PI) / 2, 0] });
+					b.add(extrude(archShape(1.15, 2.3), 0.06, 0.015, 2, 8), c.amberWindow, { p: [fx, 1.1, z], r: [0, (face * Math.PI) / 2, 0] });
 					b.add(new THREE.TorusGeometry(0.62, 0.06, 8, 24, Math.PI), c.brass, { p: [fx + face * 0.03, 1.1 + 2.3 - 0.575, z], r: [0, (face * Math.PI) / 2, 0] });
 				}
 				// A brass sconce on the inner face, between this window and the next.
@@ -155,7 +155,7 @@ export class Hall {
 		end.lineTo(-rx, H.wall);
 		end.closePath();
 		// Tiled like the long walls: the extruder lays its face's texture one unit to a repeat, the walls' every 0.55.
-		const endWall = extrude(end, 0.5, 0.06, 2, 32);
+		const endWall = extrude(end, 0.5, 0.06, 2, 24);
 		const uv = endWall.attributes.uv;
 		for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) / 0.55, uv.getY(i) / 0.55);
 		b.add(endWall, rose, { p: [0, 0, H.to + 0.3] });
@@ -246,7 +246,7 @@ export class Hall {
 		body.lineTo(D / 2, BH);
 		body.lineTo(-D / 2, BH);
 		body.closePath();
-		b.add(extrude(body, W, 0.06, 3, 24), m.cream, { p: [at, -BELT_Y + 0.12, 0], r: [0, Math.PI / 2, 0] });
+		b.add(extrude(body, W, 0.06, 2, 24), m.cream, { p: [at, -BELT_Y + 0.12, 0], r: [0, Math.PI / 2, 0] });
 		b.add(rbox(0.06, 1.2, 1.3, 0.02), m.recess, { p: [at - W / 2 + 0.2, -BELT_Y + 0.62, 0] });
 		// The roller on top, brass, in two cheeks; the slip of text curling off it.
 		for (const s of [-1, 1]) b.add(rbox(0.5, 0.6, 0.12, 0.04), m.cream, { p: [at, -BELT_Y + 0.12 + BH + 0.25, s * 0.62] });

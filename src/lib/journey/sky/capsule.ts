@@ -94,7 +94,7 @@ export class Capsule {
 		lock.add(new THREE.CircleGeometry(0.027, 20), m.recess, { p: [0, 0.02, 0.073] });
 		this.lockBody.add(lock.build('lock-body'));
 		const sh = new Batch();
-		sh.add(new THREE.TorusGeometry(0.095, 0.024, 12, 28, Math.PI), m.steel, { p: [0, 0.105, 0] });
+		sh.add(new THREE.TorusGeometry(0.095, 0.024, 10, 28, Math.PI), m.steel, { p: [0, 0.105, 0] });
 		for (const s of [-1, 1]) sh.add(new THREE.CylinderGeometry(0.024, 0.024, 0.11, 14), m.steel, { p: [s * 0.095, 0.05, 0] });
 		this.shackle.add(sh.build('lock-shackle'));
 		this.shackle.position.y = h / 2 - 0.025;

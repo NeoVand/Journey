@@ -74,7 +74,7 @@ function petal(h: number, w: number) {
 	s.bezierCurveTo(w * 0.32, h * 0.86, w * 0.78, h * 0.5, w * 0.42, h * 0.28);
 	s.bezierCurveTo(w * 0.3, h * 0.16, w * 0.5, h * 0.06, w / 2, 0);
 	s.closePath();
-	return extrude(s, 0.36, 0.12, 4, 28);
+	return extrude(s, 0.36, 0.12, 2, 9);
 }
 
 export class Tower {
@@ -94,7 +94,7 @@ export class Tower {
 
 		// The plinth it stands on: a low silver step with a brass bead round it.
 		this.lathe(b, [[SHAFT_R, -0.42], [R + 1.0, -0.42], [R + 1.15, -0.32], [R + 1.15, -0.1], [R + 1.1, 0.02], [SHAFT_R, 0.02]], c.silver);
-		b.add(new THREE.TorusGeometry(R + 1.15, 0.05, 8, 128), c.brass, { p: [0, -0.1, 0], r: [Math.PI / 2, 0, 0] });
+		b.add(new THREE.TorusGeometry(R + 1.15, 0.05, 8, 64), c.brass, { p: [0, -0.1, 0], r: [Math.PI / 2, 0, 0] });
 
 		for (let f = 0; f <= N; f++) {
 			const y = f * H;
@@ -103,7 +103,7 @@ export class Tower {
 			const t = roof ? ROOF - N * H : SLAB;
 			const y0 = roof ? y : y - t / 2;
 			this.lathe(b, [[SHAFT_R + 0.04, y0], [R + 0.32, y0], [R + 0.42, y0 + 0.07], [R + 0.42, y0 + t - 0.07], [R + 0.32, y0 + t], [SHAFT_R + 0.04, y0 + t]], c.silver);
-			b.add(new THREE.TorusGeometry(R + 0.43, 0.05, 8, 128), c.brass, { p: [0, y0 + t / 2, 0], r: [Math.PI / 2, 0, 0] });
+			b.add(new THREE.TorusGeometry(R + 0.43, 0.05, 8, 64), c.brass, { p: [0, y0 + t / 2, 0], r: [Math.PI / 2, 0, 0] });
 			if (roof) break;
 			const top = y + H - SLAB / 2;
 			const bottom = y + SLAB / 2;
@@ -112,14 +112,14 @@ export class Tower {
 			b.add(new THREE.RingGeometry(SHAFT_R + 0.04, R - 0.1, 96), floorFinish, { p: [0, bottom + 0.005, 0], r: [-Math.PI / 2, 0, 0] });
 			b.add(new THREE.RingGeometry(SHAFT_R + 0.5, SHAFT_R + 0.62, 96), c.gold, { p: [0, bottom + 0.01, 0], r: [-Math.PI / 2, 0, 0] });
 			// The glass, tinted the cobalt of the racks behind it, all the way round but for the slot.
-			b.add(new THREE.CylinderGeometry(R, R, room, 128, 1, true, SLOT, Math.PI * 2 - 2 * SLOT), c.rackGlass, { p: [0, bottom + room / 2, 0] });
+			b.add(new THREE.CylinderGeometry(R, R, room, 48, 1, true, SLOT, Math.PI * 2 - 2 * SLOT), c.rackGlass, { p: [0, bottom + room / 2, 0] });
 			// The mullions, midnight-blue enamel, each with a brass cap and foot; the slot's two are silver.
 			const mullions = 26;
 			for (let i = 0; i < mullions; i++) {
 				const a = ((i + 0.5) / mullions) * Math.PI * 2;
 				if (inSlot(a, 0.05)) continue;
-				b.add(rbox(0.46, room, 0.5, 0.14), c.midnight, { p: round(R + 0.08, a, bottom + room / 2), r: [0, a, 0] });
-				for (const at of [bottom + 0.08, top - 0.08]) b.add(rbox(0.56, 0.12, 0.58, 0.04), c.brass, { p: round(R + 0.08, a, at), r: [0, a, 0] });
+				b.add(new THREE.BoxGeometry(0.46, room, 0.5), c.midnight, { p: round(R + 0.08, a, bottom + room / 2), r: [0, a, 0] });
+				for (const at of [bottom + 0.08, top - 0.08]) b.add(new THREE.BoxGeometry(0.56, 0.12, 0.58), c.brass, { p: round(R + 0.08, a, at), r: [0, a, 0] });
 			}
 			// The racks: a ring round the room, their doors lit, none in front of the shaft.
 			const rackH = room - 0.75;
@@ -129,21 +129,21 @@ export class Tower {
 				// Leave the ground floor's front open for the lanes coming in.
 				if (f === 0 && inSlot(a, 0.6)) continue;
 				const mid = bottom + 0.12 + rackH / 2;
-				b.add(rbox(RACK.w, rackH, RACK.d, 0.06), rackBody, { p: round(RACK.r, a, mid), r: [0, a, 0] });
+				b.add(rbox(RACK.w, rackH, RACK.d, 0.06, 1), rackBody, { p: round(RACK.r, a, mid), r: [0, a, 0] });
 				// A lit door on both faces: one out through the glass, one into the room round the shaft.
 				b.add(new THREE.PlaneGeometry(RACK.w - 0.18, rackH - 0.22), this.doors, { p: round(RACK.r + RACK.d / 2 + 0.006, a, mid), r: [0, a, 0] });
 				b.add(new THREE.PlaneGeometry(RACK.w - 0.18, rackH - 0.22), this.doors, { p: round(RACK.r - RACK.d / 2 - 0.006, a, mid), r: [0, a + Math.PI, 0] });
-				b.add(rbox(0.05, rackH * 0.5, 0.06, 0.02), c.brass, { p: round(RACK.r + RACK.d / 2 + 0.04, a + 0.085, mid), r: [0, a, 0] });
-				b.add(rbox(RACK.w, 0.1, RACK.d + 0.04, 0.03), c.silver, { p: round(RACK.r, a, bottom + 0.06), r: [0, a, 0] });
+				b.add(rbox(0.05, rackH * 0.5, 0.06, 0.02, 1), c.brass, { p: round(RACK.r + RACK.d / 2 + 0.04, a + 0.085, mid), r: [0, a, 0] });
+				b.add(rbox(RACK.w, 0.1, RACK.d + 0.04, 0.03, 1), c.silver, { p: round(RACK.r, a, bottom + 0.06), r: [0, a, 0] });
 			}
 			// Brass cable trays under the ceiling: a ring over the racks and spokes in to the shaft.
 			const tray = top - 0.32;
-			b.add(new THREE.TorusGeometry(RACK.r, 0.07, 8, 96), c.brass, { p: [0, tray, 0], r: [Math.PI / 2, 0, 0] });
-			b.add(new THREE.TorusGeometry(RACK.r - 0.35, 0.07, 8, 96), c.brass, { p: [0, tray, 0], r: [Math.PI / 2, 0, 0] });
+			b.add(new THREE.TorusGeometry(RACK.r, 0.07, 8, 64), c.brass, { p: [0, tray, 0], r: [Math.PI / 2, 0, 0] });
+			b.add(new THREE.TorusGeometry(RACK.r - 0.35, 0.07, 8, 64), c.brass, { p: [0, tray, 0], r: [Math.PI / 2, 0, 0] });
 			for (let i = 0; i < 6; i++) {
 				const a = (i / 6) * Math.PI * 2 + Math.PI / 6;
 				const span = RACK.r - SHAFT_R - 0.2;
-				b.add(rbox(0.14, 0.06, span, 0.02), c.brass, { p: round(SHAFT_R + 0.1 + span / 2, a, tray), r: [0, a, 0] });
+				b.add(rbox(0.14, 0.06, span, 0.02, 1), c.brass, { p: round(SHAFT_R + 0.1 + span / 2, a, tray), r: [0, a, 0] });
 			}
 			// The ceiling's lamps, a ring of them between the trays and the shaft.
 			for (let i = 0; i < 10; i++) {
@@ -155,13 +155,13 @@ export class Tower {
 		// The slot's silver frame, from the plinth to the roof, either side of the gap in the glass.
 		for (const s of [-1, 1]) {
 			const a = s * (SLOT + 0.012);
-			b.add(rbox(0.26, ROOF, 0.56, 0.08), c.silver, { p: round(R + 0.12, a, ROOF / 2), r: [0, a, 0] });
+			b.add(rbox(0.26, ROOF, 0.56, 0.08, 2), c.silver, { p: round(R + 0.12, a, ROOF / 2), r: [0, a, 0] });
 		}
 
 		// The shaft: an open chrome frame at its foot, where the lanes come in, and a glass tube from there to the roof,
 		// ringed in chrome at every floor.
 		const tubeH = ROOF - FRAME;
-		b.add(new THREE.CylinderGeometry(SHAFT_R, SHAFT_R, tubeH, 64, 1, true), c.glass, { p: [0, FRAME + tubeH / 2, 0] });
+		b.add(new THREE.CylinderGeometry(SHAFT_R, SHAFT_R, tubeH, 48, 1, true), c.glass, { p: [0, FRAME + tubeH / 2, 0] });
 		for (const y of [FRAME, ...Array.from({ length: N - 1 }, (_, f) => (f + 1) * H)]) b.add(new THREE.TorusGeometry(SHAFT_R + 0.03, 0.08, 10, 64), c.chrome, { p: [0, y, 0], r: [Math.PI / 2, 0, 0] });
 		b.add(new THREE.TorusGeometry(SHAFT_R + 0.06, 0.09, 10, 64), c.chrome, { p: [0, 0.1, 0], r: [Math.PI / 2, 0, 0] });
 		// Three posts carry the tube over the open foot: either side and behind, clear of the lanes coming in at the front.
@@ -174,8 +174,8 @@ export class Tower {
 		// Petals in two rings, tall ones behind and short ones before them in the gaps, so the crown reads as one solid ring
 		// of flame from anywhere; none over the slot, so the lanes are seen going up into the pedestal.
 		const petals = 26;
-		b.add(new THREE.TorusGeometry(P.CROWN.r, 0.2, 14, 160), c.gold, { p: [0, ROOF + 0.18, 0], r: [Math.PI / 2, 0, 0] });
-		b.add(new THREE.TorusGeometry(P.CROWN.r - 0.55, 0.12, 12, 160), c.gold, { p: [0, ROOF + 0.12, 0], r: [Math.PI / 2, 0, 0] });
+		b.add(new THREE.TorusGeometry(P.CROWN.r, 0.2, 10, 64), c.gold, { p: [0, ROOF + 0.18, 0], r: [Math.PI / 2, 0, 0] });
+		b.add(new THREE.TorusGeometry(P.CROWN.r - 0.55, 0.12, 10, 64), c.gold, { p: [0, ROOF + 0.12, 0], r: [Math.PI / 2, 0, 0] });
 		const tall = petal(P.CROWN.h, 1.25);
 		const short = petal(P.CROWN.h * 0.68, 1.0);
 		for (let i = 0; i < petals; i++) {
@@ -190,7 +190,7 @@ export class Tower {
 
 	/** A turned part round the tower's axis, from an outline of (radius, height) pairs: out along its underside, up its edge, in across its top. */
 	private lathe(b: Batch, outline: [number, number][], mat: THREE.Material) {
-		b.add(new THREE.LatheGeometry(outline.map(([r, y]) => new THREE.Vector2(r, y)), 128), mat);
+		b.add(new THREE.LatheGeometry(outline.map(([r, y]) => new THREE.Vector2(r, y)), 72), mat);
 	}
 
 	/** The racks' lights run on and breathe; brighter while the work is heavy. */

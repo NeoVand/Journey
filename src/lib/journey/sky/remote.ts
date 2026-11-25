@@ -51,7 +51,7 @@ export class RemoteTowers {
 				b.add(extrude(arch(0.42, 1.2), 0.05, 0.015, 1, 10), c.amberWindow, { p: [at.x + 1.16 * Math.sin(w), at.y + 0.8, at.z + 1.16 * Math.cos(w)], r: [0, w, 0] });
 			}
 			b.add(new THREE.CylinderGeometry(1.32, 1.32, 0.22, 40), c.gold, { p: [at.x, at.y + 2.9, at.z] });
-			b.add(new THREE.SphereGeometry(1.15, 40, 16, 0, Math.PI * 2, 0, Math.PI / 2), t, { p: [at.x, at.y + 3.0, at.z] });
+			b.add(new THREE.SphereGeometry(1.15, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2), t, { p: [at.x, at.y + 3.0, at.z] });
 			for (let i = 0; i < 8; i++) b.add(new THREE.TorusGeometry(1.16, 0.035, 6, 24, Math.PI / 2), c.gold, { p: [at.x, at.y + 3.0, at.z], r: [0, (i / 8) * Math.PI * 2, Math.PI / 2] });
 			b.add(new THREE.CylinderGeometry(0.1, 0.16, 0.5, 12), c.gold, { p: [at.x, at.y + 4.35, at.z] });
 			b.add(new THREE.SphereGeometry(0.14, 12, 8), c.gold, { p: [at.x, at.y + 4.7, at.z] });

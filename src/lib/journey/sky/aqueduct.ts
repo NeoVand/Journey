@@ -163,7 +163,7 @@ export class Aqueduct {
 			b.add(new THREE.TubeGeometry(arm, 40, 0.07, 10), c.brass);
 			b.add(new THREE.CylinderGeometry(0.11, 0.11, 0.3, 16), c.gold, { p: [from.x, armY, from.z] });
 			// The reader: a brass shade over both lanes, a lamp under it.
-			b.add(new THREE.SphereGeometry(0.55, 32, 12, 0, Math.PI * 2, 0, Math.PI / 2), c.brass, { p: [reach.x, armY - 0.8, reach.z] });
+			b.add(new THREE.SphereGeometry(0.55, 28, 12, 0, Math.PI * 2, 0, Math.PI / 2), c.brass, { p: [reach.x, armY - 0.8, reach.z] });
 			const lamp = new THREE.MeshStandardMaterial({ color: '#fff1cf', emissive: '#ffc94d', emissiveIntensity: 0.8 });
 			b.add(new THREE.CylinderGeometry(0.42, 0.42, 0.05, 32), lamp, { p: [reach.x, armY - 0.82, reach.z] });
 			this.readers.push({ lamp, at: p.clone() });
@@ -220,7 +220,7 @@ export function span(b: Batch, a: THREE.Vector3, e: THREE.Vector3, thick: number
 	s.absarc(0, -D, r, 0, Math.PI, false);
 	s.lineTo(-L / 2, -D);
 	s.closePath();
-	const g = extrude(s, thick, 0.08, 3, 32);
+	const g = extrude(s, thick, 0.08, 2, 24);
 	g.applyMatrix4(new THREE.Matrix4().makeShear(slope, 0, 0, 0, 0, 0));
 	const yaw = Math.atan2(-flat.z, flat.x);
 	const mid = a.clone().add(e).multiplyScalar(0.5);

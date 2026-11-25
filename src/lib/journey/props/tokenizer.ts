@@ -156,7 +156,7 @@ export function createBelt(x0: number, x1: number) {
 	const legs = Math.round(len / 2.2);
 	for (let i = 0; i <= legs; i++) {
 		const x = x0 + 0.4 + ((len - 0.8) * i) / legs;
-		b.add(rbox(0.5, 0.42, W - 0.1, 0.08, 3), m.steelSoft, { p: [x, -0.29, 0] });
+		b.add(rbox(0.5, 0.42, W - 0.1, 0.08, 1), m.steelSoft, { p: [x, -0.29, 0] });
 	}
 	return b.build('belt');
 }

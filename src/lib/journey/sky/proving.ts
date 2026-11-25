@@ -30,10 +30,10 @@ export class Proving {
 		const ground = new Batch();
 
 		// The deck: mint enamel on a porcelain drum that tapers under it, a gold edge, a brass railing.
-		b.add(new THREE.CylinderGeometry(R, R, 0.3, 96), c.mintEnamel, { p: [0, -0.15, 0] });
-		b.add(new THREE.CylinderGeometry(R + 0.12, R - 0.4, 0.9, 96), c.porcelain, { p: [0, -0.75, 0] });
-		b.add(new THREE.TorusGeometry(R + 0.06, 0.08, 10, 128), c.gold, { p: [0, -0.32, 0], r: [Math.PI / 2, 0, 0] });
-		b.add(new THREE.TorusGeometry(R - 0.25, 0.04, 6, 128), c.brass, { p: [0, 0.75, 0], r: [Math.PI / 2, 0, 0] });
+		b.add(new THREE.CylinderGeometry(R, R, 0.3, 48), c.mintEnamel, { p: [0, -0.15, 0] });
+		b.add(new THREE.CylinderGeometry(R + 0.12, R - 0.4, 0.9, 48), c.porcelain, { p: [0, -0.75, 0] });
+		b.add(new THREE.TorusGeometry(R + 0.06, 0.08, 10, 64), c.gold, { p: [0, -0.32, 0], r: [Math.PI / 2, 0, 0] });
+		b.add(new THREE.TorusGeometry(R - 0.25, 0.04, 6, 64), c.brass, { p: [0, 0.75, 0], r: [Math.PI / 2, 0, 0] });
 		for (let i = 0; i < 40; i++) {
 			const a = (i / 40) * Math.PI * 2;
 			b.add(new THREE.CylinderGeometry(0.03, 0.03, 0.75, 6), c.brass, { p: [(R - 0.25) * Math.cos(a), 0.38, (R - 0.25) * Math.sin(a)] });
@@ -47,7 +47,7 @@ export class Proving {
 		for (let i = 0; i < 4; i++) span(ground, corners[i], corners[(i + 1) % 4], 1.4, pier, 'pier');
 
 		// The course: a white oval track inside a white ring, a dashed line between, all let into the enamel.
-		const line = (r: number, w = 0.12) => b.add(new THREE.RingGeometry(r - w / 2, r + w / 2, 128), c.white, { p: [0, 0.006, 0], r: [-Math.PI / 2, 0, 0] });
+		const line = (r: number, w = 0.12) => b.add(new THREE.RingGeometry(r - w / 2, r + w / 2, 72), c.white, { p: [0, 0.006, 0], r: [-Math.PI / 2, 0, 0] });
 		line(R - 0.9);
 		line(R - 2.4);
 		for (let i = 0; i < 36; i++) {
@@ -95,7 +95,7 @@ export class Proving {
 			b.add(extrude(arch(0.5, 1.1), 0.06, 0.02, 1, 12), c.amberWindow, { p: [O.x + 1.92 * Math.sin(a), 0.9, O.z + 1.92 * Math.cos(a)], r: [0, a, 0] });
 			b.add(new THREE.SphereGeometry(0.06, 8, 6), c.gold, { p: [O.x + 2.0 * Math.sin(a + 0.39), 2.35, O.z + 2.0 * Math.cos(a + 0.39)] });
 		}
-		b.add(new THREE.SphereGeometry(1.95, 48, 20, 0, Math.PI * 2, 0, Math.PI / 2), c.violet, { p: [O.x, 2.7, O.z] });
+		b.add(new THREE.SphereGeometry(1.95, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2), c.violet, { p: [O.x, 2.7, O.z] });
 		for (let i = 0; i < 8; i++) b.add(new THREE.TorusGeometry(1.96, 0.04, 6, 32, Math.PI / 2), c.gold, { p: [O.x, 2.7, O.z], r: [0, (i / 8) * Math.PI * 2, Math.PI / 2] });
 		b.add(new THREE.CylinderGeometry(0.28, 0.4, 2.4, 24), c.brass, { p: [O.x - 0.7, 4.3, O.z + 0.6], r: [0.55, 0, 0.6] });
 		b.add(new THREE.TorusGeometry(0.42, 0.08, 10, 24), c.gold, { p: [O.x - 1.35, 5.0, O.z + 1.15], r: [0.55, 0, 0.6] });
