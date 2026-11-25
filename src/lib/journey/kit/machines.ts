@@ -3,8 +3,9 @@ import { Batch } from './batch';
 import { chamferRect, extrude, paper, rbox, sweep } from './geometry';
 import { color, Lamp, mats } from './materials';
 import { contactShadow, Surface } from './print';
-import { createSign, plinth, SIGN_PHONE, ventX } from './parts';
+import { createSign, plinth, SIGN_PHONE } from './parts';
 import { createIsland } from '../props/island';
+import { craft, guards, louvre, screws } from './craft';
 
 export type Finish = 'cream' | 'cobalt' | 'enamel';
 
@@ -25,8 +26,17 @@ export function machine({ w, h, d, finish = 'cream', name, signH = 0.26, vent = 
 	const b = new Batch();
 	plinth(b, w + 0.34, d + 0.34, 0.14);
 	const skin = finish === 'cobalt' ? m.cobalt : finish === 'enamel' ? m.enamelCool : m.cream;
-	b.add(extrude(chamferRect(w, h, Math.min(0.42, h * 0.12), 0.1), d, 0.085, 6, 10), skin, { p: [0, 0.14 + h / 2, 0] });
-	if (vent && h > 1.6) ventX(b, w / 2 + 0.002, 0.14 + h * 0.46, 0, h * 0.5, d * 0.62, Math.round(h * 2.8));
+	const ch = Math.min(0.42, h * 0.12);
+	b.add(extrude(chamferRect(w, h, ch, 0.1), d, 0.085, 6, 10), skin, { p: [0, 0.14 + h / 2, 0] });
+	// Made, not modelled: a chrome rim on the plinth, guards down the front corners, a screw at each corner of the face,
+	// and a chrome louvre in the side rather than a bare vent.
+	const c = craft();
+	b.add(rbox(w + 0.38, 0.03, d + 0.38, 0.012, 1), c.chrome, { p: [0, 0.15, 0] });
+	if (h > 0.9) {
+		guards(b, w, d / 2, 0.3, 0.14 + h - ch - 0.08, 0.05);
+		screws(b, w - 0.36, h - ch - 0.36, [0, 0.14 + (h - ch) / 2 + 0.04, d / 2 + 0.002]);
+	}
+	if (vent && h > 1.6) louvre(b, 1, [w / 2 + 0.005, 0.14 + h * 0.46, 0], h * 0.5, d * 0.62, Math.round(h * 2.4));
 	group.add(b.build('machine'));
 	if (name) {
 		// Its sign's words are its name, so the conversation can point at it: see pointer.svelte.ts.
@@ -52,13 +62,22 @@ interface BlockOptions {
 	archH: number;
 	/** Close the left end instead of plugging the middle, so things can only come out of the right. */
 	closedLeft?: boolean;
+	/** Where the plug in its middle stands along x: further in, so a long tile is gone before it would reach it. */
+	plugX?: number;
 }
 
 /**
  * A block a belt really runs into. The arch is cut out of one solid profile and lined in dark, so its mouth has depth.
  * Its base sits at y = 0 and its belt runs along x.
  */
-export function archBlock({ w, d, h, archZ, archD, archH, closedLeft = false }: BlockOptions) {
+export function archBlock(options: BlockOptions) {
+	const batch = new Batch();
+	archInto(batch, options);
+	return batch.build('arch-block');
+}
+
+/** The same block, added to a batch of the caller's, so whatever is fitted to it is made with it. */
+export function archInto(batch: Batch, { w, d, h, archZ, archD, archH, closedLeft = false, plugX = 0 }: BlockOptions) {
 	const m = mats();
 	const r = 0.16;
 	const a = -archZ - archD / 2;
@@ -76,8 +95,15 @@ export function archBlock({ w, d, h, archZ, archD, archH, closedLeft = false }: 
 	s.lineTo(-d / 2 + r, h);
 	s.quadraticCurveTo(-d / 2, h, -d / 2, h - r);
 	s.closePath();
-	const batch = new Batch();
 	batch.add(extrude(s, w, 0.05, 4, 8), m.cream, { r: [0, Math.PI / 2, 0] });
+	// A chrome frame round the mouth on both faces, as a tunnel's portal has, and a chrome rim at the foot.
+	const c = craft();
+	for (const sx of [-1, 1]) {
+		const fx = sx * (w / 2 + 0.02);
+		batch.add(rbox(0.05, 0.06, archD + 0.2, 0.02, 1), c.chrome, { p: [fx, archH + 0.03, archZ] });
+		for (const sz of [-1, 1]) batch.add(rbox(0.05, archH + 0.06, 0.06, 0.02, 1), c.chrome, { p: [fx, (archH + 0.06) / 2, archZ + sz * (archD / 2 + 0.07)] });
+	}
+	batch.add(rbox(w + 0.08, 0.03, d + 0.08, 0.012, 1), c.chrome, { p: [0, 0.04, 0] });
 	// The lining: everything you can see once you look into the mouth.
 	const t = 0.02;
 	const inner = w - 0.12;
@@ -87,9 +113,8 @@ export function archBlock({ w, d, h, archZ, archD, archH, closedLeft = false }: 
 		batch.add(rbox(0.14, archH + 0.04, archD + 0.04, 0.03, 2), m.cream, { p: [-w / 2 + 0.07, (archH + 0.04) / 2, archZ] });
 		batch.add(new THREE.BoxGeometry(t, archH, archD), m.recess, { p: [-w / 2 + 0.15, archH / 2, archZ] });
 	} else {
-		batch.add(new THREE.BoxGeometry(0.04, archH, archD), m.recess, { p: [0, archH / 2, archZ] });
+		batch.add(new THREE.BoxGeometry(0.04, archH, archD), m.recess, { p: [plugX, archH / 2, archZ] });
 	}
-	return batch.build('arch-block');
 }
 
 /** A floating porcelain island centred on its own origin, with its top at y = 0. */

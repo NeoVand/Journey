@@ -225,7 +225,7 @@ export function loaf(w: number, d: number, h: number, r: number) {
 }
 
 /** Chrome beads along a loaf's two rounded top edges, where the light catches them. */
-export function loafBeads(b: Batch, w: number, d: number, top: number, r: number) {
+export function loafBeads(b: Batch, w: number, d: number, top: number, r: number, at: V3 = [0, 0, 0]) {
 	const bead = r * (1 - Math.SQRT1_2);
-	for (const s of [-1, 1]) b.add(new THREE.CylinderGeometry(0.03, 0.03, w - 0.12, 10).rotateZ(Math.PI / 2), craft().chrome, { p: [0, top - bead, s * (d / 2 - bead)] });
+	for (const s of [-1, 1]) b.add(new THREE.CylinderGeometry(0.03, 0.03, w - 0.12, 10).rotateZ(Math.PI / 2), craft().chrome, { p: [at[0], at[1] + top - bead, at[2] + s * (d / 2 - bead)] });
 }
