@@ -16,6 +16,11 @@
 	import doorAbove from './view-door-above.jpg';
 	import doorSection from './view-door-section.jpg';
 	import doorInside from './view-door-inside.jpg';
+	import spanStretch from './view-span-stretch.jpg';
+	import spanMast from './view-span-mast.jpg';
+	import spanStart from './view-span-start.jpg';
+	import spanArches from './view-span-arches.jpg';
+	import { AQUEDUCT_CURVE } from '#lib/journey/sky/aqueduct.ts';
 	import { GATEHOUSE, HALL, PLATFORM_Y, ROOF_Y, TOWER } from '#lib/journey/sky/masterplan.ts';
 
 	/** A camera matching one drawing; a section view cuts away everything nearer the camera than x = clip. */
@@ -47,6 +52,13 @@
 		{ id: 'door-above', label: 'Door and hall', image: doorAbove, aspect: 1.5, fov: 32, at: hallMid.clone(), eye: orbit(hallMid, -18, 42, 40) },
 		{ id: 'door-section', label: 'Hall in section', image: doorSection, aspect: 1.5, fov: 22, at: new THREE.Vector3(0, Y + 3.5, hallMid.z + 1), eye: new THREE.Vector3(70, Y + 3.5, hallMid.z + 1), clip: -0.3 },
 		{ id: 'door-inside', label: 'Inside the hall', image: doorInside, aspect: 1.5, fov: 60, at: new THREE.Vector3(0, Y + 2.4, HALL.to), eye: new THREE.Vector3(0, Y + 2.0, HALL.from - 0.4) }
+	);
+	const on = (u: number) => AQUEDUCT_CURVE.getPointAt(u);
+	views.push(
+		{ id: 'span-stretch', label: 'The aqueduct', image: spanStretch, aspect: 1.5, fov: 40, at: on(0.75), eye: on(0.3).add(new THREE.Vector3(-3.2, 3.4, 2.5)) },
+		{ id: 'span-mast', label: 'A mast', image: spanMast, aspect: 1.5, fov: 48, at: on(0.52).add(new THREE.Vector3(2.4, 2.6, 0)), eye: on(0.4).add(new THREE.Vector3(-0.4, 1.7, 0)) },
+		{ id: 'span-start', label: 'Where it starts', image: spanStart, aspect: 1.5, fov: 34, at: new THREE.Vector3(0, 5, -11), eye: new THREE.Vector3(-14, 10, 12) },
+		{ id: 'span-arches', label: 'The great arches', image: spanArches, aspect: 1.5, fov: 40, at: new THREE.Vector3(4, 7, -30), eye: new THREE.Vector3(24, -1, -10) }
 	);
 
 	let canvas: HTMLCanvasElement;

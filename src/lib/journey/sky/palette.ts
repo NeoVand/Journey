@@ -88,3 +88,28 @@ let cache: ReturnType<typeof create> | undefined;
 export const palette = () => (cache ??= create());
 /** A remote company's own colour, as an enamel. */
 export const tinted = (hex: string) => glossy(hex, 0.3, 0.85);
+
+/** Where the world's haze begins and where nothing shows through it any more, and its colour: the low sky's. */
+export const HAZE = { top: 1.5, bottom: -15, color: new THREE.Color('#d6e8f8') };
+
+/**
+ * A copy of a material that fades into the haze below the world: the lower a point of it stands, the more of the low
+ * sky's colour it takes, until under the haze it is only sky. Piers and arches go down into it and never end.
+ */
+export function hazed<M extends THREE.Material>(base: M): M {
+	const m = base.clone();
+	m.onBeforeCompile = (shader) => {
+		shader.uniforms.uHaze = { value: HAZE.color };
+		shader.vertexShader = shader.vertexShader
+			.replace('#include <common>', '#include <common>\nvarying float vHazeY;')
+			.replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvHazeY = (modelMatrix * vec4(transformed, 1.0)).y;');
+		shader.fragmentShader = shader.fragmentShader
+			.replace('#include <common>', '#include <common>\nvarying float vHazeY;\nuniform vec3 uHaze;')
+			.replace(
+				'#include <opaque_fragment>',
+				`#include <opaque_fragment>\ngl_FragColor.rgb = mix(gl_FragColor.rgb, uHaze, smoothstep(${HAZE.top.toFixed(2)}, ${HAZE.bottom.toFixed(2)}, vHazeY));`
+			);
+	};
+	m.customProgramCacheKey = () => 'hazed';
+	return m;
+}

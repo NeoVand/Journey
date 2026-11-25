@@ -9,6 +9,7 @@ import * as P from './masterplan';
 import { Tower } from './tower';
 import { Gatehouse } from './gatehouse';
 import { Hall } from './hall';
+import { Aqueduct } from './aqueduct';
 
 /*
  * The whole world blocked out from the masterplan: every place at its size and in its colours, in simple forms, so the
@@ -27,6 +28,7 @@ export class Blocking {
 	tower = new Tower();
 	gatehouse = new Gatehouse();
 	hall = new Hall();
+	aqueduct = new Aqueduct();
 	private up!: THREE.CatmullRomCurve3;
 	private down!: THREE.CatmullRomCurve3;
 	private tokens!: THREE.InstancedMesh;
@@ -34,19 +36,19 @@ export class Blocking {
 	/** Across the internet the request and the reply travel as sealed capsules; inside the provider, as tokens. */
 	private upSealed!: THREE.InstancedMesh;
 	private downSealed!: THREE.InstancedMesh;
+	/** The brass band round each capsule's middle. */
+	private upBands!: THREE.InstancedMesh;
+	private downBands!: THREE.InstancedMesh;
 	private m = new THREE.Matrix4();
 
 	constructor() {
 		this.group.name = 'blocking';
 		const b = new Batch();
 		this.desk(b);
-		this.aqueduct(b);
-		this.masts(b);
-		this.provider(b);
 		this.foundry(b);
 		this.proving(b);
 		this.remote(b);
-		this.group.add(b.build('world'), this.tower.group, this.gatehouse.group, this.hall.group);
+		this.group.add(b.build('world'), this.tower.group, this.gatehouse.group, this.hall.group, this.aqueduct.group);
 		this.platform();
 		this.lanes();
 		this.clouds();
@@ -123,27 +125,6 @@ export class Blocking {
 		}
 	}
 
-	/* ---------- the aqueduct ---------- */
-	private aqueduct(b: Batch) {
-		const c = palette();
-		const curve = new THREE.CatmullRomCurve3(
-			P.AQUEDUCT.map((p) => v(...p)),
-			false,
-			'centripetal'
-		);
-		const W = P.DECK_W;
-		// The deck, its two kerbs, and a cornice under its edge.
-		b.add(sweep(curve, [[-W / 2, 0], [W / 2, 0], [W / 2, -0.7], [-W / 2, -0.7]], 80), c.porcelain);
-		for (const s of [-1, 1]) b.add(sweep(curve, [[s * (W / 2 - 0.18), 0.22], [s * (W / 2), 0.22], [s * (W / 2), 0], [s * (W / 2 - 0.18), 0]], 80), c.porcelainShade);
-		b.add(sweep(curve, [[-W / 2 - 0.15, -0.7], [W / 2 + 0.15, -0.7], [W / 2 + 0.15, -0.95], [-W / 2 - 0.15, -0.95]], 80), c.porcelainShade);
-		// The arches under it, from where it clears the harness to where it meets the platform.
-		const len = curve.getLength();
-		const start = 4.2 / len;
-		const n = 5;
-		const at = (i: number) => curve.getPointAt(start + ((1 - start) * i) / n);
-		for (let i = 0; i < n; i++) this.span(b, at(i), at(i + 1), -0.95, W * 0.86, c.porcelain);
-	}
-
 	/**
 	 * One arch of an arcade between two points on a deck's underside: a spandrel with a round arch let into it, sheared
 	 * to follow the deck's slope, and a pier at each end going down out of sight.
@@ -185,43 +166,12 @@ export class Blocking {
 		for (let i = 0; i < n; i++) this.span(b, a.clone().lerp(c, i / n).setY(y), a.clone().lerp(c, (i + 1) / n).setY(y), 0, thick, mat);
 	}
 
-	/* ---------- the internet ---------- */
-	private masts(b: Batch) {
-		const c = palette();
-		for (const { at, h } of P.MASTS) {
-			const ph = at.y - P.PIER_FOOT;
-			b.add(new THREE.CylinderGeometry(0.9, 1.0, ph, 32), c.porcelain, { p: [at.x, P.PIER_FOOT + ph / 2, at.z] });
-			b.add(new THREE.CylinderGeometry(1.35, 1.1, 0.5, 40), c.porcelain, { p: [at.x, at.y - 0.25, at.z] });
-			b.add(new THREE.TorusGeometry(1.25, 0.05, 8, 48), c.brass, { p: [at.x, at.y + 0.6, at.z], r: [Math.PI / 2, 0, 0] });
-			const bands = 6;
-			for (let i = 0; i < bands; i++) {
-				const r0 = 0.42 - (0.2 * i) / bands;
-				const r1 = 0.42 - (0.2 * (i + 1)) / bands;
-				b.add(new THREE.CylinderGeometry(r1, r0, h / bands, 24), i % 2 ? c.mastWhite : c.mastRed, { p: [at.x, at.y + (i + 0.5) * (h / bands), at.z] });
-			}
-			b.add(new THREE.SphereGeometry(0.26, 20, 14), c.beacon, { p: [at.x, at.y + h + 0.2, at.z] });
-			b.add(new THREE.CylinderGeometry(0.05, 0.5, 0.35, 24), c.mastWhite, { p: [at.x + 0.45, at.y + h * 0.7, at.z], r: [0, 0, Math.PI / 2] });
-		}
-	}
-
 	/* ---------- the provider ---------- */
 	private platform() {
 		const outline = plan(P.PLATFORM);
 		const isl = createIsland(outline, 1.2);
 		isl.position.y = P.PLATFORM_Y;
 		this.group.add(isl);
-	}
-
-	private provider(b: Batch) {
-		const c = palette();
-		const Y = P.PLATFORM_Y;
-		// Arches carry the platform down both its sides and across its back.
-		const z0 = P.DOOR_Z - 1.9;
-		const z1 = P.DOOR_Z - 29.4;
-		this.arcade(b, [-7.4, 0, z0], [-7.4, 0, z1], Y - 1.4, 3, 2.2, c.porcelain);
-		this.arcade(b, [7.4, 0, z0], [7.4, 0, z1], Y - 1.4, 3, 2.2, c.porcelain);
-		this.arcade(b, [-6.4, 0, z0], [6.4, 0, z0], Y - 1.4, 1, 2.2, c.porcelain);
-
 	}
 
 	/* ---------- the foundry and its rail ---------- */
@@ -338,10 +288,13 @@ export class Blocking {
 		const n = Math.floor(this.up.getLength() / 1.35);
 		this.tokens = new THREE.InstancedMesh(rbox(0.46, 0.46, 0.46, 0.09), c.amber, n);
 		this.pearls = new THREE.InstancedMesh(new THREE.SphereGeometry(0.27, 20, 14), c.pearl, n);
-		const capsule = new THREE.CapsuleGeometry(0.22, 0.42, 8, 20);
+		const capsule = new THREE.CapsuleGeometry(0.24, 0.5, 8, 20);
+		const band = new THREE.TorusGeometry(0.25, 0.045, 8, 28).rotateX(Math.PI / 2);
 		this.upSealed = new THREE.InstancedMesh(capsule, c.amber, n);
 		this.downSealed = new THREE.InstancedMesh(capsule, c.pearl, n);
-		this.group.add(this.tokens, this.pearls, this.upSealed, this.downSealed);
+		this.upBands = new THREE.InstancedMesh(band, c.brass, n);
+		this.downBands = new THREE.InstancedMesh(band, c.brass, n);
+		this.group.add(this.tokens, this.pearls, this.upSealed, this.downSealed, this.upBands, this.downBands);
 		this.update(0);
 	}
 
@@ -383,27 +336,32 @@ export class Blocking {
 		 * Each lane's cargo along its curve: sealed capsules on the side of `seal` towards home, tokens past it. The
 		 * request is cut into tokens by the tokenizer, the reply sealed again by the detokenizer's press.
 		 */
-		const place = (tokens: THREE.InstancedMesh, sealed: THREE.InstancedMesh, curve: THREE.Curve<THREE.Vector3>, seal: number, speed: number) => {
+		const cargo: THREE.Vector3[] = [];
+		const place = (tokens: THREE.InstancedMesh, sealed: THREE.InstancedMesh, bands: THREE.InstancedMesh, curve: THREE.Curve<THREE.Vector3>, seal: number, speed: number) => {
 			const n = tokens.count;
 			for (let i = 0; i < n; i++) {
 				const u = (i / n + time * speed) % 1;
 				const p = curve.getPointAt(u);
 				p.y += 0.32;
 				const home = p.z > seal;
+				if (home) cargo.push(p.clone());
 				q.setFromUnitVectors(axis, curve.getTangentAt(u));
 				this.m.compose(p, home ? q : q.identity(), home ? none : one);
 				tokens.setMatrixAt(i, this.m);
 				this.m.compose(p, q.setFromUnitVectors(axis, curve.getTangentAt(u)), home ? one : none);
 				sealed.setMatrixAt(i, this.m);
+				bands.setMatrixAt(i, this.m);
 			}
 			tokens.instanceMatrix.needsUpdate = true;
 			sealed.instanceMatrix.needsUpdate = true;
+			bands.instanceMatrix.needsUpdate = true;
 		};
-		place(this.tokens, this.upSealed, this.up, P.TOKENIZER.from - 3.5, 0.008);
-		place(this.pearls, this.downSealed, this.down, P.HALL.from - 1.8, 0.008);
+		place(this.tokens, this.upSealed, this.upBands, this.up, P.TOKENIZER.from - 3.5, 0.008);
+		place(this.pearls, this.downSealed, this.downBands, this.down, P.HALL.from - 1.8, 0.008);
 		this.brain?.update(6.9, time);
 		this.tower.update(time);
 		this.gatehouse.update(time);
 		this.hall.update(time);
+		this.aqueduct.update(time, cargo);
 	}
 }

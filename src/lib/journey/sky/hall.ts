@@ -173,8 +173,8 @@ export class Hall {
 		// Both lanes' beds through the hall: a dark belt between brass kerbs on short brass legs.
 		for (const s of [-1, 1]) {
 			const x = s * P.LANE;
-			b.add(rbox(0.86, 0.1, LEN, 0.03), c.iron, { p: [x, 0.3, MID] });
-			for (const k of [-1, 1]) b.add(rbox(0.07, 0.12, LEN, 0.03), c.brass, { p: [x + k * 0.47, 0.36, MID] });
+			b.add(rbox(1.1, 0.12, LEN, 0.03), c.iron, { p: [x, 0.34, MID] });
+			for (const k of [-1, 1]) b.add(rbox(0.12, 0.16, LEN, 0.03), c.brass, { p: [x + k * 0.6, 0.44, MID] });
 			for (let i = 0; i < 6; i++) b.add(rbox(0.6, 0.26, 0.16, 0.03), c.brass, { p: [x, 0.13, H.from - 0.8 - (i * (LEN - 1.6)) / 5] });
 		}
 		this.group.add(b.build('hall'));
