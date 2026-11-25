@@ -3,7 +3,6 @@ import { Batch } from '../kit/batch';
 import { extrude, rbox } from '../kit/geometry';
 import { color, Lamp } from '../kit/materials';
 import { Label } from '../kit/print';
-import { CHECKS } from '../props/gateway';
 import { inOut, outBack, seg } from '../kit/math';
 import { palette } from './palette';
 import * as P from './masterplan';
@@ -23,6 +22,9 @@ import * as P from './masterplan';
  * Drawn from concepts/aqueduct/door (front, above, section, inside). Its own frame has its foot on the platform at the
  * origin, its front towards +z, the lanes running through it along z.
  */
+
+/** The five checks, in the order a request meets them. */
+export const CHECKS = ['Decrypt', 'Who are you?', 'Rate limit', 'Budget', 'Capacity'];
 
 const G = P.GATEHOUSE;
 /** The front between the towers, the arch's opening, where the arch springs, and the wall's height. */

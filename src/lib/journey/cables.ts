@@ -6,19 +6,6 @@ import * as P from './sky/masterplan';
 
 type V3 = [number, number, number];
 
-/** Your island, from above. */
-export const HOME_OUTLINE: [number, number][] = [
-	[-6.1, 0.2],
-	[-4.6, -2.7],
-	[0.4, -3.3],
-	[5.6, -3.0],
-	[8.2, -1.2],
-	[8.2, 1.3],
-	[5.0, 3.2],
-	[-1.2, 3.7],
-	[-5.2, 2.7]
-];
-
 /** The outline islandAt() draws, w across and d deep, centred on x, z. */
 export function superellipse(w: number, d: number, x = 0, z = 0): [number, number][] {
 	const pts: [number, number][] = [];
@@ -45,7 +32,6 @@ export function slab(outline: [number, number][], top: number, thick = 0.62, at:
 	return { outline: moved, top, bottom: top - thick };
 }
 
-export const HOME = slab(HOME_OUTLINE, 0);
 
 /** Your desk's top, as something cables lie on: a rounded rectangle at y = 0. */
 function deskOutline(): [number, number][] {

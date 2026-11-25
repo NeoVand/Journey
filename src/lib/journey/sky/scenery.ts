@@ -101,5 +101,7 @@ export function placeOnDesk({ laptop, harness, doc, skills, mcp }: { laptop: Lap
 
 /** The model on the tower's roof: the brain stands on its glass pedestal over the shaft, fed from below. */
 export function placeModel(brain: Brain) {
+	// The whole of it, brain and pedestal, is what the conversation calls the model.
+	brain.group.name = 'The model';
 	brain.group.position.set(P.MODEL.stem.x - P.MODEL.stemX, P.ROOF_Y - STEM_FOOT, P.MODEL.stem.z);
 }

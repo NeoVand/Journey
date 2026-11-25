@@ -1,3 +1,4 @@
+import { ISLE_S, M_POS, relW } from '../chapters/back';
 import * as THREE from 'three';
 import { Batch } from '../kit/batch';
 import { rbox } from '../kit/geometry';
@@ -24,9 +25,9 @@ export const MEMORY_SKY = { top: new THREE.Color('#9fd0f8'), mid: new THREE.Colo
 export const CABINET_ROOF: Omit<Shot, 'T'> = {
 	az: -12,
 	el: 62,
-	target: [-78, 32.6, -4],
-	radius: 1.6,
-	ry: 1.1,
+	target: relW(M_POS, 0, 7.6, 0),
+	radius: 1.6 * ISLE_S,
+	ry: 1.1 * ISLE_S,
 	wide: { x: 0, y: 0, w: 1, h: 1 },
 	tall: { x: 0, y: 0, w: 1, h: 1 }
 };

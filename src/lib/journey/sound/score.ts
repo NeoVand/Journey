@@ -1,3 +1,4 @@
+import * as MP from '../sky/masterplan';
 /**
  * The score: which sound plays when, and which ambience fills which stretch of the story. Times are story time T,
  * or a side trip's own time, one unit per card.
@@ -36,7 +37,7 @@ const PLACES = {
 	harness: 'Harness',
 	server: 'MCP',
 	easel: 'easel',
-	tunnel: 'tunnel-frame',
+	tunnel: 'capsule',
 	gateway: 'Front door',
 	template: 'chat-template',
 	belt: 'belt',
@@ -79,7 +80,7 @@ export function score(w: World): { cues: Cue[]; beds: Bed[] } {
 		at(a + 0.11, 'drawer-in', P.harness, { gain: 0.65 });
 		at(a + 0.16, 'paper-land', P.easel, { gain: 0.55, rate: 0.95 + i * 0.03 });
 	});
-	at(2.41, 'paper-slide', [3.05, 0.5, 2.5], { gain: 0.3, rate: 1.3, minor: true });
+	at(2.41, 'paper-slide', [MP.SKILLS.at.x, 0.5, MP.SKILLS.at.z], { gain: 0.3, rate: 1.3, minor: true });
 
 	/* 3. One JSON request: the tabs, the page rolls up and drops to the tunnel, which locks. */
 	at(3.04, 'paper-slide', P.easel, { gain: 0.35, rate: 1.2, minor: true });
@@ -443,8 +444,8 @@ export function score(w: World): { cues: Cue[]; beds: Bed[] } {
 /* ---------- how MCP connects ---------- */
 
 /** The harness and the server on the first island, in the story's coordinates. */
-const HARNESS: Where = [1.1, 1.6, -0.65];
-const SERVER: Where = [7.2, 0.8, -0.72];
+const HARNESS: Where = [MP.HARNESS.at.x, 1.6 * MP.HARNESS.scale, MP.HARNESS.at.z];
+const SERVER: Where = [MP.LOCAL_MCP[2].x, 0.8, MP.LOCAL_MCP[2].z];
 
 function howMcpConnects(): { cues: Cue[]; beds: Bed[] } {
 	const cues: Cue[] = [];

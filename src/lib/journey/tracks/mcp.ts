@@ -6,6 +6,7 @@ import { font } from '../kit/print';
 import type { Harness } from '../props/harness';
 import type { McpServer } from '../props/mcp';
 import type { Shot } from '../rig';
+import * as P from '../sky/masterplan';
 
 /** What the main story has the harness doing, so the side trip can take over from it without a jump. */
 export interface HarnessPose {
@@ -19,13 +20,18 @@ const WIDE = box(0.4, 0.1, 0.58, 0.8);
 const TALL = box(0.02, 0.08, 0.96, 0.44);
 
 /** The whole island: the harness on the left, the cable along the back, the server on the right. */
-const ISLAND: Omit<Shot, 'T'> = { az: 12, el: 22, target: [4.2, 0.75, -0.55], radius: 3.95, ry: 1.7, wide: WIDE, tall: TALL, tallRadius: 4.1, tallRy: 2.0 };
-const SERVER: Omit<Shot, 'T'> = { az: 12, el: 38, target: [7.18, 0.8, 0.06], radius: 0.66, ry: 0.52, wide: WIDE, tall: TALL };
-const CABLE: Omit<Shot, 'T'> = { az: 18, el: 30, target: [4.6, 0.35, -1.25], radius: 2.7, ry: 1.3, wide: WIDE, tall: TALL };
-const TOOLS_DRAWER: Omit<Shot, 'T'> = { az: 10, el: 34, target: [1.1, 1.4, 1.08], radius: 1.08, ry: 0.8, wide: WIDE, tall: TALL };
-const TALK_DRAWER: Omit<Shot, 'T'> = { az: 10, el: 34, target: [1.1, 0.8, 1.08], radius: 1.08, ry: 0.8, wide: WIDE, tall: TALL };
+/** Your desk's middle: the server beside the easel on the left, the cable along in front of it, the harness on the right. */
+const SV = P.LOCAL_MCP[2];
+const H = P.HARNESS;
+const ISLAND: Omit<Shot, 'T'> = { az: 10, el: 22, target: [(SV.x + H.at.x) / 2, 1.0, -0.6], radius: 5.0, ry: 2.4, wide: WIDE, tall: TALL, tallRadius: 5.2, tallRy: 2.8 };
+const SERVER: Omit<Shot, 'T'> = { az: 12, el: 38, target: [SV.x - 0.02, 0.8, SV.z + 0.78], radius: 0.66, ry: 0.52, wide: WIDE, tall: TALL };
+const CABLE: Omit<Shot, 'T'> = { az: 14, el: 30, target: [P.EASEL.at.x + 1.4, 0.35, 0.0], radius: 3.0, ry: 1.4, wide: WIDE, tall: TALL };
+/** The harness's drawers, as large as it stands on your desk. */
+const front = H.at.z + 1.73 * H.scale;
+const TOOLS_DRAWER: Omit<Shot, 'T'> = { az: 10, el: 34, target: [H.at.x, 1.4 * H.scale, front], radius: 1.08 * H.scale, ry: 0.8 * H.scale, wide: WIDE, tall: TALL };
+const TALK_DRAWER: Omit<Shot, 'T'> = { az: 10, el: 34, target: [H.at.x, 0.8 * H.scale, front], radius: 1.08 * H.scale, ry: 0.8 * H.scale, wide: WIDE, tall: TALL };
 /** One of the server's drawers, open, at the height it sits. */
-const TRAY = (y: number): Omit<Shot, 'T'> => ({ az: 12, el: 36, target: [7.18, Math.max(0.62, y + 0.14), 0.1], radius: 0.62, ry: 0.5, wide: WIDE, tall: TALL });
+const TRAY = (y: number): Omit<Shot, 'T'> => ({ az: 12, el: 36, target: [SV.x - 0.02, Math.max(0.62, y + 0.14), SV.z + 0.82], radius: 0.62, ry: 0.5, wide: WIDE, tall: TALL });
 
 /** The camera through the side trip, by card: each card is one unit of the track's own story time. */
 export const MCP_SHOTS: Shot[] = [

@@ -44,6 +44,7 @@ export class Desk {
 
 	constructor() {
 		this.group.name = 'desk';
+		this.easel.name = 'easel';
 		const b = new Batch();
 		this.furniture(b);
 		this.leftWing(b);

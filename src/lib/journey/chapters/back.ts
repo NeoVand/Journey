@@ -55,7 +55,7 @@ const SCAN_PARK_Y = WY + 4.7;
 const LENS_R = 0.72;
 /** The islands that explain things on the way round, off to the left of the loop, each further on and a little higher. */
 const C_POS: V3 = [-50, 22, -4];
-const M_POS: V3 = [-78, 25, -4];
+export const M_POS: V3 = [-78, 25, -4];
 const U_POS: V3 = [-108, 28, -4];
 /** Along that island from its centre: the file, the post the pipe plugs into, and the loupe's arm on the post. */
 const FILE_X = 5.5;
@@ -77,11 +77,13 @@ const STEP_H = [1.3, 1.9, 2.5, 3.1, 3.7];
  * arc round to its left and back, each further on and a little higher; the last, the finishing steps, on the desk
  * itself, along its front. Each is built where it was drawn, and stands here by its own frame.
  */
+/** How small the chapter islands stand, for what looks at them from elsewhere too. */
+export const ISLE_S = 0.55;
 const ISLES: { from: V3; at: V3; s: number }[] = [
-	{ from: C_POS, at: [-23, 2.0, 1.0], s: 0.55 },
-	{ from: M_POS, at: [-31, 4.0, -7.0], s: 0.55 },
-	{ from: U_POS, at: [-36, 6.0, -17.5], s: 0.55 },
-	{ from: R_POS, at: [-34, 8.0, -29], s: 0.55 },
+	{ from: C_POS, at: [-23, 2.0, 1.0], s: ISLE_S },
+	{ from: M_POS, at: [-31, 4.0, -7.0], s: ISLE_S },
+	{ from: U_POS, at: [-36, 6.0, -17.5], s: ISLE_S },
+	{ from: R_POS, at: [-34, 8.0, -29], s: ISLE_S },
 	{ from: F_POS, at: [7.5, 1.24 * 0.33, 4.9], s: 0.33 }
 ];
 const isle = (o: V3) => ISLES.find((i) => i.from === o)!;
@@ -91,7 +93,7 @@ const frameOf = (o: V3): [V3, number] => {
 	return [[at[0] - s * o[0], at[1] - s * o[1], at[2] - s * o[2]], s];
 };
 /** A point of an island's drawing, relative to its centre, in the world: for its shots. */
-const relW = (o: V3, x: number, y: number, z: number): V3 => {
+export const relW = (o: V3, x: number, y: number, z: number): V3 => {
 	const { at, s } = isle(o);
 	return [at[0] + s * x, at[1] + s * y, at[2] + s * z];
 };

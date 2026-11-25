@@ -39,9 +39,16 @@ Done (branch `world`):
   wall into the tower, steps in to the pedestal's lane, climbs the shaft (tokens turn to face the slot) and ends in
   the brainstem's seat. The hall is open to the sky (the vault hid the tokenizer from the long lens). Three masts, none
   in the last stretch before the door. Lanes spread to ±1.1 through the hall (HALL_LANE).
-- Still on old coordinates: everything from T 19 on (back.ts, cables.ts' return and call paths, LOWER ring), the
-  finale's lap (finale.ts typed points), the map's camera, the MCP track's shots, the side trips' ways in
-  (ROOF and the others), sound places in sound/score.ts.
+- T 19 on, done: the reply comes home in a pearl `Capsule('reply')` down the right lane and drops its text through
+  the harness's roof hatch. The gates and the workshop keep their own coordinates and stand on the desk's right wing,
+  a fifth of their size, by layout.ts' `TOOLS` frame and `low()`; the cables (cables.ts) lie on the desk. The chapter
+  islands stand on piers in a rising arc left of the desk at 0.55 (back.ts `ISLES`, `relW`); the finishing steps on
+  the desk's front right at 0.33. The finale's lap follows the new routes (finale.ts `Route`). The map, the MCP trip,
+  the ways into the side trips and the sound's places point at the new world. The old tunnel, gateway, islands and
+  pinwheel anchors are gone.
+- Left: verify (unit tests with the long hook timeout, e2e on the GPU against a served build, collision scan, every
+  side trip on the normal page, phone, narration sync), rebake the trip thumbnails if they show the main world, look
+  over every beat once more for polish, then ask before merging.
 
 ## Districts still to build
 

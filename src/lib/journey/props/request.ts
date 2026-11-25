@@ -271,21 +271,3 @@ export class RequestDoc {
 		});
 	}
 }
-
-/** The stand. Its uprights fold into the base when there is no page to hold, so it never stands empty. */
-export function createEasel() {
-	const m = mats();
-	const group = new THREE.Group();
-	const b = new Batch();
-	b.add(rbox(2.6, 0.12, 1.1, 0.05, 3), m.steelSoft, { p: [0, 0.06, 0] });
-	b.add(rbox(2.36, 0.06, 0.22, 0.02, 2), m.recess, { p: [0, 0.13, 0.2] });
-	group.add(b.build('easel'));
-	const l = new Batch();
-	for (const s of [-1, 1]) {
-		l.add(rbox(0.1, 1.5, 0.06, 0.025, 2), m.steel, { p: [s * 0.8, 0.72, -0.1], r: [-0.14, 0, 0] });
-	}
-	const legs = l.build('easel-legs');
-	legs.position.y = 0.1;
-	group.add(legs);
-	return { group, legs };
-}

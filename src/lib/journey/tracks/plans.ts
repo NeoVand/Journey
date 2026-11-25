@@ -1,3 +1,4 @@
+import * as P from '../sky/masterplan';
 import * as THREE from 'three';
 import { Batch } from '../kit/batch';
 import { rbox } from '../kit/geometry';
@@ -22,9 +23,9 @@ export const PLANS_SKY = { top: new THREE.Color('#9fd0f8'), mid: new THREE.Color
 
 /** Where you drop in: into the laptop's screen at home, in the story's coordinates. */
 export const SCREEN_ROOF: Omit<Shot, 'T'> = {
-	az: 15,
+	az: 0,
 	el: 14,
-	target: [-3.85, 1.2, -0.6],
+	target: [P.LAPTOP.at.x - 0.25, 1.2, P.LAPTOP.at.z - 1.2],
 	radius: 0.75,
 	ry: 0.55,
 	wide: { x: 0, y: 0, w: 1, h: 1 },

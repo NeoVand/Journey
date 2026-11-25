@@ -1768,7 +1768,7 @@ export class World {
 	mapCanvas: HTMLCanvasElement | null = null;
 	/** A phone draws its map only when the reader reaches another stop, not on a clock. */
 	mapSeldom = false;
-	private map = new MiniMap(new THREE.Vector3(-5.5, 4, 0), { x: 51, y: 28 }, 6, 5);
+	private map = new MiniMap(new THREE.Vector3(-5, 13, -20), { x: 38, y: 23 }, 10, 8);
 	private mapAt = -Infinity;
 	private mapStop = -1;
 	/** The loop's thin pipes again, as thick as the glass, drawn only into the map: at its size the real ones are hairs. */
