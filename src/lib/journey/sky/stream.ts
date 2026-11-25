@@ -72,15 +72,27 @@ function glowTexture() {
 	return s.texture;
 }
 
-/** Little blue blocks, close together: the ciphertext the sealed glass is clouded with. */
+/** Where in the cipher texture it's clear glass: what the capsule's rounded ends show. */
+const CLEAR_U = 0.03;
+
+/**
+ * Little blue blocks in rows round the capsule's middle: the ciphertext the sealed glass is clouded with. Its left edge
+ * is kept clear, for the ends.
+ */
 function cipherTexture() {
-	const s = new Surface(128, 64);
+	const s = new Surface(256, 64);
 	s.draw((c, w, h) => {
 		c.fillStyle = '#c9dbff';
 		c.fillRect(0, 0, w, h);
-		for (let i = 0; i < 70; i++) {
-			c.fillStyle = hash(i * 3.1) > 0.5 ? '#2f74f0' : '#5d93f5';
-			c.fillRect(hash(i) * w, hash(i + 0.5) * h, 5 + hash(i * 7.7) * 9, 4 + hash(i * 1.9) * 3);
+		const rows = 5;
+		for (let r = 0; r < rows; r++) {
+			let x = 14 + hash(r * 9.1) * 8;
+			while (x < w - 4) {
+				const bw = 6 + hash(x * 0.37 + r) * 12;
+				c.fillStyle = hash(x * 1.3 + r * 7) > 0.5 ? '#2f74f0' : '#5d93f5';
+				c.fillRect(x, 5 + r * ((h - 10) / rows), Math.min(bw, w - 4 - x), (h - 10) / rows - 3);
+				x += bw + 3 + hash(x + r * 3.3) * 5;
+			}
 		}
 	});
 	return s.texture;
@@ -173,6 +185,15 @@ export class HomeStream {
 		const n = words.length;
 		const c = palette();
 		const glass = new THREE.CapsuleGeometry(BEAD_R, BEAD_L, 6, 20).rotateZ(Math.PI / 2);
+		// The ciphertext goes round its middle only, between the brass bands. Wrapped over the rounded ends as well, it
+		// pinched into a pinwheel at the end that faces you as it comes.
+		const pos = glass.attributes.position as THREE.BufferAttribute;
+		const uv = glass.attributes.uv as THREE.BufferAttribute;
+		for (let i = 0; i < pos.count; i++) {
+			const x = pos.getX(i);
+			if (Math.abs(x) > BEAD_L / 2 + 1e-4) uv.setXY(i, CLEAR_U, 0.5);
+			else uv.setY(i, x / BEAD_L + 0.5);
+		}
 		this.glass = new THREE.InstancedMesh(
 			glass,
 			new THREE.MeshPhysicalMaterial({ map: cipherTexture(), color: '#eef4ff', roughness: 0.22, clearcoat: 1, emissive: '#2f6dff', emissiveIntensity: 0.18 }),
