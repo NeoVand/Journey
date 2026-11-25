@@ -83,7 +83,7 @@ export class Hall {
 	group = new THREE.Group();
 	gantry: Gantry | null = null;
 	private strip: Tile[] = [];
-	private drum!: THREE.Mesh;
+	private drum!: THREE.Object3D;
 
 	constructor(tokenizer = true) {
 		this.group.name = 'hall';
@@ -213,10 +213,11 @@ export class Hall {
 	}
 
 	/**
-	 * The press by the door, the chat template's mirror across the lanes: a cream block straddling the reply's lane with an
-	 * arched way through it. What the model wrote comes out of the tower as text and rides in at its back; under the brass
-	 * drum on its top each piece is sealed into a pearl capsule of its own, and the capsules ride out of its front, through
-	 * the door and home. Encrypted again, as the request was on its way out: its padlock and its name say so.
+	 * The press by the door, the tokenizer's gantry's mirror across the lanes: an open portal over the reply's lane, two
+	 * cream posts and a beam, and under the beam a ribbed brass drum. What the model wrote comes out of the tower as text
+	 * and rides under it; the drum turns once over each piece and it comes out sealed in a pearl capsule of its own.
+	 * Encrypted again, as the request was on its way out: the beam says so on both faces, with a padlock. Open, so
+	 * whatever stands beyond it, the chat template across the lanes, is seen through it.
 	 */
 	private sealer() {
 		const m = mats();
@@ -225,56 +226,42 @@ export class Hall {
 		g.name = 'sealer';
 		g.position.set(P.SEALER.x, 0, P.SEALER.z);
 		const b = new Batch();
-		// Across the lane: wide enough for the lane's bed and its kerbs, the arch tall enough for a capsule on the belt.
-		const W = 2.0;
-		const D = 1.7;
-		const BH = 2.0;
-		const mouthW = 1.5;
-		const mouthH = 1.15;
-		b.add(rbox(W + 0.3, 0.1, D + 0.3, 0.04), m.steelSoft, { p: [0, 0.05, 0] });
-		const body = new THREE.Shape();
-		body.moveTo(-W / 2, 0);
-		body.lineTo(-mouthW / 2, 0);
-		body.lineTo(-mouthW / 2, mouthH - mouthW / 2);
-		body.absarc(0, mouthH - mouthW / 2, mouthW / 2, Math.PI, 0, true);
-		body.lineTo(mouthW / 2, 0);
-		body.lineTo(W / 2, 0);
-		body.lineTo(W / 2, BH);
-		body.lineTo(-W / 2, BH);
-		body.closePath();
-		b.add(extrude(body, D, 0.07, 3, 24), m.cream, { p: [0, 0.1, 0] });
-		// A dark lining in the arch, so it reads as a way through.
-		b.add(new THREE.CylinderGeometry(mouthW / 2 - 0.03, mouthW / 2 - 0.03, D - 0.1, 28, 1, true, -Math.PI / 2, Math.PI), m.recess, {
-			p: [0, 0.1 + mouthH - mouthW / 2, 0],
-			r: [-Math.PI / 2, 0, 0]
-		});
-		// Brass bands round both its faces' arches.
-		for (const s of [-1, 1]) b.add(new THREE.TorusGeometry(mouthW / 2 + 0.06, 0.05, 8, 32, Math.PI), c.brass, { p: [0, 0.1 + mouthH - mouthW / 2, s * (D / 2 + 0.03)] });
-		// The drum's cheeks on its top, and a cap rail.
-		for (const s of [-1, 1]) b.add(rbox(0.16, 0.62, 0.7, 0.05), m.cream, { p: [s * 0.62, 0.1 + BH + 0.28, 0] });
-		b.add(rbox(W + 0.06, 0.1, D + 0.06, 0.04), c.brass, { p: [0, 0.1 + BH + 0.02, 0] });
-		// Its name and its padlock on the face the reply comes in at, towards the tower, and again on the door's side.
+		const span = 1.62;
+		const postH = 1.66;
+		const beamH = 0.36;
+		const beamD = 0.46;
 		for (const s of [-1, 1]) {
-			b.add(extrude(roundedRect(1.5, 0.36, 0.12), 0.08, 0.02, 2, 10), m.creamLight, { p: [0, 0.1 + BH - 0.32, s * (D / 2 + 0.05)], r: [0, s < 0 ? Math.PI : 0, 0] });
+			b.add(rbox(0.5, 0.1, 0.62, 0.04, 2), m.steelSoft, { p: [s * span / 2, 0.05, 0] });
+			b.add(rbox(0.2, postH, 0.26, 0.06, 2), m.cream, { p: [s * span / 2, 0.1 + postH / 2, 0] });
+			b.add(new THREE.TorusGeometry(0.16, 0.03, 8, 20), c.brass, { p: [s * span / 2, 0.16, 0], r: [Math.PI / 2, 0, 0] });
 		}
+		const beamY = 0.1 + postH + beamH / 2;
+		b.add(rbox(span + 0.36, beamH, beamD, 0.08, 3), m.cream, { p: [0, beamY, 0] });
+		b.add(rbox(span + 0.42, 0.06, beamD + 0.06, 0.02, 2), c.brass, { p: [0, beamY + beamH / 2 + 0.02, 0] });
+		// The drum's two brass hangers, from the beam's underside to its axle.
+		const drumY = beamY - beamH / 2 - 0.3;
+		for (const s of [-1, 1]) b.add(rbox(0.06, 0.34, 0.12, 0.02, 1), c.brass, { p: [s * 0.5, drumY + 0.14, 0] });
+		// Its name, on a plate on each face of the beam.
+		for (const s of [-1, 1]) b.add(extrude(roundedRect(1.2, 0.26, 0.09), 0.04, 0.012, 2, 8), m.creamLight, { p: [-0.1, beamY, s * (beamD / 2 + 0.02)] });
 		g.add(b.build('sealer'));
-		this.drum = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1.0, 28), c.brass);
-		this.drum.rotation.z = Math.PI / 2;
-		this.drum.position.set(0, 0.1 + BH + 0.42, 0);
+		const drum = new Batch();
+		drum.add(new THREE.CylinderGeometry(0.22, 0.22, 0.9, 28), c.brass, { r: [0, 0, Math.PI / 2] });
+		for (const x of [-0.3, 0, 0.3]) drum.add(new THREE.TorusGeometry(0.225, 0.02, 6, 28), c.gold, { p: [x, 0, 0], r: [0, Math.PI / 2, 0] });
+		this.drum = drum.build('sealer-drum');
+		this.drum.position.set(0, drumY, 0);
 		g.add(this.drum);
 		for (const s of [-1, 1]) {
-			const label = new Label('Encrypt', 0.2, { weight: 700 });
-			label.mesh.position.set(-0.12, 0.1 + BH - 0.32, s * (D / 2 + 0.095));
+			const label = new Label('Encrypt', 0.16, { weight: 700 });
+			label.mesh.position.set(-0.16, beamY, s * (beamD / 2 + 0.042));
 			label.mesh.rotation.y = s < 0 ? Math.PI : 0;
 			g.add(label.mesh);
-			const lock = new THREE.Group();
-			const lb = new Batch();
-			lb.add(extrude(roundedRect(0.2, 0.16, 0.05), 0.06, 0.015, 2, 8), m.cobalt);
-			lb.add(new THREE.TorusGeometry(0.06, 0.016, 8, 16, Math.PI), m.steel, { p: [0, 0.08, 0] });
-			lock.add(lb.build('sealer-lock'));
-			lock.position.set(0.55, 0.1 + BH - 0.34, s * (D / 2 + 0.11));
-			lock.rotation.y = s < 0 ? Math.PI : 0;
-			g.add(lock);
+			const lock = new Batch();
+			lock.add(extrude(roundedRect(0.16, 0.13, 0.04), 0.05, 0.012, 2, 8), m.cobalt);
+			lock.add(new THREE.TorusGeometry(0.048, 0.013, 8, 16, Math.PI), m.steel, { p: [0, 0.065, 0] });
+			const l = lock.build('sealer-lock');
+			l.position.set(s * 0.46 * (s < 0 ? -1 : 1) + 0.42, beamY - 0.01, s * (beamD / 2 + 0.05));
+			l.rotation.y = s < 0 ? Math.PI : 0;
+			g.add(l);
 		}
 		this.group.add(g);
 	}
@@ -282,7 +269,7 @@ export class Hall {
 	/** sealed: how many pieces of the reply the press has sealed so far, counting smoothly through each. */
 	update(time: number, sealed = 0) {
 		this.gantry?.update(0.5 + 0.5 * Math.sin(time * 3), true);
-		// The drum turns slowly while it waits, and spins round once as it seals each piece.
-		this.drum.rotation.x = time * 0.6 + sealed * Math.PI * 2;
+		// The drum turns slowly while it waits, and rolls round once over each piece as it seals it.
+		this.drum.rotation.x = -(time * 0.6 + sealed * Math.PI * 2);
 	}
 }

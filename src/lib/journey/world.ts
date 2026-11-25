@@ -205,10 +205,18 @@ const LAPTOP = { az: -2, el: 14, target: [0.087, 1.12, P.LAPTOP.at.z - 0.13] as 
 const ASSEMBLY = { az: 20, el: 17, target: [-2.5, 2.4, -1.5] as V3, radius: 5.6, ry: 4.3, wide: box(0.0, 0.14, 0.58, 0.86), tall: box(0.02, 0.07, 0.96, 0.46) };
 const REQUEST = { az: 4, el: 7, target: [DOC_POS.x, DOC_POS.y + 0.03, DOC_POS.z + 0.05] as V3, radius: 2.05, wide: box(0.12, 0.08, 0.46, 0.86), tall: box(0.05, 0.07, 0.9, 0.5) };
 /** Over the capsule as it rides the aqueduct, from behind and to the left: the lane leading on to the provider. */
-const riding = (T: number, radius: number, az: number, el: number) => {
-	const p = capsuleAt(T);
-	return { az, el, target: [p[0], p[1] + 0.75, p[2]] as V3, radius, wide: box(0.38, 0.12, 0.62, 0.8), tall: box(0, 0.1, 1, 0.44) };
-};
+/** The camera keeps the capsule where the shot puts it, all the way, rather than catching up with it at each shot. */
+const followCapsule = (T: number, out: THREE.Vector3) => out.set(...capsuleAt(T)).setY(out.y + 0.75);
+const riding = (T: number, radius: number, az: number, el: number): Shot => ({
+	T,
+	az,
+	el,
+	target: [0, 0, 0],
+	radius,
+	wide: box(0.38, 0.12, 0.62, 0.8),
+	tall: box(0, 0.1, 1, 0.44),
+	follow: followCapsule
+});
 // From up and to the right, over the masts and clear of them: the five checks, and the capsule under them.
 const DOOR = { az: 28, el: 16, target: [-0.4, P.PLATFORM_Y + 2.0, P.DOOR_Z + 0.2] as V3, radius: 3.0, wide: box(0.03, 0.1, 0.5, 0.88), tall: box(0.02, 0.06, 0.96, 0.5) };
 // A phone can't hold the whole row at a size you can read, so it comes back from the cutter to the middle, where both "the"
@@ -272,10 +280,15 @@ const SHOTS: Shot[] = [
 	...hold(1, 1.6, LAPTOP),
 	...hold(2, 2.74, ASSEMBLY, { az: 17, radius: 5.5, ry: 4.2 }),
 	...hold(3, 3.58, REQUEST, { az: 8 }),
-	{ T: 4, ...riding(4.0, 2.3, -34, 16) },
-	{ T: 4.36, ...riding(4.36, 2.9, -30, 13) },
-	{ T: 4.64, ...riding(4.648, 3.3, 58, 14) },
+	// Over the capsule as it rides, always on the side away from the mast it's passing, so no mast comes between: the
+	// first stands on the left, the second on the right, the third on the left by the door.
+	riding(4.0, 2.3, 20, 16),
+	riding(4.3, 2.8, 26, 15),
+	riding(4.46, 3.0, -12, 18),
+	riding(4.64, 3.3, 58, 14),
 	...hold(5, 5.64, DOOR, { az: 25 }),
+	// Up over the gatehouse's corner tower, not through it, on the way in to the tokenizer.
+	{ T: 5.8, az: 40, el: 46, target: [-0.6, P.PLATFORM_Y + 1.6, P.DOOR_Z - 3.2] as V3, radius: 4.4, wide: box(0.05, 0.46, 0.9, 0.5), tall: box(0, 0.1, 1, 0.42) },
 	{ T: 6, ...turned({ ...CUT, target: [C_X - 0.3, ISLAND_C_Y + 0.9, 0.9] }) },
 	{ T: 6.16, ...turned({ ...CUT, target: [C_X - 0.3, ISLAND_C_Y + 0.9, 0.9] }) },
 	{ T: 6.56, ...turned({ ...CUT, target: [C_X + 7.1, ISLAND_C_Y + 0.9, 0.9], az: 7, tallTarget: [C_X + 8.2, C_TOP, 0.9] }) },
