@@ -85,3 +85,26 @@ the collision scan, committing on `world` as each lands:
 
 Type checks, lint, unit tests (the brain's need a long hook timeout under load), e2e on the GPU against a served build,
 collision scans, narration sync, phone. Then ask before merging into `main` and pushing.
+
+## Polish, night of 2026-11-25 (log)
+
+Neo's notes: geometry standing in geometry; the reply's way home from the brain unseen; a crowded landing; every place
+below the brain's craft. What was done, round by round:
+
+- **Landing.** The whole world from out in the sky, desk to brain, title in open sky beside it; the dolly down to the
+  laptop reads. Two story props from the back half were waiting visible in the haze under the desk: placed properly.
+- **The way home (19.0 to 19.1, seven seconds).** Out of the brainstem's seat, down the lit reply column in the shaft,
+  out of the tower's foot, along the hall seen from high over the door, through the Encrypt press (an open portal over
+  the reply's lane: the hall's duplicate detokenizer went, since token IDs never leave the data center), out of the
+  door as a string of small pearl capsules, down the aqueduct past the readers (which flare), each opening behind the
+  harness and its text flying in at the hatch. Sounds for the pour, each seal and each landing. sky/stream.ts.
+- **Rig.** A shot can follow a moving thing (`follow`), so the camera keeps it in place between shots. The capsule's
+  ride across the aqueduct is one following shot, always on the side away from the mast it passes.
+- **Crafted again.** The crown (thin gold and brass blades leaning out, banded, in a stepped collar); the relay masts
+  (white pylons, red bands near the top, three dishes and a whip; readers are small lamps over each lane on a slim
+  beam); the deck's start (capped, rollers, a plate); the desk's control console and the local MCP servers.
+- **Interference.** scripts/overlap.mjs (things standing in each other at a moment) and scripts/camera.mjs (anything
+  between the camera and its subject). Fixed: the ten turns' chart hanging in the air before its chapter, the evil.sh
+  pole in the green pipe, the door's tumblers in its arch, the capsule dipping into the belt over the deck's crest, the
+  camera swinging through the gatehouse's tower, the harness squashing through its own cables.
+- **Budget.** Tiles and lamps share their shapes: 97 to 91 MB of geometry on the phone.
