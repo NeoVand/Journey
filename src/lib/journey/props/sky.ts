@@ -11,7 +11,7 @@ import { Rig, type Shot } from '../rig';
  */
 
 /** A seeded random, so the sky is the same on every visit and in every screenshot. */
-function seeded(seed: number) {
+export function seeded(seed: number) {
 	let s = seed >>> 0;
 	return () => {
 		s = (s + 0x6d2b79f5) >>> 0;
@@ -29,7 +29,7 @@ const H = 256;
  * One cumulus: a flat base and a heaped top, made of overlapping puffs. Painted in three goes: the shape, then a cool
  * shadow rising from the base and gathering on the side away from the sun, then a warm rim where the sun catches it.
  */
-function paintCloud(seed: number, tall: number) {
+export function paintCloud(seed: number, tall: number) {
 	const rand = seeded(seed);
 	const canvas = document.createElement('canvas');
 	// A phone paints them at half the size: they're soft anyway, and its memory is tight.

@@ -1,0 +1,178 @@
+import * as THREE from 'three';
+import { Batch } from '../kit/batch';
+import { extrude, rbox } from '../kit/geometry';
+import { palette } from './palette';
+import * as P from './masterplan';
+
+/*
+ * The provider's front door: a gatehouse of deep jade enamel and polished brass, solid and secure, like the door of a
+ * bank. One great round arch straddles both lanes; a thick brass archivolt studded with rivets frames it, and across its
+ * crown hangs a row of five brass tumblers, the five checks every request passes on its way in: its seal is broken
+ * (decrypt), its key is checked (who are you), its count (rate limit), its coins (budget), and whether there is room
+ * (capacity). Each tumbler has a lamp over it that turns green as the request goes under.
+ *
+ * A round tower stands at each front corner with an arched window and a brass dome; a jade pediment over the arch carries a
+ * brass medallion, and behind it a dome of glass and brass ribs rises over the door. Round windows and arched ones glow
+ * amber either side of the arch.
+ *
+ * Drawn from concepts/aqueduct/door (front, above, section, inside). Its own frame has its foot on the platform at the
+ * origin, its front towards +z, the lanes running through it along z.
+ */
+
+const G = P.GATEHOUSE;
+/** The front between the towers, the arch's opening, where the arch springs, and the wall's height. */
+const W = 9.0;
+const D = G.d;
+const DOOR = { w: 5.2, spring: 2.2 };
+const WALL = 5.6;
+/** The corner towers: how far out, how far forward, how big, how tall. */
+const TOWER = { x: W / 2 + 0.85, z: D / 2 - 0.9, r: 1.35, h: 5.4 };
+/** The tumblers' row, across the arch's crown: how high, and how far apart. */
+const TUMBLER = { y: DOOR.spring + DOOR.w / 2 - 0.55, gap: 0.86, r: 0.3, len: 0.62 };
+
+/** An arched opening's outline: straight jambs to the spring, a half circle over. */
+function arch(w: number, spring: number, segments = 32): [number, number][] {
+	const pts: [number, number][] = [[-w / 2, 0]];
+	for (let i = 0; i <= segments; i++) {
+		const a = Math.PI - (i / segments) * Math.PI;
+		pts.push([(w / 2) * Math.cos(a), spring + (w / 2) * Math.sin(a)]);
+	}
+	pts.push([w / 2, 0]);
+	return pts;
+}
+
+/** An arched window, as a flat panel the shape of the opening. */
+function windowPanel(w: number, h: number) {
+	const s = new THREE.Shape();
+	const pts = arch(w, h - w / 2, 20);
+	s.moveTo(pts[0][0], pts[0][1]);
+	for (const [x, y] of pts.slice(1)) s.lineTo(x, y);
+	s.closePath();
+	return s;
+}
+
+export class Gatehouse {
+	group = new THREE.Group();
+	/** The tumblers' lamps, left to right, each its own material so each can turn green on its own. */
+	private lamps: THREE.MeshStandardMaterial[] = [];
+	private drums: THREE.Object3D[] = [];
+
+	constructor() {
+		this.group.name = 'front door';
+		this.group.position.copy(G.at);
+		const c = palette();
+		const b = new Batch();
+
+		// The front wall and its tunnel: one jade block the depth of the gatehouse, the arch let right through it.
+		const outline = new THREE.Shape();
+		outline.moveTo(-W / 2, 0);
+		for (const [x, y] of arch(DOOR.w, DOOR.spring)) outline.lineTo(x, y);
+		outline.lineTo(W / 2, 0);
+		outline.lineTo(W / 2, WALL);
+		outline.lineTo(-W / 2, WALL);
+		outline.closePath();
+		b.add(extrude(outline, D, 0.08, 3, 48), c.jade);
+		// A brass plinth band along its foot, and a cornice along its top.
+		b.add(rbox(W + 0.3, 0.32, D + 0.3, 0.08), c.brass, { p: [0, 0.16, 0] });
+		b.add(rbox(W + 0.5, 0.26, D + 0.5, 0.08), c.brass, { p: [0, WALL + 0.13, 0] });
+
+		// The archivolt, front and back: a thick brass band round the arch, brass jambs down to the floor, rivets all round.
+		for (const z of [D / 2 + 0.12, -D / 2 - 0.12]) {
+			b.add(new THREE.TorusGeometry(DOOR.w / 2 + 0.28, 0.26, 16, 72, Math.PI), c.brass, { p: [0, DOOR.spring, z] });
+			for (const s of [-1, 1]) b.add(new THREE.CylinderGeometry(0.26, 0.3, DOOR.spring, 24), c.brass, { p: [s * (DOOR.w / 2 + 0.28), DOOR.spring / 2, z] });
+			for (let i = 0; i <= 14; i++) {
+				const a = (i / 14) * Math.PI;
+				b.add(new THREE.SphereGeometry(0.07, 10, 8), c.gold, { p: [(DOOR.w / 2 + 0.28) * Math.cos(a), DOOR.spring + (DOOR.w / 2 + 0.28) * Math.sin(a), z + Math.sign(z) * 0.24] });
+			}
+		}
+		// The tunnel's lining: brass ribs round the inside of the arch, every so often through the gatehouse's depth.
+		for (const z of [-D / 4, 0, D / 4]) b.add(new THREE.TorusGeometry(DOOR.w / 2 - 0.02, 0.07, 10, 64, Math.PI), c.brass, { p: [0, DOOR.spring, z] });
+
+		// The pediment over the arch: a jade segment with a brass rim, a brass medallion on its face.
+		const ped = new THREE.Shape();
+		ped.moveTo(-3.2, 0);
+		ped.quadraticCurveTo(0, 2.2, 3.2, 0);
+		ped.closePath();
+		b.add(extrude(ped, 1.2, 0.08, 3, 32), c.jadeDeep, { p: [0, WALL + 0.26, D / 2 - 0.6] });
+		b.add(new THREE.TorusGeometry(0.62, 0.1, 12, 48), c.brass, { p: [0, WALL + 0.85, D / 2 + 0.06] });
+		b.add(new THREE.CylinderGeometry(0.52, 0.52, 0.12, 40), c.brass, { p: [0, WALL + 0.85, D / 2 + 0.02], r: [Math.PI / 2, 0, 0] });
+		b.add(new THREE.CylinderGeometry(0.3, 0.3, 0.16, 32), c.jade, { p: [0, WALL + 0.85, D / 2 + 0.06], r: [Math.PI / 2, 0, 0] });
+
+		// The glass dome behind it, on a brass drum, with brass ribs and a finial.
+		const domeAt = new THREE.Vector3(0, WALL + 0.26, -0.3);
+		b.add(new THREE.CylinderGeometry(2.1, 2.1, 0.5, 64), c.brass, { p: [domeAt.x, domeAt.y + 0.25, domeAt.z] });
+		b.add(new THREE.SphereGeometry(2.0, 48, 20, 0, Math.PI * 2, 0, Math.PI / 2), c.glass, { p: [domeAt.x, domeAt.y + 0.5, domeAt.z] });
+		for (let i = 0; i < 8; i++) {
+			const rib = new THREE.TorusGeometry(2.0, 0.05, 8, 32, Math.PI / 2);
+			b.add(rib, c.brass, { p: [domeAt.x, domeAt.y + 0.5, domeAt.z], r: [0, (i / 8) * Math.PI * 2, Math.PI / 2] });
+		}
+		b.add(new THREE.SphereGeometry(0.2, 16, 12), c.gold, { p: [domeAt.x, domeAt.y + 2.65, domeAt.z] });
+
+		// The corner towers: jade drums with brass bands, an arched window lit amber, a brass dome with a finial.
+		for (const s of [-1, 1]) {
+			const x = s * TOWER.x;
+			const z = TOWER.z;
+			b.add(new THREE.CylinderGeometry(TOWER.r + 0.25, TOWER.r + 0.35, 0.4, 48), c.porcelain, { p: [x, 0.2, z] });
+			b.add(new THREE.CylinderGeometry(TOWER.r, TOWER.r, TOWER.h, 48), c.jade, { p: [x, TOWER.h / 2, z] });
+			for (const y of [0.5, TOWER.h * 0.62, TOWER.h - 0.1]) b.add(new THREE.TorusGeometry(TOWER.r + 0.02, 0.09, 10, 64), c.brass, { p: [x, y, z], r: [Math.PI / 2, 0, 0] });
+			b.add(extrude(windowPanel(0.9, 1.9), 0.08, 0.02, 2, 12), c.amberWindow, { p: [x, 1.4, z + TOWER.r - 0.02] });
+			b.add(new THREE.TorusGeometry(0.47, 0.06, 8, 32, Math.PI), c.brass, { p: [x, 1.4 + 1.9 - 0.45, z + TOWER.r + 0.02] });
+			b.add(new THREE.CylinderGeometry(TOWER.r + 0.15, TOWER.r + 0.15, 0.3, 48), c.brass, { p: [x, TOWER.h + 0.15, z] });
+			b.add(new THREE.SphereGeometry(TOWER.r, 40, 18, 0, Math.PI * 2, 0, Math.PI / 2), c.brass, { p: [x, TOWER.h + 0.3, z] });
+			b.add(new THREE.CylinderGeometry(0.06, 0.1, 0.7, 12), c.gold, { p: [x, TOWER.h + 0.3 + TOWER.r + 0.3, z] });
+			b.add(new THREE.SphereGeometry(0.2, 16, 12), c.gold, { p: [x, TOWER.h + 0.3 + TOWER.r + 0.7, z] });
+			// A round window high on the front, and an arched one low, between the arch and the tower.
+			const wx = s * (DOOR.w / 2 + 1.25);
+			b.add(new THREE.CylinderGeometry(0.42, 0.42, 0.1, 32), c.amberWindow, { p: [wx, 3.8, D / 2 + 0.02], r: [Math.PI / 2, 0, 0] });
+			b.add(new THREE.TorusGeometry(0.46, 0.08, 10, 40), c.brass, { p: [wx, 3.8, D / 2 + 0.06] });
+			b.add(extrude(windowPanel(0.8, 1.5), 0.08, 0.02, 2, 12), c.amberWindow, { p: [wx, 0.8, D / 2 + 0.01] });
+		}
+
+		// The beam across the arch's crown that carries the tumblers.
+		b.add(new THREE.CylinderGeometry(0.1, 0.1, DOOR.w - 0.2, 16), c.brass, { p: [0, TUMBLER.y + TUMBLER.r + 0.18, D / 2 - 0.4], r: [0, 0, Math.PI / 2] });
+		this.group.add(b.build('gatehouse'));
+
+		// The five tumblers: brass drums turning on the beam, ribbed, each with its own lamp on top.
+		const drumGeo = new THREE.CylinderGeometry(TUMBLER.r, TUMBLER.r, TUMBLER.len, 32);
+		const ribGeo = new THREE.TorusGeometry(TUMBLER.r + 0.01, 0.025, 6, 32);
+		for (let i = 0; i < 5; i++) {
+			const x = (i - 2) * TUMBLER.gap;
+			const drum = new THREE.Group();
+			drum.position.set(x, TUMBLER.y, D / 2 - 0.4);
+			const body = new THREE.Mesh(drumGeo, c.brass);
+			body.rotation.z = Math.PI / 2;
+			drum.add(body);
+			for (const dx of [-0.2, 0, 0.2]) {
+				const rib = new THREE.Mesh(ribGeo, c.gold);
+				rib.rotation.y = Math.PI / 2;
+				rib.position.x = dx;
+				drum.add(rib);
+			}
+			const hanger = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.2, 0.12), c.brass);
+			hanger.position.set(0, TUMBLER.r + 0.1, 0);
+			this.group.add(drum);
+			this.drums.push(drum);
+			const lamp = new THREE.MeshStandardMaterial({ color: '#173b22', emissive: '#2bdc63', emissiveIntensity: 0.4 });
+			const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.1, 16, 12), lamp);
+			bulb.position.set(x, TUMBLER.y + TUMBLER.r + 0.36, D / 2 - 0.05);
+			const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.1, 0.1, 16), c.brass);
+			cup.position.set(x, TUMBLER.y + TUMBLER.r + 0.27, D / 2 - 0.05);
+			this.group.add(bulb, cup, hanger);
+			hanger.position.add(drum.position);
+			this.lamps.push(lamp);
+		}
+	}
+
+	/**
+	 * pass: how far the request has got through the five checks, 0 to 5; each lamp turns green as it passes, each
+	 * tumbler turns a notch. At rest the lamps glow dimly and the drums tick over.
+	 */
+	update(time: number, pass = -1) {
+		const ticking = pass < 0 ? (time * 0.8) % 7 : pass;
+		this.lamps.forEach((lamp, i) => {
+			const lit = THREE.MathUtils.clamp(ticking - i, 0, 1);
+			lamp.emissiveIntensity = 0.35 + lit * 2.4;
+		});
+		this.drums.forEach((drum, i) => (drum.rotation.x = -Math.min(1, Math.max(0, ticking - i)) * (Math.PI / 4) - Math.floor(time * 0.8 / 7) * (Math.PI / 4)));
+	}
+}

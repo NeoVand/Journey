@@ -32,8 +32,12 @@ export const PART = 0.26;
 /** What the intake's arms hold: the hose's wheel and the nozzle under it, in the brain's own frame. See HOSE in the design. */
 export type Hose = typeof HOSE;
 
-/** Everything between the halves. The ratchet ring round the intake comes back on its own, to be turned. */
-export function between(hose: Hose = HOSE) {
+/**
+ * Everything between the halves. The ratchet ring round the intake comes back on its own, to be turned. Without a hose
+ * (when the brain is fed from below, through its brainstem) the crown has no arms, wheel or nozzle: a glass lens closes
+ * the intake's bezel, the brain's lamp, which lights as each token is written. It comes back on its own too, to be lit.
+ */
+export function between(hose: Hose | null = HOSE) {
 	const parts = new Parts();
 
 	// The keel: a dark plate the shape of the fissure, with the intake's throat let into its top edge.
@@ -114,6 +118,17 @@ export function between(hose: Hose = HOSE) {
 		ring.add('dark', rbox(0.1, 0.012, 0.03, 0.005, 1), new THREE.Matrix4().makeRotationY(a).multiply(new THREE.Matrix4().makeTranslation((r - 0.1 + bore + 0.17) / 2, rim + 0.052, 0)));
 	}
 
+	// Fed from below: the lens closes the throat, a shallow glass dome seated just inside the bezel's rim.
+	let lens: THREE.BufferGeometry | null = null;
+	if (!hose) {
+		const R = 0.9;
+		const base = bore + 0.1;
+		const theta = Math.asin(base / R);
+		lens = new THREE.SphereGeometry(R, 56, 14, 0, Math.PI * 2, 0, theta).translate(PORT.x, rim - 0.1 - R * Math.cos(theta), 0);
+		for (const piece of stem()) parts.add(piece.finish, piece.geo);
+		return { parts, ring, pins, lens };
+	}
+
 	// Two arms rise from lugs on the bezel to the axle of the hose's wheel, and hold the nozzle under it.
 	const [wx, wy] = hose.wheel;
 	for (const s of [-1, 1]) {
@@ -140,7 +155,7 @@ export function between(hose: Hose = HOSE) {
 	// the halves slide on.
 	for (const piece of stem()) parts.add(piece.finish, piece.geo);
 
-	return { parts, ring, pins };
+	return { parts, ring, pins, lens };
 }
 
 /** How many notches the intake's ratchet ring has. */
