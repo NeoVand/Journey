@@ -108,3 +108,10 @@ below the brain's craft. What was done, round by round:
   pole in the green pipe, the door's tumblers in its arch, the capsule dipping into the belt over the deck's crest, the
   camera swinging through the gatehouse's tower, the harness squashing through its own cables.
 - **Budget.** Tiles and lamps share their shapes: 97 to 91 MB of geometry on the phone.
+- **Second batch.** The call card goes round the harness instead of through the aqueduct's start; the finale's Stream and
+  Authorize signs stand clear; its token rides on top of tracks and pipes. The gatehouse's cupola is jade with a lit
+  lantern. On a short screen (660 px or less) the words shrink a little so the longest card keeps its heading. The
+  desk's cables lie on the desk; the local MCP servers plug into two new ports on the laptop's left side; the prompt's
+  slip clears the lid. The archive is a filing cabinet (Transcripts, and Memory pulled out). The card for "The model has
+  no hands" says the reply streams home in small pieces, as the scene and its conversation do. Verified: types, lint,
+  unit, collision and overlap scans, 27 of 27 e2e on the GPU, phone geometry 91 MB.
