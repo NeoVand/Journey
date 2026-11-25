@@ -69,8 +69,9 @@ function circuit() {
 export function bezel(b: Batch, w: number, h: number, at: V3, { t = 0.12, r = 0.14, depth = 0.08, mat = craft().chrome } = {}) {
 	const s = roundedRect(w + t * 2, h + t * 2, r + t);
 	const hole = roundedRect(w, h, r);
-	s.holes.push(new THREE.Path(hole.getPoints(24)));
-	b.add(extrude(s, depth, Math.min(0.025, depth / 3), 2, 16), mat, { p: [at[0], at[1], at[2] + depth / 2] });
+	// Six steps to a corner and one to its bevel: it's trim, seen from metres away, and there are dozens of them.
+	s.holes.push(new THREE.Path(hole.getPoints(6)));
+	b.add(extrude(s, depth, Math.min(0.025, depth / 3), 1, 6), mat, { p: [at[0], at[1], at[2] + depth / 2] });
 }
 
 /** A pane of glass over an opening, on a face that looks along +Z. Kept apart from the batch: it draws after. */
@@ -88,26 +89,38 @@ export function pane(w: number, h: number, at: V3, r = 0.14) {
 export function fan(b: Batch, r: number, at: V3) {
 	const c = craft();
 	const [x, y, z] = at;
-	b.add(new THREE.CylinderGeometry(r + 0.06, r + 0.08, 0.14, 40, 1, true), c.chrome, { p: [x, y - 0.07, z] });
-	b.add(new THREE.TorusGeometry(r + 0.06, 0.035, 8, 40), c.chrome, { p: [x, y, z], r: [Math.PI / 2, 0, 0] });
-	b.add(new THREE.CylinderGeometry(r + 0.06, r + 0.06, 0.02, 40), c.fan, { p: [x, y - 0.13, z] });
+	b.add(new THREE.CylinderGeometry(r + 0.06, r + 0.08, 0.14, 28, 1, true), c.chrome, { p: [x, y - 0.07, z] });
+	b.add(new THREE.TorusGeometry(r + 0.06, 0.035, 6, 28), c.chrome, { p: [x, y, z], r: [Math.PI / 2, 0, 0] });
+	b.add(new THREE.CylinderGeometry(r + 0.06, r + 0.06, 0.02, 28), c.fan, { p: [x, y - 0.13, z] });
 	// The grille: two rings and four spokes, over the blades.
-	for (const k of [0.45, 0.8]) b.add(new THREE.TorusGeometry(r * k, 0.014, 6, 32), c.chrome, { p: [x, y + 0.005, z], r: [Math.PI / 2, 0, 0] });
-	for (let i = 0; i < 4; i++) b.add(rbox(r * 2, 0.02, 0.025, 0.008, 1), c.chrome, { p: [x, y + 0.005, z], r: [0, (i * Math.PI) / 4, 0] });
+	for (const k of [0.45, 0.8]) b.add(new THREE.TorusGeometry(r * k, 0.014, 4, 24), c.chrome, { p: [x, y + 0.005, z], r: [Math.PI / 2, 0, 0] });
+	for (let i = 0; i < 4; i++) b.add(new THREE.BoxGeometry(r * 2, 0.02, 0.025), c.chrome, { p: [x, y + 0.005, z], r: [0, (i * Math.PI) / 4, 0] });
 	const rotor = new THREE.Group();
 	rotor.position.set(x, y - 0.06, z);
-	const rb = new Batch();
-	rb.add(new THREE.CylinderGeometry(r * 0.24, r * 0.24, 0.06, 20), c.chrome);
-	for (let i = 0; i < 7; i++) rb.add(rbox(r * 0.82, 0.012, r * 0.3, 0.006, 1), c.fan, { p: [Math.cos((i / 7) * Math.PI * 2) * r * 0.55, 0, Math.sin((i / 7) * Math.PI * 2) * r * 0.55], r: [0.4, -(i / 7) * Math.PI * 2, 0] });
-	rotor.add(rb.build('fan-rotor'));
+	rotor.add(rotorOf(r).clone());
 	return rotor;
+}
+
+/** A fan's blades, built once for each size and shared by every fan that size. */
+const rotors = new Map<number, THREE.Object3D>();
+function rotorOf(r: number) {
+	let built = rotors.get(r);
+	if (!built) {
+		const c = craft();
+		const rb = new Batch();
+		rb.add(new THREE.CylinderGeometry(r * 0.24, r * 0.24, 0.06, 14), c.chrome);
+		for (let i = 0; i < 7; i++) rb.add(new THREE.BoxGeometry(r * 0.82, 0.012, r * 0.3), c.fan, { p: [Math.cos((i / 7) * Math.PI * 2) * r * 0.55, 0, Math.sin((i / 7) * Math.PI * 2) * r * 0.55], r: [0.4, -(i / 7) * Math.PI * 2, 0] });
+		built = rb.build('fan-rotor');
+		rotors.set(r, built);
+	}
+	return built;
 }
 
 /** A heat sink lying on a top face: a base plate and fins along x, as tall as h. at is the centre of its foot. */
 export function fins(b: Batch, w: number, d: number, h: number, n: number, at: V3, mat: THREE.Material = craft().chrome) {
 	const [x, y, z] = at;
 	b.add(rbox(w, 0.06, d, 0.02, 1), craft().gunmetal, { p: [x, y + 0.03, z] });
-	const fin = rbox(0.035, h, d - 0.04, 0.012, 1);
+	const fin = new THREE.BoxGeometry(0.035, h, d - 0.04);
 	for (let i = 0; i < n; i++) b.add(fin, mat, { p: [x - w / 2 + (w * (i + 0.5)) / n, y + 0.06 + h / 2, z] });
 }
 
@@ -116,14 +129,14 @@ export function guards(b: Batch, w: number, z: number, y0: number, y1: number, r
 	const c = craft();
 	const h = y1 - y0;
 	for (const s of [-1, 1]) {
-		b.add(new THREE.CylinderGeometry(r, r, h, 16), c.chrome, { p: [s * (w / 2), y0 + h / 2, z] });
-		for (const y of [y0, y1]) b.add(new THREE.SphereGeometry(r * 1.05, 14, 8), c.chrome, { p: [s * (w / 2), y, z] });
+		b.add(new THREE.CylinderGeometry(r, r, h, 12, 1, true), c.chrome, { p: [s * (w / 2), y0 + h / 2, z] });
+		for (const y of [y0, y1]) b.add(new THREE.SphereGeometry(r * 1.05, 12, 6), c.chrome, { p: [s * (w / 2), y, z] });
 	}
 }
 
 /** Screw heads at the four corners of a rectangle on a face that looks along +Z. */
 export function screws(b: Batch, w: number, h: number, at: V3) {
-	const g = new THREE.CylinderGeometry(0.035, 0.04, 0.02, 12).rotateX(Math.PI / 2);
+	const g = new THREE.CylinderGeometry(0.035, 0.04, 0.02, 8).rotateX(Math.PI / 2);
 	for (const sx of [-1, 1]) for (const sy of [-1, 1]) b.add(g, craft().chrome, { p: [at[0] + (sx * w) / 2, at[1] + (sy * h) / 2, at[2] + 0.01] });
 }
 
@@ -136,9 +149,9 @@ export function pipe(b: Batch, points: V3[], r: number, mat: THREE.Material, eve
 		0.2
 	);
 	const len = curve.getLength();
-	b.add(new THREE.TubeGeometry(curve, Math.max(12, Math.ceil(len / 0.12)), r, 10), mat);
+	b.add(new THREE.TubeGeometry(curve, Math.max(12, Math.ceil(len / 0.16)), r, 8), mat);
 	const n = Math.floor(len / every);
-	const clamp = new THREE.TorusGeometry(r + 0.012, 0.018, 6, 16);
+	const clamp = new THREE.TorusGeometry(r + 0.012, 0.018, 4, 12);
 	const q = new THREE.Quaternion();
 	const e = new THREE.Euler();
 	for (let i = 1; i < n; i++) {
@@ -165,7 +178,7 @@ export function louvre(b: Batch, side: 1 | -1, at: V3, h: number, d: number, n: 
 	const c = craft();
 	b.add(rbox(0.03, h + 0.1, d + 0.1, 0.012, 1), mats().recess, { p: [x - side * 0.01, y, z] });
 	const pitch = h / n;
-	const slat = rbox(0.05, pitch * 0.55, d, 0.01, 1);
+	const slat = new THREE.BoxGeometry(0.05, pitch * 0.55, d);
 	for (let i = 0; i < n; i++) b.add(slat, c.chrome, { p: [x + side * 0.012, y - h / 2 + pitch * (i + 0.5), z], r: [0, 0, side * -0.35] });
 	const frame = new THREE.Shape();
 	frame.moveTo(-(d + 0.18) / 2, -(h + 0.18) / 2);
@@ -221,7 +234,7 @@ export function loaf(w: number, d: number, h: number, r: number) {
 	s.lineTo(-d / 2 + r, h);
 	s.quadraticCurveTo(-d / 2, h, -d / 2, h - r);
 	s.closePath();
-	return extrude(s, w, 0.07, 3, 16).rotateY(Math.PI / 2);
+	return extrude(s, w, 0.07, 2, 10).rotateY(Math.PI / 2);
 }
 
 /** Chrome beads along a loaf's two rounded top edges, where the light catches them. */

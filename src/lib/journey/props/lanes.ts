@@ -120,12 +120,14 @@ export class BatchLanes {
 			const e = edges[i + 1];
 			b.add(rbox(TD, TH + 0.02, e - a, 0.02, 1), m.creamLight, { p: [X1 + TD / 2, (TH + 0.02) / 2, (a + e) / 2] });
 		}
+		// One bezel, shared by every tunnel's mouth.
+		const bz = new Batch();
+		bezel(bz, TW, TH, [0, 0, 0], { t: 0.05, r: 0.04, depth: 0.04 });
+		const tunnelFrame = bz.build('bezel');
 		for (const z of LANE_Z) {
 			b.add(rbox(0.03, TH, TW, 0.01, 1), m.recess, { p: [X1 + TD - 0.015, TH / 2 + 0.01, z] });
 			b.add(rbox(TD, 0.02, TW, 0.01, 1), m.recess, { p: [X1 + TD / 2, TH + 0.01, z] });
-			const bz = new Batch();
-			bezel(bz, TW, TH, [0, 0, 0], { t: 0.05, r: 0.04, depth: 0.04 });
-			const frame = bz.build('bezel');
+			const frame = tunnelFrame.clone();
 			frame.rotation.y = -Math.PI / 2;
 			frame.position.set(X1, TH / 2 + 0.01, z);
 			this.group.add(frame);

@@ -85,22 +85,23 @@ export class Node3D {
 					this.fixed.add(tag);
 				}
 				for (let i = -2; i <= 2; i++) {
-					linksBatch.add(rbox(0.3, 0.012, 0.05), this.links, { p: [x + 0.42, 0.147, z + i * 0.24] });
+					linksBatch.add(new THREE.BoxGeometry(0.3, 0.012, 0.05), this.links, { p: [x + 0.42, 0.147, z + i * 0.24] });
 				}
 			}
 		}
 		// NVLink: gold ribbons between neighbouring chips, across and along, from one chip's chrome frame to the next.
+		// Plain boxes: at this size a rounded edge can't be seen, and there are ninety of them.
 		const RIBBON = 3.2 - 2.8 + 0.01;
 		for (let i = 0; i < 3; i++) {
 			for (const z of CZ) {
 				for (let k = -2; k <= 2; k++) {
-					linksBatch.add(rbox(RIBBON, 0.03, 0.09, 0.01, 1), this.links, { p: [(CX[i] + CX[i + 1]) / 2, 0.08, z + k * 0.26] });
+					linksBatch.add(new THREE.BoxGeometry(RIBBON, 0.03, 0.09), this.links, { p: [(CX[i] + CX[i + 1]) / 2, 0.08, z + k * 0.26] });
 				}
 			}
 		}
 		for (const x of CX) {
 			for (let k = -2; k <= 2; k++) {
-				linksBatch.add(rbox(0.09, 0.03, RIBBON, 0.01, 1), this.links, { p: [x + k * 0.26, 0.08, 0] });
+				linksBatch.add(new THREE.BoxGeometry(0.09, 0.03, RIBBON), this.links, { p: [x + k * 0.26, 0.08, 0] });
 			}
 		}
 
@@ -167,8 +168,12 @@ export class Node3D {
 		const glassy = new THREE.MeshPhysicalMaterial({ color: '#2457c8', roughness: 0.16, metalness: 0.15, clearcoat: 1, clearcoatRoughness: 0.08 });
 		const numbers = new THREE.MeshStandardMaterial({ map, emissive: '#ffffff', emissiveMap: map, emissiveIntensity: 0.75, roughness: 0.25 });
 		const seam = new THREE.MeshBasicMaterial({ color: '#8fd0ff' });
-		const body = (w: number, d: number, u0: number, u1: number, v0: number, v1: number) => {
-			const g = new THREE.Group();
+		// The glass and its trim, built once for each size: the eight slices share theirs.
+		const shells = new Map<string, THREE.Object3D>();
+		const shell = (w: number, d: number) => {
+			const key = `${w}/${d}`;
+			const known = shells.get(key);
+			if (known) return known.clone();
 			const b = new Batch();
 			b.add(rbox(w, SLAB_H, d, 0.07, 3), glassy);
 			b.add(rbox(w + 0.008, 0.035, d + 0.008, 0.012, 1), seam);
@@ -179,7 +184,12 @@ export class Node3D {
 			for (const sx of [-1, 1]) for (const sz of [-1, 1]) b.add(rbox(0.16, SLAB_H + 0.03, 0.16, 0.05, 2), c.chrome, { p: [sx * (w / 2 - 0.076), 0, sz * (d / 2 - 0.076)] });
 			const built = b.build('weights');
 			built.traverse((o) => (o.castShadow = o instanceof THREE.Mesh));
-			g.add(built);
+			shells.set(key, built);
+			return built;
+		};
+		const body = (w: number, d: number, u0: number, u1: number, v0: number, v1: number) => {
+			const g = new THREE.Group();
+			g.add(shell(w, d));
 			const plane = new THREE.PlaneGeometry(w - 0.16, d - 0.16);
 			const uv = plane.attributes.uv as THREE.BufferAttribute;
 			for (let i = 0; i < uv.count; i++) {
