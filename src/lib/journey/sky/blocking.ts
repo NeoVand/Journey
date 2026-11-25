@@ -1,24 +1,25 @@
 import * as THREE from 'three';
 import { Batch } from '../kit/batch';
-import { extrude, rbox, sweep } from '../kit/geometry';
+import { rbox } from '../kit/geometry';
 import { createIsland } from '../props/island';
 import { paintCloud, seeded } from '../props/sky';
 import { Brain, STEM_FOOT } from '../props/brain';
-import { palette, tinted } from './palette';
+import { palette } from './palette';
 import * as P from './masterplan';
 import { Tower } from './tower';
 import { Gatehouse } from './gatehouse';
 import { Hall } from './hall';
 import { Aqueduct } from './aqueduct';
 import { Desk } from './desk';
+import { Foundry } from './foundry';
+import { Proving } from './proving';
+import { RemoteTowers } from './remote';
 
 /*
- * The whole world blocked out from the masterplan: every place at its size and in its colours, in simple forms, so the
- * plan can be checked against the four views before any place is built properly. Nothing here is final but the layout.
+ * The whole world, put together from its places: the desk, the aqueduct, the provider (the gatehouse, the hall, the
+ * tower and the model), the foundry, the proving ground and the remote towers, each built in its own module from its own
+ * drawings, all positioned by the masterplan. What runs between them, the lanes and what rides them, is here.
  */
-
-type V3 = [number, number, number];
-const v = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
 
 /** Lays a flat outline (x, z pairs, seen from above) down as a shape the extruder turns into a slab facing up. */
 const plan = (pts: [number, number][]) => pts.map(([x, z]) => [x, -z] as [number, number]);
@@ -31,6 +32,9 @@ export class Blocking {
 	hall = new Hall();
 	aqueduct = new Aqueduct();
 	desk = new Desk();
+	foundry = new Foundry();
+	proving = new Proving();
+	remote = new RemoteTowers();
 	private up!: THREE.CatmullRomCurve3;
 	private down!: THREE.CatmullRomCurve3;
 	private tokens!: THREE.InstancedMesh;
@@ -46,56 +50,14 @@ export class Blocking {
 	constructor() {
 		this.group.name = 'blocking';
 		const b = new Batch();
-		this.foundry(b);
-		this.proving(b);
-		this.remote(b);
-		this.group.add(b.build('world'), this.tower.group, this.gatehouse.group, this.hall.group, this.aqueduct.group, this.desk.group);
+		this.group.add(b.build('world'), this.tower.group, this.gatehouse.group, this.hall.group, this.aqueduct.group, this.desk.group, this.foundry.group, this.proving.group, this.remote.group);
 		this.platform();
 		this.lanes();
 		this.clouds();
 		this.model();
 	}
 
-	/**
-	 * One arch of an arcade between two points on a deck's underside: a spandrel with a round arch let into it, sheared
-	 * to follow the deck's slope, and a pier at each end going down out of sight.
-	 */
-	private span(b: Batch, a: THREE.Vector3, c: THREE.Vector3, drop: number, thick: number, mat: THREE.Material) {
-		const flat = new THREE.Vector3(c.x - a.x, 0, c.z - a.z);
-		const L = flat.length();
-		const slope = (c.y - a.y) / L;
-		const pier = Math.min(2.0, L * 0.2);
-		const r = (L - pier) / 2;
-		const D = r + 0.6;
-		const s = new THREE.Shape();
-		s.moveTo(-L / 2, 0);
-		s.lineTo(L / 2, 0);
-		s.lineTo(L / 2, -D);
-		s.lineTo(r, -D);
-		s.absarc(0, -D, r, 0, Math.PI, false);
-		s.lineTo(-L / 2, -D);
-		s.closePath();
-		const g = extrude(s, thick, 0.06, 2, 24);
-		g.applyMatrix4(new THREE.Matrix4().makeShear(slope, 0, 0, 0, 0, 0));
-		const yaw = Math.atan2(-flat.z, flat.x);
-		const mid = a.clone().add(c).multiplyScalar(0.5);
-		b.add(g, mat, { p: [mid.x, mid.y + drop, mid.z], r: [0, yaw, 0] });
-		for (const [p, top] of [
-			[a, a.y + drop - D],
-			[c, c.y + drop - D]
-		] as const) {
-			const h = top - P.PIER_FOOT;
-			b.add(rbox(pier, h, thick, 0.12), mat, { p: [p.x, P.PIER_FOOT + h / 2, p.z], r: [0, yaw, 0] });
-			b.add(rbox(pier + 0.4, 0.3, thick + 0.4, 0.08), mat, { p: [p.x, top - 0.1, p.z], r: [0, yaw, 0] });
-		}
-	}
 
-	/** Arches along a straight run under a deck whose underside is at y. */
-	private arcade(b: Batch, from: V3, to: V3, y: number, n: number, thick: number, mat: THREE.Material) {
-		const a = v(...from);
-		const c = v(...to);
-		for (let i = 0; i < n; i++) this.span(b, a.clone().lerp(c, i / n).setY(y), a.clone().lerp(c, (i + 1) / n).setY(y), 0, thick, mat);
-	}
 
 	/* ---------- the provider ---------- */
 	private platform() {
@@ -105,103 +67,8 @@ export class Blocking {
 		this.group.add(isl);
 	}
 
-	/* ---------- the foundry and its rail ---------- */
-	private foundry(b: Batch) {
-		const c = palette();
-		const F = P.FOUNDRY;
-		const deck = createIsland(plan([[-F.w / 2 - 1.2, -F.d / 2 - 1], [F.w / 2 + 1.2, -F.d / 2 - 1], [F.w / 2 + 1.4, F.d / 2 + 1], [-F.w / 2 - 1.2, F.d / 2 + 1]].map(([x, z]) => [x, z] as [number, number])), 0.9);
-		deck.position.copy(F.at);
-		this.group.add(deck);
-		this.arcade(b, [F.at.x - 5, 0, F.at.z + 3.2], [F.at.x + 5, 0, F.at.z + 3.2], F.at.y - 1.3, 2, 1.8, c.porcelain);
-		this.arcade(b, [F.at.x - 5, 0, F.at.z - 3.2], [F.at.x + 5, 0, F.at.z - 3.2], F.at.y - 1.3, 2, 1.8, c.porcelain);
-		const Y = F.at.y;
-		b.add(rbox(F.w - 2, 3.4, F.d - 2.4, 0.2), c.iron, { p: [F.at.x - 0.5, Y + 1.7, F.at.z] });
-		b.add(new THREE.CylinderGeometry(2.3, 2.3, F.w - 2.6, 40, 1, false, 0, Math.PI), c.copper, { p: [F.at.x - 0.5, Y + 3.4, F.at.z], r: [0, 0, Math.PI / 2] });
-		// The furnace's mouth, glowing, facing the hall across the gap.
-		b.add(new THREE.CylinderGeometry(1.2, 1.2, 0.3, 32, 1, false, 0, Math.PI), c.furnace, { p: [F.at.x + F.w / 2 - 1.4, Y + 1.0, F.at.z], r: [Math.PI / 2, Math.PI / 2, 0] });
-		b.add(rbox(0.3, 1.0, 2.4, 0.05), c.furnace, { p: [F.at.x + F.w / 2 - 1.4, Y + 0.5, F.at.z] });
-		for (const [x, z, h] of [
-			[-3.2, -1.6, 6],
-			[-1.6, -1.8, 7],
-			[0.2, -1.6, 5.5]
-		]) {
-			b.add(new THREE.CylinderGeometry(0.45, 0.55, h, 24), x === -1.6 ? c.copper : c.iron, { p: [F.at.x + x, Y + h / 2, F.at.z + z] });
-			b.add(new THREE.CylinderGeometry(0.62, 0.5, 0.4, 24), c.copper, { p: [F.at.x + x, Y + h, F.at.z + z] });
-		}
-		for (let i = 0; i < 4; i++) b.add(rbox(0.7, 1.0, 0.1, 0.04), c.furnace, { p: [F.at.x - 3.6 + i * 1.6, Y + 1.4, F.at.z + (F.d - 2.4) / 2 + 0.02] });
-		// The rail up to the tower's roof, on brass trestles, with the glass carriage the model came up in near its top.
-		const rail = new THREE.CatmullRomCurve3(P.FOUNDRY_RAIL.map((p) => v(...p)), false, 'centripetal');
-		b.add(sweep(rail, [[-0.7, 0], [0.7, 0], [0.7, -0.25], [-0.7, -0.25]], 60), c.porcelainShade);
-		for (const s of [-1, 1]) b.add(sweep(rail, [[s * 0.5 - 0.06, 0.12], [s * 0.5 + 0.06, 0.12], [s * 0.5 + 0.06, 0], [s * 0.5 - 0.06, 0]], 60), c.brass);
-		// It rides on arches of its own, like everything else here.
-		for (let i = 0; i < 3; i++) this.span(b, rail.getPointAt(0.08 + i * 0.27), rail.getPointAt(0.08 + (i + 1) * 0.27), -0.25, 1.2, c.porcelain);
-		const car = rail.getPointAt(0.82);
-		const dir = rail.getTangentAt(0.82);
-		const capsule = new THREE.CapsuleGeometry(0.75, 1.6, 8, 20);
-		capsule.rotateZ(Math.PI / 2);
-		b.add(capsule, c.glass, { p: [car.x, car.y + 0.9, car.z], r: [0, Math.atan2(-dir.z, dir.x), Math.asin(dir.y)] });
-		b.add(rbox(2.6, 0.3, 1.2, 0.1), c.brass, { p: [car.x, car.y + 0.25, car.z], r: [0, Math.atan2(-dir.z, dir.x), Math.asin(dir.y)] });
-	}
 
-	/* ---------- the proving ground ---------- */
-	private proving(b: Batch) {
-		const c = palette();
-		const G = P.PROVING;
-		const Y = G.at.y;
-		b.add(new THREE.CylinderGeometry(G.r, G.r - 0.3, 0.8, 64), c.mintEnamel, { p: [G.at.x, Y - 0.4, G.at.z] });
-		b.add(new THREE.CylinderGeometry(G.r - 0.3, 2.0, 2.2, 64), c.porcelain, { p: [G.at.x, Y - 1.9, G.at.z] });
-		const ph = Y - 3 - P.PIER_FOOT;
-		b.add(new THREE.CylinderGeometry(1.6, 1.9, ph, 32), c.porcelain, { p: [G.at.x, P.PIER_FOOT + ph / 2, G.at.z] });
-		b.add(new THREE.TorusGeometry(G.r - 0.05, 0.08, 8, 64), c.brass, { p: [G.at.x, Y + 0.02, G.at.z], r: [Math.PI / 2, 0, 0] });
-		for (const r of [2.6, 3.4, 4.2]) b.add(new THREE.RingGeometry(r, r + 0.12, 64), c.white, { p: [G.at.x - 0.4, Y + 0.01, G.at.z + 0.6], r: [-Math.PI / 2, 0, 0] });
-		b.add(rbox(1.2, 0.8, 2.8, 0.1), c.white, { p: [G.at.x - 1.4, Y + 0.4, G.at.z + 2.4], r: [0.25, 0.5, 0] });
-		for (let i = 0; i < 3; i++) b.add(rbox(0.6, 0.5, 0.6, 0.08), c.white, { p: [G.at.x + 0.6 + i * 0.9, Y + 0.25, G.at.z + 1.8] });
-		for (let i = 0; i < 6; i++) {
-			const a = (i / 6) * Math.PI * 2 + 0.4;
-			const px = G.at.x + (G.r - 0.4) * Math.cos(a);
-			const pz = G.at.z + (G.r - 0.4) * Math.sin(a);
-			b.add(new THREE.CylinderGeometry(0.04, 0.04, 1.4, 8), c.brass, { p: [px, Y + 0.7, pz] });
-			b.add(new THREE.ConeGeometry(0.25, 0.7, 3), c.pennant, { p: [px + 0.3, Y + 1.25, pz], r: [0, 0, -Math.PI / 2] });
-		}
-		const O = G.observatory;
-		b.add(new THREE.CylinderGeometry(1.8, 1.9, 2.4, 40), c.white, { p: [O.x, Y + 1.2, O.z] });
-		b.add(new THREE.SphereGeometry(1.85, 40, 20, 0, Math.PI * 2, 0, Math.PI / 2), c.violet, { p: [O.x, Y + 2.4, O.z] });
-		b.add(new THREE.CylinderGeometry(0.28, 0.36, 2.2, 20), c.brass, { p: [O.x - 0.8, Y + 3.6, O.z + 0.5], r: [0.6, 0, 0.7] });
-		// A little bridge across to the provider's platform.
-		this.span(b, v(G.at.x - G.r + 0.3, Y - 0.8, G.at.z), v(9.4, P.PLATFORM_Y - 1.0, G.at.z), 0, 1.6, c.porcelain);
-	}
 
-	/* ---------- other companies' MCP servers, on the horizon ---------- */
-	private remote(b: Batch) {
-		const c = palette();
-		for (const R of P.REMOTE) {
-			const t = tinted(R.tint);
-			const at = R.at;
-			b.add(new THREE.CylinderGeometry(1.9, 0.5, 1.0, 40), c.porcelain, { p: [at.x, at.y - 0.5, at.z] });
-			b.add(new THREE.CylinderGeometry(1.1, 1.15, 2.4, 32), t, { p: [at.x, at.y + 1.2, at.z] });
-			for (let i = 0; i < 6; i++) {
-				const a = (i / 6) * Math.PI * 2;
-				b.add(rbox(0.32, 0.8, 0.06, 0.03), c.amberWindow, { p: [at.x + 1.14 * Math.cos(a), at.y + 1.3, at.z + 1.14 * Math.sin(a)], r: [0, -a + Math.PI / 2, 0] });
-			}
-			b.add(new THREE.SphereGeometry(1.15, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), t, { p: [at.x, at.y + 2.4, at.z] });
-			b.add(new THREE.ConeGeometry(0.12, 1.2, 12), c.brass, { p: [at.x, at.y + 4.0, at.z] });
-		}
-		for (const { from, to } of P.REMOTE_CABLES) {
-			const a = P.REMOTE[from].at.clone().setY(P.REMOTE[from].at.y - 0.9);
-			const end = to.clone().setY(to.y + 1.4);
-			const pts = Array.from({ length: 41 }, (_, i) => {
-				const u = i / 40;
-				const p = a.clone().lerp(end, u);
-				p.y -= a.distanceTo(end) * 0.12 * 4 * u * (1 - u);
-				return p;
-			});
-			const curve = new THREE.CatmullRomCurve3(pts);
-			b.add(new THREE.TubeGeometry(curve, 120, 0.05, 6), c.cable);
-			const beads = Math.floor(curve.getLength() / 0.9);
-			const bead = new THREE.SphereGeometry(0.1, 8, 6);
-			for (let i = 1; i < beads; i++) b.add(bead, c.cable, { p: curve.getPointAt(i / beads).toArray() as V3 });
-		}
-	}
 
 	/* ---------- the lanes and their tokens ---------- */
 	private lanes() {
@@ -253,10 +120,6 @@ export class Blocking {
 		this.brain = brain;
 	}
 
-	private tube(b: Batch, pts: V3[], r: number, mat: THREE.Material) {
-		const curve = new THREE.CatmullRomCurve3(pts.map((p) => v(...p)), false, 'catmullrom', 0.1);
-		b.add(new THREE.TubeGeometry(curve, 40, r, 8), mat);
-	}
 
 	update(time: number) {
 		const q = new THREE.Quaternion();
@@ -295,5 +158,8 @@ export class Blocking {
 		this.hall.update(time);
 		this.aqueduct.update(time, cargo);
 		this.desk.update(time);
+		this.foundry.update(time);
+		this.proving.update(time);
+		this.remote.update(time);
 	}
 }

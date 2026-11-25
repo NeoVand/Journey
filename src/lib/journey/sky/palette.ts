@@ -33,7 +33,7 @@ function create() {
 		// brass and chrome, everywhere things are fitted
 		brass: metal('#e6b350', 0.3, 0.9),
 		chrome: metal('#e9edf3', 0.2, 0.9),
-		amberWindow: glow('#ffcf6a', '#ffab1f', 1.1),
+		amberWindow: glow('#ffc25a', '#ff9a12', 2.2),
 		// the internet
 		mastRed: glossy('#e2463c', 0.32, 0.7),
 		mastWhite: glossy('#fbfbfb', 0.32, 0.7),

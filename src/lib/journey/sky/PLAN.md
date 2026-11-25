@@ -21,6 +21,11 @@ Done (branch `world`):
 - The tower and the stem-fed brain (`tower.ts`, `Brain('stem')`).
 - The gatehouse and the hall (`gatehouse.ts`, `hall.ts`), today's tokenizer kept, a new detokenizer.
 - Lanes: one centre line, two sides; sealed capsules outside the provider, tokens inside.
+- The aqueduct, its masts and the platform's arcades (`aqueduct.ts`), with a height haze the piers fade into.
+- The desk (`desk.ts`): zones, the harness, the easel and page, skills, local MCP, controls, the sandbox with its
+  gates and chute, the archive, the five finishing stations, posts.
+- The foundry and its rail (`foundry.ts`), the proving ground (`proving.ts`), the remote towers and cables
+  (`remote.ts`).
 
 ## Districts still to build
 

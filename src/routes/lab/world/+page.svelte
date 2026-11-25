@@ -25,7 +25,11 @@
 	import deskPlan from './view-desk-plan.jpg';
 	import deskSandbox from './view-desk-sandbox.jpg';
 	import deskLeft from './view-desk-left.jpg';
-	import { GATEHOUSE, HALL, PLATFORM_Y, ROOF_Y, TOWER } from '#lib/journey/sky/masterplan.ts';
+	import edgeFoundry from './view-edge-foundry.jpg';
+	import edgeRail from './view-edge-rail.jpg';
+	import edgeProving from './view-edge-proving.jpg';
+	import edgeRemote from './view-edge-remote.jpg';
+	import { FOUNDRY, GATEHOUSE, HALL, PLATFORM_Y, PROVING, ROOF_Y, TOWER } from '#lib/journey/sky/masterplan.ts';
 
 	/** A camera matching one drawing; a section view cuts away everything nearer the camera than x = clip. */
 	type View = { id: string; label: string; image: string; aspect: number; fov: number; eye: THREE.Vector3; at: THREE.Vector3; clip?: number };
@@ -66,6 +70,10 @@
 		{ id: 'desk-plan', label: 'Desk from above', image: deskPlan, aspect: 1.5, fov: 40, at: new THREE.Vector3(0, 0, -0.5), eye: new THREE.Vector3(0, 40, 3.5) },
 		{ id: 'desk-sandbox', label: 'The sandbox', image: deskSandbox, aspect: 1.5, fov: 40, at: new THREE.Vector3(7.7, 1.7, -2.2), eye: new THREE.Vector3(7.0, 2.8, 9.5) },
 		{ id: 'desk-left', label: 'The left wing', image: deskLeft, aspect: 1.5, fov: 42, at: new THREE.Vector3(-8.5, 1.4, -1), eye: new THREE.Vector3(-6.2, 6.4, 9.8) },
+		{ id: 'edge-foundry', label: 'The foundry', image: edgeFoundry, aspect: 1.5, fov: 40, at: FOUNDRY.at.clone().add(new THREE.Vector3(0.5, 2, 0)), eye: FOUNDRY.at.clone().add(new THREE.Vector3(5, 9, 16)) },
+		{ id: 'edge-rail', label: 'The rail up', image: edgeRail, aspect: 1.5, fov: 40, at: new THREE.Vector3(-9, 17, -36), eye: new THREE.Vector3(-8, 19, 12) },
+		{ id: 'edge-proving', label: 'The proving ground', image: edgeProving, aspect: 1.5, fov: 40, at: PROVING.at.clone().add(new THREE.Vector3(0, 1, 0)), eye: PROVING.at.clone().add(new THREE.Vector3(-2, 9, 13)) },
+		{ id: 'edge-remote', label: 'Remote servers', image: edgeRemote, aspect: 1.5, fov: 45, at: new THREE.Vector3(-21, 20, -48), eye: new THREE.Vector3(-12, 22, -22) },
 		{ id: 'span-arches', label: 'The great arches', image: spanArches, aspect: 1.5, fov: 40, at: new THREE.Vector3(4, 7, -30), eye: new THREE.Vector3(24, -1, -10) }
 	);
 
