@@ -35,7 +35,7 @@ const WALL = 5.6;
 /** The corner towers: how far out, how far forward, how big, how tall. */
 const TOWER = { x: W / 2 + 0.85, z: D / 2 - 0.9, r: 1.35, h: 5.4 };
 /** The tumblers' row, across the arch under its crown, clear of its curve: how high, and how far apart. */
-const TUMBLER = { y: 3.55, gap: 0.96, r: 0.27, len: 0.6 };
+const TUMBLER = { y: 3.2, gap: 0.96, r: 0.27, len: 0.6 };
 
 /** An arched opening's outline: straight jambs to the spring, a half circle over. */
 function arch(w: number, spring: number, segments = 32): [number, number][] {

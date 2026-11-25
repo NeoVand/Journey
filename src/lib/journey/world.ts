@@ -108,8 +108,8 @@ const LANE_AT = (() => {
 	};
 	return { len, door: at(P.DOOR_Z), template: at(P.HALL.from + 1.2), mast: at(AQUEDUCT_CURVE.getPointAt(MASTS[MASTS.length - 1].u).z) };
 })();
-/** The capsule's foot over the lane's line: on the belt's top. */
-const BELT_TOP = 0.08;
+/** The capsule's foot over the lane's line: on the belt's top, with a little to spare where the lane bends and climbs over its crest. */
+const BELT_TOP = 0.14;
 /** The reply's lane in the world, from the brainstem down to behind the harness's roof. */
 const DOWN_LANE = new THREE.CatmullRomCurve3(P.downLane(), false, 'centripetal');
 DOWN_LANE.arcLengthDivisions = 2000;

@@ -15,7 +15,8 @@ import * as P from './masterplan';
  * outside, and at its foot the lanes come in level from the hall through a doorway and turn straight up. At the top they
  * go on through the roof inside the glass pedestal the brain stands on (props/brain.ts, fed from below).
  *
- * The roof is a silver disc with brass inlays and a ring of golden petals round its edge, curling outward: the crown.
+ * The roof is a silver disc with brass inlays, and round its edge the crown: two rings of thin blades, gold behind and
+ * brass before them in the gaps, each a slender lancet with a hooked tip, leaning out, standing in a stepped gold collar.
  *
  * Drawn from concepts/aqueduct/tower (front, section, crown, floor). The tower's own frame has its foot on the
  * platform at the origin, its front (the slot) towards +z. Angles round it are measured from the front, as a cylinder's are.
@@ -64,17 +65,16 @@ function doorLights() {
 }
 
 /**
- * A petal of the crown, in the plane of its own radius (x outward, y up): a broad flame that rises from a wide foot,
- * swells, and curls outward to a point, its inner edge a long S and its outer edge a short one.
+ * A blade of the crown, in the plane of its own radius (x outward, y up): a slender lancet that rises from a narrow foot,
+ * swells a little a third of the way up, and narrows to a sharp tip hooked outward. Thin, with a crisp bevel.
  */
-function petal(h: number, w: number) {
+function blade(h: number, w: number) {
 	const s = new THREE.Shape();
 	s.moveTo(-w / 2, 0);
-	s.bezierCurveTo(-w * 0.85, h * 0.35, -w * 0.55, h * 0.78, w * 0.95, h);
-	s.bezierCurveTo(w * 0.32, h * 0.86, w * 0.78, h * 0.5, w * 0.42, h * 0.28);
-	s.bezierCurveTo(w * 0.3, h * 0.16, w * 0.5, h * 0.06, w / 2, 0);
+	s.bezierCurveTo(-w * 0.66, h * 0.34, -w * 0.4, h * 0.76, w * 0.34, h);
+	s.bezierCurveTo(w * 0.16, h * 0.74, w * 0.7, h * 0.36, w / 2, 0);
 	s.closePath();
-	return extrude(s, 0.36, 0.12, 2, 9);
+	return extrude(s, 0.085, 0.028, 1, 12);
 }
 
 export class Tower {
@@ -171,18 +171,28 @@ export class Tower {
 		for (const r of [R - 0.8, R - 1.0, 2.6]) b.add(new THREE.RingGeometry(r - 0.06, r + 0.06, 128), c.brass, { p: [0, ROOF + 0.006, 0], r: [-Math.PI / 2, 0, 0] });
 		// A ring: the lanes go on up through it into the pedestal.
 		this.lathe(b, [[0.95, ROOF], [1.85, ROOF], [1.85, ROOF + 0.1], [1.75, ROOF + 0.18], [0.95, ROOF + 0.18], [0.95, ROOF]], c.chrome);
-		// Petals in two rings, tall ones behind and short ones before them in the gaps, so the crown reads as one solid ring
-		// of flame from anywhere; none over the slot, so the lanes are seen going up into the pedestal.
-		const petals = 26;
-		b.add(new THREE.TorusGeometry(P.CROWN.r, 0.2, 10, 64), c.gold, { p: [0, ROOF + 0.18, 0], r: [Math.PI / 2, 0, 0] });
-		b.add(new THREE.TorusGeometry(P.CROWN.r - 0.55, 0.12, 10, 64), c.gold, { p: [0, ROOF + 0.12, 0], r: [Math.PI / 2, 0, 0] });
-		const tall = petal(P.CROWN.h, 1.25);
-		const short = petal(P.CROWN.h * 0.68, 1.0);
-		for (let i = 0; i < petals; i++) {
-			const a = ((i + 0.5) / petals) * Math.PI * 2;
-			const b2 = a + Math.PI / petals;
-			if (!inSlot(a, 0.12)) b.add(tall, c.gold, { p: round(P.CROWN.r + 0.05, a, ROOF + 0.15), r: [0, a - Math.PI / 2, 0] });
-			if (!inSlot(b2, 0.12)) b.add(short, c.gold, { p: round(P.CROWN.r - 0.5, b2, ROOF + 0.12), r: [0, b2 - Math.PI / 2, 0] });
+		// The crown: a stepped gold collar round the roof's edge, and in it two rings of blades, tall gold ones behind and
+		// shorter brass ones before them in the gaps, leaning out; none over the slot, so the lanes are seen going up into
+		// the pedestal. A gold bead caps the collar, and a rivet holds each blade's foot.
+		const blades = 32;
+		const cr = P.CROWN.r;
+		this.lathe(b, [[cr - 0.85, ROOF], [cr + 0.42, ROOF], [cr + 0.42, ROOF + 0.12], [cr + 0.3, ROOF + 0.2], [cr + 0.3, ROOF + 0.32], [cr - 0.7, ROOF + 0.32], [cr - 0.7, ROOF + 0.16], [cr - 0.85, ROOF + 0.12]], c.gold);
+		b.add(new THREE.TorusGeometry(cr + 0.31, 0.045, 8, 96), c.brass, { p: [0, ROOF + 0.32, 0], r: [Math.PI / 2, 0, 0] });
+		const tall = blade(P.CROWN.h, 0.9);
+		const short = blade(P.CROWN.h * 0.62, 0.7);
+		// A gold band through the tall blades a third of the way up, where they lean out to: it ties them into one crown.
+		const lean = 0.17;
+		const bandY = P.CROWN.h * 0.34;
+		b.add(new THREE.TorusGeometry(cr + 0.05 + bandY * Math.sin(lean), 0.055, 8, 128), c.gold, { p: [0, ROOF + 0.28 + bandY * Math.cos(lean), 0], r: [Math.PI / 2, 0, 0] });
+		const rivet = new THREE.SphereGeometry(0.06, 10, 6);
+		for (let i = 0; i < blades; i++) {
+			const a = ((i + 0.5) / blades) * Math.PI * 2;
+			const a2 = a + Math.PI / blades;
+			if (!inSlot(a, 0.12)) {
+				b.add(tall, c.gold, { p: round(cr + 0.05, a, ROOF + 0.28), r: [0, a - Math.PI / 2, -lean] });
+				b.add(rivet, c.brass, { p: round(cr + 0.31, a, ROOF + 0.4) });
+			}
+			if (!inSlot(a2, 0.12)) b.add(short, c.brass, { p: round(cr - 0.42, a2, ROOF + 0.28), r: [0, a2 - Math.PI / 2, -0.26] });
 		}
 
 		this.group.add(b.build('tower'));

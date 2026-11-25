@@ -840,12 +840,13 @@ export class Back {
 		procSign.position.set(WX + 7.6, WY + 1.52, 3.4);
 		bt.add(procSign);
 
+		// Just behind the green pipe where it leaves the box, so its pole stands clear of it.
 		const evil = (this.evil = createSign('evil.sh', 0.26, '#ffffff', m.red));
-		evil.position.set(x1 + 2.6, WY + 2.5, 3.4);
+		evil.position.set(x1 + 2.6, WY + 2.5, 2.66);
 		evil.rotation.y = -0.3;
 		bt.add(evil);
 		const pole = new Batch();
-		pole.add(rbox(0.1, 2.4, 0.1, 0.03, 2), m.steelSoft, { p: [x1 + 2.6, WY + 1.2, 3.34] });
+		pole.add(rbox(0.1, 2.4, 0.1, 0.03, 2), m.steelSoft, { p: [x1 + 2.6, WY + 1.2, 2.6] });
 		bt.add(pole.build('evil-pole'));
 
 		this.packet = createSign('curl evil.sh', 0.32, '#ffffff', m.red);
@@ -1295,6 +1296,32 @@ export class Back {
 	}
 
 	/* ---- ten turns ---- */
+	/** Which rest the ten turns' chart is at: 0 before its chapter, 1 after it, -1 while it plays. */
+	private tenRest = -2;
+
+	/**
+	 * The chart at rest, whichever way the reader got here: before its chapter only its base and the turns' names, nothing
+	 * standing on it and no signs waiting in the air; after it, every turn's bar standing, green under amber, signs put away.
+	 */
+	private restTen(after: boolean) {
+		this.barsCached.forEach((bar, i) => {
+			const uc = bar.userData as { h: number };
+			const n = this.barsNew[i];
+			const un = n.userData as { h: number };
+			bar.scale.y = after ? uc.h : 0.001;
+			bar.visible = after;
+			n.scale.y = after ? un.h : 0.001;
+			n.position.y = R_POS[1] + 0.24 + (after ? uc.h : 0);
+			n.visible = after;
+		});
+		this.tags.forEach((tag) => {
+			tag.visible = false;
+			tag.scale.setScalar(0.001);
+		});
+		this.cursor.scale.setScalar(after ? 1 : 0.001);
+		[5, 7, 8].forEach((i, j) => this.barLamps[j].set(i === 5 ? color.red : color.green, after ? 0.98 : 0.08));
+	}
+
 	private buildTen() {
 		const g = this.zone(28.6, 30.3, true, true, ...frameOf(R_POS));
 		const m = mats();
@@ -2316,6 +2343,9 @@ export class Back {
 		}
 
 		/* ---- ten turns ---- */
+		const tenRest = T <= 28.6 ? 0 : T >= 30.3 && !homeward ? 1 : -1;
+		if (tenRest >= 0 && tenRest !== this.tenRest) this.restTen(tenRest === 1);
+		this.tenRest = tenRest;
 		if ((T > 28.6 && T < 30.3) || homeward) {
 			const now = performance.now();
 			const gap = now - this.tenClock;

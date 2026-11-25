@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Batch } from '../kit/batch';
-import { extrude, rbox, sweep } from '../kit/geometry';
+import { extrude, frameAt, rbox, sweep } from '../kit/geometry';
 import { hazed, palette } from './palette';
 import * as P from './masterplan';
 
@@ -12,9 +12,9 @@ import * as P from './masterplan';
  * down into the haze, never resting on anything.
  *
  * The internet is a chain of hops, and the hops are the relay masts that stand beside the deck on piers of their own:
- * slender, banded red and white, a beacon on top, a dish on a bracket, a brass railing round the pier's top. From each
- * a brass arm reaches out over both lanes and holds a reader, a lamp that flares as a capsule passes under it: read,
- * and sent on.
+ * slender white pylons with red bands near the top, gold collars, a head of three small dishes and a whip with a beacon,
+ * a brass railing round the pier's top. From each a slim brass beam reaches out over both lanes with a small reader over
+ * each, its lamp looking down, which flares as a capsule passes under it: read, and sent on.
  *
  * The provider's platform stands on the aqueduct's tallest arches. Drawn from concepts/aqueduct/span (stretch, mast,
  * start, arches).
@@ -44,6 +44,25 @@ export const MASTS = [
 	{ u: 0.53, side: 1, out: 3.4, h: 6.6 },
 	{ u: 0.76, side: -1, out: 3.4, h: 6.4 }
 ] as const;
+
+/**
+ * The face that closes a swept part's end: its profile laid across the curve at u, facing back along it (at the start)
+ * or on along it (at the end), so the part reads as solid, not a hollow section cut off.
+ */
+function cap(curve: THREE.Curve<THREE.Vector3>, profile: [number, number][], u: number) {
+	const { p, t, side, up } = frameAt(curve, u);
+	const tris = THREE.ShapeUtils.triangulateShape(profile.map(([a, b]) => new THREE.Vector2(a, b)), []);
+	const pos = profile.flatMap(([a, b]) => [p.x + side.x * a + up.x * b, p.y + side.y * a + up.y * b, p.z + side.z * a + up.z * b]);
+	const g = new THREE.BufferGeometry();
+	g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+	// Facing out of the part: back along the curve at its start, on along it at its end.
+	const out = t.clone().multiplyScalar(u < 0.5 ? -1 : 1);
+	const [a, b, c] = tris[0].map((i) => new THREE.Vector3(pos[i * 3], pos[i * 3 + 1], pos[i * 3 + 2]));
+	const flip = b.clone().sub(a).cross(c.clone().sub(a)).dot(out) < 0;
+	g.setIndex(tris.flatMap(([i, j, k]) => (flip ? [i, k, j] : [i, j, k])));
+	g.computeVertexNormals();
+	return g;
+}
 
 /** A frame on the aqueduct's middle line, level across: where, which way it runs, which way is right. */
 function along(u: number) {
@@ -75,15 +94,23 @@ export class Aqueduct {
 		this.group.add(b.build('aqueduct'));
 	}
 
-	/** The deck: its slab and cornice, the lanes' belts and kerbs, the divider between them, rounded rails at its edges. */
+	/**
+	 * The deck: its slab and cornice, the lanes' belts and kerbs, the divider between them, rounded rails at its edges.
+	 * Where it begins, behind the harness's roof, every part of it is closed off, each belt turns over a brass roller,
+	 * and a brass plate is bolted across the slab's end.
+	 */
 	private deck(b: Batch) {
 		const c = palette();
 		const segs = 160;
 		const curve = AQUEDUCT_CURVE;
-		b.add(sweep(curve, [[-HALF, 0], [HALF, 0], [HALF, -SLAB], [-HALF, -SLAB]], segs), c.porcelain);
-		b.add(sweep(curve, [[-HALF - 0.16, -SLAB], [HALF + 0.16, -SLAB], [HALF + 0.16, -SLAB - 0.18], [HALF, -SLAB - 0.32], [-HALF, -SLAB - 0.32], [-HALF - 0.16, -SLAB - 0.18]], segs), c.porcelainShade);
+		const swept = (profile: [number, number][], mat: THREE.Material, closed = true) => {
+			b.add(sweep(curve, profile, segs, closed), mat);
+			b.add(cap(curve, profile, 0), mat);
+		};
+		swept([[-HALF, 0], [HALF, 0], [HALF, -SLAB], [-HALF, -SLAB]], c.porcelain);
+		swept([[-HALF - 0.16, -SLAB], [HALF + 0.16, -SLAB], [HALF + 0.16, -SLAB - 0.18], [HALF, -SLAB - 0.32], [-HALF, -SLAB - 0.32], [-HALF - 0.16, -SLAB - 0.18]], c.porcelainShade);
 		// A gold line along each face of the slab, under the rail.
-		for (const s of [-1, 1]) b.add(sweep(curve, [[s * (HALF + 0.005), -0.12], [s * (HALF + 0.04), -0.12], [s * (HALF + 0.04), -0.2], [s * (HALF + 0.005), -0.2]], segs), c.gold);
+		for (const s of [-1, 1]) swept([[s * (HALF + 0.005), -0.12], [s * (HALF + 0.04), -0.12], [s * (HALF + 0.04), -0.2], [s * (HALF + 0.005), -0.2]], c.gold);
 		// The rounded rail along each edge.
 		for (const s of [-1, 1]) {
 			const rail: [number, number][] = [];
@@ -91,20 +118,39 @@ export class Aqueduct {
 				const a = (i / 10) * Math.PI;
 				rail.push([s * (HALF - 0.22) + Math.cos(a) * 0.2 * s, 0.02 + Math.sin(a) * 0.3]);
 			}
-			b.add(sweep(curve, rail, segs, true), c.porcelain);
+			swept(rail, c.porcelain);
 		}
 		// The two lanes: a dark belt on a raised bed, a riveted brass kerb at each edge.
 		for (const s of [-1, 1]) {
 			const x = s * P.LANE;
-			b.add(sweep(curve, [[x - BELT.half, BELT.top], [x + BELT.half, BELT.top], [x + BELT.half, 0], [x - BELT.half, 0]], segs), c.iron);
+			swept([[x - BELT.half, BELT.top], [x + BELT.half, BELT.top], [x + BELT.half, 0], [x - BELT.half, 0]], c.iron);
 			for (const k of [-1, 1]) {
 				const kx = x + k * (BELT.half + 0.05);
-				b.add(sweep(curve, [[kx - 0.06, BELT.top + 0.12], [kx + 0.06, BELT.top + 0.12], [kx + 0.06, 0], [kx - 0.06, 0]], segs), c.brass);
+				swept([[kx - 0.06, BELT.top + 0.12], [kx + 0.06, BELT.top + 0.12], [kx + 0.06, 0], [kx - 0.06, 0]], c.brass);
 			}
 		}
 		// The divider between the lanes, porcelain with a brass cap.
-		b.add(sweep(curve, [[-0.08, 0.5], [0.08, 0.5], [0.08, 0], [-0.08, 0]], segs), c.porcelain);
-		b.add(sweep(curve, [[-0.05, 0.54], [0.05, 0.54], [0.05, 0.5], [-0.05, 0.5]], segs), c.brass);
+		swept([[-0.08, 0.5], [0.08, 0.5], [0.08, 0], [-0.08, 0]], c.porcelain);
+		swept([[-0.05, 0.54], [0.05, 0.54], [0.05, 0.5], [-0.05, 0.5]], c.brass);
+		// Where the deck begins: each belt rounds a brass roller between its kerbs, with a hub at each end, and a brass
+		// plate is bolted across the slab's end under them.
+		const start = frameAt(curve, 0);
+		const toSide = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), start.side);
+		const at = (a: number, h: number, back = 0) => start.p.clone().addScaledVector(start.side, a).addScaledVector(start.up, h).addScaledVector(start.t, -back);
+		for (const s of [-1, 1]) {
+			const x = s * P.LANE;
+			const roller = new THREE.CylinderGeometry(BELT.top / 2, BELT.top / 2, BELT.half * 2, 24).applyQuaternion(toSide);
+			b.add(roller.translate(...at(x, BELT.top / 2).toArray()), c.iron);
+			for (const k of [-1, 1]) {
+				const hub = new THREE.CylinderGeometry(0.12, 0.12, 0.05, 20).applyQuaternion(toSide);
+				b.add(hub.translate(...at(x + k * (BELT.half + 0.115), BELT.top / 2).toArray()), c.gold);
+			}
+		}
+		const plate = rbox(HALF * 2 - 0.3, SLAB - 0.16, 0.05, 0.02, 2);
+		plate.applyQuaternion(new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(start.side, start.up, start.t)));
+		b.add(plate.translate(...at(0, -SLAB / 2, 0.02).toArray()), c.brass);
+		for (const s of [-1, 1])
+			for (const h of [-0.15, -SLAB + 0.15]) b.add(new THREE.SphereGeometry(0.04, 10, 6).translate(...at(s * (HALF - 0.32), h, 0.05).toArray()), c.gold);
 		// Rivets along the kerbs.
 		const rivet = new THREE.SphereGeometry(0.035, 8, 6);
 		const len = curve.getLength();
@@ -135,37 +181,45 @@ export class Aqueduct {
 				const a = (i / 10) * Math.PI * 2;
 				b.add(new THREE.CylinderGeometry(0.03, 0.03, 0.55, 8), c.brass, { p: [base.x + 1.05 * Math.cos(a), top + 0.28, base.z + 1.05 * Math.sin(a)] });
 			}
-			// The mast: tapering bands of red and white, gold collars between.
-			const bands = 6;
-			for (let i = 0; i < bands; i++) {
-				const r0 = 0.36 - (0.14 * i) / bands;
-				const r1 = 0.36 - (0.14 * (i + 1)) / bands;
-				const y0 = top + (i * m.h) / bands;
-				b.add(new THREE.CylinderGeometry(r1, r0, m.h / bands, 28), i % 2 ? c.mastWhite : c.mastRed, { p: [base.x, y0 + m.h / bands / 2, base.z] });
-				if (i % 2) b.add(new THREE.TorusGeometry(r1 + 0.01, 0.03, 8, 28), c.gold, { p: [base.x, y0 + m.h / bands, base.z], r: [Math.PI / 2, 0, 0] });
-			}
+			// The mast: a slender white pylon, tapering, a gold collar at its foot and at each third, red bands near its top
+			// where a pilot would look for them.
+			const r0 = 0.2;
+			const r1 = 0.1;
+			const rAt = (k: number) => r0 + (r1 - r0) * k;
+			b.add(new THREE.CylinderGeometry(r1, r0, m.h, 24), c.mastWhite, { p: [base.x, top + m.h / 2, base.z] });
+			for (const k of [0.62, 0.8]) b.add(new THREE.CylinderGeometry(rAt(k + 0.07) + 0.012, rAt(k) + 0.012, m.h * 0.07, 24), c.mastRed, { p: [base.x, top + m.h * (k + 0.035), base.z] });
+			for (const k of [0.02, 1 / 3, 2 / 3]) b.add(new THREE.TorusGeometry(rAt(k) + 0.02, 0.035, 8, 28), c.gold, { p: [base.x, top + m.h * k, base.z], r: [Math.PI / 2, 0, 0] });
 			const crown = top + m.h;
-			b.add(new THREE.CylinderGeometry(0.2, 0.16, 0.24, 20), c.brass, { p: [base.x, crown + 0.12, base.z] });
-			b.add(new THREE.SphereGeometry(0.2, 20, 14), c.beacon, { p: [base.x, crown + 0.38, base.z] });
-			b.add(new THREE.ConeGeometry(0.06, 0.24, 12), c.brass, { p: [base.x, crown + 0.66, base.z] });
-			// The dish, on a bracket, facing out along the deck.
-			const out = right.clone().multiplyScalar(-m.side);
-			const dishAt = base.clone().addScaledVector(out, -0.42).setY(crown - 0.9);
-			const dish = new THREE.SphereGeometry(0.42, 24, 10, 0, Math.PI * 2, 0, 0.9);
-			const yaw = Math.atan2(out.x, out.z);
-			b.add(dish, c.mastWhite, { p: [dishAt.x, dishAt.y, dishAt.z], r: [Math.PI / 2, yaw, 0] });
-			b.add(rbox(0.1, 0.1, 0.42, 0.03), c.brass, { p: [base.x - out.x * 0.21, crown - 0.9, base.z - out.z * 0.21], r: [0, yaw, 0] });
-			// The arm: a brass pipe out from the mast, over the lanes, bending down to the reader over the deck's middle.
-			const armY = p.y + 2.7;
+			// Its head: a brass ring with three small dishes looking three ways, a whip, and the beacon on top.
+			b.add(new THREE.TorusGeometry(0.34, 0.03, 8, 32), c.brass, { p: [base.x, crown - 0.55, base.z], r: [Math.PI / 2, 0, 0] });
+			for (let i = 0; i < 3; i++) {
+				const a = (i / 3) * Math.PI * 2 + m.u * 7;
+				const dx = Math.sin(a);
+				const dz = Math.cos(a);
+				b.add(new THREE.CylinderGeometry(0.018, 0.018, 0.34, 6), c.brass, { p: [base.x + dx * 0.17, crown - 0.55, base.z + dz * 0.17], r: [Math.PI / 2, a, 0] });
+				const dish = new THREE.SphereGeometry(0.2, 18, 8, 0, Math.PI * 2, 0, 0.85);
+				b.add(dish, c.mastWhite, { p: [base.x + dx * 0.4, crown - 0.55, base.z + dz * 0.4], r: [Math.PI / 2, a, 0] });
+			}
+			b.add(new THREE.CylinderGeometry(0.13, r1 + 0.01, 0.16, 20), c.brass, { p: [base.x, crown + 0.08, base.z] });
+			b.add(new THREE.SphereGeometry(0.13, 18, 12), c.beacon, { p: [base.x, crown + 0.27, base.z] });
+			b.add(new THREE.CylinderGeometry(0.012, 0.02, 0.9, 6), c.brass, { p: [base.x, crown + 0.85, base.z] });
+			// The arm: a slim brass beam from the mast out over both lanes, on a collar and a stay; under it, over each
+			// lane, a small reader with its lamp looking down, which flares as something passes under it.
+			const armY = p.y + 2.6;
 			const from = base.clone().setY(armY);
-			const reach = p.clone().setY(armY);
-			const arm = new THREE.CatmullRomCurve3([from, from.clone().lerp(reach, 0.85), reach.clone().setY(armY - 0.12), reach.clone().setY(armY - 0.55)], false, 'catmullrom', 0.2);
-			b.add(new THREE.TubeGeometry(arm, 40, 0.07, 10), c.brass);
-			b.add(new THREE.CylinderGeometry(0.11, 0.11, 0.3, 16), c.gold, { p: [from.x, armY, from.z] });
-			// The reader: a brass shade over both lanes, a lamp under it.
-			b.add(new THREE.SphereGeometry(0.55, 28, 12, 0, Math.PI * 2, 0, Math.PI / 2), c.brass, { p: [reach.x, armY - 0.8, reach.z] });
+			const far = p.clone().addScaledVector(right, -m.side * (P.LANE + 0.75)).setY(armY);
+			b.add(new THREE.TubeGeometry(new THREE.LineCurve3(from, far), 4, 0.055, 10), c.brass);
+			b.add(new THREE.SphereGeometry(0.075, 12, 8), c.gold, { p: far.toArray() as V3 });
+			b.add(new THREE.CylinderGeometry(0.1, 0.1, 0.26, 16), c.gold, { p: [from.x, armY, from.z] });
+			const stay = new THREE.LineCurve3(base.clone().setY(armY + 1.3), from.clone().lerp(far, 0.45).setY(armY + 0.03));
+			b.add(new THREE.TubeGeometry(stay, 4, 0.025, 8), c.brass);
 			const lamp = new THREE.MeshStandardMaterial({ color: '#fff1cf', emissive: '#ffc94d', emissiveIntensity: 0.8 });
-			b.add(new THREE.CylinderGeometry(0.42, 0.42, 0.05, 32), lamp, { p: [reach.x, armY - 0.82, reach.z] });
+			const yaw = Math.atan2(right.x, right.z);
+			for (const s of [-1, 1]) {
+				const over = p.clone().addScaledVector(right, s * P.LANE).setY(armY);
+				b.add(rbox(0.42, 0.18, 0.3, 0.05, 2), c.brass, { p: [over.x, armY - 0.14, over.z], r: [0, yaw, 0] });
+				b.add(new THREE.CylinderGeometry(0.1, 0.1, 0.04, 20), lamp, { p: [over.x, armY - 0.245, over.z] });
+			}
 			this.readers.push({ lamp, at: p.clone() });
 		}
 	}
