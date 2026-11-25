@@ -54,7 +54,8 @@ Done (branch `world`):
   Geometry is ~98 MB against the phone test's 100 (Batch keeps indexes; rbox defaults to 2 segments): little room,
   so welding the batches' non-indexed parts (mergeVertices) is the next lever if anything is added.
 - The lab is prerendered as an empty shell at /lab/world so the static build passes; it ships unlinked.
-- Left: the e2e suite's arrow-key test (failed once, rerunning), a last look over every beat, then ask before merging.
+- e2e on the GPU against a served build: all 27 pass (the arrow-key test failed once, a flake).
+- Left: the user's look, and their word before merging `world` into `main` and pushing.
 
 ## Districts still to build
 
