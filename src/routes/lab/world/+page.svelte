@@ -21,6 +21,10 @@
 	import spanStart from './view-span-start.jpg';
 	import spanArches from './view-span-arches.jpg';
 	import { AQUEDUCT_CURVE } from '#lib/journey/sky/aqueduct.ts';
+	import deskWhole from './view-desk-whole.jpg';
+	import deskPlan from './view-desk-plan.jpg';
+	import deskSandbox from './view-desk-sandbox.jpg';
+	import deskLeft from './view-desk-left.jpg';
 	import { GATEHOUSE, HALL, PLATFORM_Y, ROOF_Y, TOWER } from '#lib/journey/sky/masterplan.ts';
 
 	/** A camera matching one drawing; a section view cuts away everything nearer the camera than x = clip. */
@@ -58,6 +62,10 @@
 		{ id: 'span-stretch', label: 'The aqueduct', image: spanStretch, aspect: 1.5, fov: 40, at: on(0.75), eye: on(0.3).add(new THREE.Vector3(-3.2, 3.4, 2.5)) },
 		{ id: 'span-mast', label: 'A mast', image: spanMast, aspect: 1.5, fov: 48, at: on(0.52).add(new THREE.Vector3(2.4, 2.6, 0)), eye: on(0.4).add(new THREE.Vector3(-0.4, 1.7, 0)) },
 		{ id: 'span-start', label: 'Where it starts', image: spanStart, aspect: 1.5, fov: 34, at: new THREE.Vector3(0, 5, -11), eye: new THREE.Vector3(-14, 10, 12) },
+		{ id: 'desk-whole', label: 'Your desk', image: deskWhole, aspect: 1.5, fov: 36, at: new THREE.Vector3(0, 1.4, -1), eye: orbit(new THREE.Vector3(0, 1.4, -1), 0, 34, 36) },
+		{ id: 'desk-plan', label: 'Desk from above', image: deskPlan, aspect: 1.5, fov: 40, at: new THREE.Vector3(0, 0, -0.5), eye: new THREE.Vector3(0, 40, 3.5) },
+		{ id: 'desk-sandbox', label: 'The sandbox', image: deskSandbox, aspect: 1.5, fov: 40, at: new THREE.Vector3(7.7, 1.7, -2.2), eye: new THREE.Vector3(7.0, 2.8, 9.5) },
+		{ id: 'desk-left', label: 'The left wing', image: deskLeft, aspect: 1.5, fov: 42, at: new THREE.Vector3(-8.5, 1.4, -1), eye: new THREE.Vector3(-6.2, 6.4, 9.8) },
 		{ id: 'span-arches', label: 'The great arches', image: spanArches, aspect: 1.5, fov: 40, at: new THREE.Vector3(4, 7, -30), eye: new THREE.Vector3(24, -1, -10) }
 	);
 

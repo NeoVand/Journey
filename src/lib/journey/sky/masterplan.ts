@@ -27,22 +27,28 @@ const v = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
 
 /* ---------- your desk ---------- */
 
-/** A rounded honey-wood desk top on a cream base. Its top is y = 0. */
-export const DESK = { at: v(0, 0, 0), w: 21, d: 11, top: 0.45, corner: 3.2 };
+/** A grand writing desk of honey wood on a cream base with arches under it. Its top is y = 0. */
+export const DESK = { at: v(0, 0, 0), w: 28, d: 15, top: 0.5, corner: 3.6 };
 /** Your laptop, at the front middle, facing you. */
-export const LAPTOP = { at: v(0, 0, 2.7) };
+export const LAPTOP = { at: v(0, 0, 4.4) };
 /** The harness: the program running on your laptop that packs every request and reads every reply. Both lanes start and end in it. */
-export const HARNESS = { at: v(0, 0, -2.5), w: 6.4, h: 4.6, d: 3.4 };
-/** The permission gate, between the laptop and the harness. */
-export const GATE = { at: v(0, 0, 0.35), w: 3.4 };
-/** Local MCP servers: little programs on your own laptop, as gadgets piped to its ports, on the left. */
-export const LOCAL_MCP = [v(-7.5, 0, 0.7), v(-5.9, 0, 0.7), v(-4.3, 0, 0.7)];
-/** Your shell, your files, and the archive drawer of transcripts and memory, on the right. */
-export const SHELL = { at: v(2.9, 0, 1.7) };
-export const FILES = { at: v(4.6, 0, 1.0) };
-export const ARCHIVE = { at: v(7.3, 0, 0.7), w: 2.6, h: 2.3, d: 3.0 };
+export const HARNESS = { at: v(0, 0, -2.6), w: 7.0, h: 4.6, d: 4.2 };
+/** The left wing: what the harness packs. The easel with the request page, the shelf of skills, the local MCP servers. */
+export const EASEL = { at: v(-11.0, 0, -3.2) };
+export const SKILLS = { at: v(-6.5, 0, -4.6) };
+export const LOCAL_MCP = [v(-9.8, 0, 0.9), v(-8.1, 0, 0.9), v(-6.4, 0, 0.9)];
+/** Your controls, near your hand: steer, cancel, terminate, roll back. */
+export const CONTROLS = { at: v(-8.3, 0, 4.9) };
+/** The right wing: the sandbox the tools run in, a glass cabinet, and the four gates in front of it that every call passes. */
+export const SANDBOX = { at: v(7.4, 0, -2.5), w: 7.4, d: 4.6, h: 4.3 };
+export const GATES = { z: 1.2, x0: 3.9, gap: 1.3, n: 4 };
+export const CHUTE = { at: v(9.7, 0, 1.2) };
+/** The archive of transcripts and memory files: a walnut filing cabinet, a drawer pulled out. */
+export const ARCHIVE = { at: v(12.45, 0, -3.0), w: 2.3, h: 3.0, d: 2.4 };
+/** Five stations in a rising row, the ways to finish a piece of work: present, commit, pull request, merge, deploy. */
+export const FINISH = { z: 5.2, x0: 3.6, gap: 1.95 };
 /** Brass posts at the desk's back corners, where the remote towers' cables come down. */
-export const POSTS = [v(-8.7, 0, -3.9), v(8.7, 0, -3.9)];
+export const POSTS = [v(-12.9, 0, -6.6), v(12.9, 0, -6.6)];
 
 /* ---------- the aqueduct and the internet ---------- */
 

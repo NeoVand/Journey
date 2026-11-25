@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Batch } from '../kit/batch';
-import { extrude, rbox, roundedRect, sweep } from '../kit/geometry';
+import { extrude, rbox, sweep } from '../kit/geometry';
 import { createIsland } from '../props/island';
 import { paintCloud, seeded } from '../props/sky';
 import { Brain, STEM_FOOT } from '../props/brain';
@@ -10,6 +10,7 @@ import { Tower } from './tower';
 import { Gatehouse } from './gatehouse';
 import { Hall } from './hall';
 import { Aqueduct } from './aqueduct';
+import { Desk } from './desk';
 
 /*
  * The whole world blocked out from the masterplan: every place at its size and in its colours, in simple forms, so the
@@ -29,6 +30,7 @@ export class Blocking {
 	gatehouse = new Gatehouse();
 	hall = new Hall();
 	aqueduct = new Aqueduct();
+	desk = new Desk();
 	private up!: THREE.CatmullRomCurve3;
 	private down!: THREE.CatmullRomCurve3;
 	private tokens!: THREE.InstancedMesh;
@@ -44,85 +46,14 @@ export class Blocking {
 	constructor() {
 		this.group.name = 'blocking';
 		const b = new Batch();
-		this.desk(b);
 		this.foundry(b);
 		this.proving(b);
 		this.remote(b);
-		this.group.add(b.build('world'), this.tower.group, this.gatehouse.group, this.hall.group, this.aqueduct.group);
+		this.group.add(b.build('world'), this.tower.group, this.gatehouse.group, this.hall.group, this.aqueduct.group, this.desk.group);
 		this.platform();
 		this.lanes();
 		this.clouds();
 		this.model();
-	}
-
-	/* ---------- your desk ---------- */
-	private desk(b: Batch) {
-		const c = palette();
-		const { w, d, top, corner } = P.DESK;
-		b.add(extrude(roundedRect(w, d, corner), top, 0.12, 4, 24), c.wood, { r: [-Math.PI / 2, 0, 0], p: [0, -top / 2, 0] });
-		b.add(extrude(roundedRect(w - 0.3, d - 0.3, corner - 0.15), 0.35, 0.1, 3, 24), c.cream, { r: [-Math.PI / 2, 0, 0], p: [0, -top - 0.17, 0] });
-		// The desk's cream body under its top, with a pair of arched legs at each end.
-		b.add(rbox(w - 4.4, 2.4, d - 3.2, 0.5), c.cream, { p: [0, -top - 1.5, 0] });
-		for (const s of [-1, 1]) b.add(rbox(2.4, 5.5, d - 3.6, 0.6), c.cream, { p: [s * (w / 2 - 3.2), -top - 3.2, 0] });
-
-		// The laptop: a base and a lid leaning back, its screen lit.
-		const L = P.LAPTOP.at;
-		b.add(rbox(3.3, 0.12, 2.2, 0.05), c.chrome, { p: [L.x, 0.06, L.z] });
-		const lid = new THREE.Object3D();
-		lid.position.set(L.x, 0.12, L.z - 1.08);
-		lid.rotation.x = -0.28;
-		lid.updateMatrix();
-		const lidAt = (y: number, z: number) => new THREE.Vector3(0, y, z).applyMatrix4(lid.matrix).toArray() as V3;
-		b.add(rbox(3.3, 2.12, 0.07, 0.04), c.chrome, { p: lidAt(1.06, 0), r: [-0.28, 0, 0] });
-		b.add(rbox(3.05, 1.85, 0.02, 0.01), c.screen, { p: lidAt(1.08, 0.045), r: [-0.28, 0, 0] });
-
-		// The harness: a butter-cream machine with a rounded roof and amber windows, wired to the laptop.
-		const H = P.HARNESS;
-		const body = H.h - H.d / 2;
-		b.add(rbox(H.w, body, H.d, 0.3), c.butter, { p: [H.at.x, body / 2, H.at.z] });
-		b.add(new THREE.CylinderGeometry(H.d / 2, H.d / 2, H.w - 0.2, 40, 1, false, 0, Math.PI), c.butter, {
-			p: [H.at.x, body, H.at.z],
-			r: [0, 0, Math.PI / 2]
-		});
-		for (const x of [-2.1, 0, 2.1]) b.add(rbox(1.5, 1.9, 0.12, 0.05), c.amberWindow, { p: [H.at.x + x, 1.75, H.at.z + H.d / 2 + 0.02] });
-		b.add(rbox(H.w + 0.2, 0.18, H.d + 0.2, 0.06), c.brass, { p: [H.at.x, 0.09, H.at.z] });
-		this.tube(b, [[L.x + 0.9, 0.08, L.z - 1.1], [0.9, 0.08, -0.4], [0.9, 0.08, H.at.z + H.d / 2 + 0.1]], 0.09, c.brass);
-
-		// The permission gate: two posts and a red and white barrier.
-		const G = P.GATE.at;
-		for (const s of [-1, 1]) {
-			b.add(rbox(0.5, 1.5, 0.5, 0.12), c.butter, { p: [G.x + (s * P.GATE.w) / 2, 0.75, G.z] });
-			b.add(rbox(0.3, 0.3, 0.06, 0.05), c.amberWindow, { p: [G.x + (s * P.GATE.w) / 2, 1.1, G.z + 0.26] });
-		}
-		for (let i = 0; i < 6; i++) b.add(rbox(P.GATE.w / 6 - 0.02, 0.2, 0.16, 0.04), i % 2 ? c.mastWhite : c.mastRed, { p: [G.x - P.GATE.w / 2 + (i + 0.5) * (P.GATE.w / 6), 1.15, G.z] });
-
-		// Local MCP servers: cheerful gadgets piped to the laptop's left side.
-		[c.mint, c.coral, c.skyBlue].forEach((mat, i) => {
-			const g = P.LOCAL_MCP[i];
-			b.add(rbox(1.25, 1.3, 1.2, 0.22), mat, { p: [g.x, 0.65, g.z] });
-			b.add(new THREE.CylinderGeometry(0.32, 0.32, 0.08, 24), c.brass, { p: [g.x, 0.75, g.z + 0.62], r: [Math.PI / 2, 0, 0] });
-			b.add(rbox(1.45, 0.16, 1.4, 0.05), c.walnut, { p: [g.x, 0.08, g.z] });
-			this.tube(b, [[g.x, 0.12, g.z + 0.7], [g.x, 0.12, 1.9 + i * 0.18], [L.x - 1.7, 0.12, 1.9 + i * 0.18]], 0.06, c.brass);
-		});
-
-		// The shell, the files and the archive drawer.
-		const S = P.SHELL.at;
-		b.add(rbox(1.3, 1.1, 0.9, 0.16), c.cream, { p: [S.x, 0.55, S.z] });
-		b.add(rbox(1.0, 0.7, 0.04, 0.03), c.prompt, { p: [S.x, 0.62, S.z + 0.46] });
-		const F = P.FILES.at;
-		b.add(rbox(1.4, 0.2, 1.0, 0.05), c.brass, { p: [F.x, 0.1, F.z] });
-		for (let i = 0; i < 6; i++) b.add(rbox(1.2, 1.1, 0.04, 0.02), c.paper, { p: [F.x, 0.7, F.z - 0.35 + i * 0.14], r: [-0.18, 0, 0] });
-		const A = P.ARCHIVE;
-		b.add(rbox(A.w, A.h, A.d, 0.18), c.walnut, { p: [A.at.x, A.h / 2, A.at.z - 0.4] });
-		b.add(rbox(A.w - 0.3, A.h * 0.42, 1.8, 0.1), c.walnut, { p: [A.at.x, A.h * 0.26, A.at.z + 1.4] });
-		for (let i = 0; i < 7; i++) b.add(rbox(A.w - 0.7, 0.62, 0.04, 0.02), c.paper, { p: [A.at.x, A.h * 0.5, A.at.z + 0.75 + i * 0.2] });
-		b.add(new THREE.TorusGeometry(0.22, 0.05, 10, 28), c.brass, { p: [A.at.x, A.h * 0.24, A.at.z + 2.32] });
-
-		// Brass posts at the back corners for the remote towers' cables.
-		for (const p of P.POSTS) {
-			b.add(new THREE.CylinderGeometry(0.13, 0.2, 1.3, 20), c.brass, { p: [p.x, 0.65, p.z] });
-			b.add(new THREE.SphereGeometry(0.2, 20, 12), c.brass, { p: [p.x, 1.35, p.z] });
-		}
 	}
 
 	/**
@@ -363,5 +294,6 @@ export class Blocking {
 		this.gatehouse.update(time);
 		this.hall.update(time);
 		this.aqueduct.update(time, cargo);
+		this.desk.update(time);
 	}
 }
