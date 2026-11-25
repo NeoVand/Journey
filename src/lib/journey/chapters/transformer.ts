@@ -64,10 +64,8 @@ const REGIONS: Region[] = [
 	{ name: 'Chat markers', x: 2.8, z: 3.75, rx: 2.5, rz: 1.4, fill: '#b9cdf7', words: [] }
 ];
 
-let mapCanvas: HTMLCanvasElement | undefined;
 let mapTexture: THREE.CanvasTexture | undefined;
 let plainTexture: THREE.CanvasTexture | undefined;
-let mapPixels: Uint8ClampedArray | undefined;
 
 function paintMap() {
 	const TW = 2048;
@@ -106,7 +104,6 @@ function paintMap() {
 		blob(r, 0);
 		c.fill();
 	});
-	mapPixels = c.getImageData(0, 0, TW, TH).data;
 	const plain = document.createElement('canvas');
 	plain.width = TW;
 	plain.height = TH;
@@ -122,7 +119,6 @@ function paintMap() {
 		c.font = `800 ${(n === 0 ? 0.56 : 0.44) * u}px ${font.display}`;
 		c.fillText(r.name, px(r.x), py(n === 0 ? r.z - r.rz + 0.56 : r.z + r.rz - 0.48));
 	});
-	mapCanvas = canvas;
 	mapTexture = canvasTexture(canvas);
 }
 
@@ -130,15 +126,6 @@ function paintMap() {
 export function meaningMap(labelled = true) {
 	if (!mapTexture) paintMap();
 	return labelled ? mapTexture! : plainTexture!;
-}
-
-function mapColorAt(x: number, z: number, out: THREE.Color) {
-	if (!mapPixels) paintMap();
-	const TW = mapCanvas!.width;
-	const TH = mapCanvas!.height;
-	const i = Math.floor(((z + D / 2) / D) * (TH - 1)) * TW + Math.floor(((x + W / 2) / W) * (TW - 1));
-	const p = mapPixels!;
-	return out.setRGB(p[i * 4] / 255, p[i * 4 + 1] / 255, p[i * 4 + 2] / 255, THREE.SRGBColorSpace);
 }
 
 /** The colour of the light the layers' edges catch in the dark. */
@@ -503,6 +490,14 @@ function netLines(l: number, radius: number) {
 	return mergeGeometries(parts)!;
 }
 
+const SCORE_RAMP = ['#24408f', '#2f7fd6', '#29b8c4', '#7fd36b', '#ffbc12'].map((hex) => new THREE.Color(hex));
+/** A score's colour, 0 for the least likely and 1 for the most. */
+function scoreColor(k: number, out: THREE.Color) {
+	const at = Math.min(0.9999, Math.max(0, k)) * (SCORE_RAMP.length - 1);
+	const i = Math.floor(at);
+	return out.copy(SCORE_RAMP[i]).lerp(SCORE_RAMP[i + 1], at - i);
+}
+
 interface Pick {
 	text: string;
 	score: number;
@@ -788,21 +783,22 @@ export class Transformer {
 				const cz = Math.max(0, Math.abs(z) - (D / 2 - 1.9));
 				if (Math.hypot(cx, cz) > 1.4) continue;
 				const dist = Math.hypot(x - last[0], (z - last[1]) * 1.15);
-				this.barSpots.push({ x, z, h: 0.03 + 1.05 * Math.exp(-(dist * dist) / 9) });
+				// Every word gets a score, so every cell is a column: most low, unevenly, and the likely ones tall.
+				const noise = Math.pow(hash(ix * 12.9 + iz * 78.2), 1.6);
+				this.barSpots.push({ x, z, h: 0.09 + 0.34 * noise + 1.05 * Math.exp(-(dist * dist) / 9) });
 			}
 		}
 		this.bars = new THREE.InstancedMesh(geo, new THREE.MeshPhysicalMaterial({ color: '#ffffff', roughness: 0.4, clearcoat: 0.5 }), this.barSpots.length);
 		this.bars.frustumCulled = false;
 		this.bars.castShadow = true;
-		const amber = new THREE.Color(color.amber);
 		this.barSpots.forEach((s, i) => {
 			this.d.position.set(s.x, y + 0.01, CZ + s.z);
 			this.d.scale.set(1, 0.0001, 1);
 			this.d.updateMatrix();
 			this.bars.setMatrixAt(i, this.d.matrix);
-			// Each column starts as the colour of the map under it, and warms as it rises.
-			mapColorAt(s.x, s.z, this.mapTint);
-			this.bars.setColorAt(i, this.c.copy(this.mapTint).lerp(amber, smooth(seg(s.h, 0.1, 0.7))));
+			// Coloured by its score, as a heat map is: deep blue for the unlikely, through teal, to amber for the likely.
+			scoreColor(seg(s.h, 0.09, 1.0), this.c);
+			this.bars.setColorAt(i, this.c);
 		});
 		this.d.scale.set(1, 1, 1);
 		this.group.add(this.bars);
@@ -913,7 +909,9 @@ export class Transformer {
 			const [a, b, c, d, peak] = LIT[f];
 			const read = smooth(seg(T, a, b)) * (1 - smooth(seg(T, c, d))) * peak;
 			const wave = bell(T, 14.035 + f * 0.012, 14.075 + f * 0.012) * 0.75;
-			plate.setLit(Math.max(read, wave));
+			// The top floor goes to dusk as its scores rise, so the columns read by their colour and their shadows.
+			const dusk = f === LIT.length - 1 ? smooth(seg(T, BARS[0] - 0.012, BARS[0] + 0.02)) : 0;
+			plate.setLit(Math.max(read, wave) * (1 - 0.68 * dusk));
 			this.signs[f].scale.setScalar(Math.max(0.0001, Math.max(whole, read)));
 		});
 		this.moreSign.scale.setScalar(Math.max(0.0001, whole));
