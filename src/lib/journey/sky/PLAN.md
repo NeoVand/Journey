@@ -46,9 +46,15 @@ Done (branch `world`):
   the desk's front right at 0.33. The finale's lap follows the new routes (finale.ts `Route`). The map, the MCP trip,
   the ways into the side trips and the sound's places point at the new world. The old tunnel, gateway, islands and
   pinwheel anchors are gone.
-- Left: verify (unit tests with the long hook timeout, e2e on the GPU against a served build, collision scan, every
-  side trip on the normal page, phone, narration sync), rebake the trip thumbnails if they show the main world, look
-  over every beat once more for polish, then ask before merging.
+- Verified (2026-11-25): unit tests pass (pointer.spec needs the project config, the rest the long-timeout one);
+  collision scans over 1.5-8, 18.9-26.2 and 29.5-32.4 are clean but for mechanisms that always touched (padlock
+  shackles, the press's ram, cables in fittings when the harness squashes, the slug inside its pipe, the capsule's
+  hinge) and tokens inside the glass pedestal, which the scan counts as inside the open chrome cap; the harness and
+  MCP trips and the sandbox's way in work; the phone frames every beat checked; every name the narration shows exists.
+  Geometry is ~98 MB against the phone test's 100 (Batch keeps indexes; rbox defaults to 2 segments): little room,
+  so welding the batches' non-indexed parts (mergeVertices) is the next lever if anything is added.
+- The lab is prerendered as an empty shell at /lab/world so the static build passes; it ships unlinked.
+- Left: the e2e suite's arrow-key test (failed once, rerunning), a last look over every beat, then ask before merging.
 
 ## Districts still to build
 
