@@ -159,8 +159,11 @@ export const PACE: Span[] = [
 	{ from: 17.06, to: 17.8, seconds: 5.6 }, // the call
 	{ from: 17.8, to: 17.95, seconds: 2.4 }, // the stamp, and the reason it stopped
 	{ from: 17.95, to: 18.1, seconds: 2.8 }, // the long pan along the row to the detokenizer
-	{ from: 18.1, to: 19.04, seconds: 5.2 }, // only text leaves
-	{ from: 19.04, to: 20.04, seconds: 5.4 },
+	{ from: 18.1, to: 18.98, seconds: 4.9 }, // only text leaves
+	{ from: 18.98, to: 19.0, seconds: 0.4 }, // out of the model
+	{ from: 19.0, to: 19.1, seconds: 7 }, // the way home: down the tower, sealed by the door, down the aqueduct
+	{ from: 19.1, to: 19.34, seconds: 3.4 }, // the stream lands, piece by piece
+	{ from: 19.34, to: 20.04, seconds: 3.6 },
 	{ from: 20.04, to: 21.04, seconds: 8 }, // the gates
 	{ from: 21.04, to: 25.04, seconds: 22 }, // sandbox and tools
 	{ from: 25.04, to: 26.9, seconds: 9.8 }, // round the loop, and the press

@@ -368,8 +368,8 @@ export class Harness {
 	 * filled: 0..1 per drawer, its lamp goes green once its contents have been taken.
 	 */
 	update(opens: number[], filled: number[], wake: number, time: number, jolt = 0) {
-		// A soft squash when something lands in it. Scale comes from the base, so it stays planted.
-		this.group.scale.set(1 + jolt * 0.016, 1 - jolt * 0.024, 1 + jolt * 0.016);
+		// When something lands in it, its roof lamp flares. It doesn't squash: its cables and pipes are plugged into its
+		// sides, and a squash would push its walls through their fittings.
 		this.settlePulls(opens);
 		this.drawers.forEach((d, i) => {
 			d.update(this.out[i], this.stand[i].x);
@@ -380,7 +380,7 @@ export class Harness {
 			const lit = THREE.MathUtils.clamp(wake * 6 - i, 0, 1);
 			l.set(color.amber, 0.2 + lit * (0.6 + breathe * 0.4));
 		});
-		this.roofLamp.set(color.green, 0.3 + wake * 0.7);
+		this.roofLamp.set(color.green, 0.3 + wake * 0.7 + jolt * 2.2);
 	}
 
 	/** Where a drawer's contents lie once it is fully open, so something on its way there can aim at it before it has opened. */

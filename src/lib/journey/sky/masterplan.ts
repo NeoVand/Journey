@@ -97,6 +97,12 @@ export const GATEHOUSE = { at: v(0, PLATFORM_Y, back(1.6)), w: 13.6, h: 5.6, d: 
 export const HALL = { from: back(3.7), to: back(END), w: 15, wall: 4.2, vault: 3.6 };
 export const TOKENIZER = { x: -3.9, from: back(5.4), to: back(END - 1.8) };
 export const DETOKENIZER = { x: 3.9, from: back(5.4), to: back(END - 1.8) };
+/**
+ * The press by the door on the reply's lane: what the model wrote comes out of the tower as text (the detokenizer is
+ * inside, with the chips: token IDs never leave), and here each piece is sealed into a pearl capsule of its own, encrypted
+ * for the trip home, as the request was on its way out. The mirror of the chat template across the lanes.
+ */
+export const SEALER = { x: HALL_LANE, z: back(7.4) };
 /** The data center: a round tower of midnight-blue enamel and silver, floors of chips behind glass. */
 export const TOWER = { at: v(0, PLATFORM_Y, back(END + 7.3)), r: 6.8, floors: 5, floorH: 3.3 };
 export const ROOF_Y = TOWER.at.y + TOWER.floors * TOWER.floorH + 0.5;

@@ -67,11 +67,14 @@ export class Scenery {
 		}
 	}
 
-	/** cargo: where each thing on the lanes is now, for the masts' readers. checks: the front door's, or -1 at rest. */
-	update(time: number, cargo: THREE.Vector3[] = [], checks = -1) {
+	/**
+	 * cargo: where each thing on the lanes is now, for the masts' readers. checks: the front door's, or -1 at rest. sealed:
+	 * how many pieces of the reply the hall's press has sealed so far.
+	 */
+	update(time: number, cargo: THREE.Vector3[] = [], checks = -1, sealed = 0) {
 		this.tower.update(time);
 		this.gatehouse.update(time, checks);
-		this.hall.update(time);
+		this.hall.update(time, sealed);
 		this.aqueduct.update(time, cargo);
 		this.foundry.update(time);
 		this.proving.update(time);

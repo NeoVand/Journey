@@ -182,7 +182,10 @@ const S_WHOLE = { az: 14, el: 9, target: [-4, 12, -20] as V3, radius: 34, ry: 22
 const S_END = { az: 22, el: 12, target: [HX - 0.4, 2.4, 1.0] as V3, radius: 7.2, ry: 6.4, wide: box(0.4, 0.02, 0.61, 0.94), tall: box(0, 0.05, 1, 0.42) };
 
 export const BACK_SHOTS: Shot[] = [
-	{ T: 19, ...S_HATCH }, // already there when the fade from the tube lifts
+	// Close over the harness's roof as the reply's capsules get home and open one by one (see sky/stream.ts), then back
+	// to the whole harness as the last of the text goes in.
+	{ T: 19.13, ...S_HATCH, az: 22, el: 18, target: [HX + 0.7, HTOP + 0.4, HZ - 1.6], radius: 3.6, ry: 2.8 },
+	{ T: 19.3, ...S_HATCH },
 	{ T: 19.64, ...S_HATCH, az: 14 },
 	// Close enough to read every board: the first call's way to the gate that stops it, the refusal, then along
 	// with the second call, gate by gate.
@@ -453,7 +456,6 @@ export class Back {
 	group = new THREE.Group();
 
 	private spec: HarnessId = 'claude';
-	private rain: THREE.Mesh[] = [];
 	private topCard = new Card(2.7, 1.68, 300);
 	/**
 	 * The calls' way to the gates: back out of the harness, behind the green pipe, down to just under your island's
@@ -465,12 +467,6 @@ export class Back {
 	get callCurve() {
 		return this.gatePath;
 	}
-	/** The last of the reply's glass column, above the harness's roof: what the stream drops through. */
-	private streamEnd = new THREE.QuadraticBezierCurve3(
-		HOME_CRADLE.clone().setY(HOME_CRADLE.y + 0.5),
-		new THREE.Vector3((HOME_CRADLE.x + HX) / 2, HTOP + 2.4, (HOME_CRADLE.z + HZ) / 2),
-		new THREE.Vector3(HX, HTOP + 0.3, HZ)
-	);
 	private carrier = new THREE.Group();
 	private gates: Gate[] = [];
 	/** When a conversation last named each gate (the clock's seconds): its beacon flares. */
@@ -634,13 +630,6 @@ export class Back {
 	private buildHatch() {
 		const g = this.zone(18.8, 21.06, false, true);
 		const m = mats();
-		for (let i = 0; i < 8; i++) {
-			const slip = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.26), m.paper);
-			slip.castShadow = true;
-			slip.visible = false;
-			g.add(slip);
-			this.rain.push(slip);
-		}
 		// The call the harness has just parsed, by name, so a conversation can show it beside the drawer its result goes to.
 		this.topCard.mesh.name = 'call-card';
 		this.carrier.add(this.topCard.mesh);
@@ -1073,6 +1062,9 @@ export class Back {
 		this.sheets.frustumCulled = false;
 		SLIPS.forEach((_, i) => this.sheets.setColorAt(i, this.slipTint[i]));
 		this.sheets.setColorAt(SLIPS.length, this.slipAmber);
+		// Until the chapter lays them, none is anywhere: an unplaced instance would sit at the island's foot, in the haze.
+		const none = new THREE.Matrix4().makeScale(0, 0, 0);
+		for (let i = 0; i <= SLIPS.length; i++) this.sheets.setMatrixAt(i, none);
 		g.add(this.sheets);
 		// The two slips that matter most say what they are, on the edge that faces the reader.
 		const base = new Label('Instructions and tools', 0.13 * SIGN_PHONE, { weight: 700 });
@@ -1251,6 +1243,9 @@ export class Back {
 		const collar = new Batch();
 		for (const x of [-3.75, 3.65]) collar.add(new THREE.CylinderGeometry(0.46, 0.46, 0.22, 28), m.steel, { p: [cx + x, cy + 1.7, cz - 1.5], r: [0, 0, Math.PI / 2] });
 		g.add(collar.build('pipe-collars'));
+		// Whole until it breaks: placed now, so it never waits at the island's foot.
+		this.pipeA.position.set(cx - 1.925, cy + 1.7, cz - 1.5);
+		this.pipeB.position.set(cx + 1.825, cy + 1.7, cz - 1.5);
 		g.add(this.pipeA, this.pipeB);
 
 		// A signpost planted in the break in the pipe.
@@ -1661,7 +1656,7 @@ export class Back {
 	}
 
 	jolt(T: number) {
-		return bell(T, 19.26, 19.42) * 0.6 + bell(T, 25.36, 25.5);
+		return bell(T, 19.14, 19.33) * 0.6 + bell(T, 25.36, 25.5);
 	}
 
 	private drawCode(phase: number) {
@@ -1811,7 +1806,6 @@ export class Back {
 		this.carrier.visible = false;
 		this.bad.group.visible = false;
 		this.good.group.visible = false;
-		this.rain.forEach((s) => (s.visible = false));
 		this.binSign.visible = false;
 		this.gates.forEach((gate, i) => {
 			let open = 0;
@@ -1852,7 +1846,6 @@ export class Back {
 		this.carrier.visible = false;
 		this.bad.group.visible = false;
 		this.good.group.visible = false;
-		this.rain.forEach((s) => (s.visible = false));
 		this.binSign.visible = false;
 		this.result.mesh.visible = false;
 		this.trayFoot.visible = false;
@@ -1867,16 +1860,8 @@ export class Back {
 
 		/* ---- landing ---- */
 		if (T < 20.2) {
-			this.rain.forEach((slip, i) => {
-				const k = seg(T, 19.08 + i * 0.03, 19.26 + i * 0.03);
-				slip.visible = k > 0 && k < 1;
-				if (!slip.visible) return;
-				this.streamEnd.getPointAt(k * k, slip.position);
-				slip.position.x += Math.sin(i * 2.3) * 0.1;
-				slip.position.z += Math.cos(i * 1.6) * 0.08;
-				slip.rotation.set(Math.sin(k * 7 + i) * 0.5, Math.sin(k * 5 + i * 2) * 0.6, Math.sin(k * 4 + i) * 0.2);
-			});
-			const pop = outBack(seg(T, 19.3, 19.42), 1.6);
+			// The reply's text drops in at the hatch piece by piece: that's the stream's own (sky/stream.ts).
+			const pop = outBack(seg(T, 19.33, 19.44), 1.6);
 			const go = inOut(seg(T, 19.68, 20.02));
 			this.carrier.visible = pop > 0 && go < 1;
 			if (this.carrier.visible) {

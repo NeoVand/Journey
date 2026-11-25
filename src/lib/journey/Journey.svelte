@@ -1187,7 +1187,7 @@
 				else if (!loopMark || Math.abs(mark.x - loopMark.x) + Math.abs(mark.y - loopMark.y) > 0.002) loopMark = mark;
 				// Only the header follows this. It switches while the screen is black, so nobody sees it happen.
 				const seen = peekT ?? T;
-				dark = veilThick > 0.5 ? veilDark : seen >= 7.96 && seen < 19.02;
+				dark = veilThick > 0.5 ? veilDark : seen >= 7.96 && seen < 19.004;
 				atTitle = T < 0.45;
 				fade();
 				const starts = [2.04, 2.2, 2.36, 2.52];
@@ -1287,7 +1287,7 @@
 			const cutEl = document.querySelector<HTMLElement>('[data-cut]')!;
 			let cutTimer = 0;
 			/** Under a quick cover, the colour of the world on the other side of it. */
-			const cover = (to: number, fn: () => void, colour = to >= 7.96 && to < 19.02 ? '#060f26' : '#d6eafb') => {
+			const cover = (to: number, fn: () => void, colour = to >= 7.96 && to < 19.004 ? '#060f26' : '#d6eafb') => {
 				if (reduced || still) return fn();
 				cutEl.style.background = colour;
 				cutEl.classList.add('on');
@@ -3284,7 +3284,7 @@
 	</section>
 
 	<section data-beat class="beat" style:--h="460vh">
-		<article class="pin right" data-in="0.05" data-out="0.56">
+		<article class="pin right" data-in="0.12" data-out="0.56">
 			<h2>The model has no hands</h2>
 			<p>The tube ends at your laptop, in the harness. It holds on to the stream until the tool call is complete, then reads it. Only now does anyone know the full request.</p>
 			<p>And it’s only a request, like a web form sent to a server. The model can’t read a file. It can only write the words “please read this file.” Everything after this decides whether to say yes.</p>

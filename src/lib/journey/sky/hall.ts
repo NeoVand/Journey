@@ -3,7 +3,7 @@ import { Batch } from '../kit/batch';
 import { extrude, rbox, roundedRect } from '../kit/geometry';
 import { mats } from '../kit/materials';
 import { Label } from '../kit/print';
-import { createBelt, createChatTemplate, Gantry, Tile, TILE_D, TILE_H } from '../props/tokenizer';
+import { createBelt, createChatTemplate, Gantry, Tile, TILE_H } from '../props/tokenizer';
 import { TOKENS } from '../content';
 import { palette } from './palette';
 import * as P from './masterplan';
@@ -16,8 +16,9 @@ import * as P from './masterplan';
  *
  * Beside the request's lane, on the left, the tokenizer as it was built and kept: the chat template lays the request out
  * as one long strip, the belt carries it under the gantry, and the gantry cuts it into tiles at every token boundary.
- * Beside the reply's lane, on the right, its mirror: the detokenizer, which takes the reply's pearl tiles in at its mouth,
- * turns them back into text on its roller, and seals the text into pearl capsules for the trip home.
+ * On the reply's lane, on the right, by the door: the press that seals the reply for the trip home. What the model wrote
+ * comes out of the tower as text (the detokenizer is inside, with the chips, and token IDs never leave), rides the lane
+ * down the hall, and goes through the press, which seals each piece into a little pearl capsule of its own.
  *
  * Drawn from concepts/aqueduct/door (above, section, inside). Its frame is the platform's: z runs along the world's, from
  * the door towards the tower.
@@ -29,9 +30,6 @@ const MID = (H.from + H.to) / 2;
 /** The walls' inner faces either side, and their thickness. */
 const INNER = H.w / 2 - 0.7;
 const THICK = 0.6;
-/** The two machines' belts: how far from the middle, and how high their tops stand over the floor. */
-const BELT_X = 2.75;
-const BELT_Y = 0.52;
 /** The tokenizer's belt, on the request's lane: as high over the floor as it was built to stand. */
 const TOKENIZER_BELT = 0.5;
 
@@ -85,7 +83,7 @@ export class Hall {
 	group = new THREE.Group();
 	gantry: Gantry | null = null;
 	private strip: Tile[] = [];
-	private roller!: THREE.Mesh;
+	private drum!: THREE.Mesh;
 
 	constructor(tokenizer = true) {
 		this.group.name = 'hall';
@@ -175,7 +173,7 @@ export class Hall {
 		this.group.add(b.build('hall'));
 
 		if (tokenizer) this.gantry = this.tokenizer();
-		this.detokenizer();
+		this.sealer();
 	}
 
 	/**
@@ -215,67 +213,76 @@ export class Hall {
 	}
 
 	/**
-	 * The detokenizer, the tokenizer's mirror across the lanes, in its style: the reply's pearl tiles ride a belt from the
-	 * tower towards the door and go in at an arched mouth; a brass roller on top turns them back into a slip of text; a
-	 * press at its far end seals the text into a pearl capsule, and the capsule goes out onto the reply's lane.
+	 * The press by the door, the chat template's mirror across the lanes: a cream block straddling the reply's lane with an
+	 * arched way through it. What the model wrote comes out of the tower as text and rides in at its back; under the brass
+	 * drum on its top each piece is sealed into a pearl capsule of its own, and the capsules ride out of its front, through
+	 * the door and home. Encrypted again, as the request was on its way out: its padlock and its name say so.
 	 */
-	private detokenizer() {
+	private sealer() {
 		const m = mats();
 		const c = palette();
 		const g = new THREE.Group();
-		// Turned so its belt runs from the tower towards the door, its front to the lanes.
-		g.rotation.y = -Math.PI / 2;
-		g.position.set(BELT_X, BELT_Y, H.to + 1.6);
-		// Short, at the tower's end of the hall: the reply's tiles come out of the tower, go straight in, and leave as text.
-		const beltTo = 3.4;
-		g.add(createBelt(0, beltTo));
+		g.name = 'sealer';
+		g.position.set(P.SEALER.x, 0, P.SEALER.z);
 		const b = new Batch();
-		const W = 2.4;
-		const BH = 1.7;
-		const D = 1.9;
-		const at = beltTo + W / 2 - 0.1;
-		// The block: cream, rounded, an arched mouth over the belt where the tiles go in.
-		b.add(rbox(W + 0.24, 0.12, D + 0.24, 0.05), m.steelSoft, { p: [at, -BELT_Y + 0.06, 0] });
+		// Across the lane: wide enough for the lane's bed and its kerbs, the arch tall enough for a capsule on the belt.
+		const W = 2.0;
+		const D = 1.7;
+		const BH = 2.0;
+		const mouthW = 1.5;
+		const mouthH = 1.15;
+		b.add(rbox(W + 0.3, 0.1, D + 0.3, 0.04), m.steelSoft, { p: [0, 0.05, 0] });
 		const body = new THREE.Shape();
-		body.moveTo(-D / 2, 0);
-		body.lineTo(-0.62, 0);
-		body.lineTo(-0.62, 0.5);
-		body.absarc(0, 0.5, 0.62, Math.PI, 0, true);
-		body.lineTo(0.62, 0);
-		body.lineTo(D / 2, 0);
-		body.lineTo(D / 2, BH);
-		body.lineTo(-D / 2, BH);
+		body.moveTo(-W / 2, 0);
+		body.lineTo(-mouthW / 2, 0);
+		body.lineTo(-mouthW / 2, mouthH - mouthW / 2);
+		body.absarc(0, mouthH - mouthW / 2, mouthW / 2, Math.PI, 0, true);
+		body.lineTo(mouthW / 2, 0);
+		body.lineTo(W / 2, 0);
+		body.lineTo(W / 2, BH);
+		body.lineTo(-W / 2, BH);
 		body.closePath();
-		b.add(extrude(body, W, 0.06, 2, 24), m.cream, { p: [at, -BELT_Y + 0.12, 0], r: [0, Math.PI / 2, 0] });
-		b.add(rbox(0.06, 1.2, 1.3, 0.02), m.recess, { p: [at - W / 2 + 0.2, -BELT_Y + 0.62, 0] });
-		// The roller on top, brass, in two cheeks; the slip of text curling off it.
-		for (const s of [-1, 1]) b.add(rbox(0.5, 0.6, 0.12, 0.04), m.cream, { p: [at, -BELT_Y + 0.12 + BH + 0.25, s * 0.62] });
-		b.add(extrude(roundedRect(1.5, 0.42, 0.13), 0.1, 0.026, 3, 10), m.creamLight, { p: [at - 0.1, -BELT_Y + 0.12 + BH * 0.62, D / 2 + 0.06] });
-		// The press at its far end: a brass drum that seals each slip into a capsule.
-		b.add(new THREE.CylinderGeometry(0.42, 0.42, 0.9, 32), c.brass, { p: [at + W / 2 + 0.5, -BELT_Y + 0.85, 0] });
-		b.add(rbox(0.9, 0.34, 0.9, 0.08), m.cream, { p: [at + W / 2 + 0.5, -BELT_Y + 0.29, 0] });
-		g.add(b.build('detokenizer'));
-		this.roller = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 1.1, 24), c.brass);
-		this.roller.rotation.x = Math.PI / 2;
-		this.roller.position.set(at, -BELT_Y + 0.12 + BH + 0.32, 0);
-		g.add(this.roller);
-		const label = new Label('Detokenizer', 0.19, { weight: 700 });
-		label.mesh.position.set(at - 0.1, -BELT_Y + 0.12 + BH * 0.62, D / 2 + 0.118);
-		g.add(label.mesh);
-		// The reply's tiles on the belt, pearl, on their way in.
-		const tile = palette().pearl;
-		for (let i = 0; i < 3; i++) {
-			const w = 0.6 + ((i * 37) % 5) * 0.12;
-			const mesh = new THREE.Mesh(rbox(w, TILE_H, TILE_D, 0.055, 3), tile);
-			mesh.position.set(0.55 + i * 1.0, TILE_H / 2, 0);
-			mesh.castShadow = true;
-			g.add(mesh);
+		b.add(extrude(body, D, 0.07, 3, 24), m.cream, { p: [0, 0.1, 0] });
+		// A dark lining in the arch, so it reads as a way through.
+		b.add(new THREE.CylinderGeometry(mouthW / 2 - 0.03, mouthW / 2 - 0.03, D - 0.1, 28, 1, true, -Math.PI / 2, Math.PI), m.recess, {
+			p: [0, 0.1 + mouthH - mouthW / 2, 0],
+			r: [-Math.PI / 2, 0, 0]
+		});
+		// Brass bands round both its faces' arches.
+		for (const s of [-1, 1]) b.add(new THREE.TorusGeometry(mouthW / 2 + 0.06, 0.05, 8, 32, Math.PI), c.brass, { p: [0, 0.1 + mouthH - mouthW / 2, s * (D / 2 + 0.03)] });
+		// The drum's cheeks on its top, and a cap rail.
+		for (const s of [-1, 1]) b.add(rbox(0.16, 0.62, 0.7, 0.05), m.cream, { p: [s * 0.62, 0.1 + BH + 0.28, 0] });
+		b.add(rbox(W + 0.06, 0.1, D + 0.06, 0.04), c.brass, { p: [0, 0.1 + BH + 0.02, 0] });
+		// Its name and its padlock on the face the reply comes in at, towards the tower, and again on the door's side.
+		for (const s of [-1, 1]) {
+			b.add(extrude(roundedRect(1.5, 0.36, 0.12), 0.08, 0.02, 2, 10), m.creamLight, { p: [0, 0.1 + BH - 0.32, s * (D / 2 + 0.05)], r: [0, s < 0 ? Math.PI : 0, 0] });
+		}
+		g.add(b.build('sealer'));
+		this.drum = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1.0, 28), c.brass);
+		this.drum.rotation.z = Math.PI / 2;
+		this.drum.position.set(0, 0.1 + BH + 0.42, 0);
+		g.add(this.drum);
+		for (const s of [-1, 1]) {
+			const label = new Label('Encrypt', 0.2, { weight: 700 });
+			label.mesh.position.set(-0.12, 0.1 + BH - 0.32, s * (D / 2 + 0.095));
+			label.mesh.rotation.y = s < 0 ? Math.PI : 0;
+			g.add(label.mesh);
+			const lock = new THREE.Group();
+			const lb = new Batch();
+			lb.add(extrude(roundedRect(0.2, 0.16, 0.05), 0.06, 0.015, 2, 8), m.cobalt);
+			lb.add(new THREE.TorusGeometry(0.06, 0.016, 8, 16, Math.PI), m.steel, { p: [0, 0.08, 0] });
+			lock.add(lb.build('sealer-lock'));
+			lock.position.set(0.55, 0.1 + BH - 0.34, s * (D / 2 + 0.11));
+			lock.rotation.y = s < 0 ? Math.PI : 0;
+			g.add(lock);
 		}
 		this.group.add(g);
 	}
 
-	update(time: number) {
+	/** sealed: how many pieces of the reply the press has sealed so far, counting smoothly through each. */
+	update(time: number, sealed = 0) {
 		this.gantry?.update(0.5 + 0.5 * Math.sin(time * 3), true);
-		this.roller.rotation.y = time * 2;
+		// The drum turns slowly while it waits, and spins round once as it seals each piece.
+		this.drum.rotation.x = time * 0.6 + sealed * Math.PI * 2;
 	}
 }

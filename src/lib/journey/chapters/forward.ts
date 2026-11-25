@@ -891,7 +891,7 @@ class Decoder {
 const DET_H = 3.7;
 const DET_Z = RAIL_Z - 1.26; // the block's centre, and its tube's
 /** In the order they stream: the thinking first, then the tool call's JSON. */
-const SLIP_TEXT = ['The user', ' wants', ' the race', 'Grep', '("lock', '|schedule', '", src', '/")'];
+export const SLIP_TEXT = ['The user', ' wants', ' the race', 'Grep', '("lock', '|schedule', '", src', '/")'];
 /** The first three slips are the thinking's text, the rest the tool call's. */
 const THINK_SLIPS = 3;
 /** How long a tile takes to become paper at the top, and how many trips up the tube a slip makes per unit of T. */

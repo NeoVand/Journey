@@ -38,6 +38,8 @@ import { Capsule, CopilotArch } from './sky/capsule';
 import { Desk } from './sky/desk';
 import { AQUEDUCT_CURVE, MASTS } from './sky/aqueduct';
 import { Back, BACK_SHOTS } from './chapters/back';
+import { SLIP_TEXT } from './chapters/forward';
+import { HOME, HomeStream } from './sky/stream';
 import { Finale, FINALE_T } from './chapters/finale';
 
 export const EXIT_T = 19;
@@ -113,6 +115,26 @@ const DOWN_LANE = new THREE.CatmullRomCurve3(P.downLane(), false, 'centripetal')
 DOWN_LANE.arcLengthDivisions = 2000;
 /** Where the capsule waits for the page: a little way along the lane, behind the harness's roof. */
 const CRADLE_S = 0.9;
+/**
+ * The reply's way home along its lane: how far from the brainstem's seat the lane lies down at the shaft's foot, and how
+ * far the press by the door is, where its text is sealed for the trip.
+ */
+const HOME_AT = (() => {
+	const n = 3000;
+	const len = DOWN_LANE.getLength();
+	let foot = len;
+	let seal = len;
+	for (let i = 0; i <= n; i++) {
+		const p = DOWN_LANE.getPointAt(i / n);
+		if (foot === len && p.y < P.PLATFORM_Y + 0.4) foot = (i / n) * len;
+		if (seal === len && p.z >= P.SEALER.z) seal = (i / n) * len;
+	}
+	// The reply's glass column begins this far under the seat: the text appears at its top, clear of the brainstem.
+	return { len, top: 1.8, foot, seal, home: len - CRADLE_S };
+})();
+/** The stream on its way home, once it's built: the camera follows its first piece. */
+let homeStream: HomeStream | null = null;
+const followHome = (T: number, out: THREE.Vector3) => (homeStream ? homeStream.head(T, out).setY(out.y + 0.3) : out);
 /** How the capsule rides the lane: from the cradle past the masts, resting by the last of them while you hear about the wire, to the door, and on to the template. */
 function rideAt(T: number) {
 	if (T <= 4.08) return CRADLE_S;
@@ -162,7 +184,7 @@ export const HOLD = { type: [1.02, 1.56], send: [1.56, 1.66] };
 const LAPTOP_SAYS: [number, string][] = [
 	[0, 'Building the request'],
 	[3.6, 'Waiting for the reply'],
-	[19.0, 'Reading the reply'],
+	[HOME.arrive, 'Reading the reply'],
 	[19.62, 'Checking the tool call'],
 	[25.04, 'Sending the result back'],
 	[25.9, 'On to the next turn'],
@@ -177,7 +199,8 @@ const hold = (from: number, to: number, shot: Omit<Shot, 'T'>, drift: Partial<Om
 	{ T: to, ...shot, ...drift }
 ];
 
-const HERO = { az: 20, el: 9, target: [-0.4, 3.2, 0.2] as V3, radius: 7.6, wide: box(0.4, 0.02, 0.61, 0.94), tall: box(0, 0.42, 1, 0.56) };
+/** The whole world from out in the sky, desk to brain, the title in the open sky beside it: then down to your laptop. */
+const HERO = { az: 16, el: 13, target: [-1, 10, -15] as V3, radius: 37, wide: box(0.4, 0.02, 0.61, 0.94), tall: box(0, 0.42, 1, 0.56) };
 const LAPTOP = { az: -2, el: 14, target: [0.087, 1.12, P.LAPTOP.at.z - 0.13] as V3, radius: 2.3, wide: box(0.42, 0.1, 0.56, 0.84), tall: box(0.02, 0.08, 0.96, 0.5) };
 const ASSEMBLY = { az: 20, el: 17, target: [-2.5, 2.4, -1.5] as V3, radius: 5.6, ry: 4.3, wide: box(0.0, 0.14, 0.58, 0.86), tall: box(0.02, 0.07, 0.96, 0.46) };
 const REQUEST = { az: 4, el: 7, target: [DOC_POS.x, DOC_POS.y + 0.03, DOC_POS.z + 0.05] as V3, radius: 2.05, wide: box(0.12, 0.08, 0.46, 0.86), tall: box(0.05, 0.07, 0.9, 0.5) };
@@ -213,6 +236,37 @@ const ARRIVE = { az: 7, el: 7, target: [SHAFT_X, 23.5, TZ] as V3, radius: 14, ry
 /** The glass pedestal on the roof, the last tokens going up it into the brainstem's seat. */
 const INTAKE = { az: 26, el: 18, target: [SHAFT_X, SEAT_Y - 1.0, TZ] as V3, radius: 3.4, ry: 2.6, wide: box(0.38, 0.08, 0.62, 0.84), tall: box(0, 0.08, 1, 0.48) };
 
+/** No card is up on the way home: the picture has the whole screen. */
+const WHOLE = box(0.05, 0.08, 0.9, 0.84);
+const WHOLE_TALL = box(0, 0.1, 1, 0.7);
+/** The brain on its pedestal as the picture comes out of the model: the reply leaving its seat into the column. */
+const OUT_OF = { az: 22, el: 9, target: [-SHAFT_X, SEAT_Y + 1.6, TZ] as V3, radius: 4.2, ry: 3.8, wide: WHOLE, tall: WHOLE_TALL };
+/** The tower from in front, over the hall's end wall: the reply falling down its column, lit, seen through the slot. */
+const DOWN_TOWER = { az: 10, el: 8, target: [-SHAFT_X, 19, TZ] as V3, radius: 5.5, ry: 7.5, wide: WHOLE, tall: WHOLE_TALL };
+/** The whole hall from high over the door: the reply's text riding the right lane from the tower's foot to the press. */
+const HALL_RUN = { az: 22, el: 52, target: [1.1, 8.6, -31.5] as V3, radius: 7.5, ry: 6, wide: WHOLE, tall: WHOLE_TALL };
+const homeShot = (T: number, az: number, el: number, radius: number, ry = radius * 0.75): Shot => ({ T, az, el, target: [0, 0, 0], radius, ry, wide: WHOLE, tall: WHOLE_TALL, follow: followHome });
+/**
+ * Home: out of the brainstem's seat, and down the column in the shaft, lit, seen through the tower's slot; the whole hall
+ * from high over the door as the text rides out of the tower's foot to the press; then down over the gatehouse to the
+ * first capsule coming out of the door, and along the aqueduct with the string of them, to the harness's roof.
+ */
+const HOME_SHOTS: Shot[] = [
+	{ T: HOME.from, ...OUT_OF },
+	{ T: HOME.from + 0.005, ...OUT_OF, az: 18, el: 7 },
+	{ T: HOME.from + 0.011, ...DOWN_TOWER },
+	{ T: HOME.from + 0.016, ...DOWN_TOWER, target: [-SHAFT_X, 16, TZ], az: 14 },
+	{ T: HOME.from + 0.022, ...HALL_RUN },
+	{ T: HOME.from + 0.043, ...HALL_RUN, az: 26, target: [1.1, 8.6, -29.5] },
+	// Down in front of the gatehouse, waiting at its door for the first capsule to come out.
+	{ T: HOME.from + 0.048, az: 26, el: 22, target: [0.7, 9.2, P.DOOR_Z], radius: 4, ry: 3, wide: WHOLE, tall: WHOLE_TALL },
+	homeShot(HOME.from + 0.054, 30, 24, 3.8),
+	homeShot(HOME.from + 0.062, 20, 18, 3.8),
+	homeShot(HOME.from + 0.078, 24, 18, 3.8),
+	homeShot(HOME.from + 0.092, 28, 22, 3.2),
+	{ T: HOME.arrive, az: 30, el: 24, target: [0.7, 6.4, -5.2], radius: 2.6, ry: 2.2, wide: WHOLE, tall: WHOLE_TALL }
+];
+
 const SHOTS: Shot[] = [
 	...hold(0, 0.5, HERO),
 	...hold(1, 1.6, LAPTOP),
@@ -235,6 +289,7 @@ const SHOTS: Shot[] = [
 	// In through the glass after the last of them, up into the seat.
 	{ T: 7.985, az: 12, el: 8, target: [SHAFT_X, SEAT_Y - 0.35, TZ], radius: 0.3, ry: 0.22, wide: box(0, 0, 1, 1), tall: box(0, 0, 1, 1) },
 	...CLUSTER_SHOTS,
+	...HOME_SHOTS,
 	...BACK_SHOTS
 ];
 
@@ -318,8 +373,11 @@ export class World {
 	private doc!: RequestDoc;
 	private strips!: Strip[];
 	private capsule!: Capsule;
-	/** The reply's capsule, which brings the model's answer home down the right lane. */
-	private replyCapsule!: Capsule;
+	/** The reply on its way home: its text down the tower, sealed by the door, a string of capsules down the right lane. */
+	private home!: HomeStream;
+	private homeCargo: THREE.Vector3[] = [];
+	/** The reply's glass column up the shaft, which lights up while the reply pours down it. */
+	private streamGlass!: THREE.MeshPhysicalMaterial;
 	private copilotArch!: CopilotArch;
 	private scenery!: Scenery;
 	/** The tokenizer's own frame (see TOKENIZER), and the harness's holder, which carries its size (see placeOnDesk). */
@@ -418,7 +476,6 @@ export class World {
 			() => {
 				this.strips = [0, 1, 2, 3].map((i) => new Strip(i));
 				this.capsule = new Capsule();
-				this.replyCapsule = new Capsule('reply');
 				this.copilotArch = new CopilotArch(P.DECK_W - 0.1);
 				this.gantry = new Gantry();
 				this.tiles = TOKENS.map((t) => new Tile(t));
@@ -534,7 +591,22 @@ export class World {
 		this.strips.forEach((s) => r.add(s.mesh));
 
 		// The capsule, in its cradle behind the harness's roof; GitHub's arch over the deck further on, for Copilot.
-		r.add(this.capsule.group, this.replyCapsule.group, this.copilotArch.group);
+		r.add(this.capsule.group, this.copilotArch.group);
+		this.home = new HomeStream(
+			{
+				lane: DOWN_LANE,
+				top: HOME_AT.top,
+				shaftFoot: HOME_AT.foot,
+				seal: HOME_AT.seal,
+				home: HOME_AT.home,
+				belt: BELT_TOP,
+				hatch: new THREE.Vector3(HARNESS_POS.x, P.HARNESS.h + 0.3, HARNESS_POS.z),
+				arc: 1.8
+			},
+			SLIP_TEXT
+		);
+		homeStream = this.home;
+		r.add(this.home.group);
 		const s = rideAt(4.74) / LANE_AT.len;
 		const p = UP_LANE.getPointAt(s);
 		const t = UP_LANE.getTangentAt(s);
@@ -804,6 +876,12 @@ export class World {
 		glass.name = 'stream';
 		glass.renderOrder = 4;
 		this.root.add(glass);
+		this.streamGlass = glass.material;
+	}
+
+	/** The reply's way home, by the story's clock: when each piece is sealed by the door, and when it drops in at home. */
+	get homeTimes() {
+		return this.home.times;
 	}
 
 	setTurn(turn: number) {
@@ -1243,7 +1321,7 @@ export class World {
 		this.state.dive = Math.max(
 			smooth(seg(T, 7.93, 7.985)) * (1 - smooth(seg(T, 8.0, 8.08))),
 			smooth(seg(T, 13.9, 13.975)) * (1 - smooth(seg(T, 13.99, 14.05))),
-			smooth(seg(T, 18.88, 18.98)) * (1 - smooth(seg(T, 19.0, 19.1)))
+			smooth(seg(T, 18.88, 18.98)) * (1 - smooth(seg(T, HOME.from, HOME.from + 0.006)))
 		);
 
 		const skyK = smooth(seg(T, 6.7, 7.7));
@@ -1294,7 +1372,7 @@ export class World {
 				// Everything from the first half at rest upstairs, however the reader got here.
 				this.updateCapsule(T, time);
 				this.updateTokenizer(6, time);
-				this.scenery.update(time);
+				this.scenery.update(time, this.home.cargo(this.homeCargo), -1, this.home.sealed(T));
 				this.brain.update(6.9 + this.finale.brainBusy * 0.8, time);
 				// The first half of the journey is over: its travellers have gone, its machines stay.
 				this.doc.group.visible = false;
@@ -1586,24 +1664,6 @@ export class World {
 		});
 	}
 
-	/**
-	 * The reply's capsule: it comes down the right lane from the provider, sealed and locked as the request was, and slides
-	 * into its cradle behind the harness's roof as the picture comes back from inside the model. There the harness's end
-	 * of the connection decrypts it, it unlocks and opens, and the reply's text drops through the roof's hatch.
-	 */
-	private updateReply(T: number, time: number) {
-		const c = this.replyCapsule;
-		c.group.visible = T >= EXIT_T;
-		if (!c.group.visible) return;
-		const len = DOWN_LANE.getLength();
-		const s = 1 - lerp(4.5, CRADLE_S, inOut(seg(T, 18.98, 19.07))) / len;
-		c.sit(DOWN_LANE.getPointAt(s, this.v1).setY(this.v1.y + BELT_TOP), DOWN_LANE.getTangentAt(s, this.v2));
-		const open = inOut(seg(T, 19.05, 19.1)) * (1 - inOut(seg(T, 19.34, 19.42)));
-		const lock = 1 - seg(T, 19.02, 19.06);
-		const cipher = 1 - smooth(seg(T, 19.0, 19.05));
-		c.update(open, lock, cipher, time);
-	}
-
 	/** How clouded the capsule's glass is with ciphertext, this frame; and the frame's length. */
 	private cipher = 0;
 	private dt = 0;
@@ -1624,7 +1684,11 @@ export class World {
 		const lock = T >= EXIT_T ? 0 : seg(T, 4.0, 4.06) * (1 - seg(checks, 0, 0.5));
 		this.cipher = T >= EXIT_T ? 0 : smooth(seg(T, 4.04, 4.22)) * (1 - smooth(seg(checks, 0.1, 0.7)));
 		this.capsule.update(open, lock, this.cipher, time);
-		this.updateReply(T, time);
+		this.home.update(T, time);
+		const pour = this.home.pouring(T);
+		this.streamGlass.emissive.set('#5b9dff');
+		this.streamGlass.emissiveIntensity = pour * 1.1;
+		this.streamGlass.opacity = 0.42 + pour * 0.25;
 		this.copilotArch.update(this.harnessId === 'copilot', seg(T, 4.72, 4.76), this.dt);
 	}
 
@@ -1819,7 +1883,9 @@ export class World {
 			[7.3, [SHAFT_X, P.PLATFORM_Y + 1.5, TZ]],
 			[7.95, [SHAFT_X, SEAT_Y, TZ]],
 			[18.6, [SHAFT_X, SEAT_Y, TZ]],
-			[18.95, [-SHAFT_X, P.PLATFORM_Y + 2, TZ]],
+			[HOME.from, [-SHAFT_X, SEAT_Y, TZ]],
+			...[0.02, 0.045, 0.07].map((k): [number, V3] => [HOME.from + k, this.home.head(HOME.from + k, new THREE.Vector3()).toArray() as V3]),
+			[HOME.arrive, this.home.head(HOME.arrive, new THREE.Vector3()).toArray() as V3],
 			[19.3, [HARNESS_POS.x, P.HARNESS.h, HARNESS_POS.z]],
 			[19.6, this.back.callCurve.getPointAt(0.12).toArray() as V3],
 			[19.9, this.back.callCurve.getPointAt(0.6).toArray() as V3],
