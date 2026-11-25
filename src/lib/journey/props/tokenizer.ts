@@ -288,6 +288,9 @@ export function createChatTemplate() {
 	const D = 1.9;
 	b.add(rbox(W + 0.24, 0.12, D + 0.24, 0.05, 3), m.steelSoft, { p: [0, 0.06, 0] });
 	b.add(extrude(roundedRect(W, H, 0.14), D, 0.05, 4, 10), m.cream, { p: [0, 0.12 + H / 2, 0] });
+	// A slot in its top, framed in steel: the request goes in here, as one long text.
+	b.add(rbox(1.7, 0.06, 0.5, 0.025, 2), m.steel, { p: [0, 0.12 + H + 0.03, 0] });
+	b.add(rbox(1.5, 0.02, 0.3, 0.01, 1), m.recess, { p: [0, 0.12 + H + 0.052, 0] });
 	b.add(extrude(roundedRect(1.62, 0.44, 0.14), 0.07, 0.022, 3, 10), m.creamLight, { p: [0, 1.06, D / 2 + 0.03] });
 	b.add(rbox(0.1, 0.3, 1.2, 0.05, 3), m.steel, { p: [W / 2 + 0.03, 0.5, 0] });
 	b.add(rbox(0.11, 0.13, 0.98, 0.02, 2), m.recess, { p: [W / 2 + 0.04, 0.5, 0] });

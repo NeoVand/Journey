@@ -36,7 +36,8 @@ function half(b: Batch, glass: THREE.Material, brass: THREE.Material, upper: boo
 	// Brass bands round its glass at either end and in the middle, a half ring each.
 	for (const x of [-HALF + 0.02, 0, HALF - 0.02]) b.add(new THREE.TorusGeometry(R + 0.015, 0.045, 10, 24, Math.PI), brass, { p: [x, 0, 0], r: [0, Math.PI / 2, upper ? 0 : Math.PI] });
 	// A brass rim along its open edge, either side.
-	for (const s of [-1, 1]) b.add(rbox(HALF * 2, 0.05, 0.05, 0.02), brass, { p: [0, upper ? 0.02 : -0.02, s * R] });
+	// The lid's only along its free edge: along the hinge the body's rim is the one.
+	for (const s of upper ? [-1] : [-1, 1]) b.add(rbox(HALF * 2, 0.05, 0.05, 0.02), brass, { p: [0, upper ? 0.02 : -0.02, s * R] });
 	return g;
 }
 
@@ -68,7 +69,7 @@ export class Capsule {
 		body.add(half(b, this.glass, c.brass, false));
 		// Its runners: two brass skids along its foot, so it sits on the belt rather than rolling on it.
 		for (const s of [-1, 1]) b.add(rbox(HALF * 2 - 0.2, 0.06, 0.08, 0.025), c.brass, { p: [0, -R + 0.03, s * R * 0.55] });
-		// The hinge along its right side, and the staple the padlock goes through on its left.
+		// The hinge along its right side, and the staple the padlock hangs on, on its left.
 		b.add(new THREE.CylinderGeometry(0.035, 0.035, HALF * 2 - 0.3, 12), c.gold, { p: [0, 0, R + 0.03], r: [0, 0, Math.PI / 2] });
 		b.add(rbox(0.2, 0.12, 0.06, 0.02), c.brass, { p: [-0.3, -0.07, -R - 0.03] });
 		body.add(b.build('capsule'));
@@ -76,8 +77,6 @@ export class Capsule {
 		// The lid: the top half, its hinge along the right side.
 		const lb = new Batch();
 		const lidGlass = half(lb, this.glass, c.brass, true);
-		// Its hasp, on the left, coming down over the staple.
-		lb.add(rbox(0.18, 0.16, 0.04, 0.02), c.brass, { p: [-0.3, 0.02, -R - 0.06] });
 		const lidParts = lb.build('capsule-lid');
 		for (const part of [lidGlass, lidParts]) {
 			part.position.z -= R;

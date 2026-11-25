@@ -29,6 +29,8 @@ import * as P from './masterplan';
 
 const D = P.DESK;
 const EASEL_LEAN = -0.17;
+/** The easel's brass foot on the desk: its legs stand on it, and grow up out of it. */
+const FOOT = 0.08;
 
 /**
  * The desk itself and what stands on it for good. The story's own things (your laptop, the harness, the request page, the
@@ -79,17 +81,18 @@ export class Desk {
 		const lean = EASEL_LEAN;
 		const top = 4.35;
 		const eb = new Batch();
-		for (const s of [-1, 1]) this.pipe(eb, [[E.x + s * 1.45, 0.02, E.z + 0.35], [E.x + s * 1.2, top * 0.5, E.z + 0.35 - top * 0.5 * Math.tan(-lean)], [E.x + s * 0.95, top, E.z + 0.35 - top * Math.tan(-lean)]], 0.07);
-		this.pipe(eb, [[E.x, top - 0.1, E.z + 0.25 - top * Math.tan(-lean)], [E.x, top * 0.5, E.z - 0.9], [E.x, 0.02, E.z - 1.7]], 0.06);
-		for (const s of [-1, 1]) eb.add(new THREE.SphereGeometry(0.1, 12, 8), c.gold, { p: [E.x + s * 0.95, top + 0.05, E.z + 0.35 - top * Math.tan(-lean)] });
-		eb.add(rbox(3.2, 0.12, 0.34, 0.04), c.brass, { p: [E.x, 0.92, E.z + 0.35 - 0.92 * Math.tan(-lean) + 0.06] });
+		// Wide enough that the page's tabs, sliding out at its sides, stay clear of its legs; standing on its brass foot.
+		for (const s of [-1, 1]) this.pipe(eb, [[E.x + s * 1.85, FOOT + 0.07, E.z + 0.35], [E.x + s * 1.7, top * 0.5, E.z + 0.35 - top * 0.5 * Math.tan(-lean)], [E.x + s * 1.55, top, E.z + 0.35 - top * Math.tan(-lean)]], 0.07);
+		this.pipe(eb, [[E.x, top - 0.1, E.z + 0.25 - top * Math.tan(-lean)], [E.x, top * 0.5, E.z - 0.9], [E.x, FOOT + 0.06, E.z - 1.7]], 0.06);
+		for (const s of [-1, 1]) eb.add(new THREE.SphereGeometry(0.1, 12, 8), c.gold, { p: [E.x + s * 1.55, top + 0.05, E.z + 0.35 - top * Math.tan(-lean)] });
+		eb.add(rbox(3.9, 0.12, 0.34, 0.04), c.brass, { p: [E.x, 0.92, E.z + 0.35 - 0.92 * Math.tan(-lean) + 0.06] });
 		eb.add(rbox(1.4, 0.14, 0.2, 0.04), c.brass, { p: [E.x, top - 0.28, E.z + 0.33 - (top - 0.28) * Math.tan(-lean)] });
 		// The easel stands up from its foot: scaling it from there makes it grow out of the desk.
 		const frame = eb.build('easel');
-		frame.position.set(-E.x, 0, -E.z);
-		this.easel.position.set(E.x, 0, E.z);
+		frame.position.set(-E.x, -FOOT, -E.z);
+		this.easel.position.set(E.x, FOOT, E.z);
 		this.easel.add(frame);
-		b.add(rbox(3.4, 0.08, 2.5, 0.04), c.brass, { p: [E.x, 0.04, E.z - 0.65] });
+		b.add(rbox(4.2, FOOT, 2.5, 0.04), c.brass, { p: [E.x, FOOT / 2, E.z - 0.65] });
 		// The skills: today's shelf of folders, in a walnut case open at the front.
 		const S = P.SKILLS.at;
 		b.add(rbox(3.4, 0.18, 1.6, 0.06), c.walnut, { p: [S.x, 0.09, S.z] });

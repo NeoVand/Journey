@@ -101,7 +101,7 @@ export const DETOKENIZER = { x: 3.9, from: back(5.4), to: back(END - 1.8) };
 export const TOWER = { at: v(0, PLATFORM_Y, back(END + 7.3)), r: 6.8, floors: 5, floorH: 3.3 };
 export const ROOF_Y = TOWER.at.y + TOWER.floors * TOWER.floorH + 0.5;
 /** The shaft up the tower's middle the lanes climb, seen from in front through a tall glass slot. */
-export const SHAFT = { r: 1.3, slot: 2.8 };
+export const SHAFT = { r: 1.3, slot: 3.8 };
 /** The crown: a ring of golden petals round the edge of the roof. */
 export const CROWN = { r: 5.9, petals: 16, h: 3.4 };
 /** The model's brainstem stands on the middle of the roof, right over the shaft. The brain's own frame puts its stem 1.4 behind its middle. */
@@ -110,6 +110,8 @@ export const MODEL = { stem: v(0, ROOF_Y, TOWER.at.z), stemX: STEM.x };
 export const STEM_RISE = STEM.seat - STEM_FOOT - 0.3;
 /** Where the lanes end, in the brainstem's seat at the top of its glass pedestal. */
 export const SEAT_Y = ROOF_Y + STEM_RISE;
+/** How far in front of the tower's middle the lanes climb, clear of the pedestal's rails. */
+export const RAIL_CLEAR = 0.12;
 /** The back of the provider's platform's arcades. */
 export const PLATFORM_BACK = back(END + 12);
 /** The provider's platform, under all three, on the aqueduct's tallest arches. Its outline, from above, about the centre line. */
@@ -179,7 +181,9 @@ function lane(side: -1 | 1): THREE.Vector3[] {
 	const x = side * HALL_LANE;
 	pts.push(v(x, y, HALL.from), v(x, y, HALL.to), v(x, y, TOWER.at.z + 1.4));
 	const up = side * STEM_LANE;
-	pts.push(v(up, y + 1.2, TOWER.at.z), v(up, ROOF_Y, TOWER.at.z), v(up, ROOF_Y + STEM_RISE, TOWER.at.z));
+	// Up the shaft and the pedestal a little in front of the pedestal's rails, which run behind the lanes.
+	const z = TOWER.at.z + RAIL_CLEAR;
+	pts.push(v(up, y + 1.2, z), v(up, ROOF_Y, z), v(up, ROOF_Y + STEM_RISE, z));
 	return pts;
 }
 

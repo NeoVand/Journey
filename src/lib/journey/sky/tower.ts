@@ -169,7 +169,8 @@ export class Tower {
 
 		// The roof: brass rings let into the silver, a chrome boss the brain's pedestal bolts down to, and the crown.
 		for (const r of [R - 0.8, R - 1.0, 2.6]) b.add(new THREE.RingGeometry(r - 0.06, r + 0.06, 128), c.brass, { p: [0, ROOF + 0.006, 0], r: [-Math.PI / 2, 0, 0] });
-		this.lathe(b, [[0.001, ROOF], [1.85, ROOF], [1.85, ROOF + 0.1], [1.75, ROOF + 0.18], [0.001, ROOF + 0.18]], c.chrome);
+		// A ring: the lanes go on up through it into the pedestal.
+		this.lathe(b, [[0.95, ROOF], [1.85, ROOF], [1.85, ROOF + 0.1], [1.75, ROOF + 0.18], [0.95, ROOF + 0.18], [0.95, ROOF]], c.chrome);
 		// Petals in two rings, tall ones behind and short ones before them in the gaps, so the crown reads as one solid ring
 		// of flame from anywhere; none over the slot, so the lanes are seen going up into the pedestal.
 		const petals = 26;

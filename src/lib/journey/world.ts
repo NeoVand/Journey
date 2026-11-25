@@ -104,10 +104,10 @@ const LANE_AT = (() => {
 		for (let i = 0; i <= n; i++) if (UP_LANE.getPointAt(i / n).z <= z) return (i / n) * len;
 		return len;
 	};
-	return { len, door: at(P.DOOR_Z), template: at(P.HALL.from - 0.9), mast: at(AQUEDUCT_CURVE.getPointAt(MASTS[MASTS.length - 1].u).z) };
+	return { len, door: at(P.DOOR_Z), template: at(P.HALL.from + 1.2), mast: at(AQUEDUCT_CURVE.getPointAt(MASTS[MASTS.length - 1].u).z) };
 })();
 /** The capsule's foot over the lane's line: on the belt's top. */
-const BELT_TOP = 0.05;
+const BELT_TOP = 0.08;
 /** The reply's lane in the world, from the brainstem down to behind the harness's roof. */
 const DOWN_LANE = new THREE.CatmullRomCurve3(P.downLane(), false, 'centripetal');
 DOWN_LANE.arcLengthDivisions = 2000;
@@ -597,8 +597,9 @@ export class World {
 		const m = mats();
 		const y = BELT_Y + TILE_H / 2;
 		const z = LINE_Z;
-		const [mid] = inTokenizer(SHAFT_X, 0, TZ);
-		const [, top, zIn] = inTokenizer(SHAFT_X, SEAT_Y, TZ);
+		const [mid] = inTokenizer(SHAFT_X, 0, TZ + P.RAIL_CLEAR);
+		// They end inside the glass pedestal, just under the socket the brainstem's plug sits in: drawn up into it.
+		const [, top, zIn] = inTokenizer(SHAFT_X, SEAT_Y - 1.75, TZ + P.RAIL_CLEAR);
 		const bend = 1.0;
 		const stepAt = mid - bend - 2.0;
 		const flow = bends([[SLOT_X, y, z], [stepAt - 1.4, y, z], [stepAt, y, zIn], [mid, y, zIn], [mid, top, zIn]], [2.4, 2.4, bend]);
@@ -793,7 +794,8 @@ export class World {
 		placeModel(this.brain);
 		this.root.add(this.brain.group);
 		const x = -SHAFT_X;
-		const stream = new THREE.LineCurve3(new THREE.Vector3(x, SEAT_Y - 0.25, TZ), new THREE.Vector3(x, P.PLATFORM_Y + 1.7, TZ));
+		const z = TZ + P.RAIL_CLEAR;
+		const stream = new THREE.LineCurve3(new THREE.Vector3(x, SEAT_Y - 1.75, z), new THREE.Vector3(x, P.PLATFORM_Y + 1.7, z));
 		this.stream = stream;
 		const glass = new THREE.Mesh(
 			new THREE.TubeGeometry(stream, 2, LIFT_R, 28),
@@ -1456,9 +1458,10 @@ export class World {
 		const w1 = 3 * u * u * e;
 		const w2 = 3 * u * e * e;
 		const w3 = e * e * e;
-		const x1 = lerp(from.x, to.x, 0.3);
-		const y1 = from.y + 0.7;
-		const z1 = to.z + 0.5;
+		// The harness stands behind your laptop: up off the screen first, clear over the lid, then across.
+		const x1 = from.x;
+		const y1 = from.y + 1.6;
+		const z1 = from.z + 0.2;
 		const y2 = to.y + 1.8;
 		strip.position.set(w0 * from.x + w1 * x1 + w2 * to.x + w3 * to.x, w0 * from.y + w1 * y1 + w2 * y2 + w3 * to.y, w0 * from.z + w1 * z1 + w2 * to.z + w3 * to.z);
 		strip.quaternion.slerpQuaternions(qFrom, this.qLie, smooth(seg(e, 0.12, 0.62)));
@@ -1525,7 +1528,8 @@ export class World {
 			dg.quaternion.copy(this.capsule.group.quaternion);
 		} else {
 			// Lifted out of the open capsule and into the template's top.
-			const into = this.v2.set(...tok(TEMPLATE_X, ISLAND_C_Y + 1.7, LINE_Z));
+			// Its roll, at the page's foot, comes down to the slot's mouth: the page's middle stands that much higher.
+			const into = this.v2.set(...tok(TEMPLATE_X, ISLAND_C_Y + 1.8, LINE_Z)).setY(this.v2.y + rollLift);
 			const k = inOut(outK);
 			const p = this.v3.copy(inside).setY(inside.y + rollLift).lerp(into, k);
 			p.y += Math.sin(k * Math.PI) * 0.9;
@@ -1536,7 +1540,7 @@ export class World {
 		this.doc.setRoll(inOut(seg(T, 1.97, 2.09)) * (1 - rollUp));
 		this.doc.setFilled(T >= STRIPS_PRINTED);
 		const gone = smooth(seg(outK, 0.6, 1));
-		dg.scale.setScalar(scale * (1 - gone * 0.9));
+		dg.scale.setScalar(Math.max(0.001, scale * (1 - gone)));
 		// Under the ciphertext, nothing of it can be made out: the clouded glass and the blocks are all there is.
 		dg.visible = outK < 1 && this.cipher < 0.55;
 		this.doc.setTabs(seg(T, 3.04, 3.3) * (1 - seg(T, 3.6, 3.68)));
@@ -1759,7 +1763,7 @@ export class World {
 	 * top of the pedestal: all of it below, and less and less as it goes in, so nothing is left at the end of the path.
 	 */
 	private sunk(s: number) {
-		return 1 - smooth(seg(s, this.lipS - 0.9, this.lipS - 0.12));
+		return 1 - smooth(seg(s, this.lipS - 1.0, this.lipS - 0.05));
 	}
 
 	/* ---------- the map in the corner: the world itself, from far off ---------- */

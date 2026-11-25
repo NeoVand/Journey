@@ -13,7 +13,7 @@ import { TEN_AT, TEN_STEP, TEN_TURNS, CALL_IDS, CALLS, HARNESSES, type HarnessId
 import { PILE_FULL, PRESS_REACH, PRESS_SQUEEZE, SLIP_FROM, SLIP_FULL, SLIP_OLD, SLIP_OLD_T, SLIP_STEP, SLIPS, SUMMARY_T, type SlipKind } from '../context';
 import { GATE_ICON } from '../icons';
 import { low, TOOLS } from '../layout';
-import { callPath, returnPath } from '../cables';
+import { callPath, reducerBehind, RETURN_REDUCER, returnPath } from '../cables';
 import { Desk } from '../sky/desk';
 import * as P from '../sky/masterplan';
 import { hazed, palette } from '../sky/palette';
@@ -35,8 +35,8 @@ const DOCK_X = -60.6;
 const DOCK_H = 2.3;
 /** A steel riser on the dock's roof, standing clear above the gates, with an elbow at the top the calls' cable plugs into. */
 const RISER: V3 = [DOCK_X + 0.9, GY + 7, TRACK_Z - 0.85];
-// Its elbow turns towards the harness, to the left, where the cable comes from.
-const RISER_END: V3 = [RISER[0] - 0.55, RISER[1], RISER[2]];
+// Its elbow turns back, where the cable comes up to it from along the desk behind.
+const RISER_END: V3 = [RISER[0], RISER[1], RISER[2] - 0.55];
 /** The dock's mouth: tall enough for a call card on its cart, even leaning as the cart sets off. */
 const DOCK_ARCH = 2.0;
 /** Where the carts run, from inside the dock to the end of the rail, and how far short of a gate they wait: far
@@ -99,6 +99,31 @@ export const relW = (o: V3, x: number, y: number, z: number): V3 => {
 };
 const sOf = (o: V3) => isle(o).s;
 const UP = new THREE.Vector3(0, 1, 0);
+/**
+ * The reducers where the full-size cables meet your tools' small fittings: a brass cone from the cable's size down to
+ * the fitting's, and, for the green cable, its small pipe on through the sandbox wall's gland to the hopper.
+ */
+function reducers() {
+	const c = palette();
+	const b = new Batch();
+	const cone = (from: V3, to: V3, r0: number, r1: number) => {
+		const a = new THREE.Vector3(...from);
+		const d = new THREE.Vector3(...to).sub(a);
+		const q = new THREE.Quaternion().setFromUnitVectors(UP, d.clone().normalize());
+		const e = new THREE.Euler().setFromQuaternion(q);
+		const mid = a.addScaledVector(d, 0.5);
+		b.add(new THREE.CylinderGeometry(r1, r0, d.length(), 24), c.brass, { p: mid.toArray() as V3, r: [e.x, e.y, e.z] });
+	};
+	const riser = low(RISER_END);
+	cone(reducerBehind(riser), riser, 0.13, 0.03);
+	const r = RETURN_REDUCER;
+	const out = low([-10.7, -14.69, 3.6]);
+	cone(r, out, 0.16, 0.035);
+	const pipe = new THREE.LineCurve3(new THREE.Vector3(...out), new THREE.Vector3(...low([-13.5, -14.69, 3.6])));
+	b.add(new THREE.TubeGeometry(pipe, 4, 0.025, 10), mats().greenGlow);
+	return b.build('reducers');
+}
+
 /** The gates' and the workshop's shots, as small as they are now: the same pictures, from nearer. */
 const T_S = TOOLS.s;
 /** Your harness, on your desk: where the reply lands and the calls leave from. */
@@ -435,7 +460,7 @@ export class Back {
 	 * level, along behind it to the left, level, as far as the dock, forward over it, and straight down into it. Straight
 	 * runs and round bends; from in front, a level arm to the left that mirrors the request's row to the right.
 	 */
-	private gatePath = callPath(low(RISER_END));
+	private gatePath = callPath(reducerBehind(low(RISER_END)));
 	/** The calls' cable, for the map. */
 	get callCurve() {
 		return this.gatePath;
@@ -444,7 +469,7 @@ export class Back {
 	private streamEnd = new THREE.QuadraticBezierCurve3(
 		HOME_CRADLE.clone().setY(HOME_CRADLE.y + 0.5),
 		new THREE.Vector3((HOME_CRADLE.x + HX) / 2, HTOP + 2.4, (HOME_CRADLE.z + HZ) / 2),
-		new THREE.Vector3(HX, HTOP - 0.1, HZ)
+		new THREE.Vector3(HX, HTOP + 0.3, HZ)
 	);
 	private carrier = new THREE.Group();
 	private gates: Gate[] = [];
@@ -621,6 +646,8 @@ export class Back {
 		this.carrier.add(this.topCard.mesh);
 		g.add(this.carrier);
 		this.gatePipe = tube(this.gatePath, 0.09, m.orangeGlow, 200);
+		// The calls' cable steps down to the dock's small riser through a brass reducer; the green one, to the sandbox's.
+		this.group.add(reducers());
 		this.gatePipe.name = 'call-pipe';
 		g.add(this.gatePipe);
 		const fromSky = createSign('From the provider', 0.24);
@@ -667,7 +694,7 @@ export class Back {
 		const socket = new Batch();
 		const [rx, ry, rz] = RISER;
 		socket.add(rbox(0.5, 0.06, 0.5, 0.02, 2), m.steelSoft, { p: [rx, GY + DOCK_H + 0.03, rz] });
-		fitting(socket, RISER_END, [1, 0, 0], 0.09);
+		fitting(socket, RISER_END, [0, 0, -1], 0.09);
 		g.add(socket.build('dock-socket'));
 		const riser = tube(bends([[rx, GY + DOCK_H, rz], [rx, ry, rz], RISER_END], [0.4]), 0.11, m.steel, 40);
 		riser.name = 'dock-riser';
@@ -1001,7 +1028,7 @@ export class Back {
 
 	/* ---- compaction ---- */
 	private buildCompact() {
-		const g = this.zone(25.6, 27.4, true, false, ...frameOf(C_POS));
+		const g = this.zone(25.6, 27.4, true, true, ...frameOf(C_POS));
 		const m = mats();
 		const [cx, cy, cz] = C_POS;
 		const isl = islandAt(15, 9);
@@ -1111,7 +1138,7 @@ export class Back {
 
 	/* ---- seven kinds of memory ---- */
 	private buildMemory() {
-		const g = this.zone(26.6, 28.3, true, false, ...frameOf(M_POS));
+		const g = this.zone(26.6, 28.3, true, true, ...frameOf(M_POS));
 		const m = mats();
 		const [cx, cy, cz] = M_POS;
 		const isl = islandAt(13, 8);
@@ -1177,7 +1204,7 @@ export class Back {
 
 	/* ---- unknown outcome ---- */
 	private buildUnknown() {
-		const g = this.zone(27.6, 29.3, true, false, ...frameOf(U_POS));
+		const g = this.zone(27.6, 29.3, true, true, ...frameOf(U_POS));
 		const m = mats();
 		const [cx, cy, cz] = U_POS;
 		const isl = islandAt(19, 11);
@@ -1274,7 +1301,7 @@ export class Back {
 
 	/* ---- ten turns ---- */
 	private buildTen() {
-		const g = this.zone(28.6, 30.3, true, false, ...frameOf(R_POS));
+		const g = this.zone(28.6, 30.3, true, true, ...frameOf(R_POS));
 		const m = mats();
 		const [cx, cy, cz] = R_POS;
 		const isl = islandAt(22, 8.5);
@@ -1390,7 +1417,7 @@ export class Back {
 
 	/* ---- what finished means ---- */
 	private buildFinish() {
-		const g = this.zone(29.6, 31.5, false, false, ...frameOf(F_POS));
+		const g = this.zone(29.6, 31.5, false, true, ...frameOf(F_POS));
 		const m = mats();
 		const [cx, cy, cz] = F_POS;
 		const isl = islandAt(25, 10);
@@ -1772,13 +1799,10 @@ export class Back {
 	/** Everything comes to rest for the last look, however the reader got here: past a long scroll or by a cut. */
 	private rest(T: number, time: number, onTrack: number[]) {
 		this.play(24.96, time);
-		// The rest of the world comes up from below as the camera lets go, one island after another, like a pop-up book.
-		let rising = 0;
+		// Every place stands where it is, as it has all along.
 		for (const z of this.zones) {
 			z.g.visible = z.whole;
-			if (!z.whole) continue;
-			const a = 31.99 + rising++ * 0.035;
-			z.g.position.set(z.at[0], z.at[1] - 80 * (1 - outBack(seg(T, a, a + 0.15), 1.1)), z.at[2]);
+			z.g.position.set(...z.at);
 		}
 		// The hatch only holds the pipe, and that has to stay joined to the harness: it draws itself out instead.
 		this.gatePipe.parent!.position.y = 0;
@@ -1837,7 +1861,8 @@ export class Back {
 	private play(T: number, time: number) {
 		// On the way home the camera flies back past everything it has seen.
 		const homeward = T > 30.84 && T < 31.5;
-		for (const z of this.zones) z.g.visible = (T > z.from && T < z.to) || (z.home && homeward);
+		// The places stand for good, the desk's tools and the islands alike; only what passes through them comes and goes.
+		for (const z of this.zones) z.g.visible = z.whole || (T > z.from && T < z.to) || (z.home && homeward);
 		const d = this.d;
 
 		/* ---- landing ---- */
@@ -1870,13 +1895,13 @@ export class Back {
 					if (lift.y < 0) lift.negate();
 					// Where it runs straight down into the dock, straight up is clear of it again.
 					lift.lerp(UP, smooth(seg(Math.abs(along.y), 0.75, 0.95))).normalize();
-					this.b.addScaledVector(lift, 1.15);
+					this.b.addScaledVector(lift, 1.3);
 					if (go < JOIN) {
 						const k = inOut(go / JOIN);
 						const u = 1 - k;
 						const [ax, ay, az] = [this.a.x, this.a.y, this.a.z];
-						const [c1x, c1y, c1z] = [HX + 3.2, HTOP + 1.4, HZ + 0.6];
-						const [c2x, c2y, c2z] = [HX + 0.6, HTOP + 1.6, HZ - 3.4];
+						const [c1x, c1y, c1z] = [HX + 3.6, HTOP + 2.6, HZ + 0.4];
+						const [c2x, c2y, c2z] = [HX + 1.6, HTOP + 3.0, HZ - 4.8];
 						this.carrier.position.set(
 							u * u * u * ax + 3 * u * u * k * c1x + 3 * u * k * k * c2x + k * k * k * this.b.x,
 							u * u * u * ay + 3 * u * u * k * c1y + 3 * u * k * k * c2y + k * k * k * this.b.y,
@@ -2161,7 +2186,11 @@ export class Back {
 			const floor = Math.min(Math.abs(at.y), Math.abs(at.y - low([0, WY, 0])[1]));
 			const room = Math.min(smooth(seg(free, 0.9, 1.8)), smooth(seg(floor, 0.3, 0.7)));
 			// Short as well as thin there: a long straight slug can't follow the pipe round the roller.
-			this.slug.scale.set(lerp(0.42, 1, room), lerp(0.3, 1, room), lerp(0.42, 1, room));
+			// And it is gone into the harness's fitting before it reaches the harness itself.
+			// It comes out of the reducer by the sandbox small, and is gone into the harness's fitting before it gets there.
+			const into = Math.max(0.001, smooth(seg(at.distanceTo(this.returnCurve.getPointAt(0, this.b)), 0.5, 1.1)) * smooth(seg(at.distanceTo(this.b.set(...RETURN_REDUCER)), 0.15, 0.7)));
+			this.slug.scale.set(lerp(0.42, 1, room) * into, lerp(0.3, 1, room) * into, lerp(0.42, 1, room) * into);
+			if (into < 0.02) this.slug.visible = false;
 		}
 
 		/* ---- turn two ---- */

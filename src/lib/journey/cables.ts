@@ -56,23 +56,34 @@ const HARNESS: Solid = { min: [H.at.x - H.w / 2, 0, H.at.z - H.d / 2], max: [H.a
 /** The harness's two ports in its back: the results come in at the low one, the calls go out of the high one. */
 const backPort = (y: number): V3 => [H.at.x + PORT_BACK_X * H.scale, y * H.scale, H.at.z - (HD / 2) * H.scale];
 
+/**
+ * Your tools are small on the desk, and the cables full size: each ends in a brass reducer that steps it down to the
+ * tools' own fittings. Where the green cable's reducer stands, just outside the sandbox wall, and the calls', just behind
+ * the dock's riser.
+ */
+export const RETURN_REDUCER: V3 = (() => {
+	const p = low([-10.7, -14.69, 3.6]);
+	return [p[0] + 0.32, p[1] + 0.06, p[2]];
+})();
+export const reducerBehind = (fitting: V3): V3 => [fitting[0], fitting[1], fitting[2] - 0.36];
+
 let returnCable: THREE.CatmullRomCurve3 | null = null;
 /**
  * The green cable, harness end first: out of the harness's back, down onto your desk, along behind your tools to the
  * far end of the workshop, round it, up onto its island, and level through the sandbox wall's gland into the hopper.
  */
 export function returnPath() {
-	const gland = low([-11.5, -14.69, 3.6]);
+	const end = RETURN_REDUCER;
 	return (returnCable ??= hang({
 		from: { at: backPort(PORT_BACK_Y), out: [0, 0, -1] },
-		to: { at: low([-13.5, -14.69, 3.6]), out: [1, 0, 0] },
+		to: { at: end, out: [1, 0, 0] },
 		via: [
-			{ at: [H.at.x - 0.6, 0.12, H.at.z - H.d / 2 - 0.7], slack: 1.06 },
-			{ at: [3.2, 0.12, -4.9], slack: 1.01 },
+			{ at: [H.at.x - 0.9, 0.12, H.at.z - H.d / 2 - 0.8], slack: 1.06 },
+			{ at: [H.at.x - 0.2, 0.12, -5.9], slack: 1.01 },
+			{ at: [3.2, 0.12, -5.9], slack: 1.01 },
 			{ at: [13.0, 0.12, -4.4], slack: 1.01 },
-			{ at: [13.7, 0.12, gland[2] - 0.5], slack: 1.02 },
-			{ at: [gland[0] + 0.45, gland[1], gland[2]], slack: 1.01 },
-			{ at: gland, slack: 1 }
+			{ at: [13.8, 0.12, end[2] - 0.6], slack: 1.02 },
+			{ at: [end[0] + 0.7, 0.13, end[2]], slack: 1.01 }
 		],
 		r: 0.115,
 		slack: 1,
@@ -85,11 +96,11 @@ export function returnPath() {
 export function callPath(dock: V3) {
 	return hang({
 		from: { at: backPort(3.2), out: [0, 0, -1] },
-		to: { at: dock, out: [-1, 0, 0] },
+		to: { at: dock, out: [0, 0, -1] },
 		via: [
-			{ at: [H.at.x - 0.3, 0.09, H.at.z - H.d / 2 - 0.9], slack: 1.08 },
+			{ at: [H.at.x + 0.6, 0.09, H.at.z - H.d / 2 - 0.9], slack: 1.08 },
 			{ at: [2.4, 0.09, -4.7], slack: 1.01 },
-			{ at: [2.6, 0.09, dock[2] - 0.5], slack: 1.04 }
+			{ at: [dock[0], 0.09, dock[2] - 1.7], slack: 1.04 }
 		],
 		r: 0.09,
 		slack: 1.017,
