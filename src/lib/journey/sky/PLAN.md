@@ -121,3 +121,30 @@ below the brain's craft. What was done, round by round:
   Moves between the islands rise over the one they leave. The whole-timeline collision scan went from 180 pairs to 163,
   none new; the line-of-sight scan leaves only the intended fly-over of the gatehouse and the dive into the brainstem.
   Verified again: types, lint, unit, 27 of 27 e2e on the GPU.
+
+## The inside, crafted (2026-11-25, branch `inside`)
+
+The user: the inside still looked the same, "blue, boring boxes", next to the brain. Every machine in the cluster and
+the forward pass is rebuilt from one kit, kit/craft.ts, so they read as one family: cream bodies with chrome trim and
+guards, glass cases in chrome frames with lit work inside, cobalt loaf hoods with chrome beads, fans that turn, fins,
+louvres, coolant in clamps, an orange fabric cable into the back.
+
+- **Pools.** Base, glass case, hood. Prefill: two fans, lit dies on gunmetal packages. Decode: one fan and fins, memory
+  cells and a reading head that sweeps per token. The KV cache crosses through a port and sleeve, not a wall.
+- **KV cache and Attention.** A chrome-rimmed cabinet with runners and roof fins; Attention a cream body under a cobalt
+  hood with a lens turret that lights when it reads.
+- **The node.** Cream chassis with chrome cap and handles, chips in chrome frames, a fan wall, coolant along its back.
+  The weights are blocks of deep cobalt glass with their numbers lit, in chrome, with a lit seam.
+- **Tray, router, lanes.** Prefill's hopper is hollow (the block goes down into it and comes up out of it); the router's
+  copies are small pools; the lanes' Finished block is built round real tunnels; the sweep rolls on rails.
+- **Detokenizer.** Base the belt runs into, a glass case with the vocabulary on a drum that turns a row per tile, a hood
+  the tube rises from, and a screen in its base that spells the text out as it streams. Slips grow out of the throat.
+- **Logits board.** Chrome bezel, cobalt crown. machine() and archBlock() (used across the journey) got chrome rims,
+  guards, screws and louvres.
+- **Clashes cleared.** Old: the lanes' heads in the Finished block, E through the Prefill press. New ones caught and
+  fixed: status lamps where the fabric plugs in, NVLink through the chip frames, fans sunk in their housings, the new
+  block crossing inside the hopper's walls, the sweep's wheels in its rails, a tube band in the camera's line. Intended
+  and left: KV read pulses inside the read pipe, "Not here" posts seated in the copies' roofs.
+- **Budget.** The kit was finer than anyone can see (a bezel was 190 KB). Coarser trim, plain boxes for tiny parts,
+  shared rotors and slices: phone geometry 105 to 94.8 MB. Verified: types, lint, svelte-check, unit, collision, overlap
+  and camera scans across the inside, 27 of 27 e2e on the GPU.
