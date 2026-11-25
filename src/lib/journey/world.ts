@@ -539,8 +539,10 @@ export class World {
 				signAt(capsuleAt(4.62), -3.4, 3.4),
 				tok(TEMPLATE_X + 6, ISLAND_C_Y + 4.2, LINE_Z),
 				[SHAFT_X - 7.5, SEAT_Y + 3, TZ],
-				signAt(DOWN_LANE.getPointAt(0.62).toArray() as V3, 3.4, 2.6),
-				low([-58, -5, 3]),
+				// Over the deck in front of the door, where the reply's capsules set off home: clear of the masts and the walls.
+				[P.LANE + 1.5, P.PLATFORM_Y + 4, P.DOOR_Z + 2.8],
+				// Over the gates, to the right of the harness, clear of it.
+				low([-44, -5, 3]),
 				low([-14, -1.5, 0]),
 				[8.5, 1.4, -5.6]
 			]

@@ -187,6 +187,8 @@ export const BACK_SHOTS: Shot[] = [
 	{ T: 19.13, ...S_HATCH, az: 22, el: 18, target: [HX + 0.7, HTOP + 0.4, HZ - 1.6], radius: 3.6, ry: 2.8 },
 	{ T: 19.3, ...S_HATCH },
 	{ T: 19.64, ...S_HATCH, az: 14 },
+	// Up over your desk and across to the gates, in front of the harness but well clear of its face.
+	{ T: 19.86, az: 6, el: 30, target: [HX + 2.6, 2.2, HZ + 0.6] as V3, radius: 3.4, ry: 2.4, wide: box(0.3, 0.06, 0.66, 0.88), tall: TALL },
 	// Close enough to read every board: the first call's way to the gate that stops it, the refusal, then along
 	// with the second call, gate by gate.
 	{ T: 20.04, ...S_GATES },
@@ -1896,8 +1898,11 @@ export class Back {
 				this.a.set(HX + lerp(2.4, 3.1, Math.min(1, pop)), lerp(3.2, 3.3, Math.min(1, pop)), HZ + lerp(1.6, 1.7, Math.min(1, pop)));
 				this.carrier.position.copy(this.a);
 				if (go > 0) {
-					// Up and over the machine's roof, and down onto the pipe behind it, riding high enough to clear it.
-					const JOIN = 4.6 / this.gatePath.getLength();
+					// Round the machine's right side and behind it, under the aqueduct that leaves from behind its roof, and
+					// down onto the pipe behind it, riding high enough to clear it.
+					// Where the pipe has come down off the harness's back and runs level along your desk: a card that wide,
+					// joining it while it still slopes down, would hang over the slope.
+					const JOIN = 6.2 / this.gatePath.getLength();
 					// Lifted off the pipe square to it, not straight up: where it drops steeply to the gates, straight up would
 					// put the card back against it.
 					const at = Math.max(go, JOIN);
@@ -1912,8 +1917,8 @@ export class Back {
 						const k = inOut(go / JOIN);
 						const u = 1 - k;
 						const [ax, ay, az] = [this.a.x, this.a.y, this.a.z];
-						const [c1x, c1y, c1z] = [HX + 3.6, HTOP + 2.6, HZ + 0.4];
-						const [c2x, c2y, c2z] = [HX + 1.6, HTOP + 3.0, HZ - 4.8];
+						const [c1x, c1y, c1z] = [HX + 3.7, 3.2, HZ - 1.4];
+						const [c2x, c2y, c2z] = [HX + 3.2, 2.6, HZ - 4.4];
 						this.carrier.position.set(
 							u * u * u * ax + 3 * u * u * k * c1x + 3 * u * k * k * c2x + k * k * k * this.b.x,
 							u * u * u * ay + 3 * u * u * k * c1y + 3 * u * k * k * c2y + k * k * k * this.b.y,
