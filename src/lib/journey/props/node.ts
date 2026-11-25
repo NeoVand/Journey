@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import { Batch } from '../kit/batch';
-import { rbox } from '../kit/geometry';
+import { extrude, rbox, roundedRect } from '../kit/geometry';
 import { mats } from '../kit/materials';
 import { font, Label, Surface } from '../kit/print';
 import { createSign, grown } from '../kit/parts';
 import { hash, inOut, lerp, outBack, seg } from '../kit/math';
+import { cores, craft, fan, pipe } from '../kit/craft';
 
 const CX = [-4.8, -1.6, 1.6, 4.8];
 const CZ = [-1.6, 1.6];
@@ -14,20 +15,24 @@ const SLAB_W = 13;
 const SLAB_D = 6.8;
 const SLAB_H = 0.56;
 
-/** The weights are numbers, so the slab is printed with numbers. */
+/** The weights are numbers, so the slab is printed with numbers: lit, in a deep glass, a few of them brighter. */
 function digits() {
 	const s = new Surface(2048, Math.round((2048 * SLAB_D) / SLAB_W));
 	s.draw((c, w, h) => {
-		c.fillStyle = '#1f5fe0';
+		const g = c.createLinearGradient(0, 0, w, h);
+		g.addColorStop(0, '#0d2a6e');
+		g.addColorStop(1, '#0a1f55');
+		c.fillStyle = g;
 		c.fillRect(0, 0, w, h);
-		c.font = `500 30px ${font.mono}`;
+		c.font = `600 30px ${font.mono}`;
 		c.textBaseline = 'middle';
 		const rows = Math.floor(h / 44);
 		for (let r = 0; r < rows; r++) {
 			for (let k = 0; k < 18; k++) {
 				const n = hash(r * 31 + k * 7.7);
 				const v = (n * 4 - 2).toFixed(3);
-				c.fillStyle = `rgba(190,220,255,${0.3 + hash(r + k * 3.1) * 0.35})`;
+				const bright = hash(r * 3.3 + k * 11.1) > 0.93;
+				c.fillStyle = bright ? '#ffe6a8' : `rgba(170,210,255,${0.38 + hash(r + k * 3.1) * 0.4})`;
 				c.fillText(n < 0.5 ? v : ` ${v}`, 16 + k * 113, 26 + r * 44);
 			}
 		}
@@ -40,6 +45,8 @@ export class Node3D {
 	group = new THREE.Group();
 	private fixed = new THREE.Group();
 	private links: THREE.MeshStandardMaterial;
+	/** The fan wall's rotors, which turn while the chips work. */
+	private rotors: THREE.Object3D[] = [];
 	private pieces: THREE.Mesh[] = [];
 	private slab: THREE.Group;
 	private sign: THREE.Group;
@@ -55,12 +62,15 @@ export class Node3D {
 		const accel = new Label('Accelerator', 0.2, { color: '#ffffff', weight: 700 });
 		const hbmLabel = new Label('HBM', 0.16, { color: '#06351c', weight: 800 });
 
+		// Each chip's lid shows its cores, as the pools' chips do.
+		const coreMap = cores(7, 7);
+		const lid = new THREE.MeshStandardMaterial({ map: coreMap, emissiveMap: coreMap, color: '#ffffff', emissive: '#6fb6ff', emissiveIntensity: 0.35, roughness: 0.3, metalness: 0.2 });
 		// The board itself: a dark plate, so the chips stand out from the white pad.
 		b.add(rbox(13.6, 0.06, 6.9, 0.02, 2), m.slate, { p: [0, 0.03, 0] });
 		for (const x of CX) {
 			for (const z of CZ) {
 				b.add(rbox(2.7, 0.08, 2.7, 0.03, 2), m.recess, { p: [x, 0.1, z] });
-				b.add(rbox(1.55, 0.22, 1.55, 0.06, 3), m.cobalt, { p: [x + LID_X, 0.25, z] });
+				b.add(rbox(1.55, 0.22, 1.55, 0.06, 3), lid, { p: [x + LID_X, 0.25, z] });
 				const face = accel.mesh.clone();
 				face.rotation.x = -Math.PI / 2;
 				face.position.set(x + LID_X, 0.143, z + 1.08);
@@ -75,47 +85,117 @@ export class Node3D {
 					this.fixed.add(tag);
 				}
 				for (let i = -2; i <= 2; i++) {
-					linksBatch.add(rbox(0.3, 0.012, 0.05), this.links, { p: [x + 0.42, 0.147, z + i * 0.24] });
+					linksBatch.add(new THREE.BoxGeometry(0.3, 0.012, 0.05), this.links, { p: [x + 0.42, 0.147, z + i * 0.24] });
 				}
 			}
 		}
-		// NVLink: gold ribbons between neighbouring chips, across and along.
+		// NVLink: gold ribbons between neighbouring chips, across and along, from one chip's chrome frame to the next.
+		// Plain boxes: at this size a rounded edge can't be seen, and there are ninety of them.
+		const RIBBON = 3.2 - 2.8 + 0.01;
 		for (let i = 0; i < 3; i++) {
 			for (const z of CZ) {
 				for (let k = -2; k <= 2; k++) {
-					linksBatch.add(rbox(0.56, 0.03, 0.09, 0.01, 1), this.links, { p: [(CX[i] + CX[i + 1]) / 2, 0.08, z + k * 0.26] });
+					linksBatch.add(new THREE.BoxGeometry(RIBBON, 0.03, 0.09), this.links, { p: [(CX[i] + CX[i + 1]) / 2, 0.08, z + k * 0.26] });
 				}
 			}
 		}
 		for (const x of CX) {
 			for (let k = -2; k <= 2; k++) {
-				linksBatch.add(rbox(0.09, 0.03, 0.56, 0.01, 1), this.links, { p: [x + k * 0.26, 0.08, 0] });
+				linksBatch.add(new THREE.BoxGeometry(0.09, 0.03, RIBBON), this.links, { p: [x + k * 0.26, 0.08, 0] });
 			}
 		}
 
-		const rail = (w: number, d: number, x: number, z: number) =>
-			b.add(rbox(w, 0.24, d, 0.08, 3), m.steelSoft, { p: [x, 0.12, z] });
-		rail(13.9, 0.26, 0, -3.5);
-		rail(13.9, 0.26, 0, 3.5);
-		rail(0.26, 7.2, -6.95, 0);
-		rail(0.26, 7.2, 6.95, 0);
+		// The chassis: a cream tray with low walls and a chrome cap along them, two chrome handles and a row of status
+		// lamps on its front, a fan wall down its right side, coolant along its back in chrome clamps, and each chip
+		// seated in a chrome frame with a screw at each corner.
+		const c = craft();
+		const wall = (w: number, d: number, x: number, z: number) => {
+			b.add(rbox(w, 0.34, d, 0.08, 3), m.cream, { p: [x, 0.17, z] });
+			b.add(rbox(w + 0.02, 0.03, d + 0.02, 0.012, 1), c.chrome, { p: [x, 0.35, z] });
+		};
+		wall(13.9, 0.26, 0, -3.5);
+		wall(13.9, 0.26, 0, 3.5);
+		wall(0.26, 7.2, -6.95, 0);
+		wall(0.26, 7.2, 6.95, 0);
+		for (const s of [-1, 1]) {
+			const hx = s * 5.9;
+			pipe(b, [[hx - 0.45, 0.2, 3.63], [hx - 0.45, 0.2, 3.95], [hx, 0.2, 4.05], [hx + 0.45, 0.2, 3.95], [hx + 0.45, 0.2, 3.63]], 0.045, c.chrome, 9);
+		}
+		// The lamps sit to the right of the middle: the far node's front is where the fabric's cables plug in, at ±0.7
+		// and ±2.1.
+		const green = new THREE.MeshBasicMaterial({ color: '#3fe583' });
+		const amber = new THREE.MeshBasicMaterial({ color: '#ffbc12' });
+		for (let i = 0; i < 8; i++) b.add(rbox(0.1, 0.06, 0.03, 0.02, 1), i % 4 === 3 ? amber : green, { p: [2.7 + i * 0.26, 0.2, 3.64] });
+		for (const x of CX) {
+			for (const z of CZ) {
+				const ring = new THREE.Shape();
+				ring.moveTo(-1.4, -1.4);
+				ring.lineTo(1.4, -1.4);
+				ring.lineTo(1.4, 1.4);
+				ring.lineTo(-1.4, 1.4);
+				ring.closePath();
+				const hole = new THREE.Path();
+				hole.moveTo(-1.3, -1.3);
+				hole.lineTo(1.3, -1.3);
+				hole.lineTo(1.3, 1.3);
+				hole.lineTo(-1.3, 1.3);
+				hole.closePath();
+				ring.holes.push(hole);
+				b.add(new THREE.ExtrudeGeometry(ring, { depth: 0.05, bevelEnabled: false }).rotateX(-Math.PI / 2), c.chrome, { p: [x, 0.06, z] });
+				for (const sx of [-1, 1]) for (const sz of [-1, 1]) b.add(new THREE.CylinderGeometry(0.05, 0.05, 0.03, 12), c.gunmetal, { p: [x + sx * 1.35, 0.125, z + sz * 1.35] });
+			}
+		}
+		for (const z of [-2.95, -3.15]) pipe(b, [[-6.4, 0.22, z], [-2, 0.22, z], [2, 0.22, z], [6.1, 0.22, z]], 0.06, c.coolant, 1.1);
 		this.fixed.add(b.build('node'));
+		// The fan wall: six fans in a cream housing against the chassis's right wall, blowing out. Built lying down, its
+		// fans looking up, and stood up so they look out to the right along its length.
+		const fb = new Batch();
+		fb.add(rbox(7.0, 0.5, 0.92, 0.1, 3), m.cream, { p: [0, -0.25, 0] });
+		fb.add(rbox(7.04, 0.04, 0.96, 0.015, 1), c.chrome, { p: [0, -0.02, 0] });
+		for (let i = 0; i < 6; i++) this.rotors.push(fan(fb, 0.36, [-2.92 + i * 1.17, 0.14, 0]));
+		const fanWall = new THREE.Group();
+		fanWall.add(fb.build('fan-wall'), ...this.rotors);
+		fanWall.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(new THREE.Vector3(0, 0, 1), new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0)));
+		fanWall.position.set(7.58, 0.52, 0);
+		this.fixed.add(fanWall);
 		this.fixed.add(linksBatch.build('nvlink'));
 		this.group.add(this.fixed);
 
 		// Solid until the moment it splits, so there is no seam to see.
 		const map = digits();
+		// Each slab is a block of deep cobalt glass with its numbers lit in its face, in a chrome frame, and a lit seam
+		// round its middle: the most precious thing in the building, made to look it.
+		const glassy = new THREE.MeshPhysicalMaterial({ color: '#2457c8', roughness: 0.16, metalness: 0.15, clearcoat: 1, clearcoatRoughness: 0.08 });
+		const numbers = new THREE.MeshStandardMaterial({ map, emissive: '#ffffff', emissiveMap: map, emissiveIntensity: 0.75, roughness: 0.25 });
+		const seam = new THREE.MeshBasicMaterial({ color: '#8fd0ff' });
+		// The glass and its trim, built once for each size: the eight slices share theirs.
+		const shells = new Map<string, THREE.Object3D>();
+		const shell = (w: number, d: number) => {
+			const key = `${w}/${d}`;
+			const known = shells.get(key);
+			if (known) return known.clone();
+			const b = new Batch();
+			b.add(rbox(w, SLAB_H, d, 0.07, 3), glassy);
+			b.add(rbox(w + 0.008, 0.035, d + 0.008, 0.012, 1), seam);
+			const rim = roundedRect(w + 0.008, d + 0.008, 0.1);
+			rim.holes.push(new THREE.Path(roundedRect(w - 0.16, d - 0.16, 0.05).getPoints(24)));
+			b.add(extrude(rim, 0.05, 0.015, 2, 8), c.chrome, { p: [0, SLAB_H / 2 + 0.01, 0], r: [-Math.PI / 2, 0, 0] });
+			// Chrome on each corner, proud by a hair: the slices stand a hundredth apart when the slab first parts.
+			for (const sx of [-1, 1]) for (const sz of [-1, 1]) b.add(rbox(0.16, SLAB_H + 0.03, 0.16, 0.05, 2), c.chrome, { p: [sx * (w / 2 - 0.076), 0, sz * (d / 2 - 0.076)] });
+			const built = b.build('weights');
+			built.traverse((o) => (o.castShadow = o instanceof THREE.Mesh));
+			shells.set(key, built);
+			return built;
+		};
 		const body = (w: number, d: number, u0: number, u1: number, v0: number, v1: number) => {
 			const g = new THREE.Group();
-			const mesh = new THREE.Mesh(rbox(w, SLAB_H, d, 0.07, 3), m.cobalt);
-			mesh.castShadow = true;
-			g.add(mesh);
-			const plane = new THREE.PlaneGeometry(w - 0.14, d - 0.14);
+			g.add(shell(w, d));
+			const plane = new THREE.PlaneGeometry(w - 0.16, d - 0.16);
 			const uv = plane.attributes.uv as THREE.BufferAttribute;
 			for (let i = 0; i < uv.count; i++) {
 				uv.setXY(i, lerp(u0, u1, uv.getX(i)), lerp(v0, v1, uv.getY(i)));
 			}
-			const top = new THREE.Mesh(plane, new THREE.MeshStandardMaterial({ map, roughness: 0.4 }));
+			const top = new THREE.Mesh(plane, numbers);
 			top.rotation.x = -Math.PI / 2;
 			top.position.y = SLAB_H / 2 + 0.002;
 			g.add(top);
@@ -170,7 +250,9 @@ export class Node3D {
 		const s = 1 - seg(split, 0, 0.05);
 		this.sign.visible = drop > 0.001 && s > 0.001;
 		this.sign.scale.setScalar(Math.max(0.001, s));
-		this.sign.position.set(0, hover + SLAB_H / 2 + 0.34 + grown(0.42), 2.2);
+		// Resting on the slab's chrome rim, leaning back: never sunk into the glass.
+		this.sign.position.set(0, hover + SLAB_H / 2 + 0.44 + grown(0.42), 2.2);
 		this.links.emissiveIntensity = active * (0.5 + 0.5 * Math.sin(time * 4)) * 1.5;
+		this.rotors.forEach((r, i) => (r.rotation.y = time * (2 + active * 10) + i));
 	}
 }

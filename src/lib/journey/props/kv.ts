@@ -3,7 +3,8 @@ import { Batch } from '../kit/batch';
 import { chamferRect, extrude, rbox, roundedRect, sharedRbox } from '../kit/geometry';
 import { color, Lamp, mats } from '../kit/materials';
 import { font, Label } from '../kit/print';
-import { createSign, plinth, ventX } from '../kit/parts';
+import { createSign, plinth } from '../kit/parts';
+import { bezel, craft, fins, guards, loaf, loafBeads, louvre } from '../kit/craft';
 import { bell, inOut, outBack, seg, smooth } from '../kit/math';
 
 const CW = 4.3;
@@ -25,11 +26,13 @@ export class KvCache {
 	private q: THREE.Mesh;
 	private qMat: THREE.MeshStandardMaterial;
 	private readPulse: THREE.Mesh[] = [];
+	/** The lens on Attention's roof, which lights as it looks back. */
+	private lens: THREE.Mesh;
 	private readCurve: THREE.CatmullRomCurve3;
 	private writeCurve: THREE.CatmullRomCurve3;
 	private blockMat: THREE.MeshPhysicalMaterial;
 	/** The K and the V on the machine's face: what gets stored is a copy of what it just made. */
-	private made = [new THREE.Vector3(AX + 0.68, 1.82, 1.46), new THREE.Vector3(AX + 0.68, 0.94, 1.46)];
+	private made = [new THREE.Vector3(AX + 0.68, 1.82, 1.64), new THREE.Vector3(AX + 0.68, 0.94, 1.64)];
 
 	constructor() {
 		// Its name lets the conversation point at it: see pointer.svelte.ts.
@@ -52,9 +55,17 @@ export class KvCache {
 		hole.lineTo(-hw, hy + oh / 2);
 		hole.closePath();
 		shell.holes.push(hole);
+		const c = craft();
 		b.add(extrude(shell, CD, 0.085, 6, 10), m.cream, { p: [0, Y0 + CH / 2, 0] });
 		b.add(rbox(hw * 2 + 0.06, oh + 0.06, CD - 0.3, 0.02, 1), m.recess, { p: [0, oy, -0.1] });
-		ventX(b, CW / 2 + 0.002, oy, -0.2, oh - 0.5, 1.2, 12);
+		// Made, not modelled: a chrome rim on its plinth, a bezel round the drawers, guards down its front corners,
+		// louvres in its sides, and a heat sink on its roof: memory this busy runs warm.
+		b.add(rbox(CW + 0.4, 0.04, CD + 0.4, 0.015, 1), c.chrome, { p: [0, 0.15, 0] });
+		bezel(b, hw * 2, oh, [0, oy, CD / 2], { t: 0.1, r: 0.08, depth: 0.07 });
+		guards(b, CW, CD / 2, 0.3, Y0 + CH - 0.5, 0.06);
+		// Its right side is where the pipes plug in: the louvres are on its left.
+		louvre(b, -1, [-(CW / 2 + 0.005), oy, -0.2], oh - 0.6, 1.2, 10);
+		fins(b, CW - 1.3, CD - 0.7, 0.36, 18, [0, Y0 + CH, 0]);
 
 		// One drawer per token, with two bays for its key and value.
 		const front = extrude(roundedRect(hw * 2 - 0.08, ROW_H - 0.07, 0.07), 0.1, 0.028, 4, 10);
@@ -64,6 +75,8 @@ export class KvCache {
 			b.add(front, m.creamLight, { p: [0, y, CD / 2 - 0.1] });
 			b.add(bay, m.recess, { p: [0.28, y, CD / 2 - 0.038] });
 			b.add(bay, m.recess, { p: [1.08, y, CD / 2 - 0.038] });
+			// A chrome runner in the gap under each drawer, as a drawer has.
+			if (i < WORDS.length - 1) b.add(rbox(hw * 2 - 0.1, 0.025, 0.05, 0.01, 1), c.chrome, { p: [0, y - ROW_H / 2, CD / 2 - 0.06] });
 		});
 		this.group.add(b.build('kv-cabinet'));
 
@@ -97,16 +110,37 @@ export class KvCache {
 			this.rows.push({ kv, from: new THREE.Vector3(), lamp, y });
 		});
 
-		// Attention: the cobalt machine, with what it does on its face.
+		// Attention: a cream body with what it does on its face in a framed display, under a cobalt hood with a lens on
+		// its roof that looks back at the cabinet: attention is looking back.
 		const a = new Batch();
 		const AW = 3.8;
-		const AH = 3.7;
 		const AD = 2.6;
+		const BODY = 2.62;
+		const HOOD_H = 1.22;
 		const panel = new THREE.Group();
 		panel.position.x = AX;
 		plinth(a, AW + 0.34, AD + 0.34, 0.14);
-		a.add(extrude(chamferRect(AW, AH, 0.42, 0.14), AD, 0.09, 6, 10), m.cobalt, { p: [0, 0.14 + AH / 2, 0] });
+		a.add(rbox(AW + 0.4, 0.04, AD + 0.4, 0.015, 1), c.chrome, { p: [0, 0.15, 0] });
+		a.add(rbox(AW, BODY - 0.14, AD, 0.12, 3), m.cream, { p: [0, (BODY + 0.14) / 2, 0] });
+		a.add(rbox(AW + 0.04, 0.1, AD + 0.04, 0.03, 2), c.chrome, { p: [0, 0.22, 0] });
+		a.add(rbox(AW + 0.06, 0.06, AD + 0.06, 0.02, 1), c.chrome, { p: [0, BODY - 0.01, 0] });
 		a.add(extrude(roundedRect(AW - 0.6, 1.9, 0.14), 0.05, 0.016, 2, 8), m.recess, { p: [0, 1.38, AD / 2 + 0.012] });
+		bezel(a, AW - 0.6, 1.9, [0, 1.38, AD / 2], { t: 0.08, r: 0.14, depth: 0.06 });
+		guards(a, AW, AD / 2, 0.36, BODY - 0.12, 0.06);
+		louvre(a, 1, [AW / 2 + 0.005, 1.3, 0], 1.3, AD - 1.0, 8);
+		a.add(loaf(AW, AD, HOOD_H, 0.5), m.cobalt, { p: [0, BODY, 0] });
+		loafBeads(a, AW, AD, BODY + HOOD_H, 0.5);
+		// The lens turret on the roof, turned to look back along the read pipe at the cabinet.
+		const roof = BODY + HOOD_H;
+		a.add(new THREE.CylinderGeometry(0.5, 0.58, 0.16, 32), c.chrome, { p: [0, roof + 0.08, 0] });
+		a.add(new THREE.CylinderGeometry(0.34, 0.4, 0.34, 28), c.gunmetal, { p: [0, roof + 0.33, 0] });
+		a.add(new THREE.SphereGeometry(0.4, 28, 18), m.cobalt, { p: [0, roof + 0.62, 0] });
+		a.add(new THREE.CylinderGeometry(0.26, 0.32, 0.5, 28), c.chrome, { p: [-0.46, roof + 0.66, 0], r: [0, 0, Math.PI / 2 - 0.12] });
+		a.add(new THREE.TorusGeometry(0.27, 0.035, 8, 28), c.chrome, { p: [-0.72, roof + 0.69, 0], r: [0, Math.PI / 2, 0] });
+		this.lens = new THREE.Mesh(new THREE.CircleGeometry(0.24, 28), new THREE.MeshStandardMaterial({ color: '#ffe7a8', emissive: color.amber, emissiveIntensity: 0.4 }));
+		this.lens.position.set(-0.725, roof + 0.69, 0);
+		this.lens.rotation.y = -Math.PI / 2;
+		panel.add(this.lens);
 		// K and V, always there. Q is the one that changes.
 		const big = rbox(0.86, 0.76, 0.14, 0.09, 3);
 		a.add(big, m.hbm, { p: [0.68, 1.82, AD / 2 + 0.1] });
@@ -127,7 +161,7 @@ export class KvCache {
 		panel.add(this.q);
 		label('Q', -0.86, 1.38, color.ink, 0.19);
 		const asign = createSign('Attention', 0.25);
-		asign.position.set(0, 3.02, AD / 2 + 0.03);
+		asign.position.set(0, BODY + 0.48, AD / 2 + 0.03);
 		panel.add(asign);
 		this.group.add(panel);
 
@@ -179,7 +213,7 @@ export class KvCache {
 				if (!k) return;
 				const home = 0.28 + j * 0.8;
 				const e = inOut(k);
-				const zHome = CD / 2 + 0.1;
+				const zHome = CD / 2 + 0.13;
 				// Across the front of the cabinet to its own row, then straight in, so it never crosses the rows already filled.
 				const across = smooth(seg(e, 0, 0.74));
 				const zFront = zHome + 0.62;
@@ -201,8 +235,10 @@ export class KvCache {
 		this.blockMat.emissiveIntensity = 0.45 + bell(read, 0, 1) * 0.5;
 		const reading = read > 0 && read < 1;
 		this.qMat.emissiveIntensity = reading ? 1.5 + Math.sin(time * 7) * 0.5 : 0.5 + smooth(write) * 0.2;
+		(this.lens.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.4 + bell(read, 0, 1) * 2.6;
 		this.readPulse.forEach((p, i) => {
-			const u = (read * 3.4 + i * 0.25) % 1;
+			// Along the pipe between the two sockets, never into either machine.
+			const u = 0.24 + ((read * 3.4 + i * 0.25) % 1) * 0.52;
 			p.visible = reading;
 			if (reading) p.position.copy(this.readCurve.getPointAt(u));
 		});

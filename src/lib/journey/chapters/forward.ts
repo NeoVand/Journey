@@ -3,7 +3,8 @@ import { Batch } from '../kit/batch';
 import { rbox, ring, sharedRbox } from '../kit/geometry';
 import { color, Lamp, mats } from '../kit/materials';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { archBlock, arcPoint, Card, machine, panel, shadowOn } from '../kit/machines';
+import { archInto, arcPoint, Card, machine, panel, shadowOn } from '../kit/machines';
+import { bezel, craft, fan, guards, loaf, loafBeads, louvre, pane, pipe } from '../kit/craft';
 import { contactShadow, font, Label, Surface } from '../kit/print';
 import { createSign, grown, SIGN_PHONE, signWidth, standSign } from '../kit/parts';
 import { bell, hash, inCubic, inOut, lerp, outBack, outCubic, seg, smooth } from '../kit/math';
@@ -137,9 +138,17 @@ class Sampler {
 		const board = machine({ w: 7.4, h: 4.6, d: 1.2, finish: 'cream', name: 'Logits: the highest scores', signH: 0.24, vent: false });
 		board.position.set(lx, PAD_Y, -0.6);
 		this.group.add(board);
-		// A dark window for the scores to arrive in.
+		// A dark window for the scores to arrive in, in a chrome bezel; a cobalt crown along its top, as the pools and
+		// the detokenizer have, with a chrome lip and beads.
+		const c = craft();
 		const logitsWindow = new Batch();
 		logitsWindow.add(rbox(7, 3.14, 0.04, 0.05, 2), m.recess, { p: [lx, PAD_Y + 2.36, 0.015] });
+		bezel(logitsWindow, 6.98, 3.12, [lx, PAD_Y + 2.36, 0], { t: 0.05, r: 0.06, depth: 0.04 });
+		// Inside the flat of the board's top, clear of its chamfers and its rounded edges.
+		const crown = { w: 6.2, d: 0.98, h: 0.52, r: 0.2, y: PAD_Y + 4.74 };
+		logitsWindow.add(loaf(crown.w, crown.d, crown.h, crown.r), m.cobalt, { p: [lx, crown.y, -0.6] });
+		logitsWindow.add(rbox(crown.w + 0.04, 0.05, crown.d + 0.04, 0.02, 1), c.chrome, { p: [lx, crown.y + 0.025, -0.6] });
+		loafBeads(logitsWindow, crown.w, crown.d, crown.h, crown.r, [lx, crown.y, -0.6]);
 		this.group.add(logitsWindow.build('logits-window'));
 		shadowOn(this.group, lx, PAD_Y, -0.6, 7.6, 1.4);
 		const plate = new Surface(1480, 150);
@@ -193,10 +202,13 @@ class Sampler {
 
 		const stand = new Batch();
 		stand.add(rbox(4.4, 0.2, 2.2, 0.06, 3), m.steelSoft, { p: [wx, PAD_Y + 0.1, 0] });
+		stand.add(rbox(4.46, 0.04, 2.26, 0.015, 1), c.chrome, { p: [wx, PAD_Y + 0.2, 0] });
 		for (const sx of [-1, 1]) {
 			stand.add(rbox(0.3, cy - PAD_Y, 0.5, 0.08, 3), m.cream, { p: [wx + sx * 1.15, PAD_Y + (cy - PAD_Y) / 2, -0.2], r: [0, 0, sx * 0.3] });
 		}
 		stand.add(new THREE.CylinderGeometry(0.2, 0.2, 0.9, 20), m.steel, { p: [wx, cy, 0.1], r: [Math.PI / 2, 0, 0] });
+		// A chrome cap on the axle behind the wheel, and a bearing ring where each leg meets the axle.
+		stand.add(new THREE.CylinderGeometry(0.3, 0.3, 0.08, 24), c.chrome, { p: [wx, cy, -0.32], r: [Math.PI / 2, 0, 0] });
 		stand.add(rbox(0.3, 0.3, 0.3, 0.06, 2), m.steel, { p: [wx, cy + R + 0.5, 0.62] });
 		this.group.add(stand.build('wheel-stand'));
 		// The flapper: hinged at the block, so the pegs really flick it as they go by.
@@ -888,8 +900,25 @@ class Decoder {
 
 /* -------------------------------------------------------------- detokenizer ---- */
 
-const DET_H = 3.7;
+const DET_H = 4.05;
 const DET_Z = RAIL_Z - 1.26; // the block's centre, and its tube's
+/** The detokenizer's three parts, bottom to top: where its base ends, its glass case starts, and its hood starts. */
+const DK = { base: 1.75, case: 1.79, hood: 2.95 };
+/** The vocabulary's drum in the case, along x, in front of the tube: how big, and where its axle is. */
+const DRUM = { r: 0.42, len: 2.7, y: 2.37, z: 1.4 };
+/** Rows round the drum: it turns one row for each tile that goes in. */
+const DRUM_ROWS = 12;
+/** Where the drum's posts stand, either side of it. */
+const POST_X = DRUM.len / 2 + 0.16;
+/** The screen in its base's front the text shows on as it streams out: its size, and the height of its middle. */
+const READOUT = { w: 2.8, h: 0.38, y: 0.98 };
+/** Some of the vocabulary, as a tokenizer has it: a number for each piece of text. The leading dot is a space. */
+const VOCAB = [
+	'The', '·user', '·wants', '·the', '·race', 'Grep', '("', 'lock', '|', 'schedule', '",', '·src', '/")', '·cat', '·def', '·run',
+	'(self', '):', '·while', '·queue', '.pop', '()', '·job', '·fix', '·thread', '·lock', 'I', 'Let', 'First', 'To', 'Sorry', '{',
+	'}', '":', '·"', 'ing', 'ed', '·a', '·is', '·of', '·to', '·and', '·in', '·it', '·for', '·with', '·code', '·file',
+	'·test', '·bug', '·line', '·read', '·path', 'json', '_id', '·error', '·return', '·self', '·that', '·be', '·on', '·as', '·we', '·now'
+];
 /** In the order they stream: the thinking first, then the tool call's JSON. */
 export const SLIP_TEXT = ['The user', ' wants', ' the race', 'Grep', '("lock', '|schedule', '", src', '/")'];
 /** The first three slips are the thinking's text, the rest the tool call's. */
@@ -906,6 +935,50 @@ const DET_GATE = DET + 0.2;
 /** After this the tube holds still, as the camera rises up it. */
 const DETOK_END = 18.98;
 
+/**
+ * The drum's face: rows of the vocabulary round it, each entry a token's number and its text. Drawn turned a quarter,
+ * so that once wrapped round a drum that lies along x the rows run along it and read left to right.
+ */
+function vocabulary() {
+	const S = 1024;
+	const cv = document.createElement('canvas');
+	cv.width = cv.height = S;
+	const g = cv.getContext('2d')!;
+	g.fillStyle = '#fbf3df';
+	g.fillRect(0, 0, S, S);
+	const row = S / DRUM_ROWS;
+	const per = 3;
+	g.save();
+	g.translate(S, 0);
+	g.rotate(Math.PI / 2);
+	// Now x runs along the drum (S long) and y round it, rows S / DRUM_ROWS apart.
+	for (let r = 0; r < DRUM_ROWS; r++) {
+		const y = r * row;
+		g.fillStyle = r % 2 ? '#f3e8cc' : '#fbf3df';
+		g.fillRect(0, y, S, row);
+		g.fillStyle = 'rgba(31,95,224,0.35)';
+		g.fillRect(0, y + row - 2, S, 2);
+		for (let k = 0; k < per; k++) {
+			const i = (r * per + k) % VOCAB.length;
+			const x = (k * S) / per + 18;
+			g.textBaseline = 'middle';
+			g.fillStyle = '#1f5fe0';
+			g.font = `600 ${Math.round(row * 0.34)}px ${font.mono}`;
+			g.fillText(String(200 + Math.floor(hash(i * 13.7) * 99000)), x, y + row * 0.52);
+			g.fillStyle = color.ink;
+			g.font = `600 ${Math.round(row * 0.5)}px ${font.mono}`;
+			g.fillText(VOCAB[i], x + row * 1.85, y + row * 0.52);
+			g.fillStyle = 'rgba(16,26,48,0.18)';
+			if (k) g.fillRect((k * S) / per - 1, y + 6, 2, row - 12);
+		}
+	}
+	g.restore();
+	const t = new THREE.CanvasTexture(cv);
+	t.colorSpace = THREE.SRGBColorSpace;
+	t.anisotropy = 4;
+	return t;
+}
+
 class Detokenizer {
 	group = new THREE.Group();
 	private slips: THREE.Mesh[] = [];
@@ -915,6 +988,13 @@ class Detokenizer {
 	private firstIn = Infinity;
 	private lamp: Lamp;
 	private TOP = PAD_Y + DET_H + 0.3;
+	private drum = new THREE.Group();
+	private rotors: THREE.Object3D[] = [];
+	/** When each tile goes in: the drum turns a row for each. */
+	private entries: number[] = [];
+	private readout: Surface;
+	/** How many slips the screen shows the text of. */
+	private shown = -1;
 
 	constructor() {
 		const m = mats();
@@ -923,19 +1003,92 @@ class Detokenizer {
 		pad.position.set(0, PAD_Y, 2.4);
 		this.group.add(pad);
 
-		// One block across the belt: tiles run into its mouth, and nothing but paper comes out of the top.
+		// Three parts one over another, as the pools are: a cream base the belt runs into, a glass case with the
+		// vocabulary in it on a drum, and a cobalt hood the tube home rises out of. Nothing but paper comes out of the top.
 		const W = 3.6;
 		const H = DET_H;
 		// A tunnel wide enough for the broadest tile, special tokens included, with the same wall in front of it.
 		const D = 4.8;
-		const block = archBlock({ w: W, d: D, h: H, archZ: RAIL_Z - DET_Z, archD: 1.8, archH: 1.4 });
-		block.position.set(0, PAD_Y, DET_Z);
-		block.castShadow = true;
-		this.group.add(block);
+		const c = craft();
+		const body = new THREE.Group();
+		body.position.set(0, PAD_Y, DET_Z);
+		this.group.add(body);
 		shadowOn(this.group, 0, PAD_Y, DET_Z, W + 0.2, D + 0.2, 0.34);
+		const b = new Batch();
+		archInto(b, { w: W, d: D, h: DK.base, archZ: RAIL_Z - DET_Z, archD: 1.8, archH: 1.4, plugX: -0.9 });
+		b.add(rbox(W + 0.06, 0.06, D + 0.06, 0.02, 1), c.chrome, { p: [0, DK.base - 0.01, 0] });
+		guards(b, W, D / 2, 0.24, DK.base - 0.12, 0.06);
+		// A chrome kick plate along its foot, and a seam either side where its front panel meets its sides.
+		b.add(rbox(W + 0.04, 0.1, D + 0.04, 0.03, 2), c.chrome, { p: [0, 0.2, 0] });
+		for (const s of [-1, 1]) b.add(rbox(0.03, DK.base - 0.5, 0.03, 0.01, 1), m.recess, { p: [s * (W / 2 - 0.22), (DK.base + 0.3) / 2, D / 2 + 0.005] });
+		louvre(b, -1, [-W / 2 - 0.005, 1.0, -1.1], 0.9, 1.8, 6);
+		// The case: dark behind and below, a board on its back wall, a strip of light along its top, chrome on every edge.
+		const cw = W - 0.2;
+		const cy = (DK.case + DK.hood) / 2;
+		const ch = DK.hood - DK.case;
+		const front = D / 2 - 0.05;
+		const back = -0.7;
+		const cd = front - back;
+		const cz = (front + back) / 2;
+		b.add(rbox(W, ch, D / 2 + back, 0.04, 2), m.cream, { p: [0, cy, (back - D / 2) / 2] });
+		b.add(rbox(cw, ch, 0.06, 0.02, 1), m.recess, { p: [0, cy, back + 0.03] });
+		b.add(new THREE.PlaneGeometry(cw - 0.3, ch - 0.16), c.board, { p: [0, cy, back + 0.065] });
+		b.add(rbox(cw, 0.04, cd, 0.01, 1), m.recess, { p: [0, DK.case + 0.02, cz] });
+		b.add(rbox(cw - 0.3, 0.04, 0.06, 0.02, 1), new THREE.MeshBasicMaterial({ color: '#d6e8ff' }), { p: [0, DK.hood - 0.06, front - 0.12] });
+		const bar = 0.07;
+		for (const x of [-cw / 2, cw / 2]) for (const z of [front, back]) b.add(rbox(bar, ch + bar, bar, 0.02, 1), c.chrome, { p: [x, cy, z] });
+		for (const y of [DK.case, DK.hood]) {
+			for (const z of [front, back]) b.add(rbox(cw + bar, bar, bar, 0.02, 1), c.chrome, { p: [0, y, z] });
+			for (const x of [-cw / 2, cw / 2]) b.add(rbox(bar, bar, cd, 0.02, 1), c.chrome, { p: [x, y, cz] });
+		}
+		// The drum's stand: a gunmetal post at each end and a chrome bearing on each, and a bail across its front
+		// where the row being read sits.
+		for (const s of [-1, 1]) {
+			// The post stops short of the axle; a chrome ring on its top holds the axle's end, which turns inside it.
+			b.add(rbox(0.12, DRUM.y - 0.08 - DK.case, 0.2, 0.03, 1), c.gunmetal, { p: [s * POST_X, (DRUM.y - 0.08 + DK.case) / 2, DRUM.z] });
+			b.add(new THREE.TorusGeometry(0.075, 0.026, 8, 20).rotateY(Math.PI / 2), c.chrome, { p: [s * (POST_X - 0.06), DRUM.y, DRUM.z] });
+			b.add(rbox(0.05, 0.16, DRUM.r + 0.03, 0.02, 1), c.gunmetal, { p: [s * (POST_X + 0.03), DRUM.y - 0.1, DRUM.z + 0.06 + (DRUM.r + 0.03) / 2] });
+		}
+		b.add(new THREE.CylinderGeometry(0.026, 0.026, 2 * POST_X + 0.06, 10).rotateZ(Math.PI / 2), c.chrome, { p: [0, DRUM.y - 0.17, DRUM.z + DRUM.r + 0.06] });
+		// The hood: a chrome lip where it meets the case, beads along its rounded edges, its name in a framed panel, and
+		// louvres in its ends.
+		b.add(loaf(W, D, H - DK.hood, 0.26), m.cobalt, { p: [0, DK.hood, 0] });
+		b.add(rbox(W + 0.06, 0.05, D + 0.06, 0.02, 1), c.chrome, { p: [0, DK.hood + 0.02, 0] });
+		loafBeads(b, W, D, H, 0.26);
+		bezel(b, 3.3, 0.5, [0, DK.hood + 0.5, D / 2], { t: 0.045, r: 0.1, depth: 0.04 });
+		for (const s of [-1, 1] as const) louvre(b, s, [s * (W / 2 + 0.035), DK.hood + 0.5, 0.3], 0.5, 1.8, 5);
+		// What cools it, behind the tube on its roof: a pair of fans.
+		for (const x of [-0.78, 0.78]) this.rotors.push(fan(b, 0.32, [x, H + 0.14, -1.5]));
+		// Coolant up its back corner into the hood, and the fabric's cable out of the floor into its back.
+		const ox = W / 2 + 0.16;
+		for (const z of [-1.55, -1.9]) pipe(b, [[ox, 0.04, z], [ox, 2.2, z], [ox, DK.hood + 0.2, z], [ox - 0.12, DK.hood + 0.42, z], [ox - 0.17, DK.hood + 0.5, z]], 0.07, c.coolant, 0.8);
+		pipe(b, [[-0.6, 0.02, -D / 2 - 1.6], [-0.6, 0.12, -D / 2 - 0.8], [-0.6, 0.9, -D / 2 - 0.2], [-0.6, 1.1, -D / 2 + 0.05]], 0.09, m.orangeGlow, 9);
+		// The screen the text shows on, and the lamp over the mouth, each in a chrome bezel.
+		bezel(b, READOUT.w, READOUT.h, [0, READOUT.y, D / 2], { t: 0.05, r: 0.06, depth: 0.04 });
+		bezel(b, 0.2, 0.2, [W / 2 - 0.36, 1.57, D / 2 + 0.02], { t: 0.035, r: 0.05, depth: 0.03 });
+		body.add(b.build('detokenizer'));
+		for (const r of this.rotors) body.add(r);
+		body.add(pane(cw, ch, [0, cy, front + 0.04], 0.02));
+		for (const s of [-1, 1]) {
+			const side = pane(cd, ch, [0, 0, 0], 0.02);
+			side.position.set(s * (cw / 2 + 0.04), cy, cz);
+			side.rotation.y = s * (Math.PI / 2);
+			body.add(side);
+		}
+		// The vocabulary: every token's number and its text, printed round a drum that turns as each tile goes in.
+		const drumMat = new THREE.MeshStandardMaterial({ map: vocabulary(), emissive: '#ffffff', emissiveIntensity: 0.22, roughness: 0.5 });
+		drumMat.emissiveMap = drumMat.map;
+		this.drum.position.set(0, DRUM.y, DRUM.z);
+		body.add(this.drum);
+		const caps = new Batch();
+		caps.add(new THREE.CylinderGeometry(DRUM.r, DRUM.r, DRUM.len, 48, 1).rotateZ(Math.PI / 2), drumMat);
+		for (const s of [-1, 1]) caps.add(new THREE.CylinderGeometry(DRUM.r + 0.03, DRUM.r + 0.03, 0.05, 48).rotateZ(Math.PI / 2), c.chrome, { p: [s * (DRUM.len / 2 + 0.02), 0, 0] });
+		// Its axle turns with it, its ends in the rings on the posts.
+		caps.add(new THREE.CylinderGeometry(0.045, 0.045, 2 * POST_X - 0.06, 12).rotateZ(Math.PI / 2), c.chrome);
+		this.drum.add(caps.build('drum'));
 
-		const sign = createSign('Detokenizer: IDs become text', 0.24);
-		sign.position.set(0, PAD_Y + H - 0.55, DET_Z + D / 2 + 0.03);
+		const sign = createSign('Detokenizer: IDs become text', 0.24, undefined, undefined, true);
+		sign.position.set(0, PAD_Y + DK.hood + 0.5, DET_Z + D / 2 + 0.06);
 		this.group.add(sign);
 		const stay = createSign('Token IDs stay here', 0.24, '#ffffff', m.red);
 		// On the side the row comes in from. A phone's bigger sign moves out along with its pole, so its near end stays
@@ -947,8 +1100,16 @@ class Detokenizer {
 		pole.add(rbox(0.1, 2.2, 0.1, 0.03, 2), m.steelSoft, { p: [stayX, PAD_Y + 1.1, RAIL_Z - 1.56] });
 		this.group.add(stay, pole.build('pole'));
 
+		// The text as it comes out, on a screen in its front: the thinking first, then the call's JSON.
+		this.readout = new Surface(READOUT.w * 300, READOUT.h * 300);
+		this.drawReadout(0);
+		const screen = panel(READOUT.w, READOUT.h, this.readout, 1);
+		screen.position.set(0, PAD_Y + READOUT.y, DET_Z + D / 2 + 0.012);
+		this.group.add(screen);
+
+		// Over the mouth, in a chrome bezel: it turns green once the first tile goes in.
 		this.lamp = new Lamp(sharedRbox(0.14, 0.14, 0.04, 0.05, 3), color.amber, 0.3);
-		this.lamp.mesh.position.set(W / 2 - 0.26, PAD_Y + H - 0.26, DET_Z + D / 2 + 0.02);
+		this.lamp.mesh.position.set(W / 2 - 0.36, PAD_Y + 1.57, DET_Z + D / 2 + 0.04);
 		this.group.add(this.lamp.mesh);
 
 		// The way out: a glass tube, up through the ceiling and home to your laptop.
@@ -962,8 +1123,9 @@ class Detokenizer {
 		this.group.add(glass);
 		const collar = new Batch();
 		collar.add(ring(1.02, 0.74, 0.34), m.steel, { p: [0, roof + 0.17, DET_Z] });
-		collar.add(ring(0.86, 0.74, 0.1), m.steel, { p: [0, this.TOP + 6, DET_Z] });
-		collar.add(ring(0.86, 0.74, 0.1), m.steel, { p: [0, this.TOP + 12, DET_Z] });
+		// Its bands stay where the camera rising up the tube passes them, whatever the machine's height.
+		collar.add(ring(0.86, 0.74, 0.1), m.steel, { p: [0, PAD_Y + 10, DET_Z] });
+		collar.add(ring(0.86, 0.74, 0.1), m.steel, { p: [0, PAD_Y + 16, DET_Z] });
 		collar.add(rbox(0.5, 0.05, 0.05, 0.02, 1), m.steelSoft, { p: [0.93, this.TOP + 3.4, DET_Z] });
 		this.group.add(collar.build('collar'));
 		// A dark throat with a lit rim, so it reads as a way down. Drawn after the glass, which would wash it out to a flat grey disc.
@@ -1020,19 +1182,50 @@ class Detokenizer {
 			return at === undefined ? Infinity : at + DETOK_DELAY;
 		});
 		this.firstIn = entries[0] ?? Infinity;
+		this.entries = entries;
+	}
+
+	/** The screen: the last of the text that has come out, the newest on the right, and a cursor after it. */
+	private drawReadout(n: number) {
+		this.shown = n;
+		const think = SLIP_TEXT.slice(0, Math.min(n, THINK_SLIPS)).join('');
+		const call = SLIP_TEXT.slice(THINK_SLIPS, Math.max(THINK_SLIPS, n)).join('');
+		this.readout.draw((c, w, h) => {
+			c.fillStyle = '#071226';
+			c.fillRect(0, 0, w, h);
+			c.font = `600 ${h * 0.5}px ${font.mono}`;
+			c.textBaseline = 'middle';
+			const room = Math.floor((w - 40) / c.measureText('M').width) - 1;
+			// The call replaces the thinking on the screen once it starts: it's what the harness will act on.
+			const text = call || think;
+			const shownText = text.length > room ? '…' + text.slice(text.length - room + 1) : text;
+			c.fillStyle = call ? '#ffd27a' : '#bcd4ff';
+			c.fillText(shownText, 20, h * 0.52);
+			c.fillStyle = '#7cc4ff';
+			c.fillRect(24 + c.measureText(shownText).width, h * 0.26, h * 0.26, h * 0.5);
+		});
 	}
 
 	update(T: number, time: number) {
 		const t = Math.min(T, DETOK_END);
 		const on = t >= this.firstIn;
 		this.lamp.mix(color.amber, color.green, on ? 1 : 0, on ? 1.1 : 0.3);
+		// A row a tile, each turn a short snap, as a counter's wheel turns.
+		let rows = 0;
+		for (const e of this.entries) rows += outCubic(seg(t, e - 0.004, e + 0.004));
+		this.drum.rotation.x = -(rows / DRUM_ROWS) * Math.PI * 2;
+		const out = this.launch.filter((l) => t >= l).length;
+		if (out !== this.shown) this.drawReadout(out);
+		for (const r of this.rotors) r.rotation.y = time * 5;
 		this.slips.forEach((slip, i) => {
 			const since = t - this.launch[i];
 			const live = since > 0;
 			slip.visible = live;
 			if (!live) return;
 			const run = (since * SLIP_RATE) % 1;
-			slip.position.set(Math.sin(i * 2.3 + time) * 0.14, this.TOP - 0.55 + run * 22, DET_Z + Math.cos(i * 1.7) * 0.14);
+			// It comes up out of the throat, growing as it comes: it's made there, not pushed up through the roof.
+			slip.position.set(Math.sin(i * 2.3 + time) * 0.14, this.TOP + run * 22, DET_Z + Math.cos(i * 1.7) * 0.14);
+			slip.scale.setScalar(Math.max(0.001, smooth(seg(run, 0, 0.014))));
 			// It flutters, but it never turns its back: the text stays readable.
 			slip.rotation.set(Math.sin(run * 8 + i) * 0.3, Math.sin(run * 6 + i * 2) * 0.55, Math.sin(run * 5 + i) * 0.16);
 		});
