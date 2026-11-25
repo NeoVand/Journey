@@ -5,6 +5,7 @@ import { color, Lamp } from '../kit/materials';
 import { Label } from '../kit/print';
 import { inOut, outBack, seg } from '../kit/math';
 import { palette } from './palette';
+import { fitted, orosi, roseWindow, stainedGlass } from './persian';
 import * as P from './masterplan';
 
 /*
@@ -130,14 +131,21 @@ export class Gatehouse {
 		b.add(new THREE.ConeGeometry(0.44, 0.34, 24), c.brass, { p: [domeAt.x, lanternY + 0.69, domeAt.z] });
 		b.add(new THREE.SphereGeometry(0.12, 16, 12), c.gold, { p: [domeAt.x, lanternY + 0.92, domeAt.z] });
 
-		// The corner towers: jade drums with brass bands, an arched window lit amber, a brass dome with a finial.
+		// Its windows are coloured glass in dark wood, as the hall's are: see persian.ts.
+		const glass = new Batch();
+		const panes = stainedGlass(orosi(0.47), true);
+		const rose = stainedGlass(roseWindow(), true);
+		const towerPane = fitted(windowPanel(0.9, 1.9));
+		const frontPane = fitted(windowPanel(0.8, 1.5));
+		// The corner towers: jade drums with brass bands, an arched window of coloured glass, a brass dome with a finial.
 		for (const s of [-1, 1]) {
 			const x = s * TOWER.x;
 			const z = TOWER.z;
 			b.add(new THREE.CylinderGeometry(TOWER.r + 0.25, TOWER.r + 0.35, 0.4, 48), c.porcelain, { p: [x, 0.2, z] });
 			b.add(new THREE.CylinderGeometry(TOWER.r, TOWER.r, TOWER.h, 48), c.jade, { p: [x, TOWER.h / 2, z] });
 			for (const y of [0.5, TOWER.h * 0.62, TOWER.h - 0.1]) b.add(new THREE.TorusGeometry(TOWER.r + 0.02, 0.09, 10, 64), c.brass, { p: [x, y, z], r: [Math.PI / 2, 0, 0] });
-			b.add(extrude(windowPanel(0.9, 1.9), 0.08, 0.02, 2, 12), c.amberWindow, { p: [x, 1.4, z + TOWER.r - 0.02] });
+			b.add(extrude(windowPanel(0.9, 1.9), 0.08, 0.02, 2, 12), c.walnut, { p: [x, 1.4, z + TOWER.r - 0.02] });
+			glass.add(towerPane, panes, { p: [x, 1.4, z + TOWER.r + 0.023] });
 			b.add(new THREE.TorusGeometry(0.47, 0.06, 8, 32, Math.PI), c.brass, { p: [x, 1.4 + 1.9 - 0.45, z + TOWER.r + 0.02] });
 			b.add(new THREE.CylinderGeometry(TOWER.r + 0.15, TOWER.r + 0.15, 0.3, 48), c.brass, { p: [x, TOWER.h + 0.15, z] });
 			b.add(new THREE.SphereGeometry(TOWER.r, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2), c.brass, { p: [x, TOWER.h + 0.3, z] });
@@ -145,14 +153,16 @@ export class Gatehouse {
 			b.add(new THREE.SphereGeometry(0.2, 16, 12), c.gold, { p: [x, TOWER.h + 0.3 + TOWER.r + 0.7, z] });
 			// A round window high on the front, and an arched one low, between the arch and the tower.
 			const wx = s * (DOOR.w / 2 + 1.25);
-			b.add(new THREE.CylinderGeometry(0.42, 0.42, 0.1, 32), c.amberWindow, { p: [wx, 3.8, D / 2 + 0.02], r: [Math.PI / 2, 0, 0] });
+			b.add(new THREE.CylinderGeometry(0.42, 0.42, 0.1, 32), c.walnut, { p: [wx, 3.8, D / 2 + 0.02], r: [Math.PI / 2, 0, 0] });
+			glass.add(new THREE.CircleGeometry(0.42, 40), rose, { p: [wx, 3.8, D / 2 + 0.072] });
 			b.add(new THREE.TorusGeometry(0.46, 0.08, 10, 40), c.brass, { p: [wx, 3.8, D / 2 + 0.06] });
-			b.add(extrude(windowPanel(0.8, 1.5), 0.08, 0.02, 2, 12), c.amberWindow, { p: [wx, 0.8, D / 2 + 0.01] });
+			b.add(extrude(windowPanel(0.8, 1.5), 0.08, 0.02, 2, 12), c.walnut, { p: [wx, 0.8, D / 2 + 0.01] });
+			glass.add(frontPane, panes, { p: [wx, 0.8, D / 2 + 0.053] });
 		}
 
 		// The beam across the arch's crown that carries the tumblers.
 		b.add(new THREE.CylinderGeometry(0.1, 0.1, DOOR.w - 0.2, 16), c.brass, { p: [0, TUMBLER.y + TUMBLER.r + 0.18, D / 2 - 0.4], r: [0, 0, Math.PI / 2] });
-		this.group.add(b.build('gatehouse'));
+		this.group.add(b.build('gatehouse'), glass.build('gatehouse-windows'));
 
 		// The five tumblers: brass drums turning on the beam, ribbed, each with its own lamp on top and its name under it.
 		const drumGeo = new THREE.CylinderGeometry(TUMBLER.r, TUMBLER.r, TUMBLER.len, 32);

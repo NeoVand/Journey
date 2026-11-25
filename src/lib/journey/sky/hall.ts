@@ -6,13 +6,15 @@ import { Label } from '../kit/print';
 import { createBelt, createChatTemplate, Gantry, Tile, TILE_H } from '../props/tokenizer';
 import { TOKENS } from '../content';
 import { palette } from './palette';
+import { archFrame, dadoTiles, fitted, floorTiles, friezeTiles, orosi, pointedArch, pointedArchHole, roseWindow, stainedGlass, wallTiles } from './persian';
 import * as P from './masterplan';
 
 /*
- * The hall behind the front door, where text becomes tokens and tokens become text again. Long walls of rose glazed tile
- * with arched windows glowing warm and brass sconces between them, a gold cresting along their tops, a terracotta floor,
- * and no roof: a court open to the sky, so the work inside can be watched from above. At its far end a tiled wall rises
- * in a great arch, with a round window, and an arched way through it for the lanes into the tower.
+ * The hall behind the front door, where text becomes tokens and tokens become text again. Long walls of Persian glazed
+ * tile, cobalt and turquoise stars over a dado of lozenges, with pointed windows of coloured glass let right through them
+ * and brass sconces between, a gold cresting along their tops, a floor of bigger stars, and no roof: a court open to the
+ * sky, so the work inside can be watched from above. At its far end a tiled wall rises in a great arch, with a rose
+ * window, and an arched way through it for the lanes into the tower.
  *
  * Beside the request's lane, on the left, the tokenizer as it was built and kept: the chat template lays the request out
  * as one long strip, the belt carries it under the gantry, and the gantry cuts it into tiles at every token boundary.
@@ -32,29 +34,9 @@ const INNER = H.w / 2 - 0.7;
 const THICK = 0.6;
 /** The tokenizer's belt, on the request's lane: as high over the floor as it was built to stand. */
 const TOKENIZER_BELT = 0.5;
+/** The long walls' windows: how wide and tall, and how high their sills are. */
+const WIN = { w: 1.15, h: 2.3, y: 1.1 };
 
-
-/** A glazed tile surface: square tiles of one colour, each a little different, with pale grout between. */
-function tiles(base: string, grout: string, spread: number) {
-	const c = document.createElement('canvas');
-	c.width = c.height = 256;
-	const g = c.getContext('2d')!;
-	g.fillStyle = grout;
-	g.fillRect(0, 0, 256, 256);
-	const col = new THREE.Color(base);
-	let seed = 3;
-	const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-	for (let y = 0; y < 4; y++)
-		for (let x = 0; x < 4; x++) {
-			const k = 1 + (rand() - 0.5) * spread;
-			g.fillStyle = `#${col.clone().multiplyScalar(k).getHexString()}`;
-			g.fillRect(x * 64 + 3, y * 64 + 3, 58, 58);
-		}
-	const t = new THREE.CanvasTexture(c);
-	t.wrapS = t.wrapT = THREE.RepeatWrapping;
-	t.colorSpace = THREE.SRGBColorSpace;
-	return t;
-}
 
 /** A plane w by h whose texture repeats every `tile` units. */
 function tiled(w: number, h: number, tile: number) {
@@ -62,17 +44,6 @@ function tiled(w: number, h: number, tile: number) {
 	const uv = g.attributes.uv;
 	for (let i = 0; i < uv.count; i++) uv.setXY(i, (uv.getX(i) * w) / tile, (uv.getY(i) * h) / tile);
 	return g;
-}
-
-/** An arched window's shape: straight sides and a round head. */
-function archShape(w: number, h: number) {
-	const s = new THREE.Shape();
-	s.moveTo(-w / 2, 0);
-	s.lineTo(-w / 2, h - w / 2);
-	s.absarc(0, h - w / 2, w / 2, Math.PI, 0, true);
-	s.lineTo(w / 2, 0);
-	s.closePath();
-	return s;
 }
 
 /**
@@ -90,27 +61,78 @@ export class Hall {
 		this.group.position.y = P.PLATFORM_Y;
 		const c = palette();
 		const b = new Batch();
-		const rose = new THREE.MeshPhysicalMaterial({ map: tiles('#ef9d93', '#fbe3dc', 0.12), roughness: 0.25, clearcoat: 1, clearcoatRoughness: 0.12 });
-		const floor = new THREE.MeshPhysicalMaterial({ map: tiles('#d1704f', '#e9b79a', 0.16), roughness: 0.38, clearcoat: 0.6 });
+		// Persian glazed tile, inside and out: a star-and-cross field over a dado of lozenges, red and yellow friezes
+		// between, a floor of bigger stars. See persian.ts.
+		const glaze = (map: THREE.Texture) => new THREE.MeshPhysicalMaterial({ map, roughness: 0.22, clearcoat: 1, clearcoatRoughness: 0.1 });
+		const field = glaze(wallTiles());
+		const dado = glaze(dadoTiles());
+		const frieze = glaze(friezeTiles());
+		const floor = new THREE.MeshPhysicalMaterial({ map: floorTiles(), roughness: 0.34, clearcoat: 0.7, clearcoatRoughness: 0.2 });
+		// What the walls are built of, seen in their tops and in the windows' reveals: a warm sandstone.
+		const stone = new THREE.MeshPhysicalMaterial({ color: '#e7d3aa', roughness: 0.62, clearcoat: 0.15 });
+		const glass = stainedGlass(orosi(WIN.w / WIN.h));
 
-		// The floor, tiled in terracotta.
-		b.add(tiled(H.w - 0.4, LEN, 1.1), floor, { p: [0, 0.02, MID], r: [-Math.PI / 2, 0, 0] });
+		// The floor.
+		b.add(tiled(H.w - 0.4, LEN, 2.6), floor, { p: [0, 0.02, MID], r: [-Math.PI / 2, 0, 0] });
 
-		// The two long walls: a rose core, tiled faces in and out, a brass base and cornice, five arched windows each, lit.
+		// The two long walls, with five real windows each: a sandstone core with the arches cut through it, tiled faces in
+		// and out, a brass base and a gold cornice, and in each arch a lattice of coloured glass the sky shows through.
+		const along = Array.from({ length: 5 }, (_, i) => H.from - (LEN * (i + 0.5)) / 5 - MID);
+		const pierced = (y0: number, y1: number) => {
+			const sh = new THREE.Shape();
+			sh.moveTo(-LEN / 2, y0);
+			sh.lineTo(LEN / 2, y0);
+			sh.lineTo(LEN / 2, y1);
+			sh.lineTo(-LEN / 2, y1);
+			sh.closePath();
+			for (const u of along) sh.holes.push(pointedArchHole(WIN.w, WIN.h, u, WIN.y));
+			return sh;
+		};
+		const core = new THREE.ExtrudeGeometry(pierced(0, H.wall), { depth: THICK, bevelEnabled: false, curveSegments: 10 }).rotateY(-Math.PI / 2);
+		// A face's tile, laid from its own shape: UVs in metres over the repeat, offset so a band's pattern sits in it.
+		const face = (shape: THREE.Shape, su: number, sv: number, v0 = 0) => {
+			const geo = new THREE.ShapeGeometry(shape, 10);
+			const pos = geo.attributes.position as THREE.BufferAttribute;
+			const uv = geo.attributes.uv as THREE.BufferAttribute;
+			for (let i = 0; i < pos.count; i++) uv.setXY(i, pos.getX(i) / su, (pos.getY(i) - v0) / sv);
+			return geo;
+		};
+		const band = (y0: number, y1: number) => {
+			const sh = new THREE.Shape();
+			sh.moveTo(-LEN / 2, y0);
+			sh.lineTo(LEN / 2, y0);
+			sh.lineTo(LEN / 2, y1);
+			sh.lineTo(-LEN / 2, y1);
+			sh.closePath();
+			return sh;
+		};
+		const BANDS = { dado: [0.24, 0.95], low: [0.95, 1.07], field: [1.07, H.wall - 0.3], top: [H.wall - 0.3, H.wall] } as const;
+		const faces: [THREE.BufferGeometry, THREE.Material][] = [
+			[face(band(...BANDS.dado), BANDS.dado[1] - BANDS.dado[0], BANDS.dado[1] - BANDS.dado[0], BANDS.dado[0]), dado],
+			[face(band(...BANDS.low), 0.48, 0.12, BANDS.low[0]), frieze],
+			[face(pierced(...BANDS.field), 1.3, 1.3, BANDS.field[0]), field],
+			[face(band(...BANDS.top), 1.2, 0.3, BANDS.top[0]), frieze]
+		];
+		const frameGeo = extrude(archFrame(WIN.w, WIN.h, 0.11), 0.06, 0.015, 2, 10);
+		const pane = fitted(pointedArch(WIN.w, WIN.h));
+		const panes = new Batch();
 		for (const s of [-1, 1]) {
 			const x = s * (INNER + THICK / 2);
-			b.add(rbox(THICK, H.wall, LEN, 0.08), c.rose, { p: [x, H.wall / 2, MID] });
-			for (const face of [-1, 1]) {
-				b.add(tiled(LEN, H.wall - 0.5, 0.55), rose, { p: [x + face * (THICK / 2 + 0.005), 0.25 + (H.wall - 0.5) / 2, MID], r: [0, (face * Math.PI) / 2, 0] });
+			b.add(core, stone, { p: [x + THICK / 2, 0, MID] });
+			// Laid so each face looks out of the wall: the inner one towards the lanes, the outer one to the sky.
+			for (const f of [-1, 1]) {
+				for (const [geo, mat] of faces) b.add(geo, mat, { p: [x + f * (THICK / 2 + 0.005), 0, MID], r: [0, (f * Math.PI) / 2, 0] });
 			}
 			b.add(rbox(THICK + 0.16, 0.24, LEN + 0.1, 0.06), c.brass, { p: [x, 0.12, MID] });
 			b.add(rbox(THICK + 0.3, 0.22, LEN + 0.2, 0.06), c.gold, { p: [x, H.wall + 0.11, MID] });
-			for (let i = 0; i < 5; i++) {
-				const z = H.from - (LEN * (i + 0.5)) / 5;
-				for (const face of [-1, 1]) {
-					const fx = x + face * (THICK / 2 + 0.02);
-					b.add(extrude(archShape(1.15, 2.3), 0.06, 0.015, 2, 8), c.amberWindow, { p: [fx, 1.1, z], r: [0, (face * Math.PI) / 2, 0] });
-					b.add(new THREE.TorusGeometry(0.62, 0.06, 8, 24, Math.PI), c.brass, { p: [fx + face * 0.03, 1.1 + 2.3 - 0.575, z], r: [0, (face * Math.PI) / 2, 0] });
+			along.forEach((u, i) => {
+				const z = MID + u;
+				panes.add(pane, glass, { p: [x, WIN.y, z], r: [0, Math.PI / 2, 0] });
+				for (const f of [-1, 1]) {
+					const fx = x + f * (THICK / 2 + 0.03);
+					b.add(frameGeo, c.gold, { p: [fx, WIN.y, z], r: [0, (f * Math.PI) / 2, 0] });
+					// A sandstone sill under it.
+					b.add(rbox(0.16, 0.07, WIN.w + 0.34, 0.02, 1), stone, { p: [x + f * (THICK / 2 + 0.06), WIN.y - 0.035, z] });
 				}
 				// A brass sconce on the inner face, between this window and the next.
 				if (i < 4) {
@@ -119,8 +141,10 @@ export class Hall {
 					b.add(rbox(0.08, 0.36, 0.14, 0.03), c.brass, { p: [sx, 2.6, sz] });
 					b.add(new THREE.SphereGeometry(0.13, 16, 12), c.amberWindow, { p: [sx - s * 0.1, 2.88, sz] });
 				}
-			}
+			});
 		}
+		const windows = panes.build('hall-windows');
+		windows.traverse((o) => (o.renderOrder = 3));
 
 		// Open to the sky, so the work inside can be watched from above: along each wall's top a cresting of gold, a ball
 		// on a short post every so often.
@@ -152,15 +176,20 @@ export class Hall {
 		}
 		end.lineTo(-rx, H.wall);
 		end.closePath();
-		// Tiled like the long walls: the extruder lays its face's texture one unit to a repeat, the walls' every 0.55.
+		// A rose window over the arch, cut right through, the tower seen through its clear glass.
+		end.holes.push(new THREE.Path().absarc(0, H.wall + 1.2, 0.9, 0, Math.PI * 2, true));
+		// Tiled like the long walls' field: the extruder lays its face's texture one unit to a repeat.
 		const endWall = extrude(end, 0.5, 0.06, 2, 24);
 		const uv = endWall.attributes.uv;
-		for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) / 0.55, uv.getY(i) / 0.55);
-		b.add(endWall, rose, { p: [0, 0, H.to + 0.3] });
+		for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) / 1.3, uv.getY(i) / 1.3);
+		b.add(endWall, field, { p: [0, 0, H.to + 0.3] });
 		b.add(new THREE.TorusGeometry(doorW / 2 + 0.16, 0.14, 10, 40, Math.PI), c.gold, { p: [0, spring, H.to + 0.58] });
 		for (const s of [-1, 1]) b.add(new THREE.CylinderGeometry(0.14, 0.14, spring, 12), c.gold, { p: [s * (doorW / 2 + 0.16), spring / 2, H.to + 0.58] });
-		b.add(new THREE.CylinderGeometry(0.9, 0.9, 0.1, 40), c.amberWindow, { p: [0, H.wall + 1.2, H.to + 0.56], r: [Math.PI / 2, 0, 0] });
-		b.add(new THREE.TorusGeometry(0.95, 0.1, 10, 48), c.gold, { p: [0, H.wall + 1.2, H.to + 0.6] });
+		const rose = new THREE.Mesh(new THREE.CircleGeometry(0.9, 48), stainedGlass(roseWindow()));
+		rose.position.set(0, H.wall + 1.2, H.to + 0.3);
+		rose.renderOrder = 3;
+		this.group.add(rose);
+		for (const f of [-1, 1]) b.add(new THREE.TorusGeometry(0.95, 0.1, 10, 48), c.gold, { p: [0, H.wall + 1.2, H.to + 0.3 + f * 0.27] });
 
 		// Both lanes' beds through the hall: a dark belt between brass kerbs on short brass legs.
 		// The reply's lane only: the request's bed through the hall is the tokenizer's own belt.
@@ -170,7 +199,7 @@ export class Hall {
 			for (const k of [-1, 1]) b.add(rbox(0.12, 0.16, LEN, 0.03), c.brass, { p: [x + k * 0.6, 0.44, MID] });
 			for (let i = 0; i < 6; i++) b.add(rbox(0.6, 0.26, 0.16, 0.03), c.brass, { p: [x, 0.13, H.from - 0.8 - (i * (LEN - 1.6)) / 5] });
 		}
-		this.group.add(b.build('hall'));
+		this.group.add(b.build('hall'), windows);
 
 		if (tokenizer) this.gantry = this.tokenizer();
 		this.sealer();
