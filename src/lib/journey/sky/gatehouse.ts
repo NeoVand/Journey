@@ -16,7 +16,7 @@ import * as P from './masterplan';
  * plaque under it with its name.
  *
  * A round tower stands at each front corner with an arched window and a brass dome; a jade pediment over the arch carries a
- * brass medallion, and behind it a dome of glass and brass ribs rises over the door. Round windows and arched ones glow
+ * brass medallion, and behind it a jade cupola with brass ribs and a lit lantern rises over the door. Round windows and arched ones glow
  * amber either side of the arch.
  *
  * Drawn from concepts/aqueduct/door (front, above, section, inside). Its own frame has its foot on the platform at the
@@ -110,15 +110,25 @@ export class Gatehouse {
 		b.add(new THREE.CylinderGeometry(0.52, 0.52, 0.12, 40), c.brass, { p: [0, WALL + 0.85, D / 2 + 0.02], r: [Math.PI / 2, 0, 0] });
 		b.add(new THREE.CylinderGeometry(0.3, 0.3, 0.16, 32), c.jade, { p: [0, WALL + 0.85, D / 2 + 0.06], r: [Math.PI / 2, 0, 0] });
 
-		// The glass dome behind it, on a brass drum, with brass ribs and a finial.
+		// The cupola behind it: a jade dome on a brass drum, brass ribs over it, and on its crown a small glass lantern
+		// lit amber, capped in brass, with a gold finial.
 		const domeAt = new THREE.Vector3(0, WALL + 0.26, -0.3);
 		b.add(new THREE.CylinderGeometry(2.1, 2.1, 0.5, 48), c.brass, { p: [domeAt.x, domeAt.y + 0.25, domeAt.z] });
-		b.add(new THREE.SphereGeometry(2.0, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2), c.glass, { p: [domeAt.x, domeAt.y + 0.5, domeAt.z] });
-		for (let i = 0; i < 8; i++) {
-			const rib = new THREE.TorusGeometry(2.0, 0.05, 8, 32, Math.PI / 2);
-			b.add(rib, c.brass, { p: [domeAt.x, domeAt.y + 0.5, domeAt.z], r: [0, (i / 8) * Math.PI * 2, Math.PI / 2] });
+		b.add(new THREE.TorusGeometry(2.08, 0.06, 8, 64), c.gold, { p: [domeAt.x, domeAt.y + 0.5, domeAt.z], r: [Math.PI / 2, 0, 0] });
+		b.add(new THREE.SphereGeometry(2.0, 40, 16, 0, Math.PI * 2, 0, Math.PI / 2), c.jade, { p: [domeAt.x, domeAt.y + 0.5, domeAt.z] });
+		for (let i = 0; i < 12; i++) {
+			const rib = new THREE.TorusGeometry(2.02, 0.045, 8, 32, Math.PI / 2);
+			b.add(rib, c.brass, { p: [domeAt.x, domeAt.y + 0.5, domeAt.z], r: [0, (i / 12) * Math.PI * 2, Math.PI / 2] });
 		}
-		b.add(new THREE.SphereGeometry(0.2, 16, 12), c.gold, { p: [domeAt.x, domeAt.y + 2.65, domeAt.z] });
+		const lanternY = domeAt.y + 2.45;
+		b.add(new THREE.CylinderGeometry(0.42, 0.5, 0.12, 24), c.brass, { p: [domeAt.x, lanternY, domeAt.z] });
+		b.add(new THREE.CylinderGeometry(0.3, 0.3, 0.46, 24), c.amberWindow, { p: [domeAt.x, lanternY + 0.29, domeAt.z] });
+		for (let i = 0; i < 6; i++) {
+			const a = (i / 6) * Math.PI * 2;
+			b.add(new THREE.CylinderGeometry(0.03, 0.03, 0.46, 8), c.brass, { p: [domeAt.x + Math.sin(a) * 0.33, lanternY + 0.29, domeAt.z + Math.cos(a) * 0.33] });
+		}
+		b.add(new THREE.ConeGeometry(0.44, 0.34, 24), c.brass, { p: [domeAt.x, lanternY + 0.69, domeAt.z] });
+		b.add(new THREE.SphereGeometry(0.12, 16, 12), c.gold, { p: [domeAt.x, lanternY + 0.92, domeAt.z] });
 
 		// The corner towers: jade drums with brass bands, an arched window lit amber, a brass dome with a finial.
 		for (const s of [-1, 1]) {
