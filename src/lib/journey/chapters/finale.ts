@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { TRIP } from '../content';
-import { AXIS_X, low, MODEL_ISLAND_Y, MODEL_X } from '../layout';
+import { low, TOOLS } from '../layout';
 import { rbox } from '../kit/geometry';
 import { createSign } from '../kit/parts';
 import { curve } from '../kit/machines';
@@ -17,7 +17,6 @@ const MOST = 5;
 type V3 = [number, number, number];
 const v = (p: V3) => new THREE.Vector3(...p);
 const line = (a: V3, b: V3) => new THREE.LineCurve3(v(a), v(b));
-/** Where something drawn for the gates or the workshop stands now, in the ring below your laptop. */
 
 /** A stretch of a curve, in either direction. */
 class Part extends THREE.Curve<THREE.Vector3> {
@@ -51,25 +50,28 @@ interface Leg {
 
 /** The pipes and places the token really rides, from the rest of the world. */
 export interface Route {
+	/** Above your laptop's keys, where a lap starts. */
+	keys: V3;
+	/** The laptop's cable to the harness. */
 	cable: THREE.Curve<THREE.Vector3>;
-	/** From the harness to the foot of the wire. */
+	/** From inside the harness up over its roof to the capsule's cradle. */
 	out: THREE.Curve<THREE.Vector3>;
+	/** The request's lane, from the cradle over the aqueduct and through the door to the template. */
 	down: THREE.Curve<THREE.Vector3>;
+	/** The token path: along the belt, through the hall's end into the tower, and up into the brainstem. */
 	flow: THREE.Curve<THREE.Vector3>;
-	flowLip: number;
+	/** How far along the token path the belt ends. */
+	beltU: number;
+	/** The reply's lane, from the brainstem down the shaft, back along the hall and the aqueduct to the cradle. */
+	stream: THREE.Curve<THREE.Vector3>;
+	/** The harness's roof hatch, where the reply drops in. */
+	hatch: V3;
 	back: THREE.Curve<THREE.Vector3>;
 	gatePath: THREE.Curve<THREE.Vector3>;
 	dock: V3;
 	trackEnd: V3;
-	slotX: number;
-	/** Where the belt ends and the hose begins, along the token path. */
-	beltEnd: number;
-	beltY: number;
-	lineZ: number;
-	/** The glass of the wire: where it starts and ends along x, and its height. */
-	tunnel: [number, number, number];
-	/** The reply's glass tube, from the model down to the harness's roof. */
-	stream: THREE.Curve<THREE.Vector3>;
+	/** Where the nine stops' names stand. */
+	signs: V3[];
 }
 
 export class Finale {
@@ -104,48 +106,46 @@ export class Finale {
 	constructor(r: Route) {
 		const m = mats();
 		const hidden = true;
-		const { lineZ: z, beltY } = r;
 		const end = (path: THREE.Curve<THREE.Vector3>, u: number) => path.getPointAt(u).toArray() as V3;
 		const above = (p: V3, h: number): V3 => [p[0], p[1] + h, p[2]];
-		const [tunnelFrom, tunnelTo, tunnelY] = r.tunnel;
 		// Where the green loop comes out of the sandbox's wall, on its way back up to the harness.
 		const wall = v(low([-10.6, -14.69, 3.6]));
-		const belt = (r.beltEnd - r.slotX) / r.flow.getLength();
 		let backFrom = 0;
 		for (let i = 0, best = Infinity; i <= 400; i++) {
 			const d = r.back.getPointAt(i / 400, this.p).distanceTo(wall);
 			if (d < best) [best, backFrom] = [d, i / 400];
 		}
 		const flowEnd = end(r.flow, 1);
+		const k = r.keys;
+		// Your tools are small on the desk: what rides through them is small too.
+		const small = TOOLS.s * 2;
 		this.legs = [
 			// Up from the keys and down onto the cable, which is thin and short, so it travels small.
-			{ path: curve([[-3.3, 0.85, 1], [-2.4, 1.3, 0.5], [-1.5, 0.62, -0.3], above(end(r.cable, 0.28), 0.22), above(end(r.cable, 0.34), 0.2)]), time: 1, ride: 0, step: 0, size: 0.5 },
+			{ path: curve([k, [k[0] + 0.9, k[1] + 0.45, k[2] - 0.3], [k[0] + 1.4, k[1] - 0.2, k[2] - 0.6], above(end(r.cable, 0.28), 0.22), above(end(r.cable, 0.34), 0.2)]), time: 1, ride: 0, step: 0, size: 0.5 },
 			{ path: new Part(r.cable, 0.34, 1), time: 0.6, ride: 0.26, step: 0, size: 0.5, shrink: 2.5 },
-			{ path: line([0, 2, -0.65], [1.8, 2, -0.65]), time: 1.1, ride: 0, step: 1, hidden },
-			// Along the pipe past the easel, riding high enough to clear the easel's foot, and across to the wire.
-			{ path: r.out, time: 2.2, ride: 0.3, step: 2, shrink: 2.5 },
-			{ path: line(end(r.out, 1), [tunnelFrom + 0.1, tunnelY, z]), time: 0.1, ride: 0, step: 2, hidden },
-			{ path: line([tunnelFrom + 0.1, tunnelY, z], [tunnelTo - 0.1, tunnelY, z]), time: 0.9, ride: 0, step: 2 },
-			// Through the gateway, and out of its back wall along to the tokenizer.
-			{ path: line([tunnelTo - 0.1, tunnelY, z], end(r.down, 0.03)), time: 1, ride: 0, step: 3, hidden },
-			{ path: new Part(r.down, 0.03, 1), time: 1.6, ride: 0.2, step: 3 },
-			{ path: line(end(r.down, 1), [r.slotX, beltY, z]), time: 0.4, ride: 0, step: 3, hidden },
-			{ path: new Part(r.flow, 0, belt), time: 1.2, ride: 0.24, step: 3, size: 0.72 },
-			// Up the hose on the mast, over its wheel, across the sky and over the model's wheel, small enough to ride inside it.
-			{ path: new Part(r.flow, belt, r.flowLip), time: 2, ride: 0, step: 4, size: 0.6 },
-			// Through the model, and out of the bottom of its island into the glass column.
+			{ path: line(end(r.cable, 1), end(r.out, 0)), time: 1.1, ride: 0, step: 1, hidden },
+			// Out over the harness's roof to the cradle, and across the internet on the request's lane, through the door.
+			{ path: r.out, time: 0.8, ride: 0.3, step: 2 },
+			{ path: new Part(r.down, 0, 0.82), time: 2.6, ride: 0.45, step: 2 },
+			{ path: new Part(r.down, 0.82, 1), time: 0.7, ride: 0.45, step: 3 },
+			{ path: line(end(r.down, 1), end(r.flow, 0)), time: 0.3, ride: 0, step: 3, hidden },
+			{ path: new Part(r.flow, 0, r.beltU), time: 1.2, ride: 0.24, step: 3, size: 0.72 },
+			// On along the lane into the tower and up its shaft, small enough to ride inside the glass.
+			{ path: new Part(r.flow, r.beltU, 1), time: 2, ride: 0, step: 4, size: 0.6 },
+			// Through the model, and out of its stem onto the reply's lane, down the shaft and all the way home.
 			{ path: line(flowEnd, end(r.stream, 0)), time: 1.9, ride: 0, step: 4, hidden },
-			{ path: r.stream, time: 2.5, ride: 0, step: 5 },
-			{ path: line([1.1, 3.6, -0.75], [0.4, 3.2, -1.76]), time: 0.25, ride: 0, step: 6, hidden },
-			// Higher on the calls' cable: it sags, so a flat token's ends come down to meet it.
-			{ path: r.gatePath, time: 2.6, ride: 0.3, step: 6 },
-			{ path: line(r.dock, [r.dock[0] + 1.6, r.dock[1], r.dock[2]]), time: 0.2, ride: 0, step: 6, hidden },
-			{ path: line([r.dock[0] + 1.6, r.dock[1], r.dock[2]], r.trackEnd), time: 2.1, ride: 0, step: 6 },
-			{ path: curve([r.trackEnd, low([-40.4, -12.1, 0.7]), low([-38.2, -13, 0.7]), low([-36.3, -14.46, 0.7])]), time: 0.6, ride: 0, step: 7 },
+			{ path: r.stream, time: 3.4, ride: 0.3, step: 5, size: 0.6 },
+			{ path: line(end(r.stream, 1), r.hatch), time: 0.25, ride: 0, step: 6, hidden },
+			{ path: line(r.hatch, end(r.gatePath, 0)), time: 0.25, ride: 0, step: 6, hidden },
+			// Along the calls' cable to the gates' dock, and through the gates on a cart.
+			{ path: r.gatePath, time: 2.0, ride: 0.2, step: 6, size: 0.5 },
+			{ path: line(r.dock, low([-59, -12.7, 0.7])), time: 0.2, ride: 0, step: 6, hidden },
+			{ path: line(low([-59, -12.7, 0.7]), r.trackEnd), time: 2.1, ride: 0, step: 6, size: small },
+			{ path: curve([r.trackEnd, low([-40.4, -12.1, 0.7]), low([-38.2, -13, 0.7]), low([-36.3, -14.46, 0.7])]), time: 0.6, ride: 0, step: 7, size: small },
 			{ path: line(low([-36.3, -14.46, 0.7]), low([-34, -14.7, 1])), time: 0.1, ride: 0, step: 7, hidden },
-			{ path: curve([low([-34, -14.7, 1]), low([-30, -14.7, 2.4]), low([-24, -14.7, 3.7]), low([-14.4, -14.7, 3.6])]), time: 1, ride: 0, step: 7 },
+			{ path: curve([low([-34, -14.7, 1]), low([-30, -14.7, 2.4]), low([-24, -14.7, 3.7]), low([-14.4, -14.7, 3.6])]), time: 1, ride: 0, step: 7, size: small },
 			{ path: line(low([-14.4, -14.36, 3.6]), end(r.back, backFrom)), time: 0.1, ride: 0, step: 8, hidden },
-			{ path: new Part(r.back, backFrom, 0), time: 2, ride: 0.22, step: 8 }
+			{ path: new Part(r.back, backFrom, 0), time: 2, ride: 0.22, step: 8, size: 0.6 }
 		];
 		this.total = this.legs.reduce((sum, leg) => sum + leg.time, 0);
 		let sum = 0;
@@ -187,17 +187,7 @@ export class Finale {
 
 		// The nine stops, named where they happen. They appear as the first token reaches each one.
 		const size = isPhone ? 1.6 : 0.8;
-		const where: V3[] = [
-			[-5.2, 3.6, 0.6],
-			[5.6, 5.2, -0.75],
-			[tunnelFrom + 3.4, tunnelY + 3.3, z],
-			[r.slotX + 1.2, beltY + 3.6, z],
-			[MODEL_X - 9, MODEL_ISLAND_Y + 11.4, 1.2],
-			[AXIS_X - 3.8, 10.6, -0.75],
-			low([-52, -7, 0.7]),
-			low([-27, -5.7, 1]),
-			[AXIS_X + 3, -12, -4.4]
-		];
+		const where = r.signs;
 		TRIP.forEach((stop, i) => {
 			// Already sized for phones above, so it opts out of the general phone enlargement.
 			const group = createSign(`${i + 1}  ${stop.name}`, size, undefined, undefined, true);

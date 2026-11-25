@@ -451,19 +451,29 @@ export class World {
 	private finish() {
 		this.root.add(this.back.group);
 		// Its route is the pipes already standing, so it can only be built once they all are.
+		const reply = DOWN_LANE.getLength();
+		const signAt = (p: V3, x: number, y: number, z = 0): V3 => [p[0] + x, p[1] + y, p[2] + z];
 		this.finale = new Finale({
+			keys: [P.LAPTOP.at.x, 0.85, P.LAPTOP.at.z + 0.5],
 			cable: this.routeCable,
 			out: this.routeOut,
 			down: this.downCurve,
 			flow: this.flowWorld,
-			flowLip: 1,
+			beltU: (BELT_END - SLOT_X) / this.flowLen,
+			stream: new PartOf(DOWN_LANE, 0, 1 - CRADLE_S / reply),
+			hatch: [HARNESS_POS.x, P.HARNESS.h - 0.2, HARNESS_POS.z],
 			...this.back.finaleRoute,
-			slotX: SLOT_X,
-			beltEnd: BELT_END,
-			beltY: BELT_Y,
-			lineZ: LINE_Z,
-			tunnel: [0, 0, 0],
-			stream: this.stream
+			signs: [
+				[P.LAPTOP.at.x - 2.2, 2.6, P.LAPTOP.at.z],
+				[HARNESS_POS.x - 3.0, P.HARNESS.h + 1.0, HARNESS_POS.z],
+				signAt(capsuleAt(4.36), -3.0, 2.6),
+				tok(TEMPLATE_X + 6, ISLAND_C_Y + 4.2, LINE_Z),
+				[SHAFT_X - 7.5, SEAT_Y + 3, TZ],
+				signAt(DOWN_LANE.getPointAt(0.62).toArray() as V3, 3.4, 2.6),
+				low([-52, -7, 0.7]),
+				low([-27, -5.7, 1]),
+				[8.5, 1.4, -5.6]
+			]
 		});
 		this.root.add(this.finale.group);
 		this.buildMapPipes();

@@ -72,7 +72,6 @@ const F_POS: V3 = [-174, 34, -4];
 /** How high each step's top stands. The lowest still clears the name plates on the fronts, so what climbs them is seen. */
 const STEP_H = [1.3, 1.9, 2.5, 3.1, 3.7];
 
-const rel = (o: V3, x: number, y: number, z: number): V3 => [o[0] + x, o[1] + y, o[2] + z];
 /**
  * Where the chapter islands stand now: each on its own pier beside your desk, a little over half the size, in a rising
  * arc round to its left and back, each further on and a little higher; the last, the finishing steps, on the desk
