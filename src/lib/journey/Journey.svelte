@@ -5418,6 +5418,17 @@
 			--ui: 1.32;
 		}
 	}
+	/* A short laptop screen, or a short window: the words shrink a little, so the longest card still fits under the header. */
+	@media (min-aspect-ratio: 9/10) and (max-height: 660px) and (min-height: 501px) {
+		.journey {
+			--ui: 0.86;
+		}
+		.bar,
+		.source,
+		.pin > :global(*) {
+			zoom: var(--ui);
+		}
+	}
 
 	h1 {
 		font-family: var(--display);
