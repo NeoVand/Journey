@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Batch } from '../kit/batch';
-import { chamferRect, extrude, rbox, roundedRect } from '../kit/geometry';
+import { chamferRect, extrude, rbox, roundedRect, sharedRbox } from '../kit/geometry';
 import { Lamp, color, mats } from '../kit/materials';
 import { drawIcon, font, Label, Surface } from '../kit/print';
 import { fitting, plinth } from '../kit/parts';
@@ -78,12 +78,13 @@ export class McpServer {
 		// A dark slot the drawers sit in, so a drawer coming out looks like it comes from inside.
 		shell.add(rbox(FRONT_W + 0.06, DRAWER_Y[0] - DRAWER_Y[2] + FRONT_H + 0.06, 0.02, 0.03, 2), m.recess, { p: [0, 0.5, MCP_D / 2 + 0.002] });
 		// Port on the side that faces the harness.
-		fitting(shell, [-MCP_W / 2, 0.9, -0.22], [-1, 0, 0], 0.042);
+		// Its port, on its right: the harness stands to its right on your desk.
+		fitting(shell, [MCP_W / 2, 0.9, -0.22], [1, 0, 0], 0.042);
 		this.body.add(shell.build('mcp'));
 		const label = new Label('MCP', 0.17, { weight: 800 });
 		label.mesh.position.set(-0.08, 1.038, MCP_D / 2 + 0.054);
 		this.body.add(label.mesh);
-		this.lamp = new Lamp(rbox(0.07, 0.07, 0.026, 0.024, 3), color.amber, 1);
+		this.lamp = new Lamp(sharedRbox(0.07, 0.07, 0.026, 0.024, 3), color.amber, 1);
 		this.lamp.mesh.position.set(0.28, 1.038, MCP_D / 2 + 0.054);
 		this.body.add(this.lamp.mesh);
 		MCP_DRAWERS.forEach((name, i) => {

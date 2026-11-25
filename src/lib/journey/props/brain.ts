@@ -48,6 +48,15 @@ export const INTAKE_WELL = { floor: PORT.floor - BRAIN_SEAT + 0.012, r: PORT.bor
 
 /** The stem and pedestal go down this far below the brain's centre, to the island's top. */
 export const BRAIN_FOOT = 7.5;
+/**
+ * Fed from below, the brain stands on a taller pedestal of glass, the two lanes climbing and falling inside it: its foot
+ * is this far below the brain's centre. Whatever it stands on has its top here.
+ */
+export const STEM_FOOT = -8.6;
+/** Fed from below, the two lanes run up inside the glass pedestal this far either side of the brainstem: in on the -x side, out on the +x. */
+export const STEM_LANE = 0.42;
+/** How the brain is fed: through a hose into the intake at its crown, or from below, up its brainstem. */
+export type Feed = Hose | 'stem';
 
 /** Where the brainstem comes down onto the pedestal. */
 const STEM_X = STEM.x;
@@ -106,11 +115,15 @@ function reachOf(x: number, y: number, z: number) {
 	return Math.atan2(Math.hypot(x / 5.3, z / 4.3), (y - 0.45) / 3.5) * (ROUND / Math.PI) + Math.max(0, -2.7 - y);
 }
 
+/** How far a pass has come, fed from below: up the brainstem from the pedestal's foot, then up over both halves to the crown. */
+const STEM_REACH = reachOf(STEM.x, STEM_FOOT, 0);
+const reachUp = (x: number, y: number, z: number) => STEM_REACH - reachOf(x, y, z);
+
 /** Every vertex's reach, as an attribute the shaders read: its own, or one given for the whole part. */
-function setReach(geo: THREE.BufferGeometry, fixed?: number) {
+function setReach(geo: THREE.BufferGeometry, fixed?: number, by = reachOf) {
 	const p = geo.getAttribute('position');
 	const out = new Float32Array(p.count);
-	for (let i = 0; i < p.count; i++) out[i] = fixed ?? reachOf(p.getX(i), p.getY(i), p.getZ(i));
+	for (let i = 0; i < p.count; i++) out[i] = fixed ?? by(p.getX(i), p.getY(i), p.getZ(i));
 	geo.setAttribute('reach', new THREE.BufferAttribute(out, 1));
 	return geo;
 }
@@ -346,8 +359,15 @@ export class Brain {
 	private dip = 0;
 	/** The ring of light where the brainstem goes down into its collar: it flashes as each pass arrives. */
 	private collar!: THREE.Mesh;
+	/** Fed from below: tokens come in up the brainstem, each pass climbs to the crown, and the lamp there lights as the token is written. */
+	readonly fromStem: boolean;
+	private reach: (x: number, y: number, z: number) => number;
+	private lamp: THREE.Mesh | null = null;
 
-	constructor(hose: Hose = HOSE) {
+	constructor(feed: Feed = HOSE) {
+		this.fromStem = feed === 'stem';
+		this.reach = this.fromStem ? reachUp : reachOf;
+		const hose = feed === 'stem' ? null : feed;
 		// Everything that is the brain, under its name, so the conversation shows all of it and a visit lights all of it.
 		const brain = new THREE.Group();
 		brain.name = 'brain';
@@ -399,7 +419,7 @@ export class Brain {
 		const count = solved.rise.length;
 		const look = new Float32Array(count * 3);
 		const axis = new Float32Array(count * 3);
-		const plateReach = solved.plates.map((p) => reachOf(p.at[0], p.at[1], p.at[2]));
+		const plateReach = solved.plates.map((p) => this.reach(p.at[0], p.at[1], p.at[2]));
 		for (let i = 0; i < count; i++) {
 			const plate = solved.plates[solved.plate[i]];
 			look[i * 3] = plate.tone === 'yellow' ? 1 : 0;
@@ -439,13 +459,13 @@ export class Brain {
 		};
 		for (const finish of ['chrome', 'copper', 'dark', 'glass', 'amber', 'cyan'] as const) {
 			const g = built.parts.take(finish);
-			if (g) add(setReach(g), this.finish[finish], finish === 'amber' ? 'lights' : finish === 'cyan' ? 'leds' : 'works');
+			if (g) add(setReach(g, undefined, this.reach), this.finish[finish], finish === 'amber' ? 'lights' : finish === 'cyan' ? 'leds' : 'works');
 		}
 		if (built.coils) {
 			const copper = (this.finish.copper as Works).clone();
 			copper.wound = true;
 			copper.heat = 1;
-			add(setReach(built.coils), copper, 'coils');
+			add(setReach(built.coils, undefined, this.reach), copper, 'coils');
 		}
 		// What rides on the cushions: the rows of lights let into the blue, each rising with its plate.
 		const riding = new Map<Finish, THREE.BufferGeometry[]>();
@@ -479,7 +499,7 @@ export class Brain {
 		const below = under();
 		for (const finish of ['chrome', 'dark', 'cyan'] as const) {
 			const geo = below.parts.take(finish);
-			if (geo) add(setReach(geo), this.finish[finish], finish === 'cyan' ? 'leds' : 'works');
+			if (geo) add(setReach(geo, undefined, this.reach), this.finish[finish], finish === 'cyan' ? 'leds' : 'works');
 		}
 		this.drum = below.drum;
 		for (const mesh of meshes) {
@@ -491,8 +511,8 @@ export class Brain {
 	}
 
 	/* ---- what holds the halves: the keel and its pins, the intake at the crown, the brainstem and its axle ---- */
-	private buildBetween(brain: THREE.Group, hose: Hose) {
-		const { parts, ring, pins } = between(hose);
+	private buildBetween(brain: THREE.Group, hose: Hose | null) {
+		const { parts, ring, pins, lens } = between(hose);
 		const add = (to: THREE.Object3D, geo: THREE.BufferGeometry | null, material: THREE.Material, name: string) => {
 			if (!geo) return;
 			const mesh = new THREE.Mesh(geo, material);
@@ -502,16 +522,22 @@ export class Brain {
 			to.add(mesh);
 			this.light(mesh);
 		};
-		for (const finish of ['chrome', 'dark', 'amber', 'cyan'] as const) add(brain, setReach(parts.take(finish)!), this.finish[finish], finish === 'amber' ? 'lights' : finish === 'cyan' ? 'leds' : 'works');
-		add(brain, setReach(pins.take('chrome')!), this.finish.chrome, 'works');
+		for (const finish of ['chrome', 'dark', 'amber', 'cyan'] as const) add(brain, setReach(parts.take(finish)!, undefined, this.reach), this.finish[finish], finish === 'amber' ? 'lights' : finish === 'cyan' ? 'leds' : 'works');
+		add(brain, setReach(pins.take('chrome')!, undefined, this.reach), this.finish.chrome, 'works');
 		for (const finish of ['chrome', 'dark'] as const) add(this.ring, setReach(ring.take(finish)!, 0), this.finish[finish], 'intake');
 		this.ring.position.x = PORT.x;
 		brain.add(this.ring);
+		if (lens) {
+			// The lamp: glass with a warm light behind it, dim at rest and bright for a moment as each token is written.
+			this.lamp = new THREE.Mesh(lens, new THREE.MeshPhysicalMaterial({ color: '#ffe2a8', roughness: 0.08, clearcoat: 1, transmission: 0, emissive: '#ffb238', emissiveIntensity: 0.6 }));
+			this.lamp.name = 'lamp';
+			brain.add(this.lamp);
+		}
 		// The cerebellum: each half's lobe of wound copper and the blue lid seated on it go up into the half's own body, and
 		// dip together as a pass comes down to them.
 		for (const half of this.halves) {
 			const drum = new THREE.Group();
-			const reach = reachOf(LOBE.x, LOBE.top, LOBE.z);
+			const reach = this.reach(LOBE.x, LOBE.top, LOBE.z);
 			// The whole lobe warms at once: gently, so its windings still show.
 			const copper = (this.finish.copper as Works).clone();
 			copper.heat = 0.3;
@@ -531,7 +557,7 @@ export class Brain {
 		geo.setAttribute('position', new THREE.BufferAttribute(built.position, 3));
 		geo.setAttribute('normal', new THREE.BufferAttribute(built.normal, 3));
 		geo.setIndex(new THREE.BufferAttribute(built.index, 1));
-		setReach(geo);
+		setReach(geo, undefined, this.reach);
 		const core = new THREE.Mesh(geo, new Core({ color: '#2a2e38', roughness: 0.42, metalness: 0.75 }));
 		core.name = 'core';
 		return core;
@@ -549,7 +575,7 @@ export class Brain {
 			const look = new THREE.Group();
 			frame.add(look);
 			const centre = new THREE.Vector3().setFromMatrixPosition(eye.frame);
-			const reach = reachOf(centre.x, centre.y, centre.z);
+			const reach = this.reach(centre.x, centre.y, centre.z);
 			for (const [finish, geo] of Object.entries(eye.ball) as [Finish, THREE.BufferGeometry][]) {
 				if (!geo.getAttribute('reach')) setReach(geo, reach);
 				const mesh = new THREE.Mesh(geo, this.finish[finish]);
@@ -565,6 +591,7 @@ export class Brain {
 
 	/* ---- the brainstem goes down into a collar on the pedestal's neck; then the pedestal, and the island it all stands on ---- */
 	private buildStem() {
+		if (this.fromStem) return this.buildGlassStem();
 		const m = mats();
 		const sx = STEM_X;
 		const bottom = -BRAIN_FOOT + 1.72;
@@ -608,12 +635,73 @@ export class Brain {
 		this.group.add(shade);
 	}
 
+	/**
+	 * ---- fed from below: the brainstem goes down into its seat on a pedestal of glass, and the two lanes run up and down
+	 * inside it, from whatever the brain stands on to the seat: the request's tokens climbing on the -x side, the reply's
+	 * coming down on the +x side. Chrome at its top and its foot, two chrome rails inside for the lanes. No island: it
+	 * stands on whatever building holds it, its foot at STEM_FOOT. ----
+	 */
+	private buildGlassStem() {
+		const m = mats();
+		const sx = STEM_X;
+		const top = COLLAR_Y - 0.3;
+		const glassR = 0.9;
+		const b = new Batch();
+		// The cap the seat stands on: a turned chrome collar, and the seat itself (brain/stem.ts).
+		const cap = [
+			[0.62, top - 0.12],
+			[glassR + 0.08, top - 0.12],
+			[glassR + 0.08, top + 0.04],
+			[0.84, COLLAR_Y - 0.08],
+			[0.76, COLLAR_Y + 0.02],
+			[0.001, COLLAR_Y + 0.02]
+		].map(([r, y]) => new THREE.Vector2(r, y));
+		b.add(new THREE.LatheGeometry(cap, 64), m.steel, { p: [sx, 0, 0] });
+		b.add(seat(), m.steel, { p: [0, 0, 0] });
+		// The foot: a stepped chrome flange that bolts to the roof.
+		const foot = [
+			[0.001, STEM_FOOT],
+			[1.5, STEM_FOOT],
+			[1.5, STEM_FOOT + 0.1],
+			[1.25, STEM_FOOT + 0.16],
+			[glassR + 0.08, STEM_FOOT + 0.22],
+			[glassR + 0.08, STEM_FOOT + 0.36],
+			[0.62, STEM_FOOT + 0.36]
+		]
+			.reverse()
+			.map(([r, y]) => new THREE.Vector2(r, y));
+		b.add(new THREE.LatheGeometry(foot, 64), m.steel, { p: [sx, 0, 0] });
+		for (let i = 0; i < 8; i++) {
+			const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
+			b.add(new THREE.CylinderGeometry(0.07, 0.07, 0.08, 12), m.steel, { p: [sx + 1.34 * Math.cos(a), STEM_FOOT + 0.14, 1.34 * Math.sin(a)] });
+		}
+		// The lanes' two chrome rails, from the foot to the cap, and a band round the glass halfway up.
+		const h = top - 0.12 - (STEM_FOOT + 0.36);
+		for (const s of [-1, 1]) b.add(new THREE.CylinderGeometry(0.035, 0.035, h, 10), m.steel, { p: [sx + s * STEM_LANE, STEM_FOOT + 0.36 + h / 2, -0.32] });
+		b.add(new THREE.TorusGeometry(glassR + 0.01, 0.03, 8, 64), m.steel, { p: [sx, (top + STEM_FOOT) / 2, 0], r: [Math.PI / 2, 0, 0] });
+		this.group.add(b.build('stem'));
+		const glass = new THREE.Mesh(
+			new THREE.CylinderGeometry(glassR, glassR, h, 64, 1, true),
+			new THREE.MeshPhysicalMaterial({ color: '#eef6ff', roughness: 0.04, transparent: true, opacity: 0.2, clearcoat: 1, side: THREE.DoubleSide, depthWrite: false })
+		);
+		glass.position.set(sx, STEM_FOOT + 0.36 + h / 2, 0);
+		glass.name = 'stem glass';
+		this.group.add(glass);
+		// A ring of light let into the seat, round the plug: it flashes as each token comes in.
+		this.collar = new THREE.Mesh(new THREE.TorusGeometry(SEAT_LIGHT.r, 0.035, 8, 72), new THREE.MeshStandardMaterial({ color: '#3a2a12', emissive: '#ffa630', emissiveIntensity: 2 }));
+		this.collar.position.set(sx, SEAT_LIGHT.y, 0);
+		this.collar.rotation.x = Math.PI / 2;
+		this.group.add(this.collar);
+	}
+
 	/** Starts a pass from the intake, in a free place or the oldest one's: the ratchet ring clicks round a notch, a token taken in. */
 	private startPass(gain: number) {
 		let slot = this.passAge.indexOf(-1);
 		if (slot < 0) slot = this.passAge.indexOf(Math.max(...this.passAge));
 		this.passAge[slot] = 0;
 		this.passGain[slot] = gain;
+		// Fed from below, the ring counts tokens written, at the crown, when the pass gets there.
+		if (this.fromStem) return;
 		this.notch++;
 		this.clicked = this.lastTime ?? 0;
 	}
@@ -641,7 +729,13 @@ export class Brain {
 		}
 		for (let i = 0; i < 4; i++) {
 			if (this.passAge[i] < 0) continue;
+			const was = this.passAge[i] * PASS_SPEED;
 			this.passAge[i] += dt;
+			// Fed from below, a pass reaching the crown is a token written: the ratchet clicks round a notch.
+			if (this.fromStem && was < STEM_REACH && this.passAge[i] * PASS_SPEED >= STEM_REACH) {
+				this.notch++;
+				this.clicked = time;
+			}
 			if (this.passAge[i] * PASS_SPEED > ROUND + 30) {
 				this.passAge[i] = -1;
 				this.passGain[i] = 0;
@@ -653,12 +747,17 @@ export class Brain {
 		// The coils turn slowly at rest, and each pass gives them a push that dies away; the cerebellum's lobes dip with it.
 		let push = 0;
 		let flash = 0;
+		let written = 0;
 		for (let i = 0; i < 4; i++) {
 			if (this.passAge[i] < 0) continue;
 			push += this.passGain[i] * Math.exp(-this.passAge[i] * 1.6);
-			const x = ROUND + 1.9 - this.passAge[i] * PASS_SPEED;
+			// The collar flashes where the pass meets the brainstem: as it comes down from the crown, or as it starts up from below.
+			const x = this.fromStem ? this.passAge[i] * PASS_SPEED - 0.8 : ROUND + 1.9 - this.passAge[i] * PASS_SPEED;
 			flash += this.passGain[i] * Math.exp(-x * x * 0.3);
+			const y = STEM_REACH - this.passAge[i] * PASS_SPEED;
+			written += this.passGain[i] * Math.exp(-y * y * 0.25);
 		}
+		if (this.lamp) (this.lamp.material as THREE.MeshPhysicalMaterial).emissiveIntensity = 0.5 + busy * 0.4 + written * 5;
 		life.uTurn.value += dt * (0.2 + 5.5 * push);
 		this.dip += (Math.min(1, push) - this.dip) * (1 - Math.exp(-dt * 9));
 		for (const drum of this.drums) drum.position.y = -DIP * this.dip;

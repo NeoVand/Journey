@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Batch } from '../kit/batch';
-import { rbox } from '../kit/geometry';
+import { rbox, sharedRbox } from '../kit/geometry';
 import { machine, curve, tube, shadowOn } from '../kit/machines';
 import { color, Lamp, mats } from '../kit/materials';
 import { bell, outBack, seg, smooth } from '../kit/math';
@@ -65,7 +65,7 @@ export class Router {
 				for (let r = 0; r < 2; r++) grid.add(rbox(0.34, 0.28, 0.03, 0.03, 1), m.steelSoft, { p: [x + (c - 2.5) * 0.38, 0.92 - r * 0.36, -0.5 + 0.03] });
 			}
 			this.group.add(grid.build('copy-memory'));
-			const lamp = new Lamp(rbox(0.14, 0.14, 0.04, 0.05, 3), color.amber, 0.15);
+			const lamp = new Lamp(sharedRbox(0.14, 0.14, 0.04, 0.05, 3), color.amber, 0.15);
 			lamp.mesh.position.set(x + 1.2, 1.62, -0.48);
 			this.group.add(lamp.mesh);
 			this.lamps.push(lamp);
@@ -125,7 +125,7 @@ export class Router {
 		this.bead = new THREE.Mesh(new THREE.SphereGeometry(0.11, 16, 12), new THREE.MeshBasicMaterial({ color: '#9fe2ff' }));
 		this.bead.visible = false;
 		this.group.add(this.bead);
-		this.lampThird = new Lamp(rbox(0.16, 0.16, 0.04, 0.05, 3), color.green, 0.1);
+		this.lampThird = new Lamp(sharedRbox(0.16, 0.16, 0.04, 0.05, 3), color.green, 0.1);
 		this.lampThird.mesh.position.set(THIRD[0], 0.1, THIRD[2] + 0.18);
 		this.group.add(this.lampThird.mesh);
 	}

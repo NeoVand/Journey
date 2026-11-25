@@ -1,6 +1,7 @@
+import * as P from '../sky/masterplan';
 import * as THREE from 'three';
 import { Batch } from '../kit/batch';
-import { rbox } from '../kit/geometry';
+import { rbox, sharedRbox } from '../kit/geometry';
 import { Card, machine, panel, shadowOn, stripes } from '../kit/machines';
 import { Lamp, color, mats } from '../kit/materials';
 import { bell, inOut, outBack, seg, smooth } from '../kit/math';
@@ -22,9 +23,9 @@ export const PLANS_SKY = { top: new THREE.Color('#9fd0f8'), mid: new THREE.Color
 
 /** Where you drop in: into the laptop's screen at home, in the story's coordinates. */
 export const SCREEN_ROOF: Omit<Shot, 'T'> = {
-	az: 15,
+	az: 0,
 	el: 14,
-	target: [-3.85, 1.2, -0.6],
+	target: [P.LAPTOP.at.x - 0.25, 1.2, P.LAPTOP.at.z - 1.2],
 	radius: 0.75,
 	ry: 0.55,
 	wide: { x: 0, y: 0, w: 1, h: 1 },
@@ -332,7 +333,7 @@ export class PlansStage {
 		rail.add(rbox(x1 - x0 - 0.1, 0.03, 0.12, 0.012, 1), m.recess, { p: [(x0 + x1) / 2, 0.125, RAIL_Z] });
 		g.add(rail.build('conversation-rail'));
 		shadowOn(g, (x0 + x1) / 2, 0, RAIL_Z, x1 - x0 + 0.3, 0.9, 0.3);
-		this.railLamp = new Lamp(rbox(0.24, 0.12, 0.24, 0.05, 3), '#22d36b', 0.3);
+		this.railLamp = new Lamp(sharedRbox(0.24, 0.12, 0.24, 0.05, 3), '#22d36b', 0.3);
 		this.railLamp.mesh.position.set(x0 + 0.2, 0.18, RAIL_Z + 0.19);
 		g.add(this.railLamp.mesh);
 		const railSign = createSign('The conversation', 0.18);
@@ -390,7 +391,7 @@ export class PlansStage {
 		// It pivots on top of the back post, and in its rest on top of the front one.
 		this.barArm.position.set(BAR_X, BAR_Y + 0.13, BAR_Z0);
 		g.add(this.barArm);
-		this.barLamp = new Lamp(rbox(0.16, 0.08, 0.16, 0.03, 3), '#ffffff', 0.2);
+		this.barLamp = new Lamp(sharedRbox(0.16, 0.08, 0.16, 0.03, 3), '#ffffff', 0.2);
 		this.barLamp.mesh.rotation.x = Math.PI / 2;
 		this.barLamp.mesh.position.set(BAR_X, BAR_Y - 0.12, BAR_Z0 + BAR_LEN + 0.07 + 0.04);
 		g.add(this.barLamp.mesh);
@@ -449,7 +450,7 @@ export class PlansStage {
 		const youSign = createSign('You', 0.17, undefined, undefined, true);
 		youSign.position.set(DESK.x - 0.8, DESK_TOP - 0.1 - 0.17, DESK.z + DESK_D / 2 + 0.01);
 		g.add(youSign);
-		this.deskLamp = new Lamp(rbox(0.2, 0.08, 0.2, 0.04, 3), '#ffffff', 0.2);
+		this.deskLamp = new Lamp(sharedRbox(0.2, 0.08, 0.2, 0.04, 3), '#ffffff', 0.2);
 		this.deskLamp.mesh.position.set(DESK.x - 1.1, DESK_TOP + 0.04, DESK.z - 0.4);
 		g.add(this.deskLamp.mesh);
 		this.plan = planSheet(STEPS.filter((_, i) => i !== ADDED));
@@ -515,7 +516,7 @@ export class PlansStage {
 			row.mesh.visible = false;
 			g.add(row.mesh);
 			this.rows.push(row);
-			const lamp = new Lamp(rbox(0.28, 0.28, 0.07, 0.05, 3), '#ffffff', 0.2);
+			const lamp = new Lamp(sharedRbox(0.28, 0.28, 0.07, 0.05, 3), '#ffffff', 0.2);
 			lamp.mesh.visible = false;
 			g.add(lamp.mesh);
 			this.boxes.push(lamp);
@@ -542,7 +543,7 @@ export class PlansStage {
 		const face = panel(1.3, 0.62, this.screen, 1);
 		face.position.set(TESTS.x, 0.14 + 0.6, TESTS.z + 0.56);
 		g.add(face);
-		this.testLamp = new Lamp(rbox(0.26, 0.1, 0.26, 0.04, 3), '#ffffff', 0.2);
+		this.testLamp = new Lamp(sharedRbox(0.26, 0.1, 0.26, 0.04, 3), '#ffffff', 0.2);
 		this.testLamp.mesh.position.set(TESTS.x + 0.55, 1.89, TESTS.z + 0.2);
 		g.add(this.testLamp.mesh);
 		this.drawScreen('');

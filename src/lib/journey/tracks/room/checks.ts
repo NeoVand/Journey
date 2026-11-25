@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Batch } from '../../kit/batch';
 import { hang } from '../../kit/cable';
-import { extrude, rbox } from '../../kit/geometry';
+import { extrude, rbox, sharedRbox } from '../../kit/geometry';
 import { shadowOn, tube } from '../../kit/machines';
 import { Lamp, color, mats } from '../../kit/materials';
 import { fitting } from '../../kit/parts';
@@ -164,7 +164,7 @@ export class Gate {
 		const plug = new Batch();
 		fitting(plug, this.socket, [-1, 0, 0], 0.05);
 		this.group.add(plug.build('hook-socket'));
-		this.hookLamp = new Lamp(rbox(0.03, 0.1, 0.1, 0.02, 2), color.cobalt, 0.1);
+		this.hookLamp = new Lamp(sharedRbox(0.03, 0.1, 0.1, 0.02, 2), color.cobalt, 0.1);
 		this.hookLamp.mesh.position.set(GATE.x0 - 0.012, this.socket[1] + 0.22, this.socket[2]);
 		this.group.add(this.hookLamp.mesh);
 	}

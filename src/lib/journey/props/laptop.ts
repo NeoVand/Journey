@@ -15,6 +15,12 @@ const LID_H = 2.12;
 const LID_T = 0.07;
 /** Where its cable plugs in, on the side of the base, in the laptop's own space. */
 export const LAPTOP_PORT: [number, number, number] = [W / 2, 0.06, -0.17];
+/** Its two ports on the other side, for the local MCP servers beside it; and how far a pipe's end stands off them. */
+export const LAPTOP_LEFT_PORTS: [number, number, number][] = [
+	[-W / 2, 0.06, -0.5],
+	[-W / 2, 0.06, -0.2]
+];
+export const LEFT_PORT_R = 0.045;
 
 type Key = { label: string; w: number; code: string };
 
@@ -67,6 +73,7 @@ export class Laptop {
 			b.add(rbox(0.42, 0.1, 0.1, 0.04, 3), m.rubber, { p: [x * 0.96, BASE_H + 0.012, -D / 2 + 0.03] });
 		}
 		fitting(b, LAPTOP_PORT, [1, 0, 0], 0.04, { flange: 1.4 });
+		for (const port of LAPTOP_LEFT_PORTS) fitting(b, port, [-1, 0, 0], LEFT_PORT_R, { flange: 1.3 });
 		this.group.add(b.build('laptop-base'));
 		this.group.add(this.buildKeys(wellW - 0.06, wellD - 0.06, wellZ));
 

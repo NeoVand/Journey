@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Batch } from '../kit/batch';
-import { chamferRect, extrude, rbox, roundedRect } from '../kit/geometry';
+import { chamferRect, extrude, rbox, roundedRect, sharedRbox } from '../kit/geometry';
 import { color, Lamp, mats } from '../kit/materials';
 import { font, Label } from '../kit/print';
 import { createSign, plinth, ventX } from '../kit/parts';
@@ -80,7 +80,7 @@ export class KvCache {
 			const name = new Label(word, 0.23, { font: font.mono, weight: 600, align: 'left' });
 			name.mesh.position.set(-hw + 0.2, y, CD / 2 - 0.04 + 0.025);
 			this.group.add(name.mesh);
-			const lamp = new Lamp(rbox(0.09, 0.09, 0.024, 0.03, 3), color.amber, 0.2);
+			const lamp = new Lamp(sharedRbox(0.09, 0.09, 0.024, 0.03, 3), color.amber, 0.2);
 			lamp.mesh.position.set(hw - 0.2, y, CD / 2 - 0.035);
 			this.group.add(lamp.mesh);
 			const kv = [K, V].map((l, j) => {

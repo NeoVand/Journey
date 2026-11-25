@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Batch } from '../../kit/batch';
-import { extrude, rbox, roundedPoly, roundedRect } from '../../kit/geometry';
+import { extrude, rbox, roundedPoly, roundedRect, sharedRbox } from '../../kit/geometry';
 import { shadowOn } from '../../kit/machines';
 import { Lamp, color, mats } from '../../kit/materials';
 import { clamp, inOut, lerp } from '../../kit/math';
@@ -312,7 +312,7 @@ export class HarnessRoom {
 			});
 			face.position.set(-0.1, 0, 0.085);
 			hatch.add(face);
-			const lamp = new Lamp(rbox(0.12, 0.12, 0.04, 0.04, 3), color.amber, 0.3);
+			const lamp = new Lamp(sharedRbox(0.12, 0.12, 0.04, 0.04, 3), color.amber, 0.3);
 			lamp.mesh.position.set(DRAWER_W / 2 - 0.25, 0, 0.09);
 			hatch.add(lamp.mesh);
 			this.drawerLamps.push(lamp);

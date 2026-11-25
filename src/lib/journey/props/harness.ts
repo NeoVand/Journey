@@ -1,19 +1,24 @@
 import * as THREE from 'three';
 import { Batch } from '../kit/batch';
-import { chamferRect, extrude, rbox, roundedRect } from '../kit/geometry';
+import { extrude, rbox, roundedRect, sharedRbox } from '../kit/geometry';
 import { Lamp, color, mats } from '../kit/materials';
 import { drawIcon, Label, Surface, font, roundRectPath } from '../kit/print';
 import { Card } from '../kit/machines';
-import { fitting, plinth, screw, ventX } from '../kit/parts';
+import { fitting, screw, ventX } from '../kit/parts';
 import { hitBox } from '../poke';
+import { palette } from '../sky/palette';
 
 export const HW = 2.7;
 export const HH = 3.7;
 export const HD = 2.2;
+/** How high its barrel roof rises over the top of its walls. */
+export const ROOF_RISE = 0.42;
+/** The top of its walls, and the crown of its roof, from the desk. */
+export const WALL_TOP = 0.14 + HH;
+export const CROWN = WALL_TOP + ROOF_RISE;
 
 /** Where the lines enter, in the harness's own coordinates. The pipes in the world are drawn to these. */
 export const PORT_Y = 0.42;
-export const PORT_OUT_Z = 0.55;
 export const PORT_MCP_Z = -0.55;
 export const PORT_KEYS_Z = -0.05;
 export const PORT_BACK_X = -0.7;
@@ -90,7 +95,7 @@ class Drawer {
 
 		// Drawer front.
 		const front = extrude(roundedRect(fw, fh, 0.075), 0.1, 0.028, 4, 10);
-		b.add(front, m.creamLight, { p: [0, 0, 0.05] });
+		b.add(front, palette().cream, { p: [0, 0, 0.05] });
 		// Pull: a scooped metal bar at the lower edge.
 		b.add(rbox(0.5, 0.05, 0.06, 0.024, 3), m.steel, { p: [fw / 2 - 0.46, -fh / 2 + 0.12, 0.118] });
 		this.group.add(b.build(`drawer-${index}`));
@@ -134,7 +139,7 @@ class Drawer {
 		this.group.add(face);
 
 		// State lamp on the front's right end.
-		this.lamp = new Lamp(rbox(0.1, 0.1, 0.034, 0.03, 3), color.amber, 0.4);
+		this.lamp = new Lamp(sharedRbox(0.1, 0.1, 0.034, 0.03, 3), color.amber, 0.4);
 		this.lamp.mesh.position.set(fw / 2 - 0.16, 0.02, 0.112);
 		this.group.add(this.lamp.mesh);
 
@@ -190,14 +195,16 @@ export class Harness {
 		// Its name lets the conversation point at it: see pointer.svelte.ts.
 		this.group.name = 'Harness';
 		const m = mats();
+		const c = palette();
 		const b = new Batch();
-		plinth(b, HW + 0.34, HD + 0.34, 0.14);
+		// A brass plinth, and the butter-cream body of everything that is yours.
+		b.add(rbox(HW + 0.34, 0.14, HD + 0.34, 0.05, 3), c.brass, { p: [0, 0.07, 0] });
 
 		const Y0 = 0.14;
 		const midY = Y0 + HH / 2;
 
 		// Shell: an extruded ring, so the opening is a true recess with a soft inner lip.
-		const profile = chamferRect(HW, HH, 0.34, 0.1);
+		const profile = roundedRect(HW, HH, 0.14);
 		const hole = new THREE.Path();
 		const hw = OPEN_W / 2;
 		const hy = OPEN_Y - midY;
@@ -214,7 +221,7 @@ export class Harness {
 		hole.quadraticCurveTo(-hw, hy - hh, -hw + r, hy - hh);
 		profile.holes.push(hole);
 		const shell = extrude(profile, HD, 0.085, 6, 10);
-		b.add(shell, m.cream, { p: [0, midY, 0] });
+		b.add(shell, c.butter, { p: [0, midY, 0] });
 
 		// A real cavity, dark so drawers read against it, with a bay for each drawer: nothing stands in a tray's way as it slides out.
 		const BACK = -0.98;
@@ -249,36 +256,45 @@ export class Harness {
 			trimHole.quadraticCurveTo(-w, -h, -w + q, -h);
 		}
 		trimOuter.holes.push(trimHole);
-		b.add(extrude(trimOuter, 0.06, 0.016, 2, 8), m.steelSoft, { p: [0, OPEN_Y, HD / 2 + 0.002] });
+		b.add(extrude(trimOuter, 0.06, 0.016, 2, 8), c.brass, { p: [0, OPEN_Y, HD / 2 + 0.002] });
 
 		// Nameplate above the opening.
 		const plateY = OPEN_Y + OPEN_H / 2 + 0.32;
-		b.add(extrude(roundedRect(1.5, 0.4, 0.14), 0.07, 0.022, 3, 10), m.creamLight, {
+		b.add(extrude(roundedRect(1.62, 0.5, 0.18), 0.05, 0.02, 3, 10), c.brass, { p: [0, plateY, HD / 2 + 0.01] });
+		b.add(extrude(roundedRect(1.5, 0.4, 0.14), 0.07, 0.022, 3, 10), c.cream, {
 			p: [0, plateY, HD / 2 + 0.03]
 		});
 
 		// A closed back: a panel let into the shell, screwed on at its corners.
-		b.add(extrude(chamferRect(HW - 0.22, HH - 0.22, 0.26, 0.08), 0.1, 0.03, 3, 8), m.cream, { p: [0, midY, -HD / 2 + 0.03] });
+		b.add(extrude(roundedRect(HW - 0.22, HH - 0.22, 0.12), 0.1, 0.03, 3, 8), c.butter, { p: [0, midY, -HD / 2 + 0.03] });
 		for (const sx of [-1, 1]) {
 			for (const y of [0.42, 3.1]) screw(b, sx * (HW / 2 - 0.26), y, -HD / 2 - 0.022, 'z');
 		}
 
 		// A fitting wherever a line enters, so every line ends at something.
-		fitting(b, [HW / 2, PORT_Y, PORT_OUT_Z], [1, 0, 0], 0.078);
-		fitting(b, [HW / 2, PORT_Y, PORT_MCP_Z], [1, 0, 0], 0.042);
-		fitting(b, [-HW / 2, PORT_Y, PORT_KEYS_Z], [-1, 0, 0], 0.04);
+		// The MCP server's lead comes in on its left, from the server beside the easel; your keys on its right, from the laptop.
+		fitting(b, [-HW / 2, PORT_Y, PORT_MCP_Z], [-1, 0, 0], 0.042);
+		fitting(b, [HW / 2, PORT_Y, PORT_KEYS_Z], [1, 0, 0], 0.04);
 		fitting(b, [PORT_BACK_X, PORT_BACK_Y, -HD / 2], [0, 0, -1], 0.115);
 		fitting(b, [PORT_BACK_X, 3.2, -HD / 2], [0, 0, -1], 0.09);
 
-		// Roof: hatch plate and handle.
+		// Roof: a gold cornice, and a low barrel vault over it from front to back, gold-ribbed at its ends, with the hatch
+		// let into its crown.
 		const roofY = Y0 + HH;
-		b.add(rbox(1.3, 0.05, HD * 0.62, 0.02, 2), m.steelSoft, { p: [0, roofY + 0.015, -0.1] });
-		for (let i = 0; i < 5; i++) {
-			b.add(rbox(1.02, 0.016, 0.05, 0.006, 1), m.recess, { p: [0, roofY + 0.042, -0.5 + i * 0.2] });
-		}
-		for (const s of [-1, 1]) {
-			for (const z of [-0.7, 0.5]) screw(b, s * 0.56, roofY + 0.045, z - 0.1, 'y');
-		}
+		b.add(rbox(HW + 0.12, 0.12, HD + 0.12, 0.04, 2), c.gold, { p: [0, roofY - 0.02, 0] });
+		const span = HD / 2 + 0.04;
+		const R = (span * span + ROOF_RISE * ROOF_RISE) / (2 * ROOF_RISE);
+		const a = Math.asin(span / R);
+		const vault = new THREE.Shape();
+		vault.moveTo(-span, 0);
+		vault.absarc(0, ROOF_RISE - R, R, Math.PI / 2 + a, Math.PI / 2 - a, true);
+		vault.closePath();
+		b.add(extrude(vault, HW - 0.04, 0.03, 2, 32), c.butter, { p: [0, roofY + 0.04, 0], r: [0, Math.PI / 2, 0] });
+		for (const s of [-1, 1]) b.add(new THREE.TorusGeometry(R, 0.05, 8, 40, 2 * a), c.gold, { p: [s * (HW / 2 - 0.02), roofY + 0.04 + ROOF_RISE - R, 0], r: [0, Math.PI / 2, Math.PI / 2 - a] });
+		const crown = roofY + 0.04 + ROOF_RISE + 0.03;
+		b.add(rbox(1.3, 0.05, 0.62, 0.02, 2), c.brass, { p: [0, crown, 0] });
+		for (let i = 0; i < 5; i++) b.add(rbox(1.02, 0.016, 0.05, 0.006, 1), m.recess, { p: [0, crown + 0.027, -0.2 + i * 0.1] });
+		for (const s of [-1, 1]) for (const z of [-0.24, 0.24]) screw(b, s * 0.56, crown + 0.03, z, 'y');
 
 		// Right-hand flank: vent and a status strip.
 		ventX(b, HW / 2 + 0.002, 1.72, -0.28, 2.1, 0.94, 12);
@@ -287,13 +303,13 @@ export class Harness {
 		this.group.add(b.build('harness'));
 
 		for (let i = 0; i < 5; i++) {
-			const lamp = new Lamp(rbox(0.024, 0.3, 0.1, 0.01, 2), color.amber, 1.5);
+			const lamp = new Lamp(sharedRbox(0.024, 0.3, 0.1, 0.01, 2), color.amber, 1.5);
 			lamp.mesh.position.set(HW / 2 + 0.012, 1.0 + i * 0.36, 0.74);
 			this.group.add(lamp.mesh);
 			this.sideLamps.push(lamp);
 		}
 
-		this.roofLamp = new Lamp(rbox(0.1, 0.1, 0.03, 0.03, 3), color.green, 1.2);
+		this.roofLamp = new Lamp(sharedRbox(0.1, 0.1, 0.03, 0.03, 3), color.green, 1.2);
 		this.roofLamp.mesh.position.set(0.58, plateY, HD / 2 + 0.07);
 		this.group.add(this.roofLamp.mesh);
 
@@ -352,8 +368,8 @@ export class Harness {
 	 * filled: 0..1 per drawer, its lamp goes green once its contents have been taken.
 	 */
 	update(opens: number[], filled: number[], wake: number, time: number, jolt = 0) {
-		// A soft squash when something lands in it. Scale comes from the base, so it stays planted.
-		this.group.scale.set(1 + jolt * 0.016, 1 - jolt * 0.024, 1 + jolt * 0.016);
+		// When something lands in it, its roof lamp flares. It doesn't squash: its cables and pipes are plugged into its
+		// sides, and a squash would push its walls through their fittings.
 		this.settlePulls(opens);
 		this.drawers.forEach((d, i) => {
 			d.update(this.out[i], this.stand[i].x);
@@ -364,7 +380,7 @@ export class Harness {
 			const lit = THREE.MathUtils.clamp(wake * 6 - i, 0, 1);
 			l.set(color.amber, 0.2 + lit * (0.6 + breathe * 0.4));
 		});
-		this.roofLamp.set(color.green, 0.3 + wake * 0.7);
+		this.roofLamp.set(color.green, 0.3 + wake * 0.7 + jolt * 2.2);
 	}
 
 	/** Where a drawer's contents lie once it is fully open, so something on its way there can aim at it before it has opened. */

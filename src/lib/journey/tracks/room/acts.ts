@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Batch } from '../../kit/batch';
 import { hang, type Solid } from '../../kit/cable';
-import { rbox, sweep } from '../../kit/geometry';
+import { rbox, sharedRbox, sweep } from '../../kit/geometry';
 import { shadowOn, tube } from '../../kit/machines';
 import { Lamp, color, mats } from '../../kit/materials';
 import { fitting, standSign } from '../../kit/parts';
@@ -152,7 +152,7 @@ export function buildBenches() {
 		});
 		board.position.set(cx, 0.1 + (BENCH.h - 0.1) / 2, bench.z + BENCH.len / 2 + 0.006);
 		group.add(board);
-		const lamp = new Lamp(rbox(0.12, 0.04, 0.12, 0.02, 2), color.amber, 0.12);
+		const lamp = new Lamp(sharedRbox(0.12, 0.04, 0.12, 0.02, 2), color.amber, 0.12);
 		lamp.mesh.position.set(BENCH.x1 - 0.15, BENCH.h + 0.02, bench.z - BENCH.len / 2 + 0.2);
 		group.add(lamp.mesh);
 		lamps.push(lamp);

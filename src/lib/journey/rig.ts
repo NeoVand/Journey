@@ -24,10 +24,22 @@ export interface Shot {
 	tallRadius?: number;
 	/** How tall the subject is on a phone, when that isn't the same as how wide. */
 	tallRy?: number;
+	/**
+	 * Something moving to keep in the middle of the picture: between two shots that follow the same thing, the camera
+	 * looks where it is at every moment, not part way between where it was at either shot.
+	 */
+	follow?: (T: number, out: THREE.Vector3) => THREE.Vector3;
 }
 
 const DEG = Math.PI / 180;
 const v = new THREE.Vector3();
+const fa = new THREE.Vector3();
+const fb = new THREE.Vector3();
+/** What a shot looks at: a shot that follows something looks where that thing is at the shot's own moment. */
+const aim = (s: Shot, tall: boolean, out: THREE.Vector3): [number, number, number] => {
+	if (s.follow) return s.follow(s.T, out).toArray() as [number, number, number];
+	return tall && s.tallTarget ? s.tallTarget : s.target;
+};
 
 /**
  * Art direction for the camera. Each shot says what to look at and where on screen it
@@ -94,9 +106,10 @@ export class Rig {
 		const a = shots[i];
 		const b = shots[i + 1];
 		const k = smoother(Math.min(1, Math.max(0, (T - a.T) / (b.T - a.T))));
-		const ta = aspect < 0.9 && a.tallTarget ? a.tallTarget : a.target;
-		const tb = aspect < 0.9 && b.tallTarget ? b.tallTarget : b.target;
+		const ta = aim(a, aspect < 0.9, fa);
+		const tb = aim(b, aspect < 0.9, fb);
 		out.set(lerp(ta[0], tb[0], k), lerp(ta[1], tb[1], k), lerp(ta[2], tb[2], k));
+		if (a.follow && a.follow === b.follow) a.follow(T, out);
 		return { radius: lerp(a.radius, b.radius, k), az: lerp(a.az, b.az, k) * DEG, el: lerp(a.el, b.el, k) * DEG };
 	}
 
@@ -126,9 +139,10 @@ export class Rig {
 		// screen between cards, and back up as the next arrives, bobbed the whole picture at every turn of the page.
 		const sy = lerp(A.shiftY, B.shiftY, k);
 
-		const ta = aspect < 0.9 && a.tallTarget ? a.tallTarget : a.target;
-		const tb = aspect < 0.9 && b.tallTarget ? b.tallTarget : b.target;
+		const ta = aim(a, aspect < 0.9, fa);
+		const tb = aim(b, aspect < 0.9, fb);
 		this.focus.set(lerp(ta[0], tb[0], k), lerp(ta[1], tb[1], k), lerp(ta[2], tb[2], k));
+		if (a.follow && a.follow === b.follow) a.follow(T, this.focus);
 		this.radius = lerp(a.radius, b.radius, k);
 
 		v.set(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el)).multiplyScalar(dist).add(this.focus);

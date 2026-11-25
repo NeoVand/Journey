@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Batch } from '../kit/batch';
-import { rbox, ring } from '../kit/geometry';
+import { rbox, ring, sharedRbox } from '../kit/geometry';
 import { color, Lamp, mats } from '../kit/materials';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { archBlock, arcPoint, Card, machine, panel, shadowOn } from '../kit/machines';
@@ -210,7 +210,7 @@ class Sampler {
 		this.sign.position.set(wx - 3.4, PAD_Y + 0.75, 1.2);
 		this.sign.rotation.y = 0.22;
 		this.group.add(this.sign);
-		this.lamp = new Lamp(rbox(0.14, 0.14, 0.04, 0.05, 3), color.amber, 0.3);
+		this.lamp = new Lamp(sharedRbox(0.14, 0.14, 0.04, 0.05, 3), color.amber, 0.3);
 		this.lamp.mesh.position.set(wx + 0.34, cy + R + 0.5, 0.79);
 		this.group.add(this.lamp.mesh);
 
@@ -413,7 +413,7 @@ class OutTile {
 				: kind === 'tool'
 					? m.amber
 					: (thinkMat ??= new THREE.MeshPhysicalMaterial({ color: '#b6c4e2', roughness: 0.38, clearcoat: 0.7 }));
-		const body = new THREE.Mesh(rbox(this.width, TILE_H, TILE_D, 0.055, 3), mat);
+		const body = new THREE.Mesh(sharedRbox(this.width, TILE_H, TILE_D, 0.055, 3), mat);
 		body.castShadow = true;
 		this.group.add(body);
 		const H = 180;
@@ -670,7 +670,7 @@ class Decoder {
 			const said = new Label(meaning, 0.16, { color: '#33415c', weight: 600, align: 'left' });
 			said.mesh.position.set(-0.56, y, 0.156);
 			pg.add(said.mesh);
-			const lamp = new Lamp(rbox(0.16, 0.16, 0.04, 0.05, 3), color.green, 0.1);
+			const lamp = new Lamp(sharedRbox(0.16, 0.16, 0.04, 0.05, 3), color.green, 0.1);
 			lamp.mesh.position.set(-2.56, y, 0.16);
 			pg.add(lamp.mesh);
 			this.stops.push(lamp);
@@ -891,7 +891,7 @@ class Decoder {
 const DET_H = 3.7;
 const DET_Z = RAIL_Z - 1.26; // the block's centre, and its tube's
 /** In the order they stream: the thinking first, then the tool call's JSON. */
-const SLIP_TEXT = ['The user', ' wants', ' the race', 'Grep', '("lock', '|schedule', '", src', '/")'];
+export const SLIP_TEXT = ['The user', ' wants', ' the race', 'Grep', '("lock', '|schedule', '", src', '/")'];
 /** The first three slips are the thinking's text, the rest the tool call's. */
 const THINK_SLIPS = 3;
 /** How long a tile takes to become paper at the top, and how many trips up the tube a slip makes per unit of T. */
@@ -947,7 +947,7 @@ class Detokenizer {
 		pole.add(rbox(0.1, 2.2, 0.1, 0.03, 2), m.steelSoft, { p: [stayX, PAD_Y + 1.1, RAIL_Z - 1.56] });
 		this.group.add(stay, pole.build('pole'));
 
-		this.lamp = new Lamp(rbox(0.14, 0.14, 0.04, 0.05, 3), color.amber, 0.3);
+		this.lamp = new Lamp(sharedRbox(0.14, 0.14, 0.04, 0.05, 3), color.amber, 0.3);
 		this.lamp.mesh.position.set(W / 2 - 0.26, PAD_Y + H - 0.26, DET_Z + D / 2 + 0.02);
 		this.group.add(this.lamp.mesh);
 

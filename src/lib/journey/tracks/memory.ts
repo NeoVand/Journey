@@ -1,6 +1,7 @@
+import { ISLE_S, M_POS, relW } from '../chapters/back';
 import * as THREE from 'three';
 import { Batch } from '../kit/batch';
-import { rbox } from '../kit/geometry';
+import { rbox, sharedRbox } from '../kit/geometry';
 import { Card, machine, shadowOn } from '../kit/machines';
 import { Lamp, color, mats } from '../kit/materials';
 import { bell, inOut, outBack, seg, smooth } from '../kit/math';
@@ -24,9 +25,9 @@ export const MEMORY_SKY = { top: new THREE.Color('#9fd0f8'), mid: new THREE.Colo
 export const CABINET_ROOF: Omit<Shot, 'T'> = {
 	az: -12,
 	el: 62,
-	target: [-78, 32.6, -4],
-	radius: 1.6,
-	ry: 1.1,
+	target: relW(M_POS, 0, 7.6, 0),
+	radius: 1.6 * ISLE_S,
+	ry: 1.1 * ISLE_S,
 	wide: { x: 0, y: 0, w: 1, h: 1 },
 	tall: { x: 0, y: 0, w: 1, h: 1 }
 };
@@ -255,7 +256,7 @@ export class MemoryStage {
 			b.add(rbox(x1 - x0 - 0.1, 0.03, 0.12, 0.012, 1), m.recess, { p: [(x0 + x1) / 2, 0.125, z] });
 			group.add(b.build(`rail-${rail}`));
 			shadowOn(group, (x0 + x1) / 2, 0, z, x1 - x0 + 0.3, 0.9, 0.3);
-			const lamp = new Lamp(rbox(0.26, 0.12, 0.26, 0.05, 3), '#22d36b', 0.3);
+			const lamp = new Lamp(sharedRbox(0.26, 0.12, 0.26, 0.05, 3), '#22d36b', 0.3);
 			lamp.mesh.position.set(x0 + 0.25, 0.18, z + 0.18);
 			group.add(lamp.mesh);
 			const sign = createSign(name, 0.2);
@@ -367,7 +368,7 @@ export class MemoryStage {
 			sheet.mesh.rotation.x = -0.5;
 			g.add(sheet.mesh);
 		}
-		this.fileLamp = new Lamp(rbox(0.22, 0.08, 0.22, 0.04, 3), '#ffffff', 0.2);
+		this.fileLamp = new Lamp(sharedRbox(0.22, 0.08, 0.22, 0.04, 3), '#ffffff', 0.2);
 		this.fileLamp.mesh.position.set(FILES.x + 1.0, 0.26, FILES.z + 0.55);
 		g.add(this.fileLamp.mesh);
 		// A checkpoint: a copy of the file as it was before the edit, kept to one side.
@@ -391,7 +392,7 @@ export class MemoryStage {
 		host.position.copy(HOST);
 		g.add(host);
 		shadowOn(g, HOST.x, 0, HOST.z, 2.2, 1.7);
-		this.hostLamp = new Lamp(rbox(0.26, 0.1, 0.26, 0.04, 3), '#ffffff', 0.2);
+		this.hostLamp = new Lamp(sharedRbox(0.26, 0.1, 0.26, 0.04, 3), '#ffffff', 0.2);
 		this.hostLamp.mesh.position.set(HOST.x + 0.6, 1.88, HOST.z + 0.2);
 		g.add(this.hostLamp.mesh);
 		this.parcel = new THREE.Group();

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Batch } from '../kit/batch';
-import { rbox } from '../kit/geometry';
+import { rbox, sharedRbox } from '../kit/geometry';
 import { shadowOn } from '../kit/machines';
 import { color, Lamp, mats } from '../kit/materials';
 import { bell, inOut, lerp, outBack, seg, smooth } from '../kit/math';
@@ -108,7 +108,7 @@ export class BatchLanes {
 		this.group.add(b.build('lanes'));
 		shadowOn(this.group, X1 + 0.45, 0, -0.15, 1.1, 7.7, 0.34);
 		LANE_Z.forEach((z) => {
-			const lamp = new Lamp(rbox(0.26, 0.05, 0.26, 0.02, 2), color.green, 0.08);
+			const lamp = new Lamp(sharedRbox(0.26, 0.05, 0.26, 0.02, 2), color.green, 0.08);
 			lamp.mesh.position.set(X1 + 0.45, 0.575, z);
 			this.group.add(lamp.mesh);
 			this.lamps.push(lamp);

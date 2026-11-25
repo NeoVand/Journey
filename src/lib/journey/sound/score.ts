@@ -1,3 +1,4 @@
+import * as MP from '../sky/masterplan';
 /**
  * The score: which sound plays when, and which ambience fills which stretch of the story. Times are story time T,
  * or a side trip's own time, one unit per card.
@@ -36,8 +37,9 @@ const PLACES = {
 	harness: 'Harness',
 	server: 'MCP',
 	easel: 'easel',
-	tunnel: 'tunnel-frame',
+	tunnel: 'capsule',
 	gateway: 'Front door',
+	sealer: 'sealer',
 	template: 'chat-template',
 	belt: 'belt',
 	arch: 'safety-arch',
@@ -79,7 +81,7 @@ export function score(w: World): { cues: Cue[]; beds: Bed[] } {
 		at(a + 0.11, 'drawer-in', P.harness, { gain: 0.65 });
 		at(a + 0.16, 'paper-land', P.easel, { gain: 0.55, rate: 0.95 + i * 0.03 });
 	});
-	at(2.41, 'paper-slide', [3.05, 0.5, 2.5], { gain: 0.3, rate: 1.3, minor: true });
+	at(2.41, 'paper-slide', [MP.SKILLS.at.x, 0.5, MP.SKILLS.at.z], { gain: 0.3, rate: 1.3, minor: true });
 
 	/* 3. One JSON request: the tabs, the page rolls up and drops to the tunnel, which locks. */
 	at(3.04, 'paper-slide', P.easel, { gain: 0.35, rate: 1.2, minor: true });
@@ -293,9 +295,25 @@ export function score(w: World): { cues: Cue[]; beds: Bed[] } {
 	[18.323, 18.3549, 18.3785, 18.3966, 18.4188, 18.4473, 18.4784, 18.5209].forEach((T, i) => at(T, 'paper-slide', hall(210, 3), { gain: 0.25, rate: 1.1 + i * 0.03, minor: true }));
 	at(18.88, whoosh(1.4, 2000), hall(210, 6), { gain: 0.4, dip: 0.5 });
 
-	/* 19. The model has no hands: slips rain on the harness, the call card pops up and leaves along the pipe. */
-	for (let i = 0; i < 8; i++) at(19.26 + 0.03 * i, 'paper-land', P.harness, { gain: 0.4, rate: 0.95 + i * 0.03, minor: true });
-	at(19.3, 'paper-slide', P.harness, { gain: 0.5 });
+	/*
+	 * 19. The way home: out of the model, the text pours down the lit column with a rising run of glints; the press by
+	 * the door thumps and latches as it seals each piece; the capsules roll down the aqueduct, and each one's text lands
+	 * in the harness with a soft paper note, a step up each time. Then the call card pops up and leaves along the pipe.
+	 */
+	at(19.0, whoosh(1.1, 1800), P.brain, { gain: 0.3 });
+	at(19.002, 'tube', P.brain, { gain: 0.5, rate: 0.9 });
+	for (let i = 0; i < 8; i++) tone(19.002 + 0.003 * i, 7 - i, P.brain, 0.16, 0.6);
+	const home = w.homeTimes;
+	home.sealed.forEach((T, i) => {
+		at(T, 'press', P.sealer, { gain: 0.4, rate: 1.1 + i * 0.02, minor: true });
+		at(T + 0.002, 'latch', P.sealer, { gain: 0.35, rate: 1.2 + i * 0.02, minor: true });
+	});
+	at(home.sealed[0] + 0.006, 'tube', P.gateway, { gain: 0.35 });
+	home.landed.forEach((T, i) => {
+		at(T, 'paper-land', P.harness, { gain: 0.4, rate: 0.95 + i * 0.03, minor: true });
+		tone(T, i, P.harness, 0.22);
+	});
+	at(19.33, 'paper-slide', P.harness, { gain: 0.5 });
 	at(19.68, whoosh(1.2, 1500), P.harness, { gain: 0.25 });
 
 	/* 20. Intent is not authority: the bad call is refused and binned; the good one passes four gates. */
@@ -432,10 +450,10 @@ export function score(w: World): { cues: Cue[]; beds: Bed[] } {
 			{ sound: 'belt', from: 8.5, to: 9.56, level: 0.22, fade: 0.04 },
 			{ sound: 'belt', from: 14.03, to: 14.12, level: 0.22, fade: 0.02 },
 			{ sound: 'belt', from: 18.06, to: 18.64, level: 0.22, fade: 0.04 },
-			{ sound: 'pad-sky', from: 19.05, to: 32.1, level: 1, fade: 0.05 },
+			{ sound: 'pad-sky', from: 19.0, to: 32.1, level: 1, fade: 0.05 },
 			// The light goes gold as the camera pulls back to the whole trip, and the chord warms with it.
 			{ sound: 'pad-dusk', from: 32.12, to: 34, level: 1, fade: 0.2 },
-			{ sound: 'sky', from: 19.05, to: 34, level: 0.07, fade: 0.05 }
+			{ sound: 'sky', from: 19.0, to: 34, level: 0.07, fade: 0.05 }
 		]
 	};
 }
@@ -443,8 +461,8 @@ export function score(w: World): { cues: Cue[]; beds: Bed[] } {
 /* ---------- how MCP connects ---------- */
 
 /** The harness and the server on the first island, in the story's coordinates. */
-const HARNESS: Where = [1.1, 1.6, -0.65];
-const SERVER: Where = [7.2, 0.8, -0.72];
+const HARNESS: Where = [MP.HARNESS.at.x, 1.6 * MP.HARNESS.scale, MP.HARNESS.at.z];
+const SERVER: Where = [MP.LOCAL_MCP[2].x, 0.8, MP.LOCAL_MCP[2].z];
 
 function howMcpConnects(): { cues: Cue[]; beds: Bed[] } {
 	const cues: Cue[] = [];

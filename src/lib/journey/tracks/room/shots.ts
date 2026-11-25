@@ -1,3 +1,4 @@
+import * as P from '../../sky/masterplan';
 import type { Region, Shot } from '../../rig';
 import type { Pose } from '../../visit';
 import { CHILD, ROOM_AT, SUB } from './layout';
@@ -62,9 +63,9 @@ const report = RESULTS.find((r) => r.span === 2)!;
 export const ROOF: Omit<Shot, 'T'> = {
 	az: 18,
 	el: 64,
-	target: [1.1, 3.9, -0.75],
-	radius: 0.62,
-	ry: 0.5,
+	target: [P.HARNESS.at.x, P.HARNESS.h - 0.05, P.HARNESS.at.z],
+	radius: 0.62 * P.HARNESS.scale,
+	ry: 0.5 * P.HARNESS.scale,
 	wide: box(0, 0, 1, 1),
 	tall: box(0, 0, 1, 1)
 };

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Batch } from '../kit/batch';
-import { chamferRect, extrude, rbox, roundedRect } from '../kit/geometry';
+import { chamferRect, extrude, rbox, roundedRect, sharedRbox } from '../kit/geometry';
 import { color, Lamp, mats } from '../kit/materials';
 import { createSign, plinth, ventX } from '../kit/parts';
 import { arcPoint, panel, shadowOn } from '../kit/machines';
@@ -144,7 +144,7 @@ export class Pools {
 			}
 		}
 		pre.add(pb.build('prefill-parts'), dieMesh, hbm.build('prefill-hbm'));
-		this.readLamp = new Lamp(rbox(0.14, 0.14, 0.04, 0.05, 3), color.amber, 0.2);
+		this.readLamp = new Lamp(sharedRbox(0.14, 0.14, 0.04, 0.05, 3), color.amber, 0.2);
 		this.readLamp.mesh.position.set(W / 2 - 0.4, 4.14, D / 2 + 0.03);
 		pre.add(this.readLamp.mesh);
 		this.readGauge = gauges(pre);
@@ -222,7 +222,7 @@ export class Pools {
 		for (const x of [RUN_END + 0.5, 1.4, 4.2, X]) track.add(rbox(0.16, 0.6, 0.16, 0.03, 2), m.steelSoft, { p: [x, 0.3, RUN_Z] });
 		track.add(rbox(0.16, 0.6, 0.16, 0.03, 2), m.steelSoft, { p: [X, 0.3, D / 2 + 0.3] });
 		this.group.add(track.build('decode-track'));
-		this.writeLamp = new Lamp(rbox(0.14, 0.14, 0.04, 0.05, 3), color.amber, 0.2);
+		this.writeLamp = new Lamp(sharedRbox(0.14, 0.14, 0.04, 0.05, 3), color.amber, 0.2);
 		this.writeLamp.mesh.position.set(W / 2 - 0.4, 4.14, D / 2 + 0.03);
 		dec.add(this.writeLamp.mesh);
 		let x = RUN_END + 0.2;
