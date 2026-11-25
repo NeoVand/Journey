@@ -1712,9 +1712,11 @@ export class World {
 		this.capsule.update(open, lock, this.cipher, time);
 		this.home.update(T, time);
 		const pour = this.home.pouring(T);
-		this.streamGlass.emissive.set('#5b9dff');
-		this.streamGlass.emissiveIntensity = pour * 1.1;
-		this.streamGlass.opacity = 0.42 + pour * 0.25;
+		// While the reply pours down it, the column runs deep blue and lit, so it reads inside the tower from far off.
+		this.streamGlass.color.set('#7fb4ea').lerp(this.c1.set('#3d7bff'), pour);
+		this.streamGlass.emissive.set('#3f7dff');
+		this.streamGlass.emissiveIntensity = pour * 1.8;
+		this.streamGlass.opacity = 0.42 + pour * 0.4;
 		this.copilotArch.update(this.harnessId === 'copilot', seg(T, 4.72, 4.76), this.dt);
 	}
 

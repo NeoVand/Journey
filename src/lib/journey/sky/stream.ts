@@ -328,7 +328,9 @@ export class HomeStream {
 			if (g.visible) {
 				g.position.copy(slip.visible ? slip.position : d.position);
 				const k = slip.visible ? slip.scale.x : scale;
-				g.scale.setScalar(1.5 * k);
+				// Falling down the tower's column it's seen from far off: its glow is bigger there.
+				const far = slip.visible && this.sAt(i, T) >= 0 && this.sAt(i, T) < this.route.shaftFoot ? 2.4 : 1.5;
+				g.scale.setScalar(far * k);
 			}
 			for (const im of [this.glass, this.brass, this.locks]) im.setMatrixAt(i, d.matrix);
 		});
