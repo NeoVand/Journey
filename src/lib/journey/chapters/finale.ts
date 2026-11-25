@@ -108,6 +108,8 @@ export class Finale {
 		const hidden = true;
 		const end = (path: THREE.Curve<THREE.Vector3>, u: number) => path.getPointAt(u).toArray() as V3;
 		const above = (p: V3, h: number): V3 => [p[0], p[1] + h, p[2]];
+		/** A point on your tools' small stage raised by h of their own units. */
+		const lift = (p: V3, h: number): V3 => [p[0], p[1] + h * TOOLS.s, p[2]];
 		// Where the green loop comes out of the sandbox's wall, on its way back up to the harness.
 		const wall = v(low([-10.6, -14.69, 3.6]));
 		let backFrom = 0;
@@ -138,14 +140,15 @@ export class Finale {
 			{ path: line(end(r.stream, 1), r.hatch), time: 0.25, ride: 0, step: 6, hidden },
 			{ path: line(r.hatch, end(r.gatePath, 0)), time: 0.25, ride: 0, step: 6, hidden },
 			// Along the calls' cable to the gates' dock, and through the gates on a cart.
-			{ path: r.gatePath, time: 2.0, ride: 0.2, step: 6, size: 0.5 },
-			{ path: line(r.dock, low([-59, -12.7, 0.7])), time: 0.2, ride: 0, step: 6, hidden },
-			{ path: line(low([-59, -12.7, 0.7]), r.trackEnd), time: 2.1, ride: 0, step: 6, size: small },
-			{ path: curve([r.trackEnd, low([-40.4, -12.1, 0.7]), low([-38.2, -13, 0.7]), low([-36.3, -14.46, 0.7])]), time: 0.6, ride: 0, step: 7, size: small },
-			{ path: line(low([-36.3, -14.46, 0.7]), low([-34, -14.7, 1])), time: 0.1, ride: 0, step: 7, hidden },
-			{ path: curve([low([-34, -14.7, 1]), low([-30, -14.7, 2.4]), low([-24, -14.7, 3.7]), low([-14.4, -14.7, 3.6])]), time: 1, ride: 0, step: 7, size: small },
-			{ path: line(low([-14.4, -14.36, 3.6]), end(r.back, backFrom)), time: 0.1, ride: 0, step: 8, hidden },
-			{ path: new Part(r.back, backFrom, 0), time: 2, ride: 0.22, step: 8, size: 0.6 }
+			// Riding on top of a pipe or a track, its foot clear of it: half its own height over the surface, and a hair more.
+			{ path: r.gatePath, time: 2.0, ride: 0.27, step: 6, size: 0.5 },
+			{ path: line(r.dock, low([-59, -12.2, 0.7])), time: 0.2, ride: 0, step: 6, hidden },
+			{ path: line(low([-59, -12.2, 0.7]), lift(r.trackEnd, 0.5)), time: 2.1, ride: 0, step: 6, size: small },
+			{ path: curve([lift(r.trackEnd, 0.5), low([-40.4, -11.6, 0.7]), low([-38.2, -12.5, 0.7]), low([-36.3, -13.96, 0.7])]), time: 0.6, ride: 0, step: 7, size: small },
+			{ path: line(low([-36.3, -13.96, 0.7]), low([-34, -14.2, 1])), time: 0.1, ride: 0, step: 7, hidden },
+			{ path: curve([low([-34, -14.2, 1]), low([-30, -14.2, 2.4]), low([-24, -14.2, 3.7]), low([-14.4, -14.2, 3.6])]), time: 1, ride: 0, step: 7, size: small },
+			{ path: line(low([-14.4, -14.2, 3.6]), end(r.back, backFrom)), time: 0.1, ride: 0, step: 8, hidden },
+			{ path: new Part(r.back, backFrom, 0), time: 2, ride: 0.28, step: 8, size: 0.6 }
 		];
 		this.total = this.legs.reduce((sum, leg) => sum + leg.time, 0);
 		let sum = 0;
