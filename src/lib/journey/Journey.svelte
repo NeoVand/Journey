@@ -3284,7 +3284,7 @@
 	</section>
 
 	<section data-beat class="beat" style:--h="460vh">
-		<article class="pin right" data-in="0.12" data-out="0.56">
+		<article class="pin right" data-in="0.18" data-out="0.56">
 			<h2>The model has no hands</h2>
 			<p>The tube ends at your laptop, in the harness. It holds on to the stream until the tool call is complete, then reads it. Only now does anyone know the full request.</p>
 			<p>And it’s only a request, like a web form sent to a server. The model can’t read a file. It can only write the words “please read this file.” Everything after this decides whether to say yes.</p>
