@@ -30,9 +30,8 @@ import { Visits } from './visit';
 import { MiniMap } from './minimap';
 import { Voyage, type Flight } from './voyage';
 import { Cluster, CLUSTER_SHOTS, DIVE_T } from './cluster';
-import { LOWER } from './layout';
-import { CALL_ROLLER, RETURN_ROLLER, returnPath } from './cables';
-import { buildRoller } from './kit/cable';
+import { low } from './layout';
+import { returnPath } from './cables';
 import * as P from './sky/masterplan';
 import { placeModel, placeOnDesk, Scenery } from './sky/scenery';
 import { Capsule, CopilotArch } from './sky/capsule';
@@ -109,6 +108,9 @@ const LANE_AT = (() => {
 })();
 /** The capsule's foot over the lane's line: on the belt's top. */
 const BELT_TOP = 0.05;
+/** The reply's lane in the world, from the brainstem down to behind the harness's roof. */
+const DOWN_LANE = new THREE.CatmullRomCurve3(P.downLane(), false, 'centripetal');
+DOWN_LANE.arcLengthDivisions = 2000;
 /** Where the capsule waits for the page: a little way along the lane, behind the harness's roof. */
 const CRADLE_S = 0.9;
 /** How the capsule rides the lane: from the cradle past the masts, resting by the last of them while you hear about the wire, to the door, and on to the template. */
@@ -316,6 +318,8 @@ export class World {
 	private doc!: RequestDoc;
 	private strips!: Strip[];
 	private capsule!: Capsule;
+	/** The reply's capsule, which brings the model's answer home down the right lane. */
+	private replyCapsule!: Capsule;
 	private copilotArch!: CopilotArch;
 	private scenery!: Scenery;
 	/** The tokenizer's own frame (see TOKENIZER), and the harness's holder, which carries its size (see placeOnDesk). */
@@ -414,6 +418,7 @@ export class World {
 			() => {
 				this.strips = [0, 1, 2, 3].map((i) => new Strip(i));
 				this.capsule = new Capsule();
+				this.replyCapsule = new Capsule('reply');
 				this.copilotArch = new CopilotArch(P.DECK_W - 0.1);
 				this.gantry = new Gantry();
 				this.tiles = TOKENS.map((t) => new Tile(t));
@@ -519,7 +524,7 @@ export class World {
 		this.strips.forEach((s) => r.add(s.mesh));
 
 		// The capsule, in its cradle behind the harness's roof; GitHub's arch over the deck further on, for Copilot.
-		r.add(this.capsule.group, this.copilotArch.group);
+		r.add(this.capsule.group, this.replyCapsule.group, this.copilotArch.group);
 		const s = rideAt(4.74) / LANE_AT.len;
 		const p = UP_LANE.getPointAt(s);
 		const t = UP_LANE.getTangentAt(s);
@@ -749,10 +754,6 @@ export class World {
 		this.chevron.wrapS = THREE.RepeatWrapping;
 		this.chevron.wrapT = THREE.RepeatWrapping;
 		const ret = returnPath();
-		const rollers = new Batch();
-		buildRoller(rollers, RETURN_ROLLER);
-		buildRoller(rollers, CALL_ROLLER);
-		this.root.add(rollers.build('rollers'));
 		const len = ret.getLength();
 		const retMat = (m.greenGlow as THREE.MeshPhysicalMaterial).clone();
 		retMat.emissiveMap = this.chevron;
@@ -1571,6 +1572,24 @@ export class World {
 		});
 	}
 
+	/**
+	 * The reply's capsule: it comes down the right lane from the provider, sealed and locked as the request was, and slides
+	 * into its cradle behind the harness's roof as the picture comes back from inside the model. There the harness's end
+	 * of the connection decrypts it, it unlocks and opens, and the reply's text drops through the roof's hatch.
+	 */
+	private updateReply(T: number, time: number) {
+		const c = this.replyCapsule;
+		c.group.visible = T >= EXIT_T;
+		if (!c.group.visible) return;
+		const len = DOWN_LANE.getLength();
+		const s = 1 - lerp(4.5, CRADLE_S, inOut(seg(T, 18.98, 19.07))) / len;
+		c.sit(DOWN_LANE.getPointAt(s, this.v1).setY(this.v1.y + BELT_TOP), DOWN_LANE.getTangentAt(s, this.v2));
+		const open = inOut(seg(T, 19.05, 19.1)) * (1 - inOut(seg(T, 19.34, 19.42)));
+		const lock = 1 - seg(T, 19.02, 19.06);
+		const cipher = 1 - smooth(seg(T, 19.0, 19.05));
+		c.update(open, lock, cipher, time);
+	}
+
 	/** How clouded the capsule's glass is with ciphertext, this frame; and the frame's length. */
 	private cipher = 0;
 	private dt = 0;
@@ -1580,16 +1599,18 @@ export class World {
 	 * sets off along the lane; at the door the first check decrypts it and unlocks it; at the template it opens.
 	 */
 	private updateCapsule(T: number, time: number) {
-		const s = rideAt(T) / LANE_AT.len;
+		// Once the reply is home it rests in its cradle again, empty, for the next turn.
+		const s = (T >= EXIT_T ? CRADLE_S : rideAt(T)) / LANE_AT.len;
 		const at = UP_LANE.getPointAt(Math.min(1, s), this.v1);
 		const along = UP_LANE.getTangentAt(Math.min(1, s), this.v2);
 		this.capsule.sit(at.setY(at.y + BELT_TOP), along);
-		this.capsule.group.visible = T < DIVE_T;
-		const open = inOut(seg(T, 3.56, 3.7)) * (1 - inOut(seg(T, 3.94, 4.0))) + inOut(seg(T, 5.86, 5.92));
+		this.capsule.group.visible = T < DIVE_T || T >= EXIT_T;
+		const open = T >= EXIT_T ? 0 : inOut(seg(T, 3.56, 3.7)) * (1 - inOut(seg(T, 3.94, 4.0))) + inOut(seg(T, 5.86, 5.92));
 		const checks = seg(T, 5.04, 5.62) * 5;
-		const lock = seg(T, 4.0, 4.06) * (1 - seg(checks, 0, 0.5));
-		this.cipher = smooth(seg(T, 4.04, 4.22)) * (1 - smooth(seg(checks, 0.1, 0.7)));
+		const lock = T >= EXIT_T ? 0 : seg(T, 4.0, 4.06) * (1 - seg(checks, 0, 0.5));
+		this.cipher = T >= EXIT_T ? 0 : smooth(seg(T, 4.04, 4.22)) * (1 - smooth(seg(checks, 0.1, 0.7)));
 		this.capsule.update(open, lock, this.cipher, time);
+		this.updateReply(T, time);
 		this.copilotArch.update(this.harnessId === 'copilot', seg(T, 4.72, 4.76), this.dt);
 	}
 
@@ -1770,7 +1791,6 @@ export class World {
 	 * through the model, down the axis, round your tools and back up to the harness, where it stays for the turns after.
 	 */
 	private routeAt(T: number) {
-		const low = (p: V3): V3 => [p[0] + LOWER[0], p[1] + LOWER[1], p[2] + LOWER[2]];
 		const dock = low([-60.6, -10.7, 0.7]);
 		const route: [number, V3][] = [
 			[0, [P.LAPTOP.at.x, 1.2, P.LAPTOP.at.z]],

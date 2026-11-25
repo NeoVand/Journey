@@ -12,8 +12,11 @@ import { createCastShadow } from '../props/island';
 import { TEN_AT, TEN_STEP, TEN_TURNS, CALL_IDS, CALLS, HARNESSES, type HarnessId } from '../content';
 import { PILE_FULL, PRESS_REACH, PRESS_SQUEEZE, SLIP_FROM, SLIP_FULL, SLIP_OLD, SLIP_OLD_T, SLIP_STEP, SLIPS, SUMMARY_T, type SlipKind } from '../context';
 import { GATE_ICON } from '../icons';
-import { EASEL_POS, EASEL_TILT, LOWER, STREAM_BOTTOM } from '../layout';
-import { callPath, RETURN_ROLLER, returnPath } from '../cables';
+import { low, TOOLS } from '../layout';
+import { callPath, returnPath } from '../cables';
+import { Desk } from '../sky/desk';
+import * as P from '../sky/masterplan';
+import { hazed, palette } from '../sky/palette';
 import { bends } from '../kit/geometry';
 import type { Shot } from '../rig';
 
@@ -32,7 +35,8 @@ const DOCK_X = -60.6;
 const DOCK_H = 2.3;
 /** A steel riser on the dock's roof, standing clear above the gates, with an elbow at the top the calls' cable plugs into. */
 const RISER: V3 = [DOCK_X + 0.9, GY + 7, TRACK_Z - 0.85];
-const RISER_END: V3 = [RISER[0] + 0.55, RISER[1], RISER[2]];
+// Its elbow turns towards the harness, to the left, where the cable comes from.
+const RISER_END: V3 = [RISER[0] - 0.55, RISER[1], RISER[2]];
 /** The dock's mouth: tall enough for a call card on its cart, even leaning as the cart sets off. */
 const DOCK_ARCH = 2.0;
 /** Where the carts run, from inside the dock to the end of the rail, and how far short of a gate they wait: far
@@ -69,18 +73,49 @@ const F_POS: V3 = [-174, 34, -4];
 const STEP_H = [1.3, 1.9, 2.5, 3.1, 3.7];
 
 const rel = (o: V3, x: number, y: number, z: number): V3 => [o[0] + x, o[1] + y, o[2] + z];
+/**
+ * Where the chapter islands stand now: each on its own pier beside your desk, a little over half the size, in a rising
+ * arc round to its left and back, each further on and a little higher; the last, the finishing steps, on the desk
+ * itself, along its front. Each is built where it was drawn, and stands here by its own frame.
+ */
+const ISLES: { from: V3; at: V3; s: number }[] = [
+	{ from: C_POS, at: [-23, 2.0, 1.0], s: 0.55 },
+	{ from: M_POS, at: [-31, 4.0, -7.0], s: 0.55 },
+	{ from: U_POS, at: [-36, 6.0, -17.5], s: 0.55 },
+	{ from: R_POS, at: [-34, 8.0, -29], s: 0.55 },
+	{ from: F_POS, at: [7.5, 1.24 * 0.33, 4.9], s: 0.33 }
+];
+const isle = (o: V3) => ISLES.find((i) => i.from === o)!;
+/** An island's frame, for its zone: where its drawing's origin goes, and how small it is. */
+const frameOf = (o: V3): [V3, number] => {
+	const { at, s } = isle(o);
+	return [[at[0] - s * o[0], at[1] - s * o[1], at[2] - s * o[2]], s];
+};
+/** A point of an island's drawing, relative to its centre, in the world: for its shots. */
+const relW = (o: V3, x: number, y: number, z: number): V3 => {
+	const { at, s } = isle(o);
+	return [at[0] + s * x, at[1] + s * y, at[2] + s * z];
+};
+const sOf = (o: V3) => isle(o).s;
 const UP = new THREE.Vector3(0, 1, 0);
-/** Where something drawn for the gates or the workshop stands now, in the ring below your laptop. */
-const low = (p: V3): V3 => [p[0] + LOWER[0], p[1] + LOWER[1], p[2] + LOWER[2]];
+/** The gates' and the workshop's shots, as small as they are now: the same pictures, from nearer. */
+const T_S = TOOLS.s;
+/** Your harness, on your desk: where the reply lands and the calls leave from. */
+const HX = P.HARNESS.at.x;
+const HZ = P.HARNESS.at.z;
+const HTOP = P.HARNESS.h;
+/** The reply's lane comes home behind the harness's roof: its capsule's resting place there. */
+const DOWN_LANE = new THREE.CatmullRomCurve3(P.downLane(), false, 'centripetal');
+const HOME_CRADLE = DOWN_LANE.getPointAt(1 - 0.9 / DOWN_LANE.getLength());
 
-const S_HATCH = { az: 17, el: 12, target: [1.4, 3.2, 0] as V3, radius: 8.6, ry: 4.4, wide: box(0.01, 0.04, 0.58, 0.92), tall: TALL };
-const S_GATES = { az: -18, el: 15, target: low([-56.6, GY + 2.5, 1.3]), radius: 4.9, ry: 3, wide: box(0.47, 0.06, 0.52, 0.9), tall: TALL };
-const S_BOX = { az: 9, el: 12, target: low([-15.4, WY + 3.2, 2.2]), radius: 8.3, ry: 5, wide: box(0, 0.05, 0.6, 0.92), tall: TALL };
-const S_FIND = { az: -8, el: 13, target: low([WX - 4, WY + 2.8, 0.8]), radius: 7.2, ry: 4.3, wide: RIGHT, tall: TALL };
-const S_EDIT = { az: 4, el: 8, target: low([WX - 1.3, WY + 2.4, 1.5]), radius: 5.1, ry: 3.7, wide: LEFT, tall: TALL };
-const S_TEST = { az: 10, el: 11, target: low([WX + 7.6, WY + 2.5, 1.5]), radius: 3.9, ry: 3.5, wide: RIGHT, tall: TALL };
-const S_HOME = { az: 24, el: 15, target: [1.2, 1.9, 0.6] as V3, radius: 6.1, ry: 4.15, wide: box(0, 0.12, 0.58, 0.82), tall: TALL };
-const S_COMPACT = { az: 14, el: 15, target: rel(C_POS, 0, 2.6, 0), radius: 5.9, ry: 3.8, wide: RIGHT, tall: TALL };
+const S_HATCH = { az: 17, el: 12, target: [HX + 1.3, HTOP - 1.6, HZ - 0.6] as V3, radius: 8.0, ry: 4.6, wide: box(0.01, 0.04, 0.58, 0.92), tall: TALL };
+const S_GATES = { az: -18, el: 15, target: low([-56.6, GY + 2.5, 1.3]), radius: 4.9 * T_S, ry: 3 * T_S, wide: box(0.47, 0.06, 0.52, 0.9), tall: TALL };
+const S_BOX = { az: 9, el: 12, target: low([-15.4, WY + 3.2, 2.2]), radius: 8.3 * T_S, ry: 5 * T_S, wide: box(0, 0.05, 0.6, 0.92), tall: TALL };
+const S_FIND = { az: -8, el: 13, target: low([WX - 4, WY + 2.8, 0.8]), radius: 7.2 * T_S, ry: 4.3 * T_S, wide: RIGHT, tall: TALL };
+const S_EDIT = { az: 4, el: 8, target: low([WX - 1.3, WY + 2.4, 1.5]), radius: 5.1 * T_S, ry: 3.7 * T_S, wide: LEFT, tall: TALL };
+const S_TEST = { az: 10, el: 11, target: low([WX + 7.6, WY + 2.5, 1.5]), radius: 3.9 * T_S, ry: 3.5 * T_S, wide: RIGHT, tall: TALL };
+const S_HOME = { az: 24, el: 15, target: [HX + 0.4, 2.4, HZ + 1.3] as V3, radius: 6.6, ry: 4.6, wide: box(0, 0.12, 0.58, 0.82), tall: TALL };
+const S_COMPACT = { az: 14, el: 15, target: relW(C_POS, 0, 2.6, 0), radius: 5.9 * sOf(C_POS), ry: 3.8 * sOf(C_POS), wide: RIGHT, tall: TALL };
 
 /**
  * What the compaction press holds is the request, message by message (see context.ts, which the header's context bar
@@ -110,15 +145,15 @@ const SUMMARY_SCALE = 0.82;
 const SUMMARY_LEAN = 0.1;
 const SUMMARY_HALF = 1.3 * SUMMARY_SCALE;
 const SUMMARY_UP: V3 = [0, 0.19 + SUMMARY_HALF * Math.cos(SUMMARY_LEAN), -SUMMARY_HALF * Math.sin(SUMMARY_LEAN)];
-const S_MEM = { az: -12, el: 9, target: rel(M_POS, 0, 3.9, 0), radius: 5.6, ry: 4.3, wide: LEFT, tall: TALL };
-const S_UNK = { az: 10, el: 20, target: rel(U_POS, 0, 1.9, 0.7), radius: 7.6, ry: 4.3, wide: box(0.42, 0.06, 0.58, 0.9), tall: TALL };
-const S_TEN = { az: -10, el: 14, target: rel(R_POS, 0, 2.6, 0.6), radius: 9.2, ry: 4.2, wide: box(0.01, 0.42, 0.98, 0.56), tall: box(0, 0.06, 1, 0.3) };
-const S_FIN = { az: 9, el: 14, target: rel(F_POS, 0, 2.5, 0.8), radius: 10.8, ry: 3.6, wide: box(0.01, 0.33, 0.98, 0.49), tall: TALL };
+const S_MEM = { az: -12, el: 9, target: relW(M_POS, 0, 3.9, 0), radius: 5.6 * sOf(M_POS), ry: 4.3 * sOf(M_POS), wide: LEFT, tall: TALL };
+const S_UNK = { az: 10, el: 20, target: relW(U_POS, 0, 1.9, 0.7), radius: 7.6 * sOf(U_POS), ry: 4.3 * sOf(U_POS), wide: box(0.42, 0.06, 0.58, 0.9), tall: TALL };
+const S_TEN = { az: -10, el: 14, target: relW(R_POS, 0, 2.6, 0.6), radius: 9.2 * sOf(R_POS), ry: 4.2 * sOf(R_POS), wide: box(0.01, 0.42, 0.98, 0.56), tall: box(0, 0.06, 1, 0.3) };
+const S_FIN = { az: 9, el: 14, target: relW(F_POS, 0, 2.5, 0.8), radius: 10.8 * sOf(F_POS), ry: 3.6 * sOf(F_POS), wide: box(0.01, 0.33, 0.98, 0.49), tall: TALL };
 /** What the test monitor shows once the whole suite is green. */
 const PASSED = 99;
 /** The whole pinwheel, from in front and a little to its right: the model at the top of the axis, your laptop at its middle, your tools at the bottom. */
-const S_WHOLE = { az: 6, el: 5, target: [-5.5, 4.2, 0] as V3, radius: 48, ry: 28, wide: box(0.42, 0.1, 0.56, 0.84), tall: box(0, 0.06, 1, 0.43), tallTarget: [-5.5, 3.5, 0] as V3, tallRadius: 60, tallRy: 34 };
-const S_END = { az: 29, el: 17, target: [1.9, 1.35, 0.4] as V3, radius: 6.25, ry: 6.25, wide: box(0.4, 0.02, 0.61, 0.94), tall: box(0, 0.05, 1, 0.42) };
+const S_WHOLE = { az: 14, el: 9, target: [-4, 12, -20] as V3, radius: 34, ry: 22, wide: box(0.42, 0.1, 0.56, 0.84), tall: box(0, 0.06, 1, 0.43), tallTarget: [-2, 12, -20] as V3, tallRadius: 40, tallRy: 28 };
+const S_END = { az: 22, el: 12, target: [HX - 0.4, 2.4, 1.0] as V3, radius: 7.2, ry: 6.4, wide: box(0.4, 0.02, 0.61, 0.94), tall: box(0, 0.05, 1, 0.42) };
 
 export const BACK_SHOTS: Shot[] = [
 	{ T: 19, ...S_HATCH }, // already there when the fade from the tube lifts
@@ -126,12 +161,12 @@ export const BACK_SHOTS: Shot[] = [
 	// Close enough to read every board: the first call's way to the gate that stops it, the refusal, then along
 	// with the second call, gate by gate.
 	{ T: 20.04, ...S_GATES },
-	{ T: 20.17, ...S_GATES, target: low([-55.3, GY + 2.3, 1.7]), radius: 3.9, ry: 2.9, az: -13, el: 18 },
-	{ T: 20.37, ...S_GATES, target: low([-55.3, GY + 2.3, 1.7]), radius: 3.9, ry: 2.9, az: -10, el: 18 },
+	{ T: 20.17, ...S_GATES, target: low([-55.3, GY + 2.3, 1.7]), radius: 3.9 * T_S, ry: 2.9 * T_S, az: -13, el: 18 },
+	{ T: 20.37, ...S_GATES, target: low([-55.3, GY + 2.3, 1.7]), radius: 3.9 * T_S, ry: 2.9 * T_S, az: -10, el: 18 },
 	// Face on, turning a little to the right as it goes: the posts and the hook wheel stand nearer the reader than
 	// the card does, and from here they never cover it, whichever side of them it waits.
-	{ T: 20.45, ...S_GATES, target: low([-57.2, GY + 2.5, 1.3]), radius: 4.4, az: -3 },
-	{ T: 20.92, ...S_GATES, target: low([-46.1, GY + 2.5, 1.3]), radius: 4.4, az: 5 },
+	{ T: 20.45, ...S_GATES, target: low([-57.2, GY + 2.5, 1.3]), radius: 4.4 * T_S, az: -3 },
+	{ T: 20.92, ...S_GATES, target: low([-46.1, GY + 2.5, 1.3]), radius: 4.4 * T_S, az: 5 },
 	{ T: 21.06, ...S_BOX },
 	{ T: 21.9, ...S_BOX, az: 6 },
 	{ T: 22.06, ...S_FIND },
@@ -153,7 +188,7 @@ export const BACK_SHOTS: Shot[] = [
 	{ T: 30.06, ...S_FIN },
 	// A phone can't read five steps across its width, so it opens on all five, then moves in on the first three as the
 	// agent climbs, in time for the flag on Commit. Desktop keeps the whole staircase.
-	{ T: 30.8, ...S_FIN, az: 6, tallTarget: rel(F_POS, -4, 2.6, 0.8), tallRadius: 6.2, tallRy: 3 },
+	{ T: 30.8, ...S_FIN, az: 6, tallTarget: relW(F_POS, -4, 2.6, 0.8), tallRadius: 6.2 * sOf(F_POS), tallRy: 3 * sOf(F_POS) },
 	{ T: 31.46, ...S_END },
 	{ T: 32, ...S_END, az: 26 },
 	{ T: 32.02, ...S_END, az: 26 },
@@ -405,7 +440,11 @@ export class Back {
 		return this.gatePath;
 	}
 	/** The last of the reply's glass column, above the harness's roof: what the stream drops through. */
-	private streamEnd = new THREE.LineCurve3(new THREE.Vector3(STREAM_BOTTOM[0], STREAM_BOTTOM[1] + 9, STREAM_BOTTOM[2]), new THREE.Vector3(...STREAM_BOTTOM));
+	private streamEnd = new THREE.QuadraticBezierCurve3(
+		HOME_CRADLE.clone().setY(HOME_CRADLE.y + 0.5),
+		new THREE.Vector3((HOME_CRADLE.x + HX) / 2, HTOP + 2.4, (HOME_CRADLE.z + HZ) / 2),
+		new THREE.Vector3(HX, HTOP - 0.1, HZ)
+	);
 	private carrier = new THREE.Group();
 	private gates: Gate[] = [];
 	/** When a conversation last named each gate (the clock's seconds): its beacon flares. */
@@ -540,9 +579,26 @@ export class Back {
 	}
 
 	/** A part of the world that's only there in its own chapters. at moves it from where it was drawn. */
-	private zone(from: number, to: number, home = false, whole = false, at: V3 = [0, 0, 0]) {
+	/**
+	 * A chapter island's pier: a flared capital under the island, a slender column down into the haze, a gold ring where
+	 * they meet. In the island's own coordinates.
+	 */
+	private pier(g: THREE.Object3D, cx: number, cy: number, cz: number, o: V3) {
+		const { at, s } = isle(o);
+		const top = cy - 1.24;
+		const foot = cy + (P.PIER_FOOT - at[1]) / s;
+		const porcelain = hazed(palette().porcelain);
+		const b = new Batch();
+		b.add(new THREE.CylinderGeometry(2.6, 1.3, 1.4, 40), porcelain, { p: [cx, top - 0.7, cz] });
+		b.add(new THREE.TorusGeometry(1.32, 0.12, 10, 40), palette().gold, { p: [cx, top - 1.42, cz], r: [Math.PI / 2, 0, 0] });
+		b.add(new THREE.CylinderGeometry(1.2, 1.5, top - 1.4 - foot, 32), porcelain, { p: [cx, (top - 1.4 + foot) / 2, cz] });
+		g.add(b.build('island-pier'));
+	}
+
+	private zone(from: number, to: number, home = false, whole = false, at: V3 = [0, 0, 0], scale = 1) {
 		const g = new THREE.Group();
 		g.position.set(...at);
+		g.scale.setScalar(scale);
 		this.group.add(g);
 		this.zones.push({ g, from, to, home, whole, at });
 		return g;
@@ -568,10 +624,11 @@ export class Back {
 		g.add(this.gatePipe);
 		const fromSky = createSign('From the provider', 0.24);
 		// Its left end stays on its arm: a phone's bigger sign grows to the right, away from the tube.
-		fromSky.position.set(3.3 + grown(signWidth(fromSky) / SIGN_PHONE / 2), 6.7, -0.75);
+		const armY = HOME_CRADLE.y + 0.9;
+		fromSky.position.set(P.DECK_W / 2 + 1.25 + grown(signWidth(fromSky) / SIGN_PHONE / 2), armY, HOME_CRADLE.z);
 		g.add(fromSky);
 		const fromArm = new Batch();
-		fromArm.add(rbox(0.5, 0.05, 0.05, 0.02, 1), m.steelSoft, { p: [1.86, 6.7, -0.75] });
+		fromArm.add(rbox(0.9, 0.05, 0.05, 0.02, 1), m.steelSoft, { p: [P.DECK_W / 2 + 0.45, armY, HOME_CRADLE.z] });
 		const arm = fromArm.build('from-arm');
 		g.add(arm);
 		this.fromSign = [fromSky, arm];
@@ -581,11 +638,18 @@ export class Back {
 
 	/* ---- the gates ---- */
 	private buildGates() {
-		const g = this.zone(19.5, 21.4, false, true, LOWER);
+		const g = this.zone(19.5, 21.4, false, true, TOOLS.at, TOOLS.s);
 		const m = mats();
 		const isl = islandAt(23, 12);
 		isl.position.set(-51, GY, 0.4);
 		g.add(isl);
+		// On your desk the gates stand a little higher than the workshop's floor: a walnut plinth carries their island.
+		const deskY = (0 - TOOLS.at[1]) / TOOLS.s;
+		const under = GY - 1.24;
+		const plinth = new Batch();
+		plinth.add(rbox(19, under - deskY, 8.6, 0.4), palette().walnut, { p: [-51, (under + deskY) / 2, 0.4] });
+		plinth.add(rbox(19.4, 0.5, 9.0, 0.2), palette().brass, { p: [-51, deskY + 0.25, 0.4] });
+		g.add(plinth.build('gates-plinth'));
 		const shade = createCastShadow(22, 11, 0.16);
 		shade.position.set(-51, GY - 8, 0.4);
 		g.add(shade);
@@ -653,7 +717,7 @@ export class Back {
 
 	/* ---- the sandbox and its workshop ---- */
 	private buildSandbox() {
-		const g = this.zone(19.9, 25.7, false, true, LOWER);
+		const g = this.zone(19.9, 25.7, false, true, TOOLS.at, TOOLS.s);
 		const m = mats();
 		const isl = islandAt(32, 15);
 		isl.position.set(WX, WY, 0.4);
@@ -929,22 +993,20 @@ export class Back {
 	/* ---- turn two ---- */
 	private buildHome() {
 		const g = this.zone(24.8, 26.4);
-		this.page.mesh.position.copy(EASEL_POS);
-		this.page.mesh.rotation.x = EASEL_TILT;
+		this.page.mesh.position.copy(Desk.PAGE);
+		this.page.mesh.rotation.x = Desk.PAGE_LEAN;
 		g.add(this.page.mesh);
 	}
 
 	/* ---- compaction ---- */
 	private buildCompact() {
-		const g = this.zone(25.6, 27.4, true);
+		const g = this.zone(25.6, 27.4, true, false, ...frameOf(C_POS));
 		const m = mats();
 		const [cx, cy, cz] = C_POS;
 		const isl = islandAt(15, 9);
 		isl.position.set(cx, cy, cz);
 		g.add(isl);
-		const shade = createCastShadow(15, 9, 0.14);
-		shade.position.set(cx, cy - 8, cz);
-		g.add(shade);
+		this.pier(g, cx, cy, cz, C_POS);
 
 		const bx = cx - 2.4;
 		const b = new Batch();
@@ -1048,15 +1110,13 @@ export class Back {
 
 	/* ---- seven kinds of memory ---- */
 	private buildMemory() {
-		const g = this.zone(26.6, 28.3, true);
+		const g = this.zone(26.6, 28.3, true, false, ...frameOf(M_POS));
 		const m = mats();
 		const [cx, cy, cz] = M_POS;
 		const isl = islandAt(13, 8);
 		isl.position.set(cx, cy, cz);
 		g.add(isl);
-		const shade = createCastShadow(13, 8, 0.14);
-		shade.position.set(cx, cy - 8, cz);
-		g.add(shade);
+		this.pier(g, cx, cy, cz, M_POS);
 		const W = 9;
 		const RH = 0.98;
 		const ROWS = [
@@ -1116,15 +1176,13 @@ export class Back {
 
 	/* ---- unknown outcome ---- */
 	private buildUnknown() {
-		const g = this.zone(27.6, 29.3, true);
+		const g = this.zone(27.6, 29.3, true, false, ...frameOf(U_POS));
 		const m = mats();
 		const [cx, cy, cz] = U_POS;
 		const isl = islandAt(19, 11);
 		isl.position.set(cx, cy, cz);
 		g.add(isl);
-		const shade = createCastShadow(19, 11, 0.14);
-		shade.position.set(cx, cy - 8, cz);
-		g.add(shade);
+		this.pier(g, cx, cy, cz, U_POS);
 
 		const harness = machine({ w: 3.2, h: 3.4, d: 2.2, name: 'Harness', signH: 0.26 });
 		harness.position.set(cx - 5.4, cy, cz - 1.6);
@@ -1215,15 +1273,13 @@ export class Back {
 
 	/* ---- ten turns ---- */
 	private buildTen() {
-		const g = this.zone(28.6, 30.3, true);
+		const g = this.zone(28.6, 30.3, true, false, ...frameOf(R_POS));
 		const m = mats();
 		const [cx, cy, cz] = R_POS;
 		const isl = islandAt(22, 8.5);
 		isl.position.set(cx, cy, cz);
 		g.add(isl);
-		const shade = createCastShadow(22, 8, 0.14);
-		shade.position.set(cx, cy - 8, cz);
-		g.add(shade);
+		this.pier(g, cx, cy, cz, R_POS);
 
 		const DATA = TEN_TURNS.map((t): [number, number, string] => [t.cached, t.fresh, t.label]);
 		const SCALE = 5 / 27350;
@@ -1333,15 +1389,13 @@ export class Back {
 
 	/* ---- what finished means ---- */
 	private buildFinish() {
-		const g = this.zone(29.6, 31.5);
+		const g = this.zone(29.6, 31.5, false, false, ...frameOf(F_POS));
 		const m = mats();
 		const [cx, cy, cz] = F_POS;
 		const isl = islandAt(25, 10);
 		isl.position.set(cx, cy, cz);
 		g.add(isl);
-		const shade = createCastShadow(24, 10, 0.14);
-		shade.position.set(cx, cy - 8, cz);
-		g.add(shade);
+		// On your desk: its island is a plinth, lying on the desk's top.
 
 		const STEPS: [string, string][] = [
 			['Present', 'Nobody: it is a proposal'],
@@ -1736,7 +1790,7 @@ export class Back {
 		this.binSign.visible = false;
 		this.gates.forEach((gate, i) => {
 			let open = 0;
-			for (const x of onTrack) open = Math.max(open, 1 - smooth(seg(Math.abs(x - LOWER[0] - GATE_X[i]), 1.4, 3.4)));
+			for (const x of onTrack) open = Math.max(open, 1 - smooth(seg(Math.abs(x - low([GATE_X[i], 0, 0])[0]), 1.4 * T_S, 3.4 * T_S)));
 			gate.set(open > 0 ? outBack(open, 1.2) : 0);
 			gate.lamp.mix(color.amber, color.green, open, 0.25 + open * 0.9);
 			// Each board says what its gate is doing now, however the reader got here: waiting, or letting a token through.
@@ -1800,8 +1854,8 @@ export class Back {
 			const go = inOut(seg(T, 19.68, 20.02));
 			this.carrier.visible = pop > 0 && go < 1;
 			if (this.carrier.visible) {
-				// It appears beside the harness, in the clear, then leaves along the pipe.
-				this.a.set(lerp(3, 3.75, Math.min(1, pop)), lerp(2.45, 2.55, Math.min(1, pop)), lerp(0.95, 1.05, Math.min(1, pop)));
+				// It appears beside the harness, in the clear in front of its right flank, then leaves along the pipe.
+				this.a.set(HX + lerp(2.4, 3.1, Math.min(1, pop)), lerp(3.2, 3.3, Math.min(1, pop)), HZ + lerp(1.6, 1.7, Math.min(1, pop)));
 				this.carrier.position.copy(this.a);
 				if (go > 0) {
 					// Up and over the machine's roof, and down onto the pipe behind it, riding high enough to clear it.
@@ -1820,10 +1874,12 @@ export class Back {
 						const k = inOut(go / JOIN);
 						const u = 1 - k;
 						const [ax, ay, az] = [this.a.x, this.a.y, this.a.z];
+						const [c1x, c1y, c1z] = [HX + 3.2, HTOP + 1.4, HZ + 0.6];
+						const [c2x, c2y, c2z] = [HX + 0.6, HTOP + 1.6, HZ - 3.4];
 						this.carrier.position.set(
-							u * u * u * ax + 3 * u * u * k * 4.6 + 3 * u * k * k * -1.2 + k * k * k * this.b.x,
-							u * u * u * ay + 3 * u * u * k * 6.4 + 3 * u * k * k * 6.6 + k * k * k * this.b.y,
-							u * u * u * az + 3 * u * u * k * 0.4 + 3 * u * k * k * -5 + k * k * k * this.b.z
+							u * u * u * ax + 3 * u * u * k * c1x + 3 * u * k * k * c2x + k * k * k * this.b.x,
+							u * u * u * ay + 3 * u * u * k * c1y + 3 * u * k * k * c2y + k * k * k * this.b.y,
+							u * u * u * az + 3 * u * u * k * c1z + 3 * u * k * k * c2z + k * k * k * this.b.z
 						);
 					} else this.carrier.position.copy(this.b);
 				}
@@ -2098,9 +2154,8 @@ export class Back {
 			const at = this.slug.position;
 			const free = Math.min(
 				at.distanceTo(this.a.set(...low([-11.5, WY + 0.31, 3.6]))),
-				at.distanceTo(this.a.set(0.4, 1.3, -1.75)),
-				at.distanceTo(this.a.set(...low([-13.5, -14.69, 3.6]))),
-				at.distanceTo(this.a.set(...RETURN_ROLLER.c)) - 0.25
+				at.distanceTo(this.returnCurve.getPointAt(0, this.a)),
+				at.distanceTo(this.a.set(...low([-13.5, -14.69, 3.6])))
 			);
 			const floor = Math.min(Math.abs(at.y), Math.abs(at.y - low([0, WY, 0])[1]));
 			const room = Math.min(smooth(seg(free, 0.9, 1.8)), smooth(seg(floor, 0.3, 0.7)));

@@ -50,8 +50,12 @@ export class Capsule {
 	private glass: THREE.MeshPhysicalMaterial;
 	private dummy = new THREE.Object3D();
 
-	constructor() {
-		this.group.name = 'capsule';
+	private tint: string;
+
+	/** The request's capsule is warm glass, yours; the reply's is pearl, the provider's. */
+	constructor(kind: 'request' | 'reply' = 'request') {
+		this.group.name = kind === 'request' ? 'capsule' : 'reply-capsule';
+		this.tint = kind === 'request' ? '#fff1d6' : '#eef4ff';
 		const c = palette();
 		const m = mats();
 		const body = new THREE.Group();
@@ -59,7 +63,7 @@ export class Capsule {
 		this.group.add(body);
 
 		// The glass, faintly amber: the request is yours until the provider reads it.
-		this.glass = new THREE.MeshPhysicalMaterial({ color: '#fff1d6', transparent: true, opacity: 0.3, roughness: 0.06, clearcoat: 1, depthWrite: false, side: THREE.DoubleSide });
+		this.glass = new THREE.MeshPhysicalMaterial({ color: this.tint, transparent: true, opacity: 0.3, roughness: 0.06, clearcoat: 1, depthWrite: false, side: THREE.DoubleSide });
 		const b = new Batch();
 		body.add(half(b, this.glass, c.brass, false));
 		// Its runners: two brass skids along its foot, so it sits on the belt rather than rolling on it.
@@ -138,7 +142,7 @@ export class Capsule {
 		this.lockBody.scale.set(1 + nudge, 1 - nudge, 1 + nudge);
 		// Behind the ciphertext the glass goes cloudy, so nothing can be made out through it.
 		this.glass.opacity = 0.3 + cipher * 0.4;
-		this.glass.color.set('#fff1d6').lerp(new THREE.Color('#bcd2ff'), cipher);
+		this.glass.color.set(this.tint).lerp(new THREE.Color('#bcd2ff'), cipher);
 		const d = this.dummy;
 		const n = this.bricks.count;
 		for (let i = 0; i < n; i++) {

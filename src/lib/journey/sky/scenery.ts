@@ -73,7 +73,6 @@ export class Scenery {
 		this.gatehouse.update(time, checks);
 		this.hall.update(time);
 		this.aqueduct.update(time, cargo);
-		this.desk.update(time);
 		this.foundry.update(time);
 		this.proving.update(time);
 		this.remote.update(time);

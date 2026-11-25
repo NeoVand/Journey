@@ -18,10 +18,13 @@ export const RAIL_Z = 6.3;
 export const AXIS_X = 1.1;
 
 /**
- * The ring below and to the left: the gates and the workshop were drawn far off to the left, and stand here instead,
- * with the sandbox wall the results leave through just left of the axis. Everything built for them is moved by this.
+ * Your tools: the gates and the workshop were drawn in a ring of their own, far below and to the left of the old
+ * island. They stand on your desk's right wing now, a fifth of their size, the workshop's floor just on the desk and the
+ * gates on a plinth beside it: everything built for them keeps its own coordinates, and low() says where a point of
+ * them is in the world.
  */
-export const LOWER: [number, number, number] = [8, -11, 0];
+export const TOOLS = { s: 0.2, at: [15.1, 3.3, -2.08] as [number, number, number] };
+export const low = (p: [number, number, number]): [number, number, number] => [TOOLS.at[0] + TOOLS.s * p[0], TOOLS.at[1] + TOOLS.s * p[1], TOOLS.at[2] + TOOLS.s * p[2]];
 
 /** The model, at the top of the axis: its brain, and the top of the island under it. The pedestal sits 1.4 left of the brain. */
 export const MODEL_X = AXIS_X + 1.4;

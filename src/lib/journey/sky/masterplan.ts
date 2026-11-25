@@ -44,14 +44,13 @@ export const SKILLS = { at: v(-10.6, 0, -4.4) };
 export const LOCAL_MCP = [v(-11.4, 0, 0.9), v(-9.7, 0, 0.9), v(-8.0, 0, 0.9)];
 /** Your controls, near your hand: steer, cancel, terminate, roll back. */
 export const CONTROLS = { at: v(-8.3, 0, 4.9) };
-/** The right wing: the sandbox the tools run in, a glass cabinet, and the four gates in front of it that every call passes. */
-export const SANDBOX = { at: v(7.4, 0, -2.5), w: 7.4, d: 4.6, h: 4.3 };
-export const GATES = { z: 1.2, x0: 3.9, gap: 1.3, n: 4 };
-export const CHUTE = { at: v(9.7, 0, 1.2) };
+/**
+ * The right wing: where the tools run. The story's own gates and workshop stand there, small, in their own frame (see
+ * chapters/back.ts): the gates on a walnut plinth at its left, the workshop's glass box at its right.
+ */
 /** The archive of transcripts and memory files: a walnut filing cabinet, a drawer pulled out. */
-export const ARCHIVE = { at: v(12.45, 0, -3.0), w: 2.3, h: 3.0, d: 2.4 };
-/** Five stations in a rising row, the ways to finish a piece of work: present, commit, pull request, merge, deploy. */
-export const FINISH = { z: 5.2, x0: 3.6, gap: 1.95 };
+export const ARCHIVE = { at: v(-7.2, 0, -5.6), w: 2.3, h: 3.0, d: 2.4 };
+/** Along its front, on the right: the steps a finished piece of work climbs (the story's own, in chapters/back.ts). */
 /** Brass posts at the desk's back corners, where the remote towers' cables come down. */
 export const POSTS = [v(-12.9, 0, -6.6), v(12.9, 0, -6.6)];
 

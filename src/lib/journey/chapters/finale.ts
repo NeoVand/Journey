@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { TRIP } from '../content';
-import { AXIS_X, LOWER, MODEL_ISLAND_Y, MODEL_X } from '../layout';
+import { AXIS_X, low, MODEL_ISLAND_Y, MODEL_X } from '../layout';
 import { rbox } from '../kit/geometry';
 import { createSign } from '../kit/parts';
 import { curve } from '../kit/machines';
@@ -18,7 +18,6 @@ type V3 = [number, number, number];
 const v = (p: V3) => new THREE.Vector3(...p);
 const line = (a: V3, b: V3) => new THREE.LineCurve3(v(a), v(b));
 /** Where something drawn for the gates or the workshop stands now, in the ring below your laptop. */
-const low = (p: V3): V3 => [p[0] + LOWER[0], p[1] + LOWER[1], p[2] + LOWER[2]];
 
 /** A stretch of a curve, in either direction. */
 class Part extends THREE.Curve<THREE.Vector3> {

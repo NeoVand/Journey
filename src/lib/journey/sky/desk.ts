@@ -41,19 +41,13 @@ export class Desk {
 	/** Where the request page stands on the easel, and how far it leans back. */
 	static PAGE = new THREE.Vector3(P.EASEL.at.x, 0.98 + 3.1 / 2, P.EASEL.at.z + 0.3 - 2.5 * Math.tan(-EASEL_LEAN));
 	static PAGE_LEAN = EASEL_LEAN;
-	/** The gates' lamps and the test bench's lamps, which glow as the work goes on. */
-	private gateLamps: THREE.MeshStandardMaterial[] = [];
-	private testLamps: THREE.MeshStandardMaterial[] = [];
-	private ring!: THREE.Object3D;
 
 	constructor() {
 		this.group.name = 'desk';
 		const b = new Batch();
 		this.furniture(b);
 		this.leftWing(b);
-		this.sandbox(b);
 		this.archive(b);
-		this.finish(b);
 		this.posts(b);
 		this.group.add(b.build('desk'), this.easel);
 	}
@@ -138,82 +132,6 @@ export class Desk {
 		b.add(new THREE.SphereGeometry(0.1, 12, 8), c.walnut, { p: [C.x + 2.75, 0.98, C.z + 0.35] });
 	}
 
-	/** The sandbox: the glass cabinet and what runs in it, the four gates in front, the chute beside them. */
-	private sandbox(b: Batch) {
-		const c = palette();
-		const S = P.SANDBOX;
-		const at = S.at;
-		const wall = S.h - S.d / 2;
-		// The cabinet: a brass plinth, a brass frame, glass walls and a glass barrel roof.
-		b.add(rbox(S.w + 0.3, 0.24, S.d + 0.3, 0.08), c.brass, { p: [at.x, 0.12, at.z] });
-		b.add(rbox(S.w, 0.12, S.d, 0.04), c.cream, { p: [at.x, 0.3, at.z] });
-		for (const sx of [-1, 1])
-			for (const sz of [-1, 1]) b.add(new THREE.CylinderGeometry(0.07, 0.07, wall, 12), c.brass, { p: [at.x + (sx * S.w) / 2, wall / 2 + 0.24, at.z + (sz * S.d) / 2] });
-		for (const sz of [-1, 1]) b.add(new THREE.CylinderGeometry(0.06, 0.06, S.w, 12), c.brass, { p: [at.x, wall + 0.24, at.z + (sz * S.d) / 2], r: [0, 0, Math.PI / 2] });
-		b.add(new THREE.BoxGeometry(S.w, wall, S.d), c.glass, { p: [at.x, wall / 2 + 0.24, at.z] });
-		const roof = new THREE.CylinderGeometry(S.d / 2, S.d / 2, S.w, 48, 1, true, -Math.PI / 2, Math.PI);
-		b.add(roof, c.glass, { p: [at.x, wall + 0.24, at.z], r: [Math.PI / 2, 0, Math.PI / 2] });
-		for (const x of [-S.w / 2, 0, S.w / 2]) b.add(new THREE.TorusGeometry(S.d / 2, 0.06, 10, 40, Math.PI), c.brass, { p: [at.x + x, wall + 0.24, at.z], r: [0, Math.PI / 2, 0] });
-		b.add(new THREE.SphereGeometry(0.14, 14, 10), c.gold, { p: [at.x, wall + 0.24 + S.d / 2 + 0.1, at.z] });
-		// Inside: the repository, a wall of walnut drawers with brass pulls.
-		const rx = at.x - 1.4;
-		const rz = at.z - 1.2;
-		b.add(rbox(3.6, 2.7, 1.2, 0.1), c.walnut, { p: [rx, 1.7, rz] });
-		for (let row = 0; row < 4; row++)
-			for (let col = 0; col < 5; col++) {
-				const x = rx - 1.36 + col * 0.68;
-				const y = 0.75 + row * 0.6;
-				b.add(rbox(0.56, 0.5, 0.06, 0.03), c.woodEdge, { p: [x, y, rz + 0.62] });
-				b.add(new THREE.SphereGeometry(0.04, 8, 6), c.brass, { p: [x, y, rz + 0.67] });
-			}
-		// The reading ring on its rail, over the drawers: it slides along and searches them.
-		b.add(new THREE.CylinderGeometry(0.05, 0.05, S.w - 0.6, 10), c.brass, { p: [at.x, 3.35, rz + 0.95], r: [0, 0, Math.PI / 2] });
-		this.ring = new THREE.Group();
-		const ring = new Batch();
-		ring.add(new THREE.TorusGeometry(0.42, 0.07, 12, 36), c.gold, { p: [0, -0.55, 0] });
-		ring.add(new THREE.CylinderGeometry(0.04, 0.04, 0.5, 8), c.brass, { p: [0, -0.18, 0] });
-		ring.add(rbox(0.3, 0.16, 0.2, 0.04), c.brass, { p: [0, 0.02, 0] });
-		this.ring.add(ring.build('reading ring'));
-		this.ring.position.set(rx - 0.6, 3.35, rz + 0.95);
-		this.group.add(this.ring);
-		// The shell: a little cream terminal with a green prompt.
-		const sx = at.x + 1.1;
-		b.add(rbox(1.3, 1.1, 1.0, 0.16), c.cream, { p: [sx, 0.95, at.z - 0.2] });
-		b.add(rbox(0.95, 0.66, 0.04, 0.03), c.prompt, { p: [sx, 1.02, at.z + 0.31] });
-		b.add(rbox(1.2, 0.08, 0.6, 0.03), c.cream, { p: [sx, 0.42, at.z + 0.5] });
-		// The test bench: a cream base with a row of lamps that go green when the tests pass.
-		const tx = at.x + 2.75;
-		b.add(rbox(1.4, 0.5, 0.9, 0.08), c.cream, { p: [tx, 0.6, at.z - 0.5] });
-		for (let i = 0; i < 4; i++) {
-			const lamp = new THREE.MeshStandardMaterial({ color: '#173b22', emissive: '#2bdc63', emissiveIntensity: 0.4 });
-			b.add(new THREE.CylinderGeometry(0.08, 0.08, 0.2, 12), c.brass, { p: [tx - 0.5 + i * 0.33, 0.95, at.z - 0.5] });
-			b.add(new THREE.SphereGeometry(0.11, 14, 10), lamp, { p: [tx - 0.5 + i * 0.33, 1.12, at.z - 0.5] });
-			this.testLamps.push(lamp);
-		}
-		// The four gates in a row in front of it: slim brass frames, each with its lamp on top.
-		const G = P.GATES;
-		for (let i = 0; i < G.n; i++) {
-			const x = G.x0 + i * G.gap;
-			for (const s of [-1, 1]) b.add(new THREE.CylinderGeometry(0.07, 0.08, 1.6, 12), c.brass, { p: [x + s * 0.42, 0.8, G.z] });
-			b.add(new THREE.TorusGeometry(0.42, 0.06, 10, 24, Math.PI), c.brass, { p: [x, 1.6, G.z] });
-			for (let k = -2; k <= 2; k++) b.add(new THREE.CylinderGeometry(0.02, 0.02, 1.1, 6), c.gold, { p: [x + k * 0.15, 0.85, G.z] });
-			b.add(rbox(1.0, 0.12, 0.5, 0.04), c.brass, { p: [x, 0.06, G.z] });
-			const lamp = new THREE.MeshStandardMaterial({ color: '#173b22', emissive: '#2bdc63', emissiveIntensity: 0.4 });
-			b.add(new THREE.SphereGeometry(0.13, 14, 10), lamp, { p: [x, 2.15, G.z] });
-			b.add(new THREE.CylinderGeometry(0.1, 0.07, 0.16, 12), c.brass, { p: [x, 2.0, G.z] });
-			this.gateLamps.push(lamp);
-		}
-		// The chute: a brass slide that carries a refused call back towards the harness.
-		const K = P.CHUTE.at;
-		const chute = new THREE.Shape();
-		chute.moveTo(0, 0);
-		chute.lineTo(1.4, 0);
-		chute.lineTo(1.4, 0.2);
-		chute.quadraticCurveTo(0.4, 0.3, 0, 1.2);
-		chute.closePath();
-		b.add(extrude(chute, 0.7, 0.05, 2, 16), c.brass, { p: [K.x - 0.4, 0.02, K.z], r: [0, Math.PI, 0] });
-	}
-
 	/** The archive: a walnut filing cabinet, its lower drawer pulled out full of cards. */
 	private archive(b: Batch) {
 		const c = palette();
@@ -230,25 +148,6 @@ export class Desk {
 		b.add(new THREE.TorusGeometry(0.2, 0.05, 8, 24), c.brass, { p: [A.at.x, A.h * 0.26, drawerZ + 0.66] });
 	}
 
-	/** Five brass stations in a rising row along the front: the ways to finish a piece of work. */
-	private finish(b: Batch) {
-		const c = palette();
-		const F = P.FINISH;
-		for (let i = 0; i < 5; i++) {
-			const x = F.x0 + i * F.gap;
-			const h = 0.45 + i * 0.22;
-			b.add(rbox(1.5, 0.12, 1.3, 0.05), c.brass, { p: [x, 0.06, F.z] });
-			b.add(new THREE.CylinderGeometry(0.55, 0.6, h, 32), c.brass, { p: [x, 0.12 + h / 2, F.z] });
-			// Its cap: a brass bezel round a lamp that lights when this way of finishing is taken; the last, deploy, is blue.
-			b.add(new THREE.CylinderGeometry(0.5, 0.55, 0.14, 32), c.gold, { p: [x, 0.19 + h, F.z] });
-			b.add(new THREE.TorusGeometry(0.36, 0.05, 8, 32), c.brass, { p: [x, 0.27 + h, F.z], r: [Math.PI / 2, 0, 0] });
-			b.add(new THREE.CylinderGeometry(0.3, 0.3, 0.06, 28), i === 4 ? c.skyBlue : c.amberWindow, { p: [x, 0.27 + h, F.z] });
-			b.add(new THREE.CylinderGeometry(0.05, 0.08, 0.36, 10), c.brass, { p: [x, 0.45 + h, F.z] });
-			b.add(new THREE.SphereGeometry(0.09, 12, 8), c.gold, { p: [x, 0.66 + h, F.z] });
-			if (i < 4) b.add(rbox(F.gap - 1.1, 0.08, 0.5, 0.03), c.brass, { p: [x + F.gap / 2, 0.08, F.z] });
-		}
-	}
-
 	/** Brass posts at the back corners, for the remote towers' cables. */
 	private posts(b: Batch) {
 		const c = palette();
@@ -262,12 +161,5 @@ export class Desk {
 	private pipe(b: Batch, pts: [number, number, number][], r: number) {
 		const curve = new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(...p)), false, 'catmullrom', 0.1);
 		b.add(new THREE.TubeGeometry(curve, 48, r, 10), palette().brass);
-	}
-
-	/** The reading ring searches, the gates and tests light in turn. */
-	update(time: number) {
-		this.ring.position.x = P.SANDBOX.at.x - 1.4 + Math.sin(time * 0.6) * 1.3;
-		this.gateLamps.forEach((m, i) => (m.emissiveIntensity = 0.4 + 2 * Math.max(0, Math.sin(time * 1.2 - i * 0.6))));
-		this.testLamps.forEach((m, i) => (m.emissiveIntensity = 0.4 + 2 * Math.max(0, Math.sin(time * 0.8 - i * 0.4))));
 	}
 }
