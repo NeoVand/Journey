@@ -19,6 +19,21 @@ export function rbox(w: number, h: number, d: number, r = 0.04, seg = 2) {
 	return box.clone();
 }
 
+/**
+ * The same rounded box, but the shared original itself rather than a copy: for the many meshes of one size that never
+ * change their shape (a row of tiles, a lamp), which then cost one geometry between them. Never translate or dispose it.
+ */
+export function sharedRbox(w: number, h: number, d: number, r = 0.04, seg = 2) {
+	const radius = Math.min(r, Math.min(w, h, d) * 0.49);
+	const key = `${w}/${h}/${d}/${radius}/${seg}`;
+	let box = boxes.get(key);
+	if (!box) {
+		box = new RoundedBoxGeometry(w, h, d, seg, radius);
+		boxes.set(key, box);
+	}
+	return box;
+}
+
 /** Polygon whose corners are rounded by `r` (per corner or uniform). Points run counter-clockwise. */
 export function roundedPoly(pts: [number, number][], r: number | number[]) {
 	const s = new THREE.Shape();

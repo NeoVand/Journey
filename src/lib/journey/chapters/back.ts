@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Batch } from '../kit/batch';
-import { extrude, rbox, roundedRect, ring } from '../kit/geometry';
+import { extrude, rbox, ring, roundedRect, sharedRbox } from '../kit/geometry';
 import { color, Lamp, mats } from '../kit/materials';
 import { archBlock, arcPoint, Card, hazard, islandAt, machine, panel, shadowOn, stripes, tube } from '../kit/machines';
 import { drawPageIcon, font, Label, Surface, type IconData } from '../kit/print';
@@ -830,7 +830,7 @@ export class Back {
 		this.docsStand = dstand.build('docs-stand');
 		this.docsStand.position.set(WX + 3.2, WY, 3.4);
 		bt.add(this.docsStand);
-		this.proc = new Lamp(rbox(1, 1, 1, 0.14, 3), color.orange, 0.5);
+		this.proc = new Lamp(sharedRbox(1, 1, 1, 0.14, 3), color.orange, 0.5);
 		this.proc.mesh.position.set(WX + 7.6, WY + 0.62, 3.4);
 		bt.add(this.proc.mesh);
 		const procFoot = new Batch();
@@ -986,7 +986,7 @@ export class Back {
 		const face = panel(5, 3.71, this.term, 1);
 		face.position.set(0, 3.1, 0.135);
 		this.monitor.add(face);
-		this.exitLamp = new Lamp(rbox(0.14, 0.14, 0.04, 0.05, 2), color.amber, 0.2);
+		this.exitLamp = new Lamp(sharedRbox(0.14, 0.14, 0.04, 0.05, 2), color.amber, 0.2);
 		this.exitLamp.mesh.position.set(2.36, 1.17, 0.14);
 		this.monitor.add(this.exitLamp.mesh);
 
@@ -1180,7 +1180,7 @@ export class Back {
 			const face = panel(W - 0.2, RH - 0.14, s);
 			face.position.z = 0.074;
 			group.add(face);
-			const lamp = new Lamp(rbox(0.12, 0.12, 0.03, 0.04, 2), color.amber, 0.2);
+			const lamp = new Lamp(sharedRbox(0.12, 0.12, 0.03, 0.04, 2), color.amber, 0.2);
 			lamp.mesh.position.set(W / 2 - 0.26, 0, 0.078);
 			group.add(lamp.mesh);
 			if (i === 6) {
@@ -1384,7 +1384,7 @@ export class Back {
 
 		// The two runs that came back with a verdict.
 		[5, 7, 8].forEach((i) => {
-			const lamp = new Lamp(rbox(0.2, 0.2, 0.05, 0.03, 2), i === 5 ? color.red : color.green, 0.1);
+			const lamp = new Lamp(sharedRbox(0.2, 0.2, 0.05, 0.03, 2), i === 5 ? color.red : color.green, 0.1);
 			lamp.mesh.position.set(cx + x0 + i * P + 0.46, cy + 0.98, cz + 1.365);
 			lamp.mesh.rotation.x = -0.5;
 			g.add(lamp.mesh);

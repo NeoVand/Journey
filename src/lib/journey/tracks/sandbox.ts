@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Batch } from '../kit/batch';
-import { rbox } from '../kit/geometry';
+import { rbox, sharedRbox } from '../kit/geometry';
 import { Card, machine, shadowOn } from '../kit/machines';
 import { Lamp, color, mats } from '../kit/materials';
 import { bell, inOut, lerp, outBack, seg, smooth } from '../kit/math';
@@ -266,7 +266,7 @@ export class SandboxStage {
 			const face = checkFace(check.word, check.rule, check.ink);
 			face.mesh.position.set(check.x, 1.9, RAIL_Z + 0.83);
 			g.add(face.mesh);
-			const lamp = new Lamp(rbox(0.3, 0.12, 0.3, 0.05, 3), '#ffffff', 0.2);
+			const lamp = new Lamp(sharedRbox(0.3, 0.12, 0.3, 0.05, 3), '#ffffff', 0.2);
 			lamp.mesh.position.set(check.x, 2.08, RAIL_Z);
 			g.add(lamp.mesh);
 			this.checkLamps.push(lamp);
@@ -298,7 +298,7 @@ export class SandboxStage {
 		desk.add(rbox(1.7, 0.9, 0.7, 0.08, 3), m.cream, { p: [YOU.x, 0.45, YOU.z] });
 		g.add(desk.build('you-desk'));
 		shadowOn(g, YOU.x, 0, YOU.z, 1.9, 0.9);
-		this.youLamp = new Lamp(rbox(0.26, 0.1, 0.26, 0.05, 3), '#ffffff', 0.2);
+		this.youLamp = new Lamp(sharedRbox(0.26, 0.1, 0.26, 0.05, 3), '#ffffff', 0.2);
 		this.youLamp.mesh.position.set(YOU.x - 0.66, 0.95, YOU.z - 0.12);
 		g.add(this.youLamp.mesh);
 		// Its name on its front, like a nameplate.
@@ -435,14 +435,14 @@ export class SandboxStage {
 		const project = createSign('Your project', 0.2);
 		project.position.set(PROJECT.x, 0.2 + grown(0.2), PROJECT.z + 0.79);
 		g.add(project);
-		this.projectLamp = new Lamp(rbox(0.3, 0.08, 0.3, 0.04, 3), '#ffffff', 0.2);
+		this.projectLamp = new Lamp(sharedRbox(0.3, 0.08, 0.3, 0.04, 3), '#ffffff', 0.2);
 		this.projectLamp.mesh.position.set(PROJECT.x + 1.45, 0.27, PROJECT.z + 0.5);
 		g.add(this.projectLamp.mesh);
 
 		// The processes: the command, and everything it starts.
 		for (const p of PROCS) {
 			const group = new THREE.Group();
-			const lamp = new Lamp(rbox(p.size, p.size, p.size, p.size * 0.16, 3), color.orange, 0.5);
+			const lamp = new Lamp(sharedRbox(p.size, p.size, p.size, p.size * 0.16, 3), color.orange, 0.5);
 			lamp.mesh.position.y = p.size / 2;
 			group.add(lamp.mesh);
 			const label = createSign(p.name, 0.16);
@@ -487,7 +487,7 @@ export class SandboxStage {
 		g.add(this.stopped);
 
 		/* -- the network: out only through the proxy, to the domains on its list -- */
-		this.proxyLamp = new Lamp(rbox(0.3, 0.1, 0.16, 0.04, 3), '#ffffff', 0.2);
+		this.proxyLamp = new Lamp(sharedRbox(0.3, 0.1, 0.16, 0.04, 3), '#ffffff', 0.2);
 		this.proxyLamp.mesh.position.set(PROXY_X, 2.04, GZ0 + 0.04);
 		g.add(this.proxyLamp.mesh);
 		const proxySign = createSign('Proxy', 0.2);

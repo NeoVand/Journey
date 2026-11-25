@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Batch } from '../kit/batch';
-import { extrude, rbox, roundedRect } from '../kit/geometry';
+import { extrude, rbox, roundedRect, sharedRbox } from '../kit/geometry';
 import { Lamp, color, mats } from '../kit/materials';
 import { Label, Surface, font } from '../kit/print';
 import { createSign, grown, screw, ventZ } from '../kit/parts';
@@ -63,7 +63,8 @@ export class Tile {
 			this.amberE.set('#0d3fd6');
 		}
 		const material = (mats().amber as THREE.MeshPhysicalMaterial).clone();
-		this.body = new THREE.Mesh(rbox(this.width, TILE_H, TILE_D, 0.055, 3), material);
+		// Tiles of one width share one shape: there are over a hundred of them up and down the story.
+		this.body = new THREE.Mesh(sharedRbox(this.width, TILE_H, TILE_D, 0.055, 3), material);
 		this.body.castShadow = true;
 		this.body.receiveShadow = true;
 		this.group.add(this.body);
@@ -208,7 +209,7 @@ export class Gantry {
 		front.mesh.position.set(-0.08, H + 0.416, REAR + 0.053);
 		this.group.add(front.mesh);
 
-		this.lamp = new Lamp(rbox(0.09, 0.09, 0.03, 0.03, 3), color.amber, 1.5);
+		this.lamp = new Lamp(sharedRbox(0.09, 0.09, 0.03, 0.03, 3), color.amber, 1.5);
 		this.lamp.mesh.position.set(0.56, H + 0.416, REAR + 0.054);
 		this.group.add(this.lamp.mesh);
 	}
@@ -248,7 +249,7 @@ export class SafetyArch {
 		b.add(rbox(0.1, 0.24, 0.1, 0.02, 1), m.steelSoft, { p: [0, H + 0.5, -SIGN_Z] });
 		this.body.add(b.build('safety-arch'));
 
-		this.bar = new Lamp(rbox(0.02, 0.06, Z * 2 - 0.26, 0.008, 1), color.amber, 0.5);
+		this.bar = new Lamp(sharedRbox(0.02, 0.06, Z * 2 - 0.26, 0.008, 1), color.amber, 0.5);
 		this.bar.mesh.position.set(0.244, H + 0.22, 0);
 		this.body.add(this.bar.mesh);
 

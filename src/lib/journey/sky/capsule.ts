@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Batch } from '../kit/batch';
-import { extrude, rbox, roundedRect } from '../kit/geometry';
+import { extrude, rbox, roundedRect, sharedRbox } from '../kit/geometry';
 import { color, Lamp, mats } from '../kit/materials';
 import { hash, outBack, seg } from '../kit/math';
 import { Label } from '../kit/print';
@@ -189,7 +189,7 @@ export class CopilotArch {
 		const label = new Label('GitHub Copilot API', 0.19, { weight: 700 });
 		label.mesh.position.set(-0.08, h + 0.196, 0.343);
 		this.group.add(label.mesh);
-		this.lamp = new Lamp(rbox(0.09, 0.09, 0.03, 0.03, 3), color.amber, 1);
+		this.lamp = new Lamp(sharedRbox(0.09, 0.09, 0.03, 0.03, 3), color.amber, 1);
 		this.lamp.mesh.position.set(1.0, h + 0.196, 0.344);
 		this.group.add(this.lamp.mesh);
 		this.group.visible = false;

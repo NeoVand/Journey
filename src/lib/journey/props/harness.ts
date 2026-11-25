@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Batch } from '../kit/batch';
-import { extrude, rbox, roundedRect } from '../kit/geometry';
+import { extrude, rbox, roundedRect, sharedRbox } from '../kit/geometry';
 import { Lamp, color, mats } from '../kit/materials';
 import { drawIcon, Label, Surface, font, roundRectPath } from '../kit/print';
 import { Card } from '../kit/machines';
@@ -139,7 +139,7 @@ class Drawer {
 		this.group.add(face);
 
 		// State lamp on the front's right end.
-		this.lamp = new Lamp(rbox(0.1, 0.1, 0.034, 0.03, 3), color.amber, 0.4);
+		this.lamp = new Lamp(sharedRbox(0.1, 0.1, 0.034, 0.03, 3), color.amber, 0.4);
 		this.lamp.mesh.position.set(fw / 2 - 0.16, 0.02, 0.112);
 		this.group.add(this.lamp.mesh);
 
@@ -303,13 +303,13 @@ export class Harness {
 		this.group.add(b.build('harness'));
 
 		for (let i = 0; i < 5; i++) {
-			const lamp = new Lamp(rbox(0.024, 0.3, 0.1, 0.01, 2), color.amber, 1.5);
+			const lamp = new Lamp(sharedRbox(0.024, 0.3, 0.1, 0.01, 2), color.amber, 1.5);
 			lamp.mesh.position.set(HW / 2 + 0.012, 1.0 + i * 0.36, 0.74);
 			this.group.add(lamp.mesh);
 			this.sideLamps.push(lamp);
 		}
 
-		this.roofLamp = new Lamp(rbox(0.1, 0.1, 0.03, 0.03, 3), color.green, 1.2);
+		this.roofLamp = new Lamp(sharedRbox(0.1, 0.1, 0.03, 0.03, 3), color.green, 1.2);
 		this.roofLamp.mesh.position.set(0.58, plateY, HD / 2 + 0.07);
 		this.group.add(this.roofLamp.mesh);
 

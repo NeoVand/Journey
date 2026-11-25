@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Batch } from '../kit/batch';
-import { extrude, rbox, roundedRect } from '../kit/geometry';
+import { extrude, rbox, roundedRect, sharedRbox } from '../kit/geometry';
 import { color, Lamp, mats } from '../kit/materials';
 import { createSign, grown } from '../kit/parts';
 import { machine, shadowOn } from '../kit/machines';
@@ -242,7 +242,7 @@ export class BlockTray {
 		const sign = createSign('Computed before?', 0.3);
 		sign.position.set(GATE_X, this.railY + 2.24 + grown(0.3), Z);
 		t.add(sign);
-		this.gateLamp = new Lamp(rbox(0.2, 0.2, 0.05, 0.06, 3), color.amber, 0.2);
+		this.gateLamp = new Lamp(sharedRbox(0.2, 0.2, 0.05, 0.06, 3), color.amber, 0.2);
 		this.gateLamp.mesh.position.set(GATE_X - 0.24, this.railY + 1.72, Z);
 		this.gateLamp.mesh.rotation.y = Math.PI / 2;
 		t.add(this.gateLamp.mesh);
