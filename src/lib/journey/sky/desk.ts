@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { Batch } from '../kit/batch';
-import { extrude, rbox, roundedRect } from '../kit/geometry';
+import { chamferRect, extrude, rbox, roundedRect, sharedRbox } from '../kit/geometry';
+import { color, Lamp, mats } from '../kit/materials';
+import { Label } from '../kit/print';
+import { fitting, plinth } from '../kit/parts';
 import { hazed, palette } from './palette';
 import { span } from './aqueduct';
 import * as P from './masterplan';
@@ -100,40 +103,135 @@ export class Desk {
 		b.add(rbox(3.4, 0.18, 1.6, 0.06), c.walnut, { p: [S.x, 1.9, S.z] });
 		b.add(rbox(3.2, 1.8, 0.1, 0.04), c.walnut, { p: [S.x, 0.95, S.z - 0.75] });
 		b.add(rbox(3.0, 0.05, 0.05, 0.02), c.brass, { p: [S.x, 0.5, S.z + 0.82] });
-		// The three local MCP servers: gadgets in their colours on walnut bases, each with a brass dial, piped to the laptop.
+		// The three local MCP servers, each a small cabinet in its own colour, on a plinth, its name over three drawers
+		// (what it offers: tools, resources, prompts), piped to your laptop from the fitting on its right side. The third
+		// is the story's own, which the harness wakes: it stands here too (see scenery.ts).
 		const L = P.LAPTOP.at;
-		[c.mint, c.coral, c.skyBlue].forEach((mat, i) => {
-			const g = P.LOCAL_MCP[i];
-			// The third is the story's own MCP server, which the harness wakes: it stands here, wired to the harness.
-			if (i === 2) return;
-			b.add(rbox(1.5, 0.2, 1.4, 0.06), c.walnut, { p: [g.x, 0.1, g.z] });
-			b.add(rbox(1.25, 1.25, 1.15, 0.24), mat, { p: [g.x, 0.84, g.z] });
-			b.add(new THREE.CylinderGeometry(0.34, 0.34, 0.08, 28), c.brass, { p: [g.x, 0.9, g.z + 0.6], r: [Math.PI / 2, 0, 0] });
-			b.add(new THREE.CylinderGeometry(0.22, 0.22, 0.1, 24), c.amberWindow, { p: [g.x, 0.9, g.z + 0.63], r: [Math.PI / 2, 0, 0] });
-			b.add(new THREE.SphereGeometry(0.12, 12, 8), c.brass, { p: [g.x, 1.52, g.z] });
-			this.pipe(b, [[g.x, 0.16, g.z + 0.72], [g.x, 0.16, 2.4 + i * 0.22], [L.x - 1.7, 0.16, 2.4 + i * 0.22], [L.x - 1.45, 0.12, L.z - 0.4]], 0.07);
-		});
-		// The control panel: a brass plate with four controls, each its own shape.
+		const names = ['Browser', 'Database'];
+		[c.mint, c.coral].forEach((mat, i) => this.server(b, P.LOCAL_MCP[i], mat, names[i], i, L));
+		this.controls(b);
+	}
+
+	/** One of the local MCP servers that isn't the story's: the same build as the story's own, in its own colour. */
+	private server(b: Batch, g: THREE.Vector3, mat: THREE.Material, name: string, i: number, L: THREE.Vector3) {
+		const m = mats();
+		const sb = new Batch();
+		plinth(sb, 1.42, 1.22, 0.1);
+		sb.add(extrude(chamferRect(1.2, 1.32, 0.18, 0.07), 1.0, 0.05, 4, 10), mat, { p: [0, 0.1 + 0.66, 0] });
+		sb.add(extrude(roundedRect(0.84, 0.34, 0.11), 0.06, 0.02, 3, 10), m.creamLight, { p: [0, 1.04, 0.52] });
+		sb.add(rbox(0.9, 0.5, 0.02, 0.03, 2), m.recess, { p: [0, 0.5, 0.502] });
+		for (const y of [0.66, 0.5, 0.34]) {
+			sb.add(extrude(roundedRect(0.84, 0.13, 0.035), 0.035, 0.01, 2, 8), m.creamLight, { p: [0, y, 0.52] });
+			sb.add(rbox(0.3, 0.025, 0.012, 0.006, 1), m.steel, { p: [0, y, 0.54] });
+		}
+		fitting(sb, [0.6, 0.34, 0.1], [1, 0, 0], 0.05);
+		const parts = sb.build(`local-mcp-${i}`);
+		parts.position.copy(g);
+		this.group.add(parts);
+		// Sized to leave its lamp room on the plate, however long its name.
+		const label = new Label(name, name.length > 6 ? 0.12 : 0.15, { weight: 800 });
+		label.mesh.position.set(g.x - 0.1, 1.038, g.z + 0.554);
+		this.group.add(label.mesh);
+		const lamp = new Lamp(sharedRbox(0.07, 0.07, 0.026, 0.024, 3), color.green, 0.9);
+		lamp.mesh.position.set(g.x + 0.33, 1.038, g.z + 0.554);
+		this.group.add(lamp.mesh);
+		// Its pipe: out of the fitting, down beside it to the desk, forward, and across to the laptop's port.
+		const out = g.x + 0.6 + 0.2;
+		const lane = 2.4 + i * 0.22;
+		this.pipe(b, [[out, 0.34, g.z + 0.1], [out + 0.05, 0.16, g.z + 0.3], [out + 0.05, 0.16, lane - 0.4], [out + 0.3, 0.16, lane], [L.x - 1.7, 0.16, lane], [L.x - 1.45, 0.12, L.z - 0.4]], 0.07);
+	}
+
+	/**
+	 * Your controls, near your hand: a walnut console, its cream face sloping up away from you in a brass frame, and in
+	 * four bays the four ways to step in, each its own shape and named on a plate at its foot: a wheel to steer, a red
+	 * button to cancel, a guarded T-handle to terminate, a crank to roll back.
+	 */
+	private controls(b: Batch) {
+		const c = palette();
+		const m = mats();
 		const C = P.CONTROLS.at;
-		b.add(rbox(6.6, 0.24, 1.7, 0.1), c.brass, { p: [C.x, 0.12, C.z] });
-		b.add(rbox(6.3, 0.06, 1.45, 0.04), c.cream, { p: [C.x, 0.27, C.z] });
-		// Steer: a ship's wheel.
-		const wx = C.x - 2.4;
-		b.add(new THREE.TorusGeometry(0.5, 0.06, 10, 36), c.gold, { p: [wx, 0.95, C.z], r: [-0.5, 0, 0] });
-		for (let i = 0; i < 8; i++) b.add(rbox(0.05, 1.2, 0.05, 0.02), c.gold, { p: [wx, 0.95, C.z], r: [-0.5, 0, (i / 8) * Math.PI] });
-		b.add(new THREE.CylinderGeometry(0.1, 0.16, 0.55, 16), c.brass, { p: [wx, 0.55, C.z - 0.1] });
-		// Cancel: a red button in a brass cup.
-		b.add(new THREE.CylinderGeometry(0.34, 0.38, 0.22, 28), c.brass, { p: [C.x - 0.8, 0.4, C.z] });
-		b.add(new THREE.SphereGeometry(0.26, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), c.mastRed, { p: [C.x - 0.8, 0.5, C.z] });
-		// Terminate: a pull handle under a hinged guard.
-		b.add(rbox(1.0, 0.1, 0.7, 0.03), c.brass, { p: [C.x + 0.8, 0.35, C.z] });
-		b.add(new THREE.TorusGeometry(0.3, 0.06, 10, 24, Math.PI), c.mastRed, { p: [C.x + 0.8, 0.42, C.z] });
-		b.add(rbox(1.1, 0.5, 0.06, 0.03), c.glass, { p: [C.x + 0.8, 0.62, C.z + 0.38], r: [-0.35, 0, 0] });
-		b.add(rbox(1.1, 0.06, 0.8, 0.03), c.brass, { p: [C.x + 0.8, 0.86, C.z], r: [0, 0, 0] });
-		// Roll back: a crank on a drum.
-		b.add(new THREE.CylinderGeometry(0.3, 0.3, 0.6, 24), c.brass, { p: [C.x + 2.4, 0.6, C.z], r: [0, 0, Math.PI / 2] });
-		b.add(rbox(0.08, 0.6, 0.08, 0.03), c.brass, { p: [C.x + 2.75, 0.75, C.z + 0.15], r: [0.6, 0, 0] });
-		b.add(new THREE.SphereGeometry(0.1, 12, 8), c.walnut, { p: [C.x + 2.75, 0.98, C.z + 0.35] });
+		const W = 6.4;
+		const D = 1.7;
+		const slope = 0.3;
+		const base = 0.22;
+		const lip = 0.1;
+		const rise = D * Math.tan(slope);
+		// The base, and on it a walnut wedge: low at the front, by your hand, high at the back.
+		b.add(rbox(W + 0.24, base, D + 0.24, 0.08, 3), c.walnut, { p: [C.x, base / 2, C.z] });
+		const side = new THREE.Shape();
+		side.moveTo(-D / 2, 0);
+		side.lineTo(D / 2, 0);
+		side.lineTo(D / 2, lip);
+		side.lineTo(-D / 2, lip + rise);
+		side.closePath();
+		b.add(extrude(side, W, 0.04, 2, 2), c.walnut, { p: [C.x, base, C.z], r: [0, -Math.PI / 2, 0] });
+		/** The face's height over a point along the console, front (+) to back (-). */
+		const surface = (z: number) => base + lip + (D / 2 - (z - C.z)) * Math.tan(slope) + 0.06;
+		// The face: a brass frame and a cream panel lying on the slope, brass dividers between the bays.
+		const face = new THREE.Group();
+		face.position.set(C.x, surface(C.z) - 0.03, C.z);
+		face.rotation.x = slope;
+		this.group.add(face);
+		const f = new Batch();
+		f.add(rbox(W + 0.1, 0.06, D / Math.cos(slope) + 0.06, 0.03, 2), c.brass);
+		f.add(rbox(W - 0.12, 0.04, D / Math.cos(slope) - 0.14, 0.02, 2), c.cream, { p: [0, 0.03, 0] });
+		const bay = (W - 0.12) / 4;
+		const at = (i: number) => -W / 2 + 0.06 + bay * (i + 0.5);
+		for (let i = 1; i < 4; i++) f.add(rbox(0.04, 0.03, D / Math.cos(slope) - 0.3, 0.012, 1), c.brass, { p: [-W / 2 + 0.06 + i * bay, 0.06, 0] });
+		const plateZ = D / 2 / Math.cos(slope) - 0.2;
+		['Steer', 'Cancel', 'Terminate', 'Roll back'].forEach((name, i) => {
+			f.add(extrude(roundedRect(1.12, 0.24, 0.07), 0.03, 0.01, 2, 8), m.creamLight, { p: [at(i), 0.06, plateZ], r: [-Math.PI / 2, 0, 0] });
+			const label = new Label(name, 0.14, { weight: 700 });
+			label.mesh.position.set(at(i), 0.077, plateZ);
+			label.mesh.rotation.x = -Math.PI / 2;
+			face.add(label.mesh);
+		});
+		face.add(f.build('controls-face'));
+		// The controls stand upright on the slope, a little back from their plates, each seated in a brass foot.
+		const z0 = C.z - 0.12;
+		// The cream panel's top, which stands a little proud of its brass frame.
+		const y0 = surface(z0) + 0.02;
+		const foot = (x: number, r: number) => b.add(new THREE.CylinderGeometry(r, r + 0.03, 0.08, 28), c.brass, { p: [x, y0, z0] });
+		// Steer: a ship's wheel facing you on a brass post, handles round its rim.
+		const sx = C.x + at(0);
+		foot(sx, 0.14);
+		b.add(new THREE.CylinderGeometry(0.06, 0.09, 0.62, 14), c.brass, { p: [sx, y0 + 0.31, z0 - 0.06] });
+		const wy = y0 + 0.78;
+		const wz = z0 + 0.0;
+		b.add(new THREE.TorusGeometry(0.34, 0.04, 10, 40), c.gold, { p: [sx, wy, wz] });
+		b.add(new THREE.CylinderGeometry(0.08, 0.08, 0.14, 16), c.brass, { p: [sx, wy, wz - 0.02], r: [Math.PI / 2, 0, 0] });
+		for (let k = 0; k < 8; k++) {
+			const a = (k / 8) * Math.PI * 2;
+			b.add(rbox(0.035, 0.68, 0.035, 0.012, 1), c.gold, { p: [sx, wy, wz], r: [0, 0, a] });
+			b.add(new THREE.CylinderGeometry(0.03, 0.04, 0.14, 10), c.walnut, { p: [sx - Math.sin(a) * 0.45, wy + Math.cos(a) * 0.45, wz], r: [0, 0, a] });
+		}
+		// Cancel: a red mushroom button in a brass bezel on a yellow collar.
+		// Square to the face, as a panel's button is.
+		const cx = C.x + at(1);
+		const up = (h: number): [number, number, number] => [cx, y0 + Math.cos(slope) * h, z0 + Math.sin(slope) * h];
+		b.add(new THREE.CylinderGeometry(0.38, 0.42, 0.06, 32), c.amberWindow, { p: up(0.03), r: [slope, 0, 0] });
+		b.add(new THREE.CylinderGeometry(0.26, 0.3, 0.18, 28), c.brass, { p: up(0.15), r: [slope, 0, 0] });
+		b.add(new THREE.SphereGeometry(0.28, 28, 12, 0, Math.PI * 2, 0, Math.PI / 2), c.mastRed, { p: up(0.22), r: [slope, 0, 0] });
+		// Terminate: a red T-handle on a steel rod, in a frame striped yellow and black, under a clear guard on a hinge.
+		const tx = C.x + at(2);
+		// Its striped frame lies on the slope, as the face does.
+		b.add(rbox(0.9, 0.06, 0.7, 0.02, 1), c.iron, { p: [tx, y0 + 0.032, z0], r: [slope, 0, 0] });
+		for (let k = 0; k < 8; k++) b.add(rbox(0.05, 0.065, 0.5, 0.01, 1), c.amberWindow, { p: [tx - 0.3 + k * 0.086, y0 + 0.036, z0], r: [slope, 0.6, 0] });
+		b.add(rbox(0.7, 0.08, 0.5, 0.02, 1), c.cream, { p: [tx, y0 + 0.065, z0], r: [slope, 0, 0] });
+		b.add(new THREE.CylinderGeometry(0.03, 0.03, 0.34, 10), m.steel, { p: [tx, y0 + 0.2, z0] });
+		b.add(rbox(0.46, 0.09, 0.1, 0.03, 2), c.mastRed, { p: [tx, y0 + 0.38, z0] });
+		b.add(rbox(0.86, 0.5, 0.64, 0.04, 2), c.glass, { p: [tx, y0 + 0.3, z0 + 0.02] });
+		b.add(new THREE.CylinderGeometry(0.025, 0.025, 0.86, 8), c.brass, { p: [tx, y0 + 0.55, z0 - 0.3], r: [0, 0, Math.PI / 2] });
+		// Roll back: a crank on a brass drum on two cheeks, and over it a gold arrow curling back the way things came.
+		const rx = C.x + at(3);
+		for (const s of [-1, 1]) b.add(rbox(0.06, 0.4, 0.34, 0.02, 1), c.brass, { p: [rx + s * 0.3, y0 + 0.2, z0] });
+		b.add(new THREE.CylinderGeometry(0.2, 0.2, 0.54, 24), c.brass, { p: [rx, y0 + 0.32, z0], r: [0, 0, Math.PI / 2] });
+		for (const s of [-1, 1]) b.add(new THREE.TorusGeometry(0.205, 0.02, 6, 24), c.gold, { p: [rx + s * 0.18, y0 + 0.32, z0], r: [0, Math.PI / 2, 0] });
+		b.add(rbox(0.05, 0.05, 0.34, 0.015, 1), m.steel, { p: [rx + 0.36, y0 + 0.32, z0 + 0.12] });
+		b.add(rbox(0.05, 0.3, 0.05, 0.015, 1), m.steel, { p: [rx + 0.36, y0 + 0.45, z0 + 0.27] });
+		b.add(new THREE.SphereGeometry(0.06, 12, 8), c.walnut, { p: [rx + 0.36, y0 + 0.62, z0 + 0.27] });
+		b.add(new THREE.TorusGeometry(0.36, 0.025, 6, 32, Math.PI * 1.25), c.gold, { p: [rx, y0 + 0.36, z0 - 0.12], r: [0, 0, 0.3] });
+		b.add(new THREE.ConeGeometry(0.06, 0.14, 12), c.gold, { p: [rx - 0.33 * Math.cos(1.25 * Math.PI + 0.3 - Math.PI), y0 + 0.36 - 0.36 * Math.sin(0.3 + 0.25 * Math.PI), z0 - 0.12], r: [0, 0, 2.9] });
 	}
 
 	/** The archive: a walnut filing cabinet, its lower drawer pulled out full of cards. */
