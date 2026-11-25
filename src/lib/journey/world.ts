@@ -110,6 +110,11 @@ const LANE_AT = (() => {
 })();
 /** The capsule's foot over the lane's line: on the belt's top, with a little to spare where the lane bends and climbs over its crest. */
 const BELT_TOP = 0.14;
+/**
+ * A cable that lies on your desk: a smooth curve through its points overshoots a little between them, and would sink
+ * into the desk's top there. Resampled with nowhere lower than lying on it.
+ */
+const lying = (c: THREE.Curve<THREE.Vector3>, r: number) => curve(c.getSpacedPoints(200).map((p) => [p.x, Math.max(p.y, r + 0.004), p.z] as V3));
 /** The reply's lane in the world, from the brainstem down to behind the harness's roof. */
 const DOWN_LANE = new THREE.CatmullRomCurve3(P.downLane(), false, 'centripetal');
 DOWN_LANE.arcLengthDivisions = 2000;
@@ -773,9 +778,9 @@ export class World {
 		// The MCP server's lead, from its port across the desk to the harness's left flank.
 		const lead0 = this.mcp.group.localToWorld(new THREE.Vector3(MCP_W / 2, 0.9, -0.22)).toArray() as V3;
 		const lead1 = harnessPort(-HW / 2, PORT_MCP_Z);
-		// Along the desk in front of the easel, past its right foot, and back to the harness's flank.
-		const clear = P.EASEL.at.x + 2.0;
-		const lead = curve([
+		// Along the desk in front of the easel, past the corner of its brass foot, and back to the harness's flank.
+		const clear = P.EASEL.at.x + 2.35;
+		const lead = lying(curve([
 			...leaving(lead0, [1, 0, 0], 0.042),
 			[lead0[0] + 0.45, 0.28, lead0[2] - 0.05],
 			[lead0[0] + 0.9, 0.045, lead0[2] - 0.2],
@@ -785,7 +790,7 @@ export class World {
 			[lead1[0] - 0.7, 0.06, lead1[2] + 0.05],
 			[lead1[0] - 0.32, 0.25, lead1[2]],
 			...leaving(lead1, [-1, 0, 0], 0.042).reverse()
-		]);
+		]), 0.042);
 		this.mcpLead = lead;
 		const leadTube = new THREE.Mesh(new THREE.TubeGeometry(lead, 120, 0.042, 10), m.cobalt);
 		leadTube.castShadow = true;
@@ -819,14 +824,14 @@ export class World {
 		const plug = new THREE.Vector3(...LAPTOP_PORT).applyEuler(laptopTurn).add(this.laptop.group.position);
 		const away = new THREE.Vector3(1, 0, 0).applyEuler(laptopTurn);
 		const keys = harnessPort(HW / 2, PORT_KEYS_Z);
-		const cable = curve([
+		const cable = lying(curve([
 			...leaving([plug.x, plug.y, plug.z], [away.x, away.y, away.z], 0.04),
 			[plug.x + 0.5, 0.04, plug.z - 0.4],
 			[keys[0] + 0.5, 0.04, lerp(plug.z, keys[2], 0.5)],
 			[keys[0] + 0.55, 0.04, keys[2] + 0.5],
 			[keys[0] + 0.42, 0.22, keys[2] + 0.05],
 			...leaving(keys, [1, 0, 0], 0.04).reverse()
-		]);
+		]), 0.04);
 		this.routeCable = cable;
 		const cm = new THREE.Mesh(new THREE.TubeGeometry(cable, 80, 0.04, 10), m.rubber);
 		cm.castShadow = true;
@@ -1551,12 +1556,13 @@ export class World {
 		const w1 = 3 * u * u * e;
 		const w2 = 3 * u * e * e;
 		const w3 = e * e * e;
-		// The harness stands behind your laptop: up off the screen first, clear over the lid, then across.
-		const x1 = from.x;
-		const y1 = from.y + 1.6;
-		const z1 = from.z + 0.2;
+		// The harness stands behind your laptop: up off the screen first, a little towards you, and only once it's clear
+		// over the lid's top does it go back across to the drawer.
+		const y1 = from.y + 1.9;
 		const y2 = to.y + 1.8;
-		strip.position.set(w0 * from.x + w1 * x1 + w2 * to.x + w3 * to.x, w0 * from.y + w1 * y1 + w2 * y2 + w3 * to.y, w0 * from.z + w1 * z1 + w2 * to.z + w3 * to.z);
+		const across = smooth(seg(e, 0.28, 1));
+		const toward = Math.sin(Math.min(1, e / 0.3) * Math.PI * 0.5) * 0.3 * (1 - across);
+		strip.position.set(lerp(from.x, to.x, across), w0 * from.y + w1 * y1 + w2 * y2 + w3 * to.y, lerp(from.z, to.z, across) + toward);
 		strip.quaternion.slerpQuaternions(qFrom, this.qLie, smooth(seg(e, 0.12, 0.62)));
 	}
 

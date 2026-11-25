@@ -4,6 +4,7 @@ import { chamferRect, extrude, rbox, roundedRect, sharedRbox } from '../kit/geom
 import { color, Lamp, mats } from '../kit/materials';
 import { Label } from '../kit/print';
 import { fitting, plinth } from '../kit/parts';
+import { LAPTOP_LEFT_PORTS, LEFT_PORT_R } from '../props/laptop';
 import { hazed, palette } from './palette';
 import { span } from './aqueduct';
 import * as P from './masterplan';
@@ -135,10 +136,31 @@ export class Desk {
 		const lamp = new Lamp(sharedRbox(0.07, 0.07, 0.026, 0.024, 3), color.green, 0.9);
 		lamp.mesh.position.set(g.x + 0.33, 1.038, g.z + 0.554);
 		this.group.add(lamp.mesh);
-		// Its pipe: out of the fitting, down beside it to the desk, forward, and across to the laptop's port.
-		const out = g.x + 0.6 + 0.2;
+		// Its pipe: out of its fitting, down beside it onto the desk, forward, along the desk, and into its own port on
+		// your laptop's left side, clear of the lid. Each server has its own port, and the two pipes never cross.
+		const r = 0.05;
+		const out = g.x + 0.6 + 0.18;
 		const lane = 2.4 + i * 0.22;
-		this.pipe(b, [[out, 0.34, g.z + 0.1], [out + 0.05, 0.16, g.z + 0.3], [out + 0.05, 0.16, lane - 0.4], [out + 0.3, 0.16, lane], [L.x - 1.7, 0.16, lane], [L.x - 1.45, 0.12, L.z - 0.4]], 0.07);
+		const port = LAPTOP_LEFT_PORTS[i];
+		const portX = L.x + port[0] - LEFT_PORT_R * 3.6;
+		const portZ = L.z + port[2];
+		const turn = L.x - 2.3 - i * 0.25;
+		this.pipe(
+			b,
+			[
+				[out, 0.34, g.z + 0.1],
+				[out + 0.14, 0.24, g.z + 0.18],
+				[out + 0.2, r + 0.004, g.z + 0.5],
+				[out + 0.2, r + 0.004, lane - 0.3],
+				[out + 0.5, r + 0.004, lane],
+				[turn - 0.3, r + 0.004, lane],
+				[turn, r + 0.004, lane + 0.3],
+				[turn, r + 0.004, portZ - 0.3],
+				[turn + 0.3, 0.06, portZ],
+				[portX, 0.06, portZ]
+			],
+			r
+		);
 	}
 
 	/**
@@ -262,6 +284,8 @@ export class Desk {
 
 	private pipe(b: Batch, pts: [number, number, number][], r: number) {
 		const curve = new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(...p)), false, 'catmullrom', 0.1);
-		b.add(new THREE.TubeGeometry(curve, 48, r, 10), palette().brass);
+		// Where it lies on the desk it lies on it: never lower than its own radius over the top.
+		const laid = new THREE.CatmullRomCurve3(curve.getSpacedPoints(120).map((p) => p.setY(Math.max(p.y, r + 0.004))), false, 'centripetal');
+		b.add(new THREE.TubeGeometry(laid, 96, r, 10), palette().brass);
 	}
 }
