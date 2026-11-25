@@ -151,7 +151,7 @@ export const PACE: Span[] = [
 	{ from: 12.92, to: 13.08, seconds: 1.4 },
 	{ from: 13.08, to: 14.0, seconds: 12 }, // two pools, and into the first
 	...TRANSFORMER_PACE,
-	{ from: 15.092, to: 15.42, seconds: 2.2 },
+	{ from: 15.092, to: 15.42, seconds: 3.6 }, // the long shots drop, and the rest pour into the wheel
 	{ from: 15.42, to: 15.88, seconds: 3.8 }, // the wheel
 	{ from: 15.88, to: 16.06, seconds: 1.4 },
 	{ from: 16.06, to: 16.9, seconds: 7.4 }, // thirteen thinking tokens

@@ -100,6 +100,10 @@ export const FORWARD_SHOTS: Shot[] = [
 
 const SPINS = 4;
 const PEGS = 30;
+/** The wheel's slices, in the order of the odds: the favourite first. */
+const SLICE = ['#ffbc12', '#3b76ec', '#fbf1dd', '#22b866', '#f08a3c'];
+/** Where each slice's share leaves its bar, and when its slice sweeps open, as fractions of the pour. */
+const POUR = { gap: 0.13, fly: 0.3, open: [0.26, 0.48] as [number, number] };
 
 class Sampler {
 	group = new THREE.Group();
@@ -118,10 +122,25 @@ class Sampler {
 	private storyAngle = 0;
 	private lastAngle = 0;
 	private flap = 0;
+	/**
+	 * The wheel has no slices until the scores pour into it: each kept bar sends its share across, and its slice sweeps
+	 * open where it lands. Read by the face's shader.
+	 */
+	private face = {
+		uFill: { value: [0, 0, 0, 0, 0] },
+		uEdge: { value: [0, 0, 0, 0, 0, 0] },
+		uStart: { value: 0 },
+		uBlank: { value: new THREE.Color('#22304f') }
+	};
+	private drops: THREE.Mesh[] = [];
+	private wheelR = 2.9;
 	private chosen: Tile;
 	private sign: THREE.Group;
 	private lamp: Lamp;
 	private a = new THREE.Vector3();
+	private b = new THREE.Vector3();
+	private c = new THREE.Vector3();
+	private tint = new THREE.Color();
 	private from = new THREE.Vector3(3.6, PAD_Y + 6.6, 1.5); // in front of the wheel, so it can fall past it
 	private to = new THREE.Vector3(ROW0 - WHEEL, RAIL_Y + TILE_H / 2 + 0.002, RAIL_Z);
 	private dock = new THREE.Vector3(3.6, RAIL_Y + TILE_H / 2 + 0.002, RAIL_Z);
@@ -182,7 +201,29 @@ class Sampler {
 		const R = 2.9;
 		const cy = PAD_Y + 3.5;
 		this.paintWheel();
-		const face = new THREE.Mesh(new THREE.CircleGeometry(R, 96), new THREE.MeshStandardMaterial({ map: this.wheelFace.texture, roughness: 0.45 }));
+		const faceMat = new THREE.MeshStandardMaterial({ map: this.wheelFace.texture, roughness: 0.45 });
+		faceMat.onBeforeCompile = (shader) => {
+			Object.assign(shader.uniforms, this.face);
+			shader.fragmentShader = shader.fragmentShader
+				.replace('#include <common>', '#include <common>\nuniform float uFill[5];\nuniform float uEdge[6];\nuniform float uStart;\nuniform vec3 uBlank;')
+				.replace(
+					'#include <map_fragment>',
+					`#include <map_fragment>
+					{
+						// As the canvas has it: y down, angles clockwise from +x.
+						vec2 p = vec2(vMapUv.x - 0.5, 0.5 - vMapUv.y);
+						if (length(p) > 0.077) {
+							float rel = mod(atan(p.y, p.x) - uStart, 6.2831853);
+							float shown = 0.0;
+							for (int i = 0; i < 5; i++) {
+								if (rel >= uEdge[i] && rel < uEdge[i + 1]) shown = step((rel - uEdge[i]) / max(1e-4, uEdge[i + 1] - uEdge[i]), uFill[i]);
+							}
+							diffuseColor.rgb = mix(uBlank, diffuseColor.rgb, shown);
+						}
+					}`
+				);
+		};
+		const face = new THREE.Mesh(new THREE.CircleGeometry(R, 96), faceMat);
 		this.wheelDisc = face;
 		face.position.z = 0.1;
 		this.wheel.add(face);
@@ -226,19 +267,40 @@ class Sampler {
 		this.lamp.mesh.position.set(wx + 0.34, cy + R + 0.5, 0.79);
 		this.group.add(this.lamp.mesh);
 
+		// A share of each kept score, in its slice's colour, that flies from its bar to the wheel.
+		SLICE.forEach((hex) => {
+			const drop = new THREE.Mesh(rbox(0.42, 0.42, 0.3, 0.08, 2), new THREE.MeshStandardMaterial({ color: hex, emissive: hex, emissiveIntensity: 0.55, roughness: 0.35 }));
+			drop.visible = false;
+			drop.castShadow = true;
+			this.group.add(drop);
+			this.drops.push(drop);
+		});
+
 		this.chosen = new Tile({ text: 'The', id: 791, width: 0.92, special: false });
 		this.chosen.update(1, 0);
 		this.group.add(this.chosen.group);
 	}
 
+	/** For slice i, how far along the pour is: its share's flight, how far its slice has opened, and how much has left its bar. */
+	private flight(pour: number, i: number) {
+		const start = i * POUR.gap;
+		const fly = seg(pour, start, start + POUR.fly);
+		return { fly, open: smooth(seg(pour, start + POUR.open[0], start + POUR.open[1])), sent: smooth(seg(fly, 0, 0.4)) };
+	}
+
 	/** The wheel's slices are the real probabilities, so its face is repainted whenever the temperature moves. */
 	private paintWheel() {
 		const odds = wheelOdds(this.temperature);
+		// Where the slices start and end, for the shader that keeps them shut until they're poured.
+		this.face.uStart.value = -Math.PI / 2 - odds[0] * Math.PI;
+		let edge = 0;
+		this.face.uEdge.value = [0, ...odds.map((p) => (edge += p * Math.PI * 2))];
+		this.face.uEdge.value[5] = Math.PI * 2 + 1e-3;
 		this.wheelFace.draw((c, w, h) => {
 			const cx = w / 2;
 			const cy = h / 2;
 			let a = -Math.PI / 2 - odds[0] * Math.PI;
-			const fills = ['#ffbc12', '#3b76ec', '#fbf1dd', '#22b866', '#f08a3c'];
+			const fills = SLICE;
 			odds.forEach((p, i) => {
 				const span = p * Math.PI * 2;
 				c.fillStyle = fills[i];
@@ -317,7 +379,7 @@ class Sampler {
 		});
 	}
 
-	update(T: number, cut: number, spin: number, pick: number, ride: number, time: number) {
+	update(T: number, cut: number, pour: number, spin: number, pick: number, ride: number, time: number) {
 		const now = performance.now();
 		if (this.dirty && now - this.lastPaint > 70) {
 			this.dirty = false;
@@ -374,6 +436,32 @@ class Sampler {
 			const mat = b.mesh.material as THREE.MeshPhysicalMaterial;
 			mat.emissive.set(color.amber);
 			mat.emissiveIntensity = lit * 0.9;
+			// A kept bar takes on its slice's colour as its share goes across, so each slice can be traced to its bar.
+			if (i < SLICE.length) mat.color.set(color.amber).lerp(this.tint.set(SLICE[i]), this.flight(pour, i).sent);
+		});
+		// A reader who spins before the pour is done gets the whole wheel.
+		const whole = this.play !== null || this.extra !== 0;
+		const wheelTurn = this.storyAngle + this.extra;
+		this.drops.forEach((drop, i) => {
+			const { fly, open } = this.flight(pour, i);
+			this.face.uFill.value[i] = whole ? 1 : open;
+			drop.visible = !whole && fly > 0 && fly < 1;
+			if (!drop.visible) return;
+			const bar = this.bars[i];
+			this.a.copy(bar.mesh.position);
+			this.a.y += bar.h + 0.25;
+			// Into the middle of its own slice, wherever the wheel has been turned to.
+			const odds = this.face.uEdge.value;
+			const mid = this.face.uStart.value + (odds[i] + Math.min(odds[i + 1], Math.PI * 2)) / 2;
+			const ang = -mid + wheelTurn;
+			// Over to a point well in front of its slice, clear of the rim and its pegs, then straight in to the face.
+			this.b.set(this.wheel.position.x + Math.cos(ang) * this.wheelR * 0.62, this.wheel.position.y + Math.sin(ang) * this.wheelR * 0.62, this.wheel.position.z + 1.0);
+			arcPoint(this.a, this.b, 1.6, inOut(seg(fly, 0, 0.78)), this.c);
+			const into = smooth(seg(fly, 0.78, 1));
+			this.c.z = lerp(this.c.z, this.wheel.position.z + 0.16, into);
+			drop.position.copy(this.c);
+			drop.rotation.set(0, 0, -fly * Math.PI * 1.5);
+			drop.scale.setScalar(Math.max(0.001, outBack(Math.min(1, fly * 4), 2) * (1 - into * 0.9)));
 		});
 		this.storyAngle = -outCubic(spin) * SPINS * Math.PI * 2;
 		const angle = this.storyAngle + this.extra;
@@ -1280,7 +1368,7 @@ export class Forward {
 		const near = (g: THREE.Object3D, a: number, b: number) => (g.visible = T > a && T < b);
 		if (near(this.prefill.group, 13.9, 15.4)) this.prefill.update(T, time);
 		if (near(this.sampler.group, 14.7, 16.3)) {
-			this.sampler.update(T, seg(T, 15.3, 15.42), seg(T, 15.42, 15.78), seg(T, 15.78, 15.88), seg(T, 15.88, 16), time);
+			this.sampler.update(T, seg(T, 15.13, 15.22), seg(T, 15.22, 15.41), seg(T, 15.42, 15.78), seg(T, 15.78, 15.88), seg(T, 15.88, 16), time);
 		}
 		if (near(this.decoder.group, 15.7, 18.8)) {
 			this.decoder.update(T, beltShift(T), DET_GATE, time);
