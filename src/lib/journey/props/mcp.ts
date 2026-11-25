@@ -78,7 +78,8 @@ export class McpServer {
 		// A dark slot the drawers sit in, so a drawer coming out looks like it comes from inside.
 		shell.add(rbox(FRONT_W + 0.06, DRAWER_Y[0] - DRAWER_Y[2] + FRONT_H + 0.06, 0.02, 0.03, 2), m.recess, { p: [0, 0.5, MCP_D / 2 + 0.002] });
 		// Port on the side that faces the harness.
-		fitting(shell, [-MCP_W / 2, 0.9, -0.22], [-1, 0, 0], 0.042);
+		// Its port, on its right: the harness stands to its right on your desk.
+		fitting(shell, [MCP_W / 2, 0.9, -0.22], [1, 0, 0], 0.042);
 		this.body.add(shell.build('mcp'));
 		const label = new Label('MCP', 0.17, { weight: 800 });
 		label.mesh.position.set(-0.08, 1.038, MCP_D / 2 + 0.054);

@@ -27,6 +27,22 @@ Done (branch `world`):
 - The foundry and its rail (`foundry.ts`), the proving ground (`proving.ts`), the remote towers and cables
   (`remote.ts`).
 
+## The story moving in (log)
+
+- T 0 to 8, done (see world.ts, sky/scenery.ts, sky/capsule.ts): the site stands `Scenery` (all places, the hall
+  without its own tokenizer) and places the story's own props by `placeOnDesk` and `placeModel`. The harness prop is
+  restyled (butter, barrel roof, brass) and carried at 1.3 by a holder. The page rolls up into a glass `Capsule` behind
+  the harness's roof, which locks, fills with ciphertext, rides the left lane (resting under the last mast at 4.648),
+  is decrypted under the gatehouse's five labelled tumblers (5.04 to 5.62) and opened at the template. The tokenizer
+  is today's, placed in its own coordinates by the TOKENIZER matrix (on the request lane, front to the lanes' middle);
+  its shots are composed in those coordinates and turned with `turned()`. The token path runs on through the hall's end
+  wall into the tower, steps in to the pedestal's lane, climbs the shaft (tokens turn to face the slot) and ends in
+  the brainstem's seat. The hall is open to the sky (the vault hid the tokenizer from the long lens). Three masts, none
+  in the last stretch before the door. Lanes spread to ±1.1 through the hall (HALL_LANE).
+- Still on old coordinates: everything from T 19 on (back.ts, cables.ts' return and call paths, LOWER ring), the
+  finale's lap (finale.ts typed points), the map's camera, the MCP track's shots, the side trips' ways in
+  (ROOF and the others), sound places in sound/score.ts.
+
 ## Districts still to build
 
 1. The aqueduct, its masts and the provider's arches: fair round arches on piers that fade into haze, the deck with

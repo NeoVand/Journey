@@ -1,6 +1,10 @@
 import * as THREE from 'three';
 import { Batch } from '../kit/batch';
 import { extrude, rbox } from '../kit/geometry';
+import { color, Lamp } from '../kit/materials';
+import { Label } from '../kit/print';
+import { CHECKS } from '../props/gateway';
+import { inOut, outBack, seg } from '../kit/math';
 import { palette } from './palette';
 import * as P from './masterplan';
 
@@ -9,7 +13,8 @@ import * as P from './masterplan';
  * bank. One great round arch straddles both lanes; a thick brass archivolt studded with rivets frames it, and across its
  * crown hangs a row of five brass tumblers, the five checks every request passes on its way in: its seal is broken
  * (decrypt), its key is checked (who are you), its count (rate limit), its coins (budget), and whether there is room
- * (capacity). Each tumbler has a lamp over it that turns green as the request goes under.
+ * (capacity). Each tumbler has a lamp over it, amber while its check runs and green once it has passed, and a brass
+ * plaque under it with its name.
  *
  * A round tower stands at each front corner with an arched window and a brass dome; a jade pediment over the arch carries a
  * brass medallion, and behind it a dome of glass and brass ribs rises over the door. Round windows and arched ones glow
@@ -27,8 +32,8 @@ const DOOR = { w: 5.2, spring: 2.2 };
 const WALL = 5.6;
 /** The corner towers: how far out, how far forward, how big, how tall. */
 const TOWER = { x: W / 2 + 0.85, z: D / 2 - 0.9, r: 1.35, h: 5.4 };
-/** The tumblers' row, across the arch's crown: how high, and how far apart. */
-const TUMBLER = { y: DOOR.spring + DOOR.w / 2 - 0.55, gap: 0.86, r: 0.3, len: 0.62 };
+/** The tumblers' row, across the arch under its crown, clear of its curve: how high, and how far apart. */
+const TUMBLER = { y: 3.55, gap: 0.96, r: 0.27, len: 0.6 };
 
 /** An arched opening's outline: straight jambs to the spring, a half circle over. */
 function arch(w: number, spring: number, segments = 32): [number, number][] {
@@ -53,12 +58,17 @@ function windowPanel(w: number, h: number) {
 
 export class Gatehouse {
 	group = new THREE.Group();
-	/** The tumblers' lamps, left to right, each its own material so each can turn green on its own. */
-	private lamps: THREE.MeshStandardMaterial[] = [];
+	/** The tumblers' lamps, left to right, each its own, so each can turn green on its own. */
+	private lamps: Lamp[] = [];
 	private drums: THREE.Object3D[] = [];
+	private plaques: THREE.Object3D[] = [];
+	/** When a conversation last named each check (the clock's seconds): named one after another, they ripple. */
+	private namedAt = CHECKS.map(() => -10);
+	private clock = 0;
 
 	constructor() {
-		this.group.name = 'front door';
+		// Its name lets the conversation point at it.
+		this.group.name = 'Front door';
 		this.group.position.copy(G.at);
 		const c = palette();
 		const b = new Batch();
@@ -132,7 +142,7 @@ export class Gatehouse {
 		b.add(new THREE.CylinderGeometry(0.1, 0.1, DOOR.w - 0.2, 16), c.brass, { p: [0, TUMBLER.y + TUMBLER.r + 0.18, D / 2 - 0.4], r: [0, 0, Math.PI / 2] });
 		this.group.add(b.build('gatehouse'));
 
-		// The five tumblers: brass drums turning on the beam, ribbed, each with its own lamp on top.
+		// The five tumblers: brass drums turning on the beam, ribbed, each with its own lamp on top and its name under it.
 		const drumGeo = new THREE.CylinderGeometry(TUMBLER.r, TUMBLER.r, TUMBLER.len, 32);
 		const ribGeo = new THREE.TorusGeometry(TUMBLER.r + 0.01, 0.025, 6, 32);
 		for (let i = 0; i < 5; i++) {
@@ -152,27 +162,56 @@ export class Gatehouse {
 			hanger.position.set(0, TUMBLER.r + 0.1, 0);
 			this.group.add(drum);
 			this.drums.push(drum);
-			const lamp = new THREE.MeshStandardMaterial({ color: '#173b22', emissive: '#2bdc63', emissiveIntensity: 0.4 });
-			const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.1, 16, 12), lamp);
-			bulb.position.set(x, TUMBLER.y + TUMBLER.r + 0.36, D / 2 - 0.05);
+			const lamp = new Lamp(new THREE.SphereGeometry(0.1, 16, 12), color.amber, 0.2);
+			lamp.mesh.position.set(x, TUMBLER.y + TUMBLER.r + 0.36, D / 2 - 0.05);
 			const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.1, 0.1, 16), c.brass);
 			cup.position.set(x, TUMBLER.y + TUMBLER.r + 0.27, D / 2 - 0.05);
-			this.group.add(bulb, cup, hanger);
+			this.group.add(lamp.mesh, cup, hanger);
 			hanger.position.add(drum.position);
 			this.lamps.push(lamp);
+			// Its plaque: cream in a brass frame, hung from the drum's axle on two short rods.
+			const plaque = new THREE.Group();
+			plaque.position.set(x, TUMBLER.y - TUMBLER.r - 0.36, D / 2 - 0.4);
+			const pb = new Batch();
+			pb.add(rbox(0.92, 0.3, 0.06, 0.03), c.brass);
+			pb.add(rbox(0.84, 0.22, 0.04, 0.02), c.cream, { p: [0, 0, 0.025] });
+			for (const s of [-1, 1]) pb.add(new THREE.CylinderGeometry(0.018, 0.018, 0.26, 8), c.brass, { p: [s * 0.3, 0.27, 0] });
+			plaque.add(pb.build(`check-${i}`));
+			const name = new Label(CHECKS[i], 0.095, { weight: 700 });
+			name.mesh.position.set(0, 0, 0.047);
+			plaque.add(name.mesh);
+			this.group.add(plaque);
+			this.plaques.push(plaque);
 		}
 	}
 
+	/** A conversation names one of the checks: its plaque nods forward and back, its lamp flares. */
+	name(i: number) {
+		if (i >= 0 && i < this.namedAt.length) this.namedAt[i] = this.clock;
+	}
+
 	/**
-	 * pass: how far the request has got through the five checks, 0 to 5; each lamp turns green as it passes, each
-	 * tumbler turns a notch. At rest the lamps glow dimly and the drums tick over.
+	 * checks: how far the request has got through the five checks, 0 to 5: each tumbler turns a notch while its check
+	 * runs, its lamp blinking amber, and its lamp stays green once it has passed. Below 0, at rest: the lamps glow dimly
+	 * and the drums tick over, as a door does that others are going through.
 	 */
-	update(time: number, pass = -1) {
-		const ticking = pass < 0 ? (time * 0.8) % 7 : pass;
-		this.lamps.forEach((lamp, i) => {
-			const lit = THREE.MathUtils.clamp(ticking - i, 0, 1);
-			lamp.emissiveIntensity = 0.35 + lit * 2.4;
+	update(time: number, checks = -1) {
+		this.clock = time;
+		const idle = checks < 0;
+		const ticking = idle ? (time * 0.8) % 7 : checks;
+		this.drums.forEach((drum, i) => {
+			const turn = idle ? Math.min(1, Math.max(0, ticking - i)) + Math.floor((time * 0.8) / 7) : outBack(seg(checks, i, i + 0.5), 2);
+			drum.rotation.x = -turn * (Math.PI / 2);
 		});
-		this.drums.forEach((drum, i) => (drum.rotation.x = -Math.min(1, Math.max(0, ticking - i)) * (Math.PI / 4) - Math.floor(time * 0.8 / 7) * (Math.PI / 4)));
+		this.lamps.forEach((lamp, i) => {
+			const since = time - this.namedAt[i];
+			const nod = since >= 0 && since < 1.1 ? Math.sin((since / 1.1) * Math.PI) : 0;
+			this.plaques[i].rotation.x = nod * 0.32;
+			if (idle) lamp.mix(color.amber, color.green, THREE.MathUtils.clamp(ticking - i, 0, 1), 0.25 + nod * 1.5);
+			else if (checks >= i + 0.5) lamp.set(color.green, 1.4 + nod * 1.6);
+			else if (checks >= i) lamp.set(color.amber, 1.1 + Math.sin(time * 14) * 0.6);
+			else lamp.set(color.amber, 0.12 + nod * 1.5);
+			if (nod > 0) this.plaques[i].position.z = D / 2 - 0.4 + inOut(nod) * 0.12;
+		});
 	}
 }

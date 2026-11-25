@@ -38,11 +38,11 @@ const BELT = { half: 0.55, top: 0.4 };
 const FIRST = 0.2;
 const ARCHES = 5;
 /** The masts: how far along each stands, which side, how far out from the middle line, and how tall. */
-const MASTS = [
+// Three, and none in the last stretch before the door, so the door is seen clear along the deck.
+export const MASTS = [
 	{ u: 0.3, side: -1, out: 3.4, h: 6.2 },
-	{ u: 0.52, side: 1, out: 3.4, h: 6.6 },
-	{ u: 0.72, side: -1, out: 3.4, h: 6.4 },
-	{ u: 0.9, side: 1, out: 3.4, h: 6.0 }
+	{ u: 0.53, side: 1, out: 3.4, h: 6.6 },
+	{ u: 0.76, side: -1, out: 3.4, h: 6.4 }
 ] as const;
 
 /** A frame on the aqueduct's middle line, level across: where, which way it runs, which way is right. */
@@ -174,7 +174,7 @@ export class Aqueduct {
 	private platform(b: Batch, pier: THREE.Material) {
 		const Y = P.PLATFORM_Y - 1.55;
 		const z0 = P.DOOR_Z - 1.6;
-		const z1 = P.DOOR_Z - 29.6;
+		const z1 = P.PLATFORM_BACK;
 		for (const s of [-1, 1]) {
 			for (let i = 0; i < 3; i++) {
 				const a = v(s * 7.6, Y, z0 + ((z1 - z0) * i) / 3);

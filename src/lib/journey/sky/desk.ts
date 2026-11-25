@@ -1,10 +1,6 @@
 import * as THREE from 'three';
 import { Batch } from '../kit/batch';
 import { extrude, rbox, roundedRect } from '../kit/geometry';
-import { Laptop } from '../props/laptop';
-import { RequestDoc } from '../props/request';
-import { SkillShelf } from '../props/skills';
-import { HARNESSES } from '../content';
 import { hazed, palette } from './palette';
 import { span } from './aqueduct';
 import * as P from './masterplan';
@@ -13,9 +9,9 @@ import * as P from './masterplan';
  * Your desk: where the agent works, on your laptop. A grand writing desk of glossy honey wood with a gold band round its
  * edge, standing on a cream base carried on arches like the aqueduct's, warmly lit. Everything on it is yours.
  *
- * Front middle, your laptop; behind it, wired into it with brass, the harness: the program on your laptop that packs
- * every request and reads every reply, a butter-cream machine with a rounded roof, a great amber drum in its face and its
- * four drawers below (what it packs: instructions, environment, tools, conversation). The aqueduct's lanes leave its roof.
+ * Front middle, your laptop; behind it, wired into it, the harness: the program on your laptop that packs every request
+ * and reads every reply, a butter-cream cabinet under a barrel roof with its four drawers in its face (what it packs:
+ * instructions, environment, tools, conversation). The aqueduct's lanes leave from behind its roof.
  *
  * The left wing holds what goes into each request: the brass easel with the request page, the walnut shelf of skills,
  * the three local MCP servers, small gadgets in mint, coral and sky blue piped to the laptop's ports; and near your hand
@@ -32,31 +28,34 @@ import * as P from './masterplan';
  */
 
 const D = P.DESK;
+const EASEL_LEAN = -0.17;
 
+/**
+ * The desk itself and what stands on it for good. The story's own things (your laptop, the harness, the request page, the
+ * skills, the MCP server it wakes) are its own, which it moves, and stand where the masterplan says: see scenery.ts.
+ */
 export class Desk {
 	group = new THREE.Group();
-	laptop = new Laptop();
-	request = new RequestDoc();
-	skills = new SkillShelf();
-	/** The gates' lamps, the test bench's lamps and the harness's drum, which glow as the work goes on. */
+	/** The easel's brass frame: it stands only while it has a page to hold. */
+	easel = new THREE.Group();
+	/** Where the request page stands on the easel, and how far it leans back. */
+	static PAGE = new THREE.Vector3(P.EASEL.at.x, 0.98 + 3.1 / 2, P.EASEL.at.z + 0.3 - 2.5 * Math.tan(-EASEL_LEAN));
+	static PAGE_LEAN = EASEL_LEAN;
+	/** The gates' lamps and the test bench's lamps, which glow as the work goes on. */
 	private gateLamps: THREE.MeshStandardMaterial[] = [];
 	private testLamps: THREE.MeshStandardMaterial[] = [];
-	private drum!: THREE.Mesh;
 	private ring!: THREE.Object3D;
 
 	constructor() {
 		this.group.name = 'desk';
 		const b = new Batch();
 		this.furniture(b);
-		this.harness(b);
 		this.leftWing(b);
 		this.sandbox(b);
 		this.archive(b);
 		this.finish(b);
 		this.posts(b);
-		this.group.add(b.build('desk'));
-		this.laptop.group.position.copy(P.LAPTOP.at);
-		this.group.add(this.laptop.group);
+		this.group.add(b.build('desk'), this.easel);
 	}
 
 	/** The top, its gold edge, the cream body under it, and the arches that carry it, their piers going down into the haze. */
@@ -76,58 +75,26 @@ export class Desk {
 		}
 	}
 
-	/** The harness: its body, rounded roof, amber drum and windows, the four drawers, brass trims, and the wire to the laptop. */
-	private harness(b: Batch) {
-		const c = palette();
-		const H = P.HARNESS;
-		const at = H.at;
-		const body = H.h - H.d / 2;
-		b.add(rbox(H.w, body, H.d, 0.4), c.butter, { p: [at.x, body / 2, at.z] });
-		b.add(new THREE.CylinderGeometry(H.d / 2, H.d / 2, H.w - 0.3, 48, 1, false, 0, Math.PI), c.butter, { p: [at.x, body, at.z], r: [0, 0, Math.PI / 2] });
-		b.add(rbox(H.w + 0.24, 0.22, H.d + 0.24, 0.08), c.brass, { p: [at.x, 0.11, at.z] });
-		for (const s of [-1, 1]) b.add(new THREE.TorusGeometry(H.d / 2 + 0.02, 0.07, 10, 40, Math.PI), c.brass, { p: [at.x + s * (H.w / 2 - 0.2), body, at.z], r: [0, Math.PI / 2, 0] });
-		const face = at.z + H.d / 2;
-		// The amber drum in its face: a turning cylinder behind a brass bezel.
-		b.add(new THREE.TorusGeometry(1.05, 0.12, 12, 48), c.brass, { p: [at.x, 2.35, face + 0.02] });
-		b.add(new THREE.CylinderGeometry(1.0, 1.0, 0.1, 48), c.iron, { p: [at.x, 2.35, face - 0.02], r: [Math.PI / 2, 0, 0] });
-		this.drum = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, 1.7, 32), c.amberWindow);
-		this.drum.rotation.z = Math.PI / 2;
-		this.drum.position.set(at.x, 2.35, face + 0.1);
-		this.group.add(this.drum);
-		for (const s of [-1, 1]) {
-			b.add(extrude(arch(0.9, 1.7), 0.08, 0.02, 2, 16), c.amberWindow, { p: [at.x + s * 2.35, 1.5, face + 0.01] });
-			b.add(new THREE.TorusGeometry(0.48, 0.06, 8, 24, Math.PI), c.brass, { p: [at.x + s * 2.35, 1.5 + 1.7 - 0.45, face + 0.05] });
-		}
-		// The four drawers along its foot: what it packs into every request.
-		for (let i = 0; i < 4; i++) {
-			const x = at.x - 2.4 + i * 1.6;
-			b.add(rbox(1.42, 0.62, 0.12, 0.06), c.cream, { p: [x, 0.62, face + 0.06] });
-			b.add(new THREE.TorusGeometry(0.11, 0.03, 8, 20, Math.PI), c.brass, { p: [x, 0.6, face + 0.14], r: [0, 0, Math.PI] });
-		}
-		// Brass pipes from its foot to the laptop's back.
-		const L = P.LAPTOP.at;
-		for (const s of [-1, 1]) this.pipe(b, [[at.x + s * 0.9, 0.14, face + 0.2], [at.x + s * 0.9, 0.14, L.z - 1.6], [L.x + s * 0.7, 0.14, L.z - 1.15]], 0.08);
-	}
-
 	/** The left wing: the easel and its page, the skills in a walnut shelf, the three local MCP servers, and your controls. */
 	private leftWing(b: Batch) {
 		const c = palette();
 		// The easel: an A-frame of brass tubes, two legs in front leaning back and one behind, a ledge the request page
 		// stands on and a clamp that holds its top. The page leans back with the legs.
 		const E = P.EASEL.at;
-		const lean = -0.17;
+		const lean = EASEL_LEAN;
 		const top = 4.35;
-		for (const s of [-1, 1]) this.pipe(b, [[E.x + s * 1.45, 0.02, E.z + 0.35], [E.x + s * 1.2, top * 0.5, E.z + 0.35 - top * 0.5 * Math.tan(-lean)], [E.x + s * 0.95, top, E.z + 0.35 - top * Math.tan(-lean)]], 0.07);
-		this.pipe(b, [[E.x, top - 0.1, E.z + 0.25 - top * Math.tan(-lean)], [E.x, top * 0.5, E.z - 0.9], [E.x, 0.02, E.z - 1.7]], 0.06);
-		for (const s of [-1, 1]) b.add(new THREE.SphereGeometry(0.1, 12, 8), c.gold, { p: [E.x + s * 0.95, top + 0.05, E.z + 0.35 - top * Math.tan(-lean)] });
-		b.add(rbox(3.2, 0.12, 0.34, 0.04), c.brass, { p: [E.x, 0.92, E.z + 0.35 - 0.92 * Math.tan(-lean) + 0.06] });
-		b.add(rbox(1.4, 0.14, 0.2, 0.04), c.brass, { p: [E.x, top - 0.28, E.z + 0.33 - (top - 0.28) * Math.tan(-lean)] });
-		this.request.group.position.set(E.x, 0.98 + 3.1 / 2, E.z + 0.3 - 2.5 * Math.tan(-lean));
-		this.request.group.rotation.x = lean;
-		this.request.setHarness(HARNESSES.claude);
-		this.request.setRoll(1);
-		this.request.setTabs(1);
-		this.group.add(this.request.group);
+		const eb = new Batch();
+		for (const s of [-1, 1]) this.pipe(eb, [[E.x + s * 1.45, 0.02, E.z + 0.35], [E.x + s * 1.2, top * 0.5, E.z + 0.35 - top * 0.5 * Math.tan(-lean)], [E.x + s * 0.95, top, E.z + 0.35 - top * Math.tan(-lean)]], 0.07);
+		this.pipe(eb, [[E.x, top - 0.1, E.z + 0.25 - top * Math.tan(-lean)], [E.x, top * 0.5, E.z - 0.9], [E.x, 0.02, E.z - 1.7]], 0.06);
+		for (const s of [-1, 1]) eb.add(new THREE.SphereGeometry(0.1, 12, 8), c.gold, { p: [E.x + s * 0.95, top + 0.05, E.z + 0.35 - top * Math.tan(-lean)] });
+		eb.add(rbox(3.2, 0.12, 0.34, 0.04), c.brass, { p: [E.x, 0.92, E.z + 0.35 - 0.92 * Math.tan(-lean) + 0.06] });
+		eb.add(rbox(1.4, 0.14, 0.2, 0.04), c.brass, { p: [E.x, top - 0.28, E.z + 0.33 - (top - 0.28) * Math.tan(-lean)] });
+		// The easel stands up from its foot: scaling it from there makes it grow out of the desk.
+		const frame = eb.build('easel');
+		frame.position.set(-E.x, 0, -E.z);
+		this.easel.position.set(E.x, 0, E.z);
+		this.easel.add(frame);
+		b.add(rbox(3.4, 0.08, 2.5, 0.04), c.brass, { p: [E.x, 0.04, E.z - 0.65] });
 		// The skills: today's shelf of folders, in a walnut case open at the front.
 		const S = P.SKILLS.at;
 		b.add(rbox(3.4, 0.18, 1.6, 0.06), c.walnut, { p: [S.x, 0.09, S.z] });
@@ -135,13 +102,12 @@ export class Desk {
 		b.add(rbox(3.4, 0.18, 1.6, 0.06), c.walnut, { p: [S.x, 1.9, S.z] });
 		b.add(rbox(3.2, 1.8, 0.1, 0.04), c.walnut, { p: [S.x, 0.95, S.z - 0.75] });
 		b.add(rbox(3.0, 0.05, 0.05, 0.02), c.brass, { p: [S.x, 0.5, S.z + 0.82] });
-		this.skills.group.position.set(S.x, 0.18, S.z);
-		this.skills.group.scale.setScalar(1.2);
-		this.group.add(this.skills.group);
 		// The three local MCP servers: gadgets in their colours on walnut bases, each with a brass dial, piped to the laptop.
 		const L = P.LAPTOP.at;
 		[c.mint, c.coral, c.skyBlue].forEach((mat, i) => {
 			const g = P.LOCAL_MCP[i];
+			// The third is the story's own MCP server, which the harness wakes: it stands here, wired to the harness.
+			if (i === 2) return;
 			b.add(rbox(1.5, 0.2, 1.4, 0.06), c.walnut, { p: [g.x, 0.1, g.z] });
 			b.add(rbox(1.25, 1.25, 1.15, 0.24), mat, { p: [g.x, 0.84, g.z] });
 			b.add(new THREE.CylinderGeometry(0.34, 0.34, 0.08, 28), c.brass, { p: [g.x, 0.9, g.z + 0.6], r: [Math.PI / 2, 0, 0] });
@@ -298,22 +264,10 @@ export class Desk {
 		b.add(new THREE.TubeGeometry(curve, 48, r, 10), palette().brass);
 	}
 
-	/** The harness's drum turns, the reading ring searches, the gates and tests light in turn. */
+	/** The reading ring searches, the gates and tests light in turn. */
 	update(time: number) {
-		this.drum.rotation.x = time * 1.6;
 		this.ring.position.x = P.SANDBOX.at.x - 1.4 + Math.sin(time * 0.6) * 1.3;
 		this.gateLamps.forEach((m, i) => (m.emissiveIntensity = 0.4 + 2 * Math.max(0, Math.sin(time * 1.2 - i * 0.6))));
 		this.testLamps.forEach((m, i) => (m.emissiveIntensity = 0.4 + 2 * Math.max(0, Math.sin(time * 0.8 - i * 0.4))));
 	}
-}
-
-/** An arched window's outline: straight sides and a round head. */
-function arch(w: number, h: number) {
-	const s = new THREE.Shape();
-	s.moveTo(-w / 2, 0);
-	s.lineTo(-w / 2, h - w / 2);
-	s.absarc(0, h - w / 2, w / 2, Math.PI, 0, true);
-	s.lineTo(w / 2, 0);
-	s.closePath();
-	return s;
 }

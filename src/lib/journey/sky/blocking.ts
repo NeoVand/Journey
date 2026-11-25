@@ -1,40 +1,31 @@
 import * as THREE from 'three';
 import { Batch } from '../kit/batch';
 import { rbox } from '../kit/geometry';
-import { createIsland } from '../props/island';
-import { paintCloud, seeded } from '../props/sky';
-import { Brain, STEM_FOOT } from '../props/brain';
+import { Brain } from '../props/brain';
+import { Laptop } from '../props/laptop';
+import { Harness } from '../props/harness';
+import { RequestDoc } from '../props/request';
+import { SkillShelf } from '../props/skills';
+import { McpServer } from '../props/mcp';
+import { HARNESSES } from '../content';
 import { palette } from './palette';
 import * as P from './masterplan';
-import { Tower } from './tower';
-import { Gatehouse } from './gatehouse';
-import { Hall } from './hall';
-import { Aqueduct } from './aqueduct';
-import { Desk } from './desk';
-import { Foundry } from './foundry';
-import { Proving } from './proving';
-import { RemoteTowers } from './remote';
+import { placeModel, placeOnDesk, Scenery } from './scenery';
 
 /*
- * The whole world, put together from its places: the desk, the aqueduct, the provider (the gatehouse, the hall, the
- * tower and the model), the foundry, the proving ground and the remote towers, each built in its own module from its own
- * drawings, all positioned by the masterplan. What runs between them, the lanes and what rides them, is here.
+ * The lab's world: the scenery as the site stands it, the story's own things where they rest, and the lanes busy with
+ * traffic, so every place can be looked at with something going through it.
  */
-
-/** Lays a flat outline (x, z pairs, seen from above) down as a shape the extruder turns into a slab facing up. */
-const plan = (pts: [number, number][]) => pts.map(([x, z]) => [x, -z] as [number, number]);
 
 export class Blocking {
 	group = new THREE.Group();
-	brain: Brain | null = null;
-	tower = new Tower();
-	gatehouse = new Gatehouse();
-	hall = new Hall();
-	aqueduct = new Aqueduct();
-	desk = new Desk();
-	foundry = new Foundry();
-	proving = new Proving();
-	remote = new RemoteTowers();
+	scenery = new Scenery();
+	brain = new Brain('stem');
+	laptop = new Laptop();
+	harness = new Harness();
+	doc = new RequestDoc();
+	skills = new SkillShelf();
+	mcp = new McpServer();
 	private up!: THREE.CatmullRomCurve3;
 	private down!: THREE.CatmullRomCurve3;
 	private tokens!: THREE.InstancedMesh;
@@ -49,24 +40,16 @@ export class Blocking {
 
 	constructor() {
 		this.group.name = 'blocking';
-		const b = new Batch();
-		this.group.add(b.build('world'), this.tower.group, this.gatehouse.group, this.hall.group, this.aqueduct.group, this.desk.group, this.foundry.group, this.proving.group, this.remote.group);
-		this.platform();
+		const holder = new THREE.Group();
+		placeOnDesk({ laptop: this.laptop, harness: { holder, harness: this.harness }, doc: this.doc, skills: this.skills, mcp: this.mcp });
+		placeModel(this.brain);
+		this.doc.setHarness(HARNESSES.claude);
+		this.doc.setRoll(1);
+		this.doc.setTabs(1);
+		this.laptop.setHarness(HARNESSES.claude);
+		this.group.add(this.scenery.group, this.brain.group, this.laptop.group, holder, this.doc.group, this.skills.group, this.mcp.group);
 		this.lanes();
-		this.clouds();
-		this.model();
 	}
-
-
-
-	/* ---------- the provider ---------- */
-	private platform() {
-		const outline = plan(P.PLATFORM);
-		const isl = createIsland(outline, 1.2);
-		isl.position.y = P.PLATFORM_Y;
-		this.group.add(isl);
-	}
-
 
 
 
@@ -95,31 +78,6 @@ export class Blocking {
 		this.group.add(this.tokens, this.pearls, this.upSealed, this.downSealed, this.upBands, this.downBands);
 		this.update(0);
 	}
-
-	/* ---------- a few soft clouds, far below ---------- */
-	private clouds() {
-		const rand = seeded(11);
-		const tex = Array.from({ length: 4 }, (_, i) => paintCloud(300 + i * 31, i / 3));
-		for (let i = 0; i < 26; i++) {
-			const a = rand() * Math.PI * 2;
-			const r = 10 + rand() * 70;
-			const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex[i % 4], transparent: true, opacity: 0.85, depthWrite: false }));
-			const w = 14 + rand() * 18;
-			s.scale.set(w, w / 2, 1);
-			s.position.set(r * Math.cos(a), -14 - rand() * 6, -24 + r * Math.sin(a) * 0.7);
-			this.group.add(s);
-		}
-	}
-
-	/* ---------- the model, on the tower's roof ---------- */
-	private model() {
-		// Fed from below: no hose at its crown, a glass pedestal under it with the two lanes inside, standing on the roof.
-		const brain = new Brain('stem');
-		brain.group.position.set(P.MODEL.stem.x - P.MODEL.stemX, P.ROOF_Y - STEM_FOOT, P.MODEL.stem.z);
-		this.group.add(brain.group);
-		this.brain = brain;
-	}
-
 
 	update(time: number) {
 		const q = new THREE.Quaternion();
@@ -152,14 +110,10 @@ export class Blocking {
 		};
 		place(this.tokens, this.upSealed, this.upBands, this.up, P.TOKENIZER.from - 3.5, 0.008);
 		place(this.pearls, this.downSealed, this.downBands, this.down, P.HALL.from - 1.8, 0.008);
-		this.brain?.update(6.9, time);
-		this.tower.update(time);
-		this.gatehouse.update(time);
-		this.hall.update(time);
-		this.aqueduct.update(time, cargo);
-		this.desk.update(time);
-		this.foundry.update(time);
-		this.proving.update(time);
-		this.remote.update(time);
+		this.brain.update(6.9, time);
+		this.harness.update([0, 0, 0, 0], [1, 1, 1, 1], 1, time);
+		this.mcp.update(1, time);
+		this.laptop.update(0, 0, time, 1, false);
+		this.scenery.update(time, cargo);
 	}
 }

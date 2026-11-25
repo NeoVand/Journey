@@ -10,8 +10,9 @@ import * as P from './masterplan';
 
 /*
  * The hall behind the front door, where text becomes tokens and tokens become text again. Long walls of rose glazed tile
- * with arched windows glowing warm and brass sconces between them, a terracotta floor, and over it a vault of glass held
- * on gold ribs, so the work inside can be watched from above; brass lamps hang down the middle.
+ * with arched windows glowing warm and brass sconces between them, a gold cresting along their tops, a terracotta floor,
+ * and no roof: a court open to the sky, so the work inside can be watched from above. At its far end a tiled wall rises
+ * in a great arch, with a round window, and an arched way through it for the lanes into the tower.
  *
  * Beside the request's lane, on the left, the tokenizer as it was built and kept: the chat template lays the request out
  * as one long strip, the belt carries it under the gantry, and the gantry cuts it into tiles at every token boundary.
@@ -31,8 +32,9 @@ const THICK = 0.6;
 /** The two machines' belts: how far from the middle, and how high their tops stand over the floor. */
 const BELT_X = 2.75;
 const BELT_Y = 0.52;
+/** The tokenizer's belt, on the request's lane: as high over the floor as it was built to stand. */
+const TOKENIZER_BELT = 0.5;
 
-type V3 = [number, number, number];
 
 /** A glazed tile surface: square tiles of one colour, each a little different, with pale grout between. */
 function tiles(base: string, grout: string, spread: number) {
@@ -75,13 +77,17 @@ function archShape(w: number, h: number) {
 	return s;
 }
 
+/**
+ * tokenizer: whether the hall stands its own tokenizer, as the lab shows it. The story brings its own, which it drives,
+ * and lays it on the request's lane where this one stands; its belt is that lane's bed through the hall.
+ */
 export class Hall {
 	group = new THREE.Group();
-	gantry: Gantry;
+	gantry: Gantry | null = null;
 	private strip: Tile[] = [];
 	private roller!: THREE.Mesh;
 
-	constructor() {
+	constructor(tokenizer = true) {
 		this.group.name = 'hall';
 		this.group.position.y = P.PLATFORM_Y;
 		const c = palette();
@@ -118,34 +124,22 @@ export class Hall {
 			}
 		}
 
-		// The vault: glass on gold ribs, purlins along it and a ridge, brass lamps hanging down the middle.
+		// Open to the sky, so the work inside can be watched from above: along each wall's top a cresting of gold, a ball
+		// on a short post every so often.
 		const rx = INNER + THICK / 2;
-		const vault = new THREE.CylinderGeometry(rx, rx, LEN, 64, 1, true, -Math.PI / 2, Math.PI);
-		vault.scale(1, 1, H.vault / rx);
-		b.add(vault, c.glass, { p: [0, H.wall, MID], r: [Math.PI / 2, 0, 0] });
-		const ribs = 7;
-		for (let i = 0; i < ribs; i++) {
-			const rib = new THREE.TorusGeometry(rx, 0.11, 10, 64, Math.PI);
-			rib.scale(1, H.vault / rx, 1);
-			b.add(rib, c.gold, { p: [0, H.wall, H.from - (LEN * i) / (ribs - 1)] });
-		}
-		for (const a of [0.35, 0.8, Math.PI / 2, Math.PI - 0.8, Math.PI - 0.35]) {
-			const at: V3 = [rx * Math.cos(a), H.wall + H.vault * Math.sin(a), MID];
-			b.add(new THREE.CylinderGeometry(0.045, 0.045, LEN, 10), c.brass, { p: at, r: [Math.PI / 2, 0, 0] });
-		}
-		for (let i = 1; i < ribs - 1; i++) {
-			const z = H.from - (LEN * i) / (ribs - 1);
-			const top = H.wall + H.vault - 0.1;
-			const drop = 2.4;
-			b.add(new THREE.CylinderGeometry(0.025, 0.025, drop, 8), c.brass, { p: [0, top - drop / 2, z] });
-			b.add(new THREE.ConeGeometry(0.42, 0.34, 28, 1, true), c.brass, { p: [0, top - drop - 0.1, z] });
-			b.add(new THREE.SphereGeometry(0.15, 14, 10), c.amberWindow, { p: [0, top - drop - 0.22, z] });
+		for (const s of [-1, 1]) {
+			const n = Math.round(LEN / 1.2);
+			for (let i = 0; i <= n; i++) {
+				const z = H.from - (LEN * i) / n;
+				b.add(new THREE.CylinderGeometry(0.05, 0.07, 0.34, 10), c.gold, { p: [s * rx, H.wall + 0.39, z] });
+				b.add(new THREE.SphereGeometry(0.1, 12, 8), c.gold, { p: [s * rx, H.wall + 0.62, z] });
+			}
 		}
 
 		// The far end, where the hall meets the tower: a rose wall the shape of the vault, an arch let into it for the lanes,
 		// a gold band round the arch and a round window over it.
 		const end = new THREE.Shape();
-		const doorW = 3.4;
+		const doorW = 4.0;
 		const spring = 1.9;
 		end.moveTo(-rx, 0);
 		end.lineTo(-doorW / 2, 0);
@@ -171,15 +165,16 @@ export class Hall {
 		b.add(new THREE.TorusGeometry(0.95, 0.1, 10, 48), c.gold, { p: [0, H.wall + 1.2, H.to + 0.6] });
 
 		// Both lanes' beds through the hall: a dark belt between brass kerbs on short brass legs.
-		for (const s of [-1, 1]) {
-			const x = s * P.LANE;
+		// The reply's lane only: the request's bed through the hall is the tokenizer's own belt.
+		for (const s of [1]) {
+			const x = s * P.HALL_LANE;
 			b.add(rbox(1.1, 0.12, LEN, 0.03), c.iron, { p: [x, 0.34, MID] });
 			for (const k of [-1, 1]) b.add(rbox(0.12, 0.16, LEN, 0.03), c.brass, { p: [x + k * 0.6, 0.44, MID] });
 			for (let i = 0; i < 6; i++) b.add(rbox(0.6, 0.26, 0.16, 0.03), c.brass, { p: [x, 0.13, H.from - 0.8 - (i * (LEN - 1.6)) / 5] });
 		}
 		this.group.add(b.build('hall'));
 
-		this.gantry = this.tokenizer();
+		if (tokenizer) this.gantry = this.tokenizer();
 		this.detokenizer();
 	}
 
@@ -191,9 +186,9 @@ export class Hall {
 	private tokenizer() {
 		const g = new THREE.Group();
 		g.rotation.y = Math.PI / 2;
-		g.position.set(-BELT_X, BELT_Y, H.from - 1.6);
+		g.position.set(-P.HALL_LANE, TOKENIZER_BELT, H.from - 1.6);
 		const template = createChatTemplate();
-		template.position.set(0, -BELT_Y, 0);
+		template.position.set(0, -TOKENIZER_BELT, 0);
 		g.add(template);
 		const beltFrom = 1.2;
 		const beltTo = LEN - 2.8;
@@ -231,7 +226,8 @@ export class Hall {
 		// Turned so its belt runs from the tower towards the door, its front to the lanes.
 		g.rotation.y = -Math.PI / 2;
 		g.position.set(BELT_X, BELT_Y, H.to + 1.6);
-		const beltTo = LEN - 6.2;
+		// Short, at the tower's end of the hall: the reply's tiles come out of the tower, go straight in, and leave as text.
+		const beltTo = 3.4;
 		g.add(createBelt(0, beltTo));
 		const b = new Batch();
 		const W = 2.4;
@@ -268,10 +264,10 @@ export class Hall {
 		g.add(label.mesh);
 		// The reply's tiles on the belt, pearl, on their way in.
 		const tile = palette().pearl;
-		for (let i = 0; i < 7; i++) {
+		for (let i = 0; i < 3; i++) {
 			const w = 0.6 + ((i * 37) % 5) * 0.12;
 			const mesh = new THREE.Mesh(rbox(w, TILE_H, TILE_D, 0.055, 3), tile);
-			mesh.position.set(0.8 + i * 1.05, TILE_H / 2, 0);
+			mesh.position.set(0.55 + i * 1.0, TILE_H / 2, 0);
 			mesh.castShadow = true;
 			g.add(mesh);
 		}
@@ -279,7 +275,7 @@ export class Hall {
 	}
 
 	update(time: number) {
-		this.gantry.update(0.5 + 0.5 * Math.sin(time * 3), true);
+		this.gantry?.update(0.5 + 0.5 * Math.sin(time * 3), true);
 		this.roller.rotation.y = time * 2;
 	}
 }
