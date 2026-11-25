@@ -257,7 +257,7 @@ const OUT_OF = { az: 22, el: 9, target: [-SHAFT_X, SEAT_Y + 1.6, TZ] as V3, radi
 /** The tower from in front, over the hall's end wall: the reply falling down its column, lit, seen through the slot. */
 const DOWN_TOWER = { az: 10, el: 8, target: [-SHAFT_X, 19, TZ] as V3, radius: 5.5, ry: 7.5, wide: WHOLE, tall: WHOLE_TALL };
 /** The whole hall from high over the door: the reply's text riding the right lane from the tower's foot to the press. */
-const HALL_RUN = { az: 22, el: 52, target: [1.1, 8.6, -31.5] as V3, radius: 7.5, ry: 6, wide: WHOLE, tall: WHOLE_TALL };
+const HALL_RUN = { az: 48, el: 40, target: [1.1, 8.8, -31] as V3, radius: 7, ry: 5.5, wide: WHOLE, tall: WHOLE_TALL };
 const homeShot = (T: number, az: number, el: number, radius: number, ry = radius * 0.75): Shot => ({ T, az, el, target: [0, 0, 0], radius, ry, wide: WHOLE, tall: WHOLE_TALL, follow: followHome });
 /**
  * Home: out of the brainstem's seat, and down the column in the shaft, lit, seen through the tower's slot; the whole hall
@@ -270,12 +270,17 @@ const HOME_SHOTS: Shot[] = [
 	{ T: HOME.from + 0.011, ...DOWN_TOWER },
 	{ T: HOME.from + 0.016, ...DOWN_TOWER, target: [-SHAFT_X, 16, TZ], az: 14 },
 	{ T: HOME.from + 0.022, ...HALL_RUN },
-	{ T: HOME.from + 0.043, ...HALL_RUN, az: 26, target: [1.1, 8.6, -29.5] },
-	// Down in front of the gatehouse, waiting at its door for the first capsule to come out.
+	{ T: HOME.from + 0.043, ...HALL_RUN, az: 44, target: [1.1, 8.8, -29.5] },
+	// Over the gatehouse, high, until it's lined up with the door; then down in front of it, waiting at the door for
+	// the first capsule to come out. Coming down any sooner, it would swing through the corner tower.
+	{ T: HOME.from + 0.0455, az: 28, el: 50, target: [0.7, 9.6, P.DOOR_Z - 0.6], radius: 4.6, ry: 3.4, wide: WHOLE, tall: WHOLE_TALL },
 	{ T: HOME.from + 0.048, az: 26, el: 22, target: [0.7, 9.2, P.DOOR_Z], radius: 4, ry: 3, wide: WHOLE, tall: WHOLE_TALL },
+	// Down the aqueduct with the first capsule, on the side away from the mast it's passing, so no mast comes between:
+	// the last of them stands on the left, the middle one on the right, the first on the left by your desk.
 	homeShot(HOME.from + 0.054, 30, 24, 3.8),
-	homeShot(HOME.from + 0.062, 20, 18, 3.8),
-	homeShot(HOME.from + 0.078, 24, 18, 3.8),
+	homeShot(HOME.from + 0.06, -8, 20, 3.8),
+	homeShot(HOME.from + 0.072, -16, 20, 3.8),
+	homeShot(HOME.from + 0.084, 18, 20, 3.6),
 	homeShot(HOME.from + 0.092, 28, 22, 3.2),
 	{ T: HOME.arrive, az: 30, el: 24, target: [0.7, 6.4, -5.2], radius: 2.6, ry: 2.2, wide: WHOLE, tall: WHOLE_TALL }
 ];
