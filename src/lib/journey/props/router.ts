@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { Batch } from '../kit/batch';
 import { rbox, sharedRbox } from '../kit/geometry';
-import { machine, curve, tube, shadowOn } from '../kit/machines';
+import { curve, tube, shadowOn } from '../kit/machines';
+import { craft, fan, loaf, loafBeads, pane } from '../kit/craft';
 import { color, Lamp, mats } from '../kit/materials';
 import { bell, outBack, seg, smooth } from '../kit/math';
 import { createSign, fitting, grown, leaving, standSign } from '../kit/parts';
@@ -26,6 +27,7 @@ export class Router {
 	private lamps: Lamp[] = [];
 	private beam: THREE.Group;
 	private answers: THREE.Group[] = [];
+	private rotors: THREE.Object3D[] = [];
 
 	constructor(railZ: number, railY: number) {
 		// Its name lets the conversation point at it: see pointer.svelte.ts.
@@ -54,17 +56,43 @@ export class Router {
 
 		const plugs: [number, number, number][] = [];
 		// Two other copies of the same model, behind the belt. Their chips are busy with other people.
+		// Each one built as the pools are, small: a cream base with the wire's socket, a glass case with its memory
+		// inside, full of other people's blocks, and a cobalt hood with its name and a fan.
+		const c = craft();
+		// Other people's blocks, in the same quiet colour as the strangers' in the tray.
+		const strangers = new THREE.MeshPhysicalMaterial({ color: '#9fb2d6', roughness: 0.42, clearcoat: 0.5 });
 		[-1.9, 1.9].forEach((x, i) => {
-			const copy = machine({ w: 3, h: 1.9, d: 2.2, finish: 'cobalt', name: `Copy ${i + 1}`, signH: 0.26, vent: false });
+			const copy = new THREE.Group();
+			copy.name = `Copy ${i + 1}`;
 			copy.position.set(x, 0, -1.6);
+			const cb = new Batch();
+			const CW = 3;
+			const CD = 2.2;
+			cb.add(rbox(CW + 0.34, 0.14, CD + 0.34, 0.05, 2), m.steelSoft, { p: [0, 0.07, 0] });
+			cb.add(rbox(CW + 0.38, 0.03, CD + 0.38, 0.012, 1), c.chrome, { p: [0, 0.15, 0] });
+			cb.add(rbox(CW, 0.46, CD, 0.08, 2), m.cream, { p: [0, 0.37, 0] });
+			cb.add(rbox(CW + 0.04, 0.05, CD + 0.04, 0.02, 1), c.chrome, { p: [0, 0.61, 0] });
+			// The case: a dark back and floor, its memory on the back, a chrome frame on its front edges.
+			cb.add(rbox(CW - 0.1, 0.7, 0.05, 0.02, 1), m.recess, { p: [0, 0.98, -CD / 2 + 0.3] });
+			cb.add(rbox(CW - 0.1, 0.03, CD - 0.3, 0.01, 1), m.recess, { p: [0, 0.645, 0.15] });
+			for (let col = 0; col < 6; col++) {
+				for (let r = 0; r < 2; r++) cb.add(rbox(0.34, 0.24, 0.05, 0.03, 1), strangers, { p: [(col - 2.5) * 0.4, 1.06 - r * 0.3, -CD / 2 + 0.36] });
+			}
+			for (const sx of [-1, 1]) for (const z of [CD / 2 - 0.03, -CD / 2 + 0.3]) cb.add(rbox(0.06, 0.72, 0.06, 0.02, 1), c.chrome, { p: [sx * (CW / 2 - 0.05), 0.98, z] });
+			cb.add(rbox(CW, 0.06, 0.06, 0.02, 1), c.chrome, { p: [0, 0.65, CD / 2 - 0.03] });
+			// The hood.
+			cb.add(loaf(CW, CD, 0.7, 0.28), m.cobalt, { p: [0, 1.34, 0] });
+			cb.add(rbox(CW + 0.04, 0.05, CD + 0.04, 0.02, 1), c.chrome, { p: [0, 1.35, 0] });
+			loafBeads(cb, CW, CD, 2.04, 0.28);
+			const rotor = fan(cb, 0.34, [0.85, 2.18, 0]);
+			copy.add(cb.build('copy'), rotor);
+			copy.add(pane(CW - 0.12, 0.68, [0, 0.98, CD / 2 - 0.01], 0.02));
+			const name = createSign(`Copy ${i + 1}`, 0.18, undefined, undefined, true);
+			name.position.set(-0.3, 1.62, CD / 2 + 0.03);
+			copy.add(name);
+			this.rotors.push(rotor);
 			this.group.add(copy);
 			shadowOn(this.group, x, 0, -1.6, 3.4, 2.6, 0.4);
-			const grid = new Batch();
-			grid.add(rbox(2.4, 0.74, 0.03, 0.05, 2), m.recess, { p: [x, 0.74, -0.5 + 0.015] });
-			for (let c = 0; c < 6; c++) {
-				for (let r = 0; r < 2; r++) grid.add(rbox(0.34, 0.28, 0.03, 0.03, 1), m.steelSoft, { p: [x + (c - 2.5) * 0.38, 0.92 - r * 0.36, -0.5 + 0.03] });
-			}
-			this.group.add(grid.build('copy-memory'));
 			const lamp = new Lamp(sharedRbox(0.14, 0.14, 0.04, 0.05, 3), color.amber, 0.15);
 			lamp.mesh.position.set(x + 1.2, 1.62, -0.48);
 			this.group.add(lamp.mesh);
@@ -142,12 +170,13 @@ export class Router {
 		const u = steps - leg;
 		const running = ping > 0 && ping < 1;
 		this.bead.visible = running && u < 0.72;
-		if (this.bead.visible) this.wires[leg].getPointAt(smooth(u / 0.72), this.bead.position);
+		// Along the wire, on top of it, and not quite to its end, where the socket is.
+		if (this.bead.visible) this.wires[leg].getPointAt(smooth(u / 0.72) * 0.9, this.bead.position).y += 0.08;
 		this.answers.forEach((sign, i) => {
 			const from = (i + 0.7) / 3;
 			const k = seg(ping, from, from + 0.1);
 			sign.visible = k > 0;
-			sign.scale.setScalar(Math.max(0.001, outBack(k, 2.2)));
+			sign.scale.setScalar(Math.max(0.001, outBack(k, 1.2)));
 		});
 		this.lamps.forEach((lamp, i) => {
 			const from = (i + 0.7) / 3;
@@ -155,5 +184,6 @@ export class Router {
 		});
 		const third = seg(ping, 2.7 / 3, 2.9 / 3);
 		this.lampThird.set(color.green, 0.1 + third * 1.2);
+		this.rotors.forEach((r, i) => (r.rotation.y += 0.05 + i * 0.01));
 	}
 }

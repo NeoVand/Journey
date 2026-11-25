@@ -6,6 +6,7 @@ import { color, Lamp, mats } from '../kit/materials';
 import { bell, inOut, lerp, outBack, seg, smooth } from '../kit/math';
 import { createSign, grown } from '../kit/parts';
 import { font, isPhone, Label, Surface } from '../kit/print';
+import { bezel, craft } from '../kit/craft';
 
 const CELL = 0.56;
 const LANE_Z = [-2.6, -1.3, 0, 1.3, 2.6];
@@ -102,9 +103,36 @@ export class BatchLanes {
 		b.add(rbox(1, 0.1, railLen, 0.04, 2), m.rubber, { p: [RAIL_X, 0.05, railMid] });
 		const backLen = -3.7 - (RAIL_X + 0.5);
 		b.add(rbox(backLen, 0.1, 0.92, 0.04, 2), m.rubber, { p: [RAIL_X + 0.5 + backLen / 2, 0.05, BACK_Z] });
-		// Where finished work leaves: one mouth for each lane, and a lamp that says so.
-		b.add(rbox(0.9, 0.56, 7.5, 0.06, 3), m.creamLight, { p: [X1 + 0.45, 0.28, -0.15] });
-		for (const z of LANE_Z) b.add(rbox(0.02, 0.4, 0.82, 0.01, 1), m.recess, { p: [X1 - 0.002, 0.24, z] });
+		// Where finished work leaves: a block across the lanes' ends with a tunnel for each lane, lined dark, in a chrome
+		// bezel, and a lamp over each that says so. Built round its tunnels, so what goes in goes into the dark.
+		const k = craft();
+		const FD = 0.9;
+		const TD = 0.72;
+		const TW = 0.82;
+		const TH = 0.42;
+		const z0 = -0.15 - 3.75;
+		const z1 = -0.15 + 3.75;
+		b.add(rbox(FD - TD, 0.56, z1 - z0, 0.04, 2), m.creamLight, { p: [X1 + TD + (FD - TD) / 2, 0.28, (z0 + z1) / 2] });
+		b.add(rbox(TD, 0.56 - TH - 0.02, z1 - z0, 0.04, 2), m.creamLight, { p: [X1 + TD / 2, (0.56 + TH + 0.02) / 2, (z0 + z1) / 2] });
+		const edges = [z0, ...LANE_Z.flatMap((z) => [z - TW / 2, z + TW / 2]), z1];
+		for (let i = 0; i < edges.length; i += 2) {
+			const a = edges[i];
+			const e = edges[i + 1];
+			b.add(rbox(TD, TH + 0.02, e - a, 0.02, 1), m.creamLight, { p: [X1 + TD / 2, (TH + 0.02) / 2, (a + e) / 2] });
+		}
+		for (const z of LANE_Z) {
+			b.add(rbox(0.03, TH, TW, 0.01, 1), m.recess, { p: [X1 + TD - 0.015, TH / 2 + 0.01, z] });
+			b.add(rbox(TD, 0.02, TW, 0.01, 1), m.recess, { p: [X1 + TD / 2, TH + 0.01, z] });
+			const bz = new Batch();
+			bezel(bz, TW, TH, [0, 0, 0], { t: 0.05, r: 0.04, depth: 0.04 });
+			const frame = bz.build('bezel');
+			frame.rotation.y = -Math.PI / 2;
+			frame.position.set(X1, TH / 2 + 0.01, z);
+			this.group.add(frame);
+		}
+		b.add(rbox(FD + 0.04, 0.03, z1 - z0 + 0.04, 0.012, 1), k.chrome, { p: [X1 + FD / 2, 0.56, (z0 + z1) / 2] });
+		// A chrome guide rail along each side of every lane.
+		for (const z of LANE_Z) for (const s of [-1, 1]) b.add(rbox(X1 - LANE_START, 0.05, 0.04, 0.015, 1), k.chrome, { p: [(X1 + LANE_START) / 2, 0.125, z + s * 0.5] });
 		this.group.add(b.build('lanes'));
 		shadowOn(this.group, X1 + 0.45, 0, -0.15, 1.1, 7.7, 0.34);
 		LANE_Z.forEach((z) => {
@@ -165,9 +193,20 @@ export class BatchLanes {
 		const bridge = new Batch();
 		const span = 16.8;
 		bridge.add(rbox(span, 0.3, 0.42, 0.1, 3), m.cream, { p: [0, 0.98, 0] });
-		for (const x of [-span / 2, span / 2]) bridge.add(rbox(0.26, 1.0, 0.3, 0.07, 3), m.steel, { p: [x, 0.5, 0] });
+		bridge.add(rbox(span + 0.04, 0.03, 0.46, 0.012, 1), craft().chrome, { p: [0, 1.13, 0] });
+		for (const x of [-span / 2, span / 2]) {
+			bridge.add(rbox(0.26, 0.9, 0.3, 0.07, 3), m.steel, { p: [x, 0.55, 0] });
+			// It rolls on two chrome wheels at each foot.
+			for (const z of [-0.16, 0.16]) bridge.add(new THREE.CylinderGeometry(0.09, 0.09, 0.08, 16), craft().chrome, { p: [x, 0.1, z], r: [0, 0, Math.PI / 2] });
+		}
 		bridge.add(rbox(span - 0.5, 0.06, 0.1, 0.02, 2), m.steel, { p: [0, 0.74, 0] });
+		// Under the beam, a light bar over the lanes.
+		bridge.add(rbox(span - 1.2, 0.03, 0.12, 0.01, 1), new THREE.MeshBasicMaterial({ color: '#bfe6ff' }), { p: [0, 0.81, 0] });
 		this.scanner = bridge.build('sweep');
+		// The rails it rolls on.
+		const track = new Batch();
+		for (const x of [-span / 2, span / 2]) track.add(rbox(0.1, 0.02, 7.6, 0.008, 1), craft().chrome, { p: [x - 0.05, 0.01, 0] });
+		this.group.add(track.build('sweep-track'));
 		this.scanner.position.x = -0.05;
 		const said = new Label('One step: one more token each', 0.22, { weight: 700 });
 		said.mesh.position.set(1.5, 0.98, 0.212);
@@ -182,7 +221,11 @@ export class BatchLanes {
 		// The scheduler's board, standing behind the lanes.
 		const plate = new Batch();
 		plate.add(rbox(7.6, 1.9, 0.14, 0.12, 3), m.creamLight, { p: [0, 1.55, 0] });
-		for (const x of [-3, 3]) plate.add(rbox(0.16, 0.7, 0.16, 0.04, 2), m.steelSoft, { p: [x, 0.35, 0] });
+		bezel(plate, 7.6, 1.9, [0, 1.55, 0.07], { t: 0.07, r: 0.12, depth: 0.03 });
+		for (const x of [-3, 3]) {
+			plate.add(new THREE.CylinderGeometry(0.07, 0.08, 0.7, 14), craft().chrome, { p: [x, 0.35, 0] });
+			plate.add(new THREE.CylinderGeometry(0.16, 0.18, 0.05, 18), craft().gunmetal, { p: [x, 0.025, 0] });
+		}
 		const g = new THREE.Group();
 		g.add(plate.build('counter'));
 		const face = new THREE.Mesh(

@@ -3,7 +3,8 @@ import { Batch } from '../kit/batch';
 import { extrude, rbox, roundedRect, sharedRbox } from '../kit/geometry';
 import { color, Lamp, mats } from '../kit/materials';
 import { createSign, grown } from '../kit/parts';
-import { machine, shadowOn } from '../kit/machines';
+import { shadowOn } from '../kit/machines';
+import { bezel, craft } from '../kit/craft';
 import { font, Label, Surface } from '../kit/print';
 import { bell, inOut, lerp, outBack, seg, smooth } from '../kit/math';
 import { ROUTER_X } from './router';
@@ -44,6 +45,7 @@ export class BlockTray {
 	private row: { mesh: THREE.Mesh; material: THREE.MeshPhysicalMaterial }[] = [];
 	private turnTwo = new THREE.Group();
 	private gateLamp!: Lamp;
+	private scanMat!: THREE.MeshBasicMaterial;
 	private prefill!: THREE.MeshStandardMaterial;
 	private barGreen!: THREE.Mesh;
 	private barAmber!: THREE.Mesh;
@@ -64,7 +66,15 @@ export class BlockTray {
 		const b = new Batch();
 		const W = COLS * SW + 0.5;
 		const D = ROWS * SD + 0.5;
+		const c = craft();
 		b.add(extrude(roundedRect(W, D, 0.22), 0.2, 0.05, 3, 8), m.steelSoft, { p: [0, 0.1, 0], r: [-Math.PI / 2, 0, 0] });
+		// A chrome rim round it, bolted at its corners, and a chrome rail between every two slots, so each slot is a seat.
+		const rim = roundedRect(W + 0.12, D + 0.12, 0.28);
+		rim.holes.push(new THREE.Path(roundedRect(W - 0.12, D - 0.12, 0.18).getPoints(24)));
+		b.add(extrude(rim, 0.12, 0.02, 2, 8), c.chrome, { p: [0, 0.26, 0], r: [-Math.PI / 2, 0, 0] });
+		for (const sx of [-1, 1]) for (const sz of [-1, 1]) b.add(new THREE.CylinderGeometry(0.07, 0.07, 0.04, 14), c.gunmetal, { p: [sx * (W / 2 - 0.02), 0.33, sz * (D / 2 - 0.02)] });
+		for (let k = 1; k < COLS; k++) b.add(rbox(0.05, 0.1, ROWS * SD - 0.1, 0.02, 1), c.chrome, { p: [(k - COLS / 2) * SW, 0.256, 0] });
+		b.add(rbox(COLS * SW - 0.1, 0.1, 0.05, 0.02, 1), c.chrome, { p: [0, 0.256, 0] });
 		this.group.add(b.build('tray'));
 
 		const floor = new Surface(1280, Math.round((1280 * (D - 0.26)) / (W - 0.26)));
@@ -143,7 +153,10 @@ export class BlockTray {
 		const TW = 3.9;
 		const TH = TW * (860 / 760);
 		stand.add(extrude(roundedRect(TW + 0.2, TH + 0.2, 0.16), 0.14, 0.03, 3, 10), m.creamLight, { p: [0, TH / 2 + 0.22, 0] });
+		bezel(stand, TW + 0.2, TH + 0.2, [0, TH / 2 + 0.22, 0.07], { t: 0.08, r: 0.16, depth: 0.04 });
 		stand.add(rbox(TW + 0.5, 0.12, 0.8, 0.04, 2), m.steelSoft, { p: [0, 0.06, 0] });
+		stand.add(rbox(TW + 0.54, 0.03, 0.84, 0.012, 1), craft().chrome, { p: [0, 0.125, 0] });
+		for (const s of [-1, 1]) stand.add(new THREE.CylinderGeometry(0.06, 0.08, 0.6, 14), craft().chrome, { p: [s * (TW / 2 - 0.2), 0.42, -0.18] });
 		const tableGroup = new THREE.Group();
 		tableGroup.name = 'block-table';
 		tableGroup.add(stand.build('table-stand'));
@@ -236,9 +249,20 @@ export class BlockTray {
 		const gate = new Batch();
 		// Right down to the floor, because nothing else is holding it up.
 		const top = this.railY + 1.58;
-		for (const s of [-1, 1]) gate.add(rbox(0.28, top + 0.3, 0.28, 0.07, 3), m.cream, { p: [GATE_X, (top - 0.3) / 2, Z + s * 1.02] });
+		const c = craft();
+		for (const s of [-1, 1]) {
+			gate.add(rbox(0.28, top + 0.3, 0.28, 0.07, 3), m.cream, { p: [GATE_X, (top - 0.3) / 2, Z + s * 1.02] });
+			for (const y of [0.04, top * 0.5]) gate.add(rbox(0.34, 0.05, 0.34, 0.02, 1), c.chrome, { p: [GATE_X, y - 0.15 + 0.15, Z + s * 1.02] });
+		}
 		gate.add(rbox(0.46, 0.46, 2.6, 0.1, 3), m.cream, { p: [GATE_X, this.railY + 1.72, Z] });
+		gate.add(rbox(0.5, 0.05, 2.64, 0.02, 1), c.chrome, { p: [GATE_X, this.railY + 1.97, Z] });
+		gate.add(rbox(0.5, 0.05, 2.64, 0.02, 1), c.chrome, { p: [GATE_X, this.railY + 1.47, Z] });
 		t.add(gate.build('prefix-gate'));
+		// Under the beam, a scanner: a light bar that glows as it looks at each block.
+		this.scanMat = new THREE.MeshBasicMaterial({ color: '#7fe8ff', transparent: true, opacity: 0.25 });
+		const scanner = new THREE.Mesh(rbox(0.12, 0.04, 1.6, 0.015, 1), this.scanMat);
+		scanner.position.set(GATE_X, this.railY + 1.43, Z);
+		t.add(scanner);
 		const sign = createSign('Computed before?', 0.3);
 		sign.position.set(GATE_X, this.railY + 2.24 + grown(0.3), Z);
 		t.add(sign);
@@ -247,17 +271,48 @@ export class BlockTray {
 		this.gateLamp.mesh.rotation.y = Math.PI / 2;
 		t.add(this.gateLamp.mesh);
 
-		// Prefill, for whatever the gate does not recognise.
-		const press = machine({ w: 2.3, h: 1.14, d: 1.5, finish: 'cobalt', name: 'Prefill', signH: 0.2, vent: false });
-		press.position.set(PRESS_X, 0.2, FRESH_Z);
-		t.add(press);
+		// Prefill, for whatever the gate does not recognise: a small one of the pools, a cream body under a cobalt crown,
+		// with a hopper on top, chrome-rimmed and lined dark, that a block goes down into and a finished one comes up out
+		// of. Hollow where the block goes, so it never passes through anything.
+		const PW = 2.3;
+		const PD = 1.5;
+		const P0 = 0.2;
+		const PT = P0 + 1.28;
+		const HW = 1.56;
+		const HD = 1.04;
+		const press = new Batch();
+		press.add(rbox(PW + 0.34, 0.14, PD + 0.34, 0.05, 2), m.steelSoft, { p: [PRESS_X, P0 + 0.07, FRESH_Z] });
+		press.add(rbox(PW + 0.38, 0.03, PD + 0.38, 0.012, 1), c.chrome, { p: [PRESS_X, P0 + 0.15, FRESH_Z] });
+		const wallH = PT - (P0 + 0.14);
+		const wy = (PT + P0 + 0.14) / 2;
+		for (const s of [-1, 1]) {
+			press.add(rbox((PW - HW) / 2, wallH, PD, 0.06, 2), m.cream, { p: [PRESS_X + s * (PW / 2 - (PW - HW) / 4), wy, FRESH_Z] });
+			press.add(rbox(HW, wallH, (PD - HD) / 2, 0.04, 2), m.cream, { p: [PRESS_X, wy, FRESH_Z + s * (PD / 2 - (PD - HD) / 4)] });
+		}
+		// Its dark inside, floor and walls.
+		press.add(rbox(HW, 0.04, HD, 0.01, 1), m.recess, { p: [PRESS_X, P0 + 0.16, FRESH_Z] });
+		for (const s of [-1, 1]) {
+			press.add(rbox(0.03, wallH, HD, 0.01, 1), m.recess, { p: [PRESS_X + s * (HW / 2 - 0.015), wy, FRESH_Z] });
+			press.add(rbox(HW, wallH, 0.03, 0.01, 1), m.recess, { p: [PRESS_X, wy, FRESH_Z + s * (HD / 2 - 0.015)] });
+		}
+		// The crown round the hopper: a cobalt collar with a chrome lip.
+		const collar = roundedRect(PW + 0.06, PD + 0.06, 0.14);
+		collar.holes.push(new THREE.Path(roundedRect(HW, HD, 0.06).getPoints(16)));
+		press.add(extrude(collar, 0.16, 0.04, 2, 10), m.cobalt, { p: [PRESS_X, PT + 0.08, FRESH_Z], r: [-Math.PI / 2, 0, 0] });
+		const lip = roundedRect(HW + 0.14, HD + 0.14, 0.1);
+		lip.holes.push(new THREE.Path(roundedRect(HW, HD, 0.06).getPoints(16)));
+		press.add(extrude(lip, 0.04, 0.01, 1, 10), c.chrome, { p: [PRESS_X, PT + 0.17, FRESH_Z], r: [-Math.PI / 2, 0, 0] });
+		const pg = new THREE.Group();
+		pg.add(press.build('prefill-press'));
+		pg.name = 'Prefill';
+		const psign = createSign('Prefill', 0.2, undefined, undefined, true);
+		psign.position.set(PRESS_X, P0 + 0.86, FRESH_Z + PD / 2 + 0.03);
+		pg.add(psign);
+		t.add(pg);
 		shadowOn(t, PRESS_X, 0.2, FRESH_Z, 2.6, 1.8, 0.4);
-		const hatch = new Batch();
-		hatch.add(rbox(1.36, 0.03, 1, 0.01, 1), m.recess, { p: [PRESS_X, 0.2 + 0.14 + 1.14 + 0.002, FRESH_Z] });
-		t.add(hatch.build('prefill-hatch'));
 		this.prefill = new THREE.MeshStandardMaterial({ color: '#2a5fd8', emissive: '#6fc0ff', emissiveIntensity: 0.05 });
 		const light = new THREE.Mesh(rbox(1.3, 0.14, 0.05, 0.03, 2), this.prefill);
-		light.position.set(PRESS_X, 0.48, FRESH_Z + 0.78);
+		light.position.set(PRESS_X, 0.48, FRESH_Z + PD / 2 + 0.03);
 		t.add(light);
 
 		// What it all comes to: the part reused, and the part that had to run.
@@ -299,9 +354,9 @@ export class BlockTray {
 				b.mesh.visible = out > 0;
 				if (!out) return;
 				const e = inOut(out);
-				this.a.set(PRESS_X, 1.4, FRESH_Z);
+				this.a.set(PRESS_X, 0.7, FRESH_Z);
 				b.mesh.position.lerpVectors(this.a, b.to, smooth(seg(e, 0, 0.74)));
-				b.mesh.position.y += 1.3 * smooth(seg(e, 0, 0.3)) * (1 - smooth(seg(e, 0.74, 1)));
+				b.mesh.position.y += 2.0 * smooth(seg(e, 0, 0.3)) * (1 - smooth(seg(e, 0.74, 1)));
 				const landed = bell(out, 0.84, 1);
 				const grown = lerp(0.6, 1, e);
 				b.mesh.scale.set(grown * (1 + landed * 0.08), grown * (1 - landed * 0.2), grown * (1 + landed * 0.08));
@@ -347,16 +402,18 @@ export class BlockTray {
 			r.material.color.copy(this.amber);
 			r.mesh.visible = inside < 1;
 			if (lift > 0) {
-				this.b.set(PRESS_X, 1.64, FRESH_Z);
+				this.b.set(PRESS_X, 1.9, FRESH_Z);
 				this.c.lerpVectors(this.a, this.b, inOut(lift));
 				this.c.y += Math.sin(inOut(lift) * Math.PI) * 1.2;
-				this.c.y -= inOut(inside) * 0.5;
+				this.c.y -= inOut(inside) * 1.15;
 				r.mesh.position.copy(this.c);
 			} else r.mesh.position.copy(this.a);
 		});
 		const verdict = step === 4 ? color.amber : color.green;
 		const gateOn = arrive >= 1 && hit < 1 ? bell(f, 0.5, 1) : 0;
 		this.gateLamp.set(hit >= 1 ? color.amber : verdict, 0.15 + gateOn * 1.5 + (hit >= 1 && compute < 0.3 ? 0.5 : 0));
+		this.scanMat.opacity = 0.2 + gateOn * 0.75;
+		this.scanMat.color.set(gateOn > 0 ? verdict : '#7fe8ff');
 		const running = bell(compute, 0.3, 0.68);
 		this.prefill.emissiveIntensity = 0.05 + running * (1.6 + Math.sin(time * 14) * 0.4);
 
