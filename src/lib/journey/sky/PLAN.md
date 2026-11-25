@@ -115,3 +115,9 @@ below the brain's craft. What was done, round by round:
   slip clears the lid. The archive is a filing cabinet (Transcripts, and Memory pulled out). The card for "The model has
   no hands" says the reply streams home in small pieces, as the scene and its conversation do. Verified: types, lint,
   unit, collision and overlap scans, 27 of 27 e2e on the GPU, phone geometry 91 MB.
+- **Third batch.** The way home's camera: the hall seen from its right so the Encrypt press is in view; over the
+  gatehouse, not through its tower; up the lane at the capsules so no mast crosses them. The reply's column runs deep
+  blue and lit while the reply pours down it, so the slot shows both lanes. The map's Stream stop is on the way home.
+  Moves between the islands rise over the one they leave. The whole-timeline collision scan went from 180 pairs to 163,
+  none new; the line-of-sight scan leaves only the intended fly-over of the gatehouse and the dive into the brainstem.
+  Verified again: types, lint, unit, 27 of 27 e2e on the GPU.
