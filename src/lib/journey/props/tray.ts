@@ -355,10 +355,11 @@ export class BlockTray {
 				if (!out) return;
 				const e = inOut(out);
 				this.a.set(PRESS_X, 0.7, FRESH_Z);
-				b.mesh.position.lerpVectors(this.a, b.to, smooth(seg(e, 0, 0.74)));
-				b.mesh.position.y += 2.0 * smooth(seg(e, 0, 0.3)) * (1 - smooth(seg(e, 0.74, 1)));
+				// Straight up out of the hopper first, still small enough for its mouth, and only then across to its slot.
+				b.mesh.position.lerpVectors(this.a, b.to, smooth(seg(e, 0.2, 0.74)));
+				b.mesh.position.y += 2.0 * smooth(seg(e, 0, 0.22)) * (1 - smooth(seg(e, 0.74, 1)));
 				const landed = bell(out, 0.84, 1);
-				const grown = lerp(0.6, 1, e);
+				const grown = lerp(0.6, 1, smooth(seg(e, 0.16, 0.6)));
 				b.mesh.scale.set(grown * (1 + landed * 0.08), grown * (1 - landed * 0.2), grown * (1 + landed * 0.08));
 				b.material.emissiveIntensity = 0.45 + bell(out, 0.7, 1) * 1.4;
 				return;

@@ -196,8 +196,8 @@ export class BatchLanes {
 		bridge.add(rbox(span + 0.04, 0.03, 0.46, 0.012, 1), craft().chrome, { p: [0, 1.13, 0] });
 		for (const x of [-span / 2, span / 2]) {
 			bridge.add(rbox(0.26, 0.9, 0.3, 0.07, 3), m.steel, { p: [x, 0.55, 0] });
-			// It rolls on two chrome wheels at each foot.
-			for (const z of [-0.16, 0.16]) bridge.add(new THREE.CylinderGeometry(0.09, 0.09, 0.08, 16), craft().chrome, { p: [x, 0.1, z], r: [0, 0, Math.PI / 2] });
+			// It rolls on two chrome wheels at each foot, on its rails, not in them.
+			for (const z of [-0.16, 0.16]) bridge.add(new THREE.CylinderGeometry(0.09, 0.09, 0.08, 16), craft().chrome, { p: [x, 0.11, z], r: [0, 0, Math.PI / 2] });
 		}
 		bridge.add(rbox(span - 0.5, 0.06, 0.1, 0.02, 2), m.steel, { p: [0, 0.74, 0] });
 		// Under the beam, a light bar over the lanes.

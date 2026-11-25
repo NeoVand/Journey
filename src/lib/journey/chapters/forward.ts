@@ -1123,8 +1123,9 @@ class Detokenizer {
 		this.group.add(glass);
 		const collar = new Batch();
 		collar.add(ring(1.02, 0.74, 0.34), m.steel, { p: [0, roof + 0.17, DET_Z] });
-		collar.add(ring(0.86, 0.74, 0.1), m.steel, { p: [0, this.TOP + 6, DET_Z] });
-		collar.add(ring(0.86, 0.74, 0.1), m.steel, { p: [0, this.TOP + 12, DET_Z] });
+		// Its bands stay where the camera rising up the tube passes them, whatever the machine's height.
+		collar.add(ring(0.86, 0.74, 0.1), m.steel, { p: [0, PAD_Y + 10, DET_Z] });
+		collar.add(ring(0.86, 0.74, 0.1), m.steel, { p: [0, PAD_Y + 16, DET_Z] });
 		collar.add(rbox(0.5, 0.05, 0.05, 0.02, 1), m.steelSoft, { p: [0.93, this.TOP + 3.4, DET_Z] });
 		this.group.add(collar.build('collar'));
 		// A dark throat with a lit rim, so it reads as a way down. Drawn after the glass, which would wash it out to a flat grey disc.
