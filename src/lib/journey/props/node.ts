@@ -5,6 +5,7 @@ import { mats } from '../kit/materials';
 import { font, Label, Surface } from '../kit/print';
 import { createSign, grown } from '../kit/parts';
 import { hash, inOut, lerp, outBack, seg } from '../kit/math';
+import { cores, craft, fan, pipe } from '../kit/craft';
 
 const CX = [-4.8, -1.6, 1.6, 4.8];
 const CZ = [-1.6, 1.6];
@@ -40,6 +41,8 @@ export class Node3D {
 	group = new THREE.Group();
 	private fixed = new THREE.Group();
 	private links: THREE.MeshStandardMaterial;
+	/** The fan wall's rotors, which turn while the chips work. */
+	private rotors: THREE.Object3D[] = [];
 	private pieces: THREE.Mesh[] = [];
 	private slab: THREE.Group;
 	private sign: THREE.Group;
@@ -55,12 +58,15 @@ export class Node3D {
 		const accel = new Label('Accelerator', 0.2, { color: '#ffffff', weight: 700 });
 		const hbmLabel = new Label('HBM', 0.16, { color: '#06351c', weight: 800 });
 
+		// Each chip's lid shows its cores, as the pools' chips do.
+		const coreMap = cores(7, 7);
+		const lid = new THREE.MeshStandardMaterial({ map: coreMap, emissiveMap: coreMap, color: '#ffffff', emissive: '#6fb6ff', emissiveIntensity: 0.35, roughness: 0.3, metalness: 0.2 });
 		// The board itself: a dark plate, so the chips stand out from the white pad.
 		b.add(rbox(13.6, 0.06, 6.9, 0.02, 2), m.slate, { p: [0, 0.03, 0] });
 		for (const x of CX) {
 			for (const z of CZ) {
 				b.add(rbox(2.7, 0.08, 2.7, 0.03, 2), m.recess, { p: [x, 0.1, z] });
-				b.add(rbox(1.55, 0.22, 1.55, 0.06, 3), m.cobalt, { p: [x + LID_X, 0.25, z] });
+				b.add(rbox(1.55, 0.22, 1.55, 0.06, 3), lid, { p: [x + LID_X, 0.25, z] });
 				const face = accel.mesh.clone();
 				face.rotation.x = -Math.PI / 2;
 				face.position.set(x + LID_X, 0.143, z + 1.08);
@@ -93,13 +99,55 @@ export class Node3D {
 			}
 		}
 
-		const rail = (w: number, d: number, x: number, z: number) =>
-			b.add(rbox(w, 0.24, d, 0.08, 3), m.steelSoft, { p: [x, 0.12, z] });
-		rail(13.9, 0.26, 0, -3.5);
-		rail(13.9, 0.26, 0, 3.5);
-		rail(0.26, 7.2, -6.95, 0);
-		rail(0.26, 7.2, 6.95, 0);
+		// The chassis: a cream tray with low walls and a chrome cap along them, two chrome handles and a row of status
+		// lamps on its front, a fan wall down its right side, coolant along its back in chrome clamps, and each chip
+		// seated in a chrome frame with a screw at each corner.
+		const c = craft();
+		const wall = (w: number, d: number, x: number, z: number) => {
+			b.add(rbox(w, 0.34, d, 0.08, 3), m.cream, { p: [x, 0.17, z] });
+			b.add(rbox(w + 0.02, 0.03, d + 0.02, 0.012, 1), c.chrome, { p: [x, 0.35, z] });
+		};
+		wall(13.9, 0.26, 0, -3.5);
+		wall(13.9, 0.26, 0, 3.5);
+		wall(0.26, 7.2, -6.95, 0);
+		wall(0.26, 7.2, 6.95, 0);
+		for (const s of [-1, 1]) {
+			const hx = s * 5.9;
+			pipe(b, [[hx - 0.45, 0.2, 3.63], [hx - 0.45, 0.2, 3.95], [hx, 0.2, 4.05], [hx + 0.45, 0.2, 3.95], [hx + 0.45, 0.2, 3.63]], 0.045, c.chrome, 9);
+		}
+		for (let i = 0; i < 10; i++) b.add(rbox(0.1, 0.06, 0.03, 0.02, 1), i % 4 === 3 ? new THREE.MeshBasicMaterial({ color: '#ffbc12' }) : new THREE.MeshBasicMaterial({ color: '#3fe583' }), { p: [-1.35 + i * 0.3, 0.2, 3.64] });
+		for (const x of CX) {
+			for (const z of CZ) {
+				const ring = new THREE.Shape();
+				ring.moveTo(-1.4, -1.4);
+				ring.lineTo(1.4, -1.4);
+				ring.lineTo(1.4, 1.4);
+				ring.lineTo(-1.4, 1.4);
+				ring.closePath();
+				const hole = new THREE.Path();
+				hole.moveTo(-1.3, -1.3);
+				hole.lineTo(1.3, -1.3);
+				hole.lineTo(1.3, 1.3);
+				hole.lineTo(-1.3, 1.3);
+				hole.closePath();
+				ring.holes.push(hole);
+				b.add(new THREE.ExtrudeGeometry(ring, { depth: 0.05, bevelEnabled: false }).rotateX(-Math.PI / 2), c.chrome, { p: [x, 0.06, z] });
+				for (const sx of [-1, 1]) for (const sz of [-1, 1]) b.add(new THREE.CylinderGeometry(0.05, 0.05, 0.03, 12), c.gunmetal, { p: [x + sx * 1.35, 0.125, z + sz * 1.35] });
+			}
+		}
+		for (const z of [-2.95, -3.15]) pipe(b, [[-6.4, 0.22, z], [-2, 0.22, z], [2, 0.22, z], [6.1, 0.22, z]], 0.06, c.coolant, 1.1);
 		this.fixed.add(b.build('node'));
+		// The fan wall: six fans in a cream housing against the chassis's right wall, blowing out. Built lying down, its
+		// fans looking up, and stood up so they look out to the right along its length.
+		const fb = new Batch();
+		fb.add(rbox(7.0, 0.5, 0.92, 0.1, 3), m.cream, { p: [0, -0.25, 0] });
+		fb.add(rbox(7.04, 0.04, 0.96, 0.015, 1), c.chrome, { p: [0, -0.02, 0] });
+		for (let i = 0; i < 6; i++) this.rotors.push(fan(fb, 0.36, [-2.92 + i * 1.17, 0.06, 0]));
+		const fanWall = new THREE.Group();
+		fanWall.add(fb.build('fan-wall'), ...this.rotors);
+		fanWall.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(new THREE.Vector3(0, 0, 1), new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0)));
+		fanWall.position.set(7.58, 0.52, 0);
+		this.fixed.add(fanWall);
 		this.fixed.add(linksBatch.build('nvlink'));
 		this.group.add(this.fixed);
 
@@ -172,5 +220,6 @@ export class Node3D {
 		this.sign.scale.setScalar(Math.max(0.001, s));
 		this.sign.position.set(0, hover + SLAB_H / 2 + 0.34 + grown(0.42), 2.2);
 		this.links.emissiveIntensity = active * (0.5 + 0.5 * Math.sin(time * 4)) * 1.5;
+		this.rotors.forEach((r, i) => (r.rotation.y = time * (2 + active * 10) + i));
 	}
 }
