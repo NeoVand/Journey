@@ -426,3 +426,74 @@ export function stainedGlass(map: THREE.Texture, backed = false) {
 		depthWrite: backed
 	});
 }
+
+/**
+ * A tiled shape's face, with its texture laid by a rule: uv(x, y) gives where in the repeat each point of the shape
+ * falls. Laid this way the pattern can be set out to the wall, its stars on the windows' centres.
+ */
+export function laid(shape: THREE.Shape, uv: (x: number, y: number) => [number, number], segments = 10) {
+	const geo = new THREE.ShapeGeometry(shape, segments);
+	const pos = geo.attributes.position as THREE.BufferAttribute;
+	const uvs = geo.attributes.uv as THREE.BufferAttribute;
+	for (let i = 0; i < pos.count; i++) uvs.setXY(i, ...uv(pos.getX(i), pos.getY(i)));
+	return geo;
+}
+
+/** A rectangle, for the bands. */
+export function rect(x0: number, y0: number, x1: number, y1: number) {
+	const s = new THREE.Shape();
+	s.moveTo(x0, y0);
+	s.lineTo(x1, y0);
+	s.lineTo(x1, y1);
+	s.lineTo(x0, y1);
+	s.closePath();
+	return s;
+}
+
+/**
+ * A border laid along a line: a band `width` wide on one side of it (its outside, when the line runs clockwise), the
+ * texture running along it, one repeat every `repeat`. Where the line turns sharply, as at an arch's point, the band
+ * is mitred. Facing +Z, in the line's own plane.
+ */
+export function ribbon(points: THREE.Vector2[], width: number, repeat: number) {
+	const n = points.length;
+	const pos: number[] = [];
+	const uv: number[] = [];
+	const idx: number[] = [];
+	let along = 0;
+	for (let i = 0; i < n; i++) {
+		const p = points[i];
+		const prev = points[Math.max(0, i - 1)];
+		const next = points[Math.min(n - 1, i + 1)];
+		const t0 = new THREE.Vector2().subVectors(p, prev);
+		const t1 = new THREE.Vector2().subVectors(next, p);
+		if (t0.lengthSq() < 1e-12) t0.copy(t1);
+		if (t1.lengthSq() < 1e-12) t1.copy(t0);
+		t0.normalize();
+		t1.normalize();
+		const n0 = new THREE.Vector2(-t0.y, t0.x);
+		const n1 = new THREE.Vector2(-t1.y, t1.x);
+		const mid = n0.clone().add(n1).normalize();
+		const miter = width / Math.max(0.35, mid.dot(n1));
+		if (i > 0) along += p.distanceTo(prev);
+		pos.push(p.x, p.y, 0, p.x + mid.x * miter, p.y + mid.y * miter, 0);
+		uv.push(along / repeat, 0, along / repeat, 1);
+		if (i > 0) {
+			const a = (i - 1) * 2;
+			idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);
+		}
+	}
+	const geo = new THREE.BufferGeometry();
+	geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+	geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+	geo.setIndex(idx);
+	geo.computeVertexNormals();
+	// Wound whichever way the line runs: make it face +Z.
+	const nz = (geo.attributes.normal as THREE.BufferAttribute).getZ(0);
+	if (nz < 0) {
+		idx.reverse();
+		geo.setIndex(idx);
+		geo.computeVertexNormals();
+	}
+	return geo;
+}
