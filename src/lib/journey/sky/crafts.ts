@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { Batch } from '../kit/batch';
 import { rbox } from '../kit/geometry';
-import { canvas, texture } from './persian';
+import { canvas, friezeTiles, texture } from './persian';
 
 /*
  * Persian crafts of the house and the palace: hand-knotted carpets, aineh-kari mirror work, and Qajar painted tile of
@@ -249,10 +249,12 @@ export const RUGS: Record<'red' | 'blue', RugDesign> = {
  * quarter medallions in its corners, and boteh between.
  */
 export function rugFace(w: number, l: number, d: RugDesign = RUGS.red, seed = 7) {
-	const W = 768;
+	// Never taller than a phone will take: a long runner is drawn narrower.
+	const W = Math.min(768, Math.round((2048 * w) / l));
 	const H = Math.round((W * l) / w);
 	const { c, g } = canvas(W, H);
 	const u = W / w;
+	const runner = l / w > 3;
 	const rnd = seeded(seed);
 	// The bands, from the edge in, in metres.
 	const edge = 0.05 * u;
@@ -296,6 +298,28 @@ export function rugFace(w: number, l: number, d: RugDesign = RUGS.red, seed = 7)
 			leaf(g, x, y, s * 0.3, -0.6 + (i < 0 ? Math.PI : 0), WOOL.leaf);
 			blossom(g, x, y, s * 0.16, petals[k], k === 0 ? d.field : d.ivory);
 		}
+	if (runner) {
+		// A runner: a file of small medallions down its length, a rose between each and the next.
+		const n = Math.max(2, Math.round(fh / (fw * 2.3)));
+		const step = fh / n;
+		for (let k = 0; k < n; k++) {
+			const y = fy0 + step * (k + 0.5);
+			lobed(g, cx, y, fw * 0.34 + line, fw * 0.5 + line, 8, 0.08, 0.3);
+			g.fillStyle = d.ivory;
+			g.fill();
+			lobed(g, cx, y, fw * 0.34, fw * 0.5, 8, 0.08, 0.3);
+			g.fillStyle = d.medallion;
+			g.fill();
+			lobed(g, cx, y, fw * 0.18, fw * 0.26, 8, 0.1, 0.2);
+			g.fillStyle = d.field;
+			g.fill();
+			blossom(g, cx, y, fw * 0.1, d.accent, d.ivory);
+			if (k < n - 1) rose(g, cx, y + step / 2, fw * 0.14, d.ivory, WOOL.deep, d.accent);
+		}
+		g.restore();
+		speckle(g, W, H, rnd);
+		return texture(c, false);
+	}
 	// Quarter medallions in the corners.
 	const crx = fw * 0.27;
 	const cry = crx * 0.85;
@@ -373,12 +397,16 @@ export function rugFace(w: number, l: number, d: RugDesign = RUGS.red, seed = 7)
 	for (const sx of [-1, 1])
 		for (const sy of [-1, 1]) boteh(g, cx + sx * bx, cy + sy * by, s * 0.9, sx, sy < 0 ? 0 : Math.PI, d.accent, d.field, d.ivory);
 	g.restore();
-	// The knots: a fine speckle, lighter and darker, so the pile looks woven up close.
+	speckle(g, W, H, rnd);
+	return texture(c, false);
+}
+
+/** The knots: a fine speckle, lighter and darker, so the pile looks woven up close. */
+function speckle(g: G, W: number, H: number, rnd: () => number) {
 	for (let i = 0; i < (W * H) / 40; i++) {
 		g.fillStyle = rnd() < 0.5 ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)';
 		g.fillRect(Math.floor(rnd() * W), Math.floor(rnd() * H), 2, 2);
 	}
-	return texture(c, false);
 }
 
 /** Wool fringe: knotted warp ends, ivory, drawn on nothing so only the threads show. Repeats along its length. */
@@ -448,13 +476,14 @@ function mirrorMaps() {
 	const nrm = canvas(S, S);
 	const orm = canvas(S, S);
 	const rnd = seeded(11);
-	col.g.fillStyle = '#efe6d6';
+	col.g.fillStyle = '#d6cbb6';
 	col.g.fillRect(0, 0, S, S);
 	nrm.g.fillStyle = 'rgb(128,128,255)';
 	nrm.g.fillRect(0, 0, S, S);
 	// Plaster: rough, not metal. Mirror: smooth and metal. (Roughness is read from green, metalness from blue.)
 	orm.g.fillStyle = 'rgb(0,200,0)';
 	orm.g.fillRect(0, 0, S, S);
+	// Each piece also gets its own moment to glint, kept in the red of the rough-and-metal map.
 	const piece = (path: (g: G) => void, tilt: [number, number], tint = '#dfe7ee') => {
 		const [tx, ty] = tilt;
 		const tz = Math.sqrt(Math.max(0, 1 - tx * tx - ty * ty));
@@ -462,16 +491,18 @@ function mirrorMaps() {
 		for (const [g, fill] of [
 			[col.g, tint],
 			[nrm.g, `rgb(${enc(tx)},${enc(ty)},${enc(tz)})`],
-			[orm.g, 'rgb(0,22,255)']
+			[orm.g, `rgb(${Math.floor(rnd() * 256)},22,255)`]
 		] as [G, string][]) {
 			path(g);
 			g.fillStyle = fill;
 			g.fill();
 		}
 	};
-	const shade = () => {
-		const v = 220 + Math.floor(rnd() * 30);
-		return `rgb(${v - 6},${v},${Math.min(255, v + 8)})`;
+	// Silver, some pieces catching more of the sky than others: the rays brightest, the lattice between them darker, so
+	// the suns stand out of it.
+	const shade = (lo = 150, hi = 255) => {
+		const v = lo + Math.floor(rnd() * (hi - lo));
+		return `rgb(${v - 8},${v},${Math.min(255, v + 14)})`;
 	};
 	const R = S * 0.3;
 	const suns: [number, number][] = [
@@ -504,7 +535,7 @@ function mirrorMaps() {
 						g.closePath();
 					},
 					[Math.cos(a + (side * Math.PI) / 2) * out, Math.sin(a + (side * Math.PI) / 2) * out],
-					gold ? '#f2dca0' : shade()
+					gold ? '#f2dca0' : shade(215, 255)
 				);
 			}
 			// A little chip between each pair of rays.
@@ -516,7 +547,7 @@ function mirrorMaps() {
 					g.arc(cx + Math.cos(mid) * cr, cy + Math.sin(mid) * cr, R * 0.07, 0, Math.PI * 2);
 				},
 				[(rnd() - 0.5) * 0.6, (rnd() - 0.5) * 0.6],
-				shade()
+				shade(140, 230)
 			);
 		}
 		piece(
@@ -545,8 +576,8 @@ function mirrorMaps() {
 					g.lineTo(x - h * 0.7, y);
 					g.closePath();
 				},
-				[(rnd() - 0.5) * 0.7, (rnd() - 0.5) * 0.7],
-				shade()
+				[(rnd() - 0.5) * 1.1, (rnd() - 0.5) * 1.1],
+				shade(70, 185)
 			);
 		}
 	const map = texture(col.c);
@@ -558,7 +589,13 @@ function mirrorMaps() {
 }
 
 let mirror: THREE.MeshStandardMaterial | undefined;
-/** Mirror work, made once: lay its UVs one repeat to every half metre or so. */
+const GLINT = { value: 0 };
+/** The clock the mirror work glints by: call it every frame from whatever shows some. */
+export const glint = (time: number) => (GLINT.value = time);
+/**
+ * Mirror work, made once: lay its UVs one repeat to every metre or so. Besides catching the sky as you move, now and
+ * then one piece or another flashes, as a mirror does when the light finds it.
+ */
 export function mirrorWork() {
 	if (!mirror) {
 		const { map, normalMap, ormMap } = mirrorMaps();
@@ -570,8 +607,19 @@ export function mirrorWork() {
 			metalnessMap: ormMap,
 			roughness: 1,
 			metalness: 1,
-			envMapIntensity: 2.2
+			envMapIntensity: 2.4
 		});
+		mirror.onBeforeCompile = (shader) => {
+			shader.uniforms.uGlint = GLINT;
+			shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uGlint;').replace(
+				'#include <emissivemap_fragment>',
+				`#include <emissivemap_fragment>
+				vec4 glintOf = texture2D( roughnessMap, vRoughnessMapUv );
+				float flash = pow( max( 0.0, sin( uGlint * 1.1 + glintOf.r * 61.0 ) ), 60.0 ) * glintOf.b;
+				totalEmissiveRadiance += vec3( 1.0, 0.96, 0.86 ) * flash * 2.2;`
+			);
+		};
+		mirror.customProgramCacheKey = () => 'mirror-work';
 	}
 	return mirror;
 }
@@ -851,3 +899,39 @@ export function tulipTiles() {
 	}
 	return texture(c);
 }
+
+/** A floor of square bricks, as a Persian house's courtyard is paved: warm terracotta in pale joints, each a little its own shade. */
+export function brickFloor() {
+	const S = 512;
+	const { c, g } = canvas(S, S);
+	const rnd = seeded(21);
+	g.fillStyle = '#ead9b8';
+	g.fillRect(0, 0, S, S);
+	const n = 4;
+	const b = S / n;
+	for (let i = 0; i < n; i++)
+		for (let j = 0; j < n; j++) {
+			const k = Math.floor(rnd() * 26) - 13;
+			g.fillStyle = `rgb(${206 + k},${142 + k},${100 + k})`;
+			g.fillRect(i * b + 4, j * b + 4, b - 8, b - 8);
+		}
+	speckle(g, S, S, rnd);
+	return texture(c);
+}
+
+const glazeOf = (map: THREE.Texture) => new THREE.MeshPhysicalMaterial({ map, roughness: 0.22, clearcoat: 1, clearcoatRoughness: 0.1 });
+let paints: ReturnType<typeof makePaints> | undefined;
+function makePaints() {
+	return {
+		/** The walls' field: turquoise tile, a rose spray on each. */
+		field: glazeOf(flowerTiles()),
+		/** The dado: cobalt tile, a white tulip on each. */
+		dado: glazeOf(tulipTiles()),
+		/** The frieze along a wall's top: roses and a nightingale on cream. */
+		frieze: glazeOf(gulFrieze()),
+		/** A narrow band: a chain of red and yellow on navy, for the low border and round the windows. */
+		band: glazeOf(friezeTiles())
+	};
+}
+/** The painted tile every palace room shares, made once. */
+export const painted = () => (paints ??= makePaints());
