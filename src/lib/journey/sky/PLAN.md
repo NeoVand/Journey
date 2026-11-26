@@ -148,3 +148,32 @@ louvres, coolant in clamps, an orange fabric cable into the back.
 - **Budget.** The kit was finer than anyone can see (a bezel was 190 KB). Coarser trim, plain boxes for tiny parts,
   shared rotors and slices: phone geometry 105 to 94.8 MB. Verified: types, lint, svelte-check, unit, collision, overlap
   and camera scans across the inside, 27 of 27 e2e on the GPU.
+
+## Round two (2026-11-26, branch `round-two`)
+
+The user's list after riding the whole tour, and what each became.
+
+- **Map and trips.** From inside a side trip, picking another on the map only closed the map (a trip wouldn't start while
+  one was open); now the open one ends and the next begins. The sandbox's glass, the memory cabinet and the laptop's
+  screen open their trips when pressed, as the MCP server and harness did, with a tip by the pointer naming the trip.
+  The tour (Play) plays the main road; side trips stay detours, reached from their cards, the map or their props.
+- **Streaming capsules.** Their cipher texture was wrapped over the rounded ends and pinched into a pinwheel; it now
+  goes round the middle only, between the brass bands.
+- **The wheel.** It no longer stands ready-painted: blank until the long shots drop, then each kept bar sends its share
+  across in its slice's colour and its slice sweeps open (a shader masks the face). 15.092 to 15.42 plays 3.6 s.
+- **One score for every word.** Every word now has a column, coloured by score (deep blue, teal, amber), and the top
+  floor dims to dusk as they rise.
+- **Tokenizer hall.** Persian tile (persian.ts): a Kashan star-and-cross field in cobalt and turquoise over a lozenge
+  dado, red and yellow friezes, a floor of larger stars; pointed windows cut through a sandstone core holding orosi
+  stained glass with a sunburst head and a clear middle column; a rose window in the end wall; the gatehouse's windows
+  in the same glass.
+- **Seven things called memory** (concepts/memory-r1, chapters/memory.ts). A cabinet whose drawers step down onto a deep
+  base; each holds a small scene that rises as it opens (transcript spools and disk; the slice under glass; claim
+  ticket and calendar; cache blocks and an hourglass; laptop, folders and gear; a branch with its PR flag and server).
+  The red drawer stays padlocked, the weights glowing through its porthole. Named or pressed, a drawer comes out and acts.
+- **When the answer gets lost** (concepts/lost-r1, chapters/lost.ts). No harness box: the file on a lectern under a tube
+  to the model; the edit comes down, its receipt goes up, the tube snaps, "Did it happen?"; a loupe on a two-joint arm
+  looks; the same edit bounces off finding nothing to change; your console's four controls each act on a gadget of its
+  own (plan, word stream, running process, a copy of the file). Pressable.
+- Verified: types, lint, svelte-check, unit, collision and overlap scans on every changed scene, 27 of 27 e2e on the
+  GPU, phone geometry 97.2 MB.

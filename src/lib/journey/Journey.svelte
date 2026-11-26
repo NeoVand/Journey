@@ -253,6 +253,9 @@
 
 	/** The map lets a reader go straight to any chapter, and a chapter's address can be shared. */
 	let mapOpen = $state(false);
+	/** What a press on the scene would do, said beside the pointer while it's over something that answers. */
+	let sceneTip = $state<{ text: string; x: number; y: number } | null>(null);
+	let pointerAt: [number, number] = [0, 0];
 	let mapHere = $state('How a coding agent works');
 	const headings = () => [...document.querySelectorAll<HTMLElement>('main h1, main h2')];
 	/** The world a place in the story stands in, which its words take their colours from: inside the data centre they're light. */
@@ -419,6 +422,9 @@
 
 	function takeTrip(id: TrackId) {
 		mapOpen = false;
+		if (track === id) return;
+		// From one trip straight into another: this one ends where it stands, and the next begins as from the story.
+		if (track) leaveTrack(true);
 		enterTrack(id);
 	}
 
@@ -1044,6 +1050,7 @@
 			let lastAim = 0;
 			const aim = (e: PointerEvent) => {
 				aiming = e.pointerType === 'mouse' && onScene(e) ? [...clip(e)] : null;
+				pointerAt = [e.clientX, e.clientY];
 			};
 			window.addEventListener('pointermove', aim, { passive: true });
 
@@ -1273,7 +1280,10 @@
 
 				if (now - lastAim > 140) {
 					lastAim = now;
-					document.documentElement.style.cursor = aiming && w.overAt(aiming[0], aiming[1]) ? 'pointer' : '';
+					const over = aiming ? w.overAt(aiming[0], aiming[1]) : null;
+					document.documentElement.style.cursor = over !== null ? 'pointer' : '';
+					// What a press would do, said beside the pointer: a side trip's name, for one.
+					sceneTip = over ? { text: over, x: pointerAt[0], y: pointerAt[1] } : null;
 				}
 
 				const change = params.has('debug') ? null : sharpness.frame(dt);
@@ -3493,6 +3503,11 @@
 </div>
 
 <Tokenizer bind:open={tryOpen} oncut={(now, before) => cue('tokens', now, before)} />
+
+{#if sceneTip}
+	<!-- For the mouse only: the same trips have their buttons in the cards and on the map. -->
+	<div class="scene-tip" style:left="{sceneTip.x}px" style:top="{sceneTip.y}px" aria-hidden="true">{sceneTip.text}</div>
+{/if}
 
 <TripMap bind:open={mapOpen} here={mapHere} onjump={jump} ontrip={tripFromMap}>
 	{#snippet agents()}
@@ -5831,6 +5846,22 @@
 		flex-wrap: wrap;
 		gap: 8px;
 		margin: 16px 0 0;
+	}
+	.scene-tip {
+		position: fixed;
+		z-index: 40;
+		transform: translate(14px, 18px);
+		padding: 5px 11px 6px;
+		border-radius: 10px;
+		background: linear-gradient(#fffaf0, #fbefd6);
+		color: #101a30;
+		font-size: 0.82rem;
+		font-weight: 650;
+		white-space: nowrap;
+		pointer-events: none;
+		box-shadow:
+			inset 0 -2px 0 #e4cfa6,
+			0 4px 14px rgb(20 60 130 / 0.16);
 	}
 	.trip-go {
 		--badge: #28405f;

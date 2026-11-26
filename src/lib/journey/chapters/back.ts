@@ -6,6 +6,8 @@ import { archBlock, arcPoint, Card, hazard, islandAt, machine, panel, shadowOn, 
 import { drawPageIcon, font, Label, Surface, type IconData } from '../kit/print';
 import { FINALE_T } from './finale';
 import { gearShape } from '../props/brain';
+import { MemoryCabinet } from './memory';
+import { LostAnswer } from './lost';
 import { createSign, fitting, grown, SIGN_PHONE, signWidth, standSign } from '../kit/parts';
 import { bell, bounceDown, clamp, hash, inOut, lerp, outBack, outCubic, seg, smooth, spring } from '../kit/math';
 import { createCastShadow } from '../props/island';
@@ -57,14 +59,6 @@ const LENS_R = 0.72;
 const C_POS: V3 = [-50, 22, -4];
 export const M_POS: V3 = [-78, 25, -4];
 const U_POS: V3 = [-108, 28, -4];
-/** Along that island from its centre: the file, the post the pipe plugs into, and the loupe's arm on the post. */
-const FILE_X = 5.5;
-const POST_X = 3.87;
-const LOUPE_PIVOT_Y = 3.55;
-const LOUPE_ARM = 0.71;
-/** The arm's angle parked up over the pipe, and looking at the changed line. */
-const LOUPE_REST = 2.2;
-const LOUPE_LOOK = -0.554;
 const R_POS: V3 = [-140, 31, -4];
 /** A bar's tag sits on the top front edge of the bar, this far above its top. */
 const TAG_RISE = 0.2;
@@ -171,8 +165,8 @@ const SUMMARY_SCALE = 0.82;
 const SUMMARY_LEAN = 0.1;
 const SUMMARY_HALF = 1.3 * SUMMARY_SCALE;
 const SUMMARY_UP: V3 = [0, 0.19 + SUMMARY_HALF * Math.cos(SUMMARY_LEAN), -SUMMARY_HALF * Math.sin(SUMMARY_LEAN)];
-const S_MEM = { az: -12, el: 9, target: relW(M_POS, 0, 3.9, 0), radius: 5.6 * sOf(M_POS), ry: 4.3 * sOf(M_POS), wide: LEFT, tall: TALL };
-const S_UNK = { az: 10, el: 20, target: relW(U_POS, 0, 1.9, 0.7), radius: 7.6 * sOf(U_POS), ry: 4.3 * sOf(U_POS), wide: box(0.42, 0.06, 0.58, 0.9), tall: TALL };
+const S_MEM = { az: 16, el: 22, target: relW(M_POS, 0, 3.9, 1.4), radius: 6.9 * sOf(M_POS), ry: 5.2 * sOf(M_POS), wide: LEFT, tall: TALL };
+const S_UNK = { az: 12, el: 16, target: relW(U_POS, 0.2, 2.9, 0.2), radius: 6.6 * sOf(U_POS), ry: 4.6 * sOf(U_POS), wide: box(0.42, 0.06, 0.58, 0.9), tall: TALL };
 const S_TEN = { az: -10, el: 14, target: relW(R_POS, 0, 2.6, 0.6), radius: 9.2 * sOf(R_POS), ry: 4.2 * sOf(R_POS), wide: box(0.01, 0.42, 0.98, 0.56), tall: box(0, 0.06, 1, 0.3) };
 const S_FIN = { az: 9, el: 14, target: relW(F_POS, 0, 2.5, 0.8), radius: 10.8 * sOf(F_POS), ry: 3.6 * sOf(F_POS), wide: box(0.01, 0.33, 0.98, 0.49), tall: TALL };
 /** What the test monitor shows once the whole suite is green. */
@@ -539,18 +533,14 @@ export class Back {
 	private slipTint = SLIPS.map((s) => new THREE.Color(SLIP_TINT[s.kind]));
 	private slipAmber = new THREE.Color(SLIP_TINT.summary);
 
-	private memDrawers: { group: THREE.Group; lamp: Lamp; z: number; x: number; out: number }[] = [];
+	/** The seven kinds of memory, as a cabinet of seven drawers: see memory.ts. */
+	memory = new MemoryCabinet();
 	/** The drawer a conversation is naming, and when (the clock's seconds): it slides out while it's named. */
 	private memNamed = { i: -1, at: 0 };
 	private memClock = 0;
 
-	private pipeA!: THREE.Mesh;
-	private pipeB!: THREE.Mesh;
-	private question = new THREE.Group();
-	private verdict!: THREE.Group;
-	private loupe = new THREE.Group();
-	private levers: THREE.Group[] = [];
-	private fileCard = new Card(3, 3.6, 260);
+	/** When the answer gets lost: the file, the snapped tube, the loupe, and your four controls. See lost.ts. */
+	lost = new LostAnswer();
 
 	private barsCached: THREE.Mesh[] = [];
 	private barsNew: THREE.Mesh[] = [];
@@ -1137,167 +1127,26 @@ export class Back {
 	/* ---- seven kinds of memory ---- */
 	private buildMemory() {
 		const g = this.zone(26.6, 28.3, true, true, ...frameOf(M_POS));
-		const m = mats();
 		const [cx, cy, cz] = M_POS;
 		const isl = islandAt(13, 8);
 		isl.position.set(cx, cy, cz);
 		g.add(isl);
 		this.pier(g, cx, cy, cz, M_POS);
-		const W = 9;
-		const RH = 0.98;
-		const ROWS = [
-			['Conversation history', 'The harness', 'The session, saved to disk'],
-			['Current model context', 'The harness', 'One request'],
-			['Continuation state', 'The provider', 'Days, by policy'],
-			['Inference cache', 'The cluster', 'Minutes to an hour'],
-			['Workspace', 'Your laptop', 'Separate from the conversation'],
-			['External state', 'Git hosts, MCP servers', 'May outlive the run'],
-			['Model parameters', 'The provider', 'Fixed']
-		];
-		const b = new Batch();
-		b.add(rbox(W + 0.4, RH * 7 + 0.5, 2.3, 0.14, 4), m.cream, { p: [cx, cy + 0.14 + (RH * 7 + 0.5) / 2, cz] });
-		b.add(rbox(W + 0.74, 0.14, 2.64, 0.05, 3), m.steelSoft, { p: [cx, cy + 0.07, cz] });
-		b.add(rbox(W + 0.04, RH * 7 + 0.14, 0.1, 0.02, 1), m.recess, { p: [cx, cy + 0.14 + (RH * 7 + 0.5) / 2, cz + 1.12] });
-		g.add(b.build('memory-cabinet'));
-		shadowOn(g, cx, cy, cz, W + 0.7, 2.6);
-		const front = extrude(roundedRect(W - 0.1, RH - 0.1, 0.09), 0.14, 0.03, 4, 10);
-		const hz = hazard(14);
-		ROWS.forEach((r, i) => {
-			const y = cy + 0.14 + RH * 7 + 0.18 - (i + 0.5) * RH;
-			const group = new THREE.Group();
-			const db = new Batch();
-			db.add(front, m.creamLight);
-			group.add(db.build('mem-front'));
-			const s = new Surface(1500, Math.round((1500 * (RH - 0.14)) / (W - 0.2)));
-			s.draw((c, w, h) => {
-				c.textBaseline = 'middle';
-				c.fillStyle = color.ink;
-				c.font = `700 ${h * 0.36}px ${font.display}`;
-				c.fillText(r[0], 34, h / 2);
-				c.fillStyle = '#33415c';
-				c.font = `600 ${h * 0.25}px ${font.sans}`;
-				c.fillText(r[1], w * 0.42, h / 2);
-				c.textAlign = 'right';
-				c.fillStyle = i === 6 ? '#c9261c' : '#5a6b85';
-				c.font = `${i === 6 ? 800 : 500} ${h * 0.25}px ${font.sans}`;
-				c.fillText(r[2], w - 78, h / 2);
-			});
-			const face = panel(W - 0.2, RH - 0.14, s);
-			face.position.z = 0.074;
-			group.add(face);
-			const lamp = new Lamp(sharedRbox(0.12, 0.12, 0.03, 0.04, 2), color.amber, 0.2);
-			lamp.mesh.position.set(W / 2 - 0.26, 0, 0.078);
-			group.add(lamp.mesh);
-			if (i === 6) {
-				const strip = new THREE.Mesh(new THREE.BoxGeometry(W - 0.3, 0.1, 0.02), hz);
-				strip.position.set(0, -RH / 2 + 0.1, 0.075);
-				group.add(strip);
-			}
-			const z = cz + 1.2;
-			group.position.set(cx, y, z);
-			g.add(group);
-			this.memDrawers.push({ group, lamp, z, x: cx, out: 0 });
-		});
+		this.memory.group.position.set(cx, cy, cz - 0.6);
+		g.add(this.memory.group);
+		shadowOn(g, cx, cy, cz - 0.6, 7.2, 3.4);
 	}
 
 	/* ---- unknown outcome ---- */
 	private buildUnknown() {
 		const g = this.zone(27.6, 29.3, true, true, ...frameOf(U_POS));
-		const m = mats();
 		const [cx, cy, cz] = U_POS;
 		const isl = islandAt(19, 11);
 		isl.position.set(cx, cy, cz);
 		g.add(isl);
 		this.pier(g, cx, cy, cz, U_POS);
-
-		const harness = machine({ w: 3.2, h: 3.4, d: 2.2, name: 'Harness', signH: 0.26 });
-		harness.position.set(cx - 5.4, cy, cz - 1.6);
-		g.add(harness);
-		shadowOn(g, cx - 5.4, cy, cz - 1.6, 3.5, 2.5);
-		this.fileCard.draw((c, w, h) => {
-			c.fillStyle = color.ink;
-			c.font = `700 ${h * 0.06}px ${font.mono}`;
-			c.textBaseline = 'alphabetic';
-			c.fillText('scheduler.py', 30, 66);
-			c.font = `500 ${h * 0.046}px ${font.mono}`;
-			const lines = ['while self.queue:', '  with self._lock:', '    job = q.pop()', '  run(job)'];
-			lines.forEach((t, i) => {
-				if (i === 1) {
-					c.fillStyle = 'rgba(34,211,107,.22)';
-					c.fillRect(16, 118 + i * 74, w - 32, 66);
-				}
-				c.fillStyle = i === 1 ? '#0f8a4a' : color.ink;
-				c.fillText(t, 30, 164 + i * 74);
-			});
-		});
-		// The file stands on its base, slotted into a post. The pipe from the harness plugs into the post's face.
-		this.fileCard.mesh.position.set(cx + FILE_X, cy + 1.92, cz - 1.5);
-		this.fileCard.mesh.rotation.x = -0.1;
-		g.add(this.fileCard.mesh);
-		const st = new Batch();
-		st.add(rbox(3.6, 0.12, 1, 0.04, 2), m.steelSoft, { p: [cx + FILE_X - 0.1, cy + 0.06, cz - 1.6] });
-		st.add(rbox(0.34, 3.75, 0.5, 0.08, 3), m.steelSoft, { p: [cx + POST_X, cy + 1.975, cz - 1.5] });
-		// The stub the loupe's arm turns on.
-		st.add(new THREE.CylinderGeometry(0.09, 0.09, 0.34, 16), m.steel, { p: [cx + POST_X, cy + LOUPE_PIVOT_Y, cz - 1.12], r: [Math.PI / 2, 0, 0] });
-		g.add(st.build('file-stand'));
-
-		const glass = new THREE.MeshPhysicalMaterial({ color: '#7fc4ff', transparent: true, opacity: 0.55, roughness: 0.12, clearcoat: 1, depthWrite: false });
-		const half = new THREE.CylinderGeometry(0.34, 0.34, 3.75, 28);
-		half.rotateZ(Math.PI / 2);
-		this.pipeA = new THREE.Mesh(half, glass);
-		this.pipeB = new THREE.Mesh(half, glass);
-		const collar = new Batch();
-		for (const x of [-3.75, 3.65]) collar.add(new THREE.CylinderGeometry(0.46, 0.46, 0.22, 28), m.steel, { p: [cx + x, cy + 1.7, cz - 1.5], r: [0, 0, Math.PI / 2] });
-		g.add(collar.build('pipe-collars'));
-		// Whole until it breaks: placed now, so it never waits at the island's foot.
-		this.pipeA.position.set(cx - 1.925, cy + 1.7, cz - 1.5);
-		this.pipeB.position.set(cx + 1.825, cy + 1.7, cz - 1.5);
-		g.add(this.pipeA, this.pipeB);
-
-		// A signpost planted in the break in the pipe.
-		// It grows up from its foot, so its post never hangs in the air or sinks into the island.
-		const question = standSign(createSign('Did it happen?', 0.34, color.ink, m.amber), 0.34, 2.96, 9);
-		question.position.y = 3.3;
-		this.question.add(question);
-		this.question.position.set(cx, cy, cz - 1.5);
-		g.add(this.question);
-		// Fitted: it has to stay inside the file it's stuck to.
-		this.verdict = createSign('It did. Carry on.', 0.3, '#ffffff', m.cobalt, true);
-		// Stuck onto the file it's about, in the blank under the code, leaning back with the paper.
-		this.verdict.position.set(cx + FILE_X, cy + 1.6, cz - 1.5 + 0.32 * Math.tan(0.1) + 0.045);
-		this.verdict.rotation.x = -0.1;
-		g.add(this.verdict);
-
-		// A loupe on an arm, hinged to the post like a desk magnifier. It swings down over the file to look.
-		const lb = new Batch();
-		lb.add(new THREE.CylinderGeometry(0.13, 0.13, 0.16, 18), m.steel, { r: [Math.PI / 2, 0, 0] });
-		lb.add(rbox(LOUPE_ARM, 0.12, 0.1, 0.04, 2), m.cobalt, { p: [LOUPE_ARM / 2, 0, 0] });
-		lb.add(new THREE.TorusGeometry(0.62, 0.1, 14, 40), m.cobalt, { p: [LOUPE_ARM + 0.62, 0, 0] });
-		this.loupe.add(lb.build('loupe'));
-		this.loupe.position.set(cx + POST_X, cy + LOUPE_PIVOT_Y, cz - 0.95);
-		g.add(this.loupe);
-
-		const names = ['Steer', 'Cancel', 'Terminate', 'Roll back'];
-		names.forEach((name, i) => {
-			const x = cx + (i - 1.5) * 3.2;
-			const z = cz + 2.2;
-			const base = new Batch();
-			base.add(rbox(2.2, 0.5, 1.1, 0.12, 3), m.cream, { p: [x, cy + 0.25, z] });
-			base.add(rbox(0.5, 0.06, 0.78, 0.02, 1), m.recess, { p: [x, cy + 0.51, z] });
-			g.add(base.build('lever-base'));
-			shadowOn(g, x, cy, z, 2.3, 1.2, 0.3);
-			const lever = new THREE.Group();
-			const lv = new Batch();
-			lv.add(new THREE.CylinderGeometry(0.06, 0.07, 1.2, 14), m.steel, { p: [0, 0.6, 0] });
-			lv.add(new THREE.SphereGeometry(0.21, 22, 16), m.red, { p: [0, 1.24, 0] });
-			lever.add(lv.build('lever'));
-			lever.position.set(x, cy + 0.5, z);
-			g.add(lever);
-			this.levers.push(lever);
-			const sign = createSign(name, 0.24);
-			sign.position.set(x, cy + 0.27 + grown(0.24), z + 0.61);
-			g.add(sign);
-		});
+		this.lost.group.position.set(cx, cy, cz);
+		g.add(this.lost.group);
 	}
 
 	/* ---- ten turns ---- */
@@ -2308,47 +2157,11 @@ export class Back {
 			// A conversation names the drawers only on their own card; anywhere else they're as the story left them.
 			if (T < 27.05 || T > 28.1) this.memNamed.i = -1;
 			const since = time - this.memNamed.at;
-			this.memDrawers.forEach((dr, i) => {
-				const a = 27.12 + i * 0.1;
-				const k = outBack(seg(T, a, a + 0.08), 1.8);
-				const settle = 1 - smooth(seg(T, a + 0.1, a + 0.18));
-				const fixed = i === 6;
-				const named = this.memNamed.i === i;
-				dr.out += ((named && !fixed ? 1 : 0) - dr.out) * (1 - Math.exp(-dt * 9));
-				dr.group.position.z = dr.z + k * (fixed ? 0.05 : 0.26 + settle * 0.3) + dr.out * 0.9;
-				// The weights don't come out, whatever you do: named, the red drawer rattles in place and stays shut.
-				const rattle = named && fixed ? Math.sin(since * 42) * 0.07 * Math.max(0, 1 - since / 0.9) : 0;
-				dr.group.position.x = dr.x + rattle;
-				const flare = named ? Math.max(fixed ? 1.6 * (1 - since / 1.4) : 1, 0) : 0;
-				dr.lamp.mix(color.amber, fixed ? color.red : color.green, seg(T, a, a + 0.06), 0.2 + seg(T, a, a + 0.06) * 0.8 + flare * 0.8);
-			});
+			this.memory.update(T, { i: this.memNamed.i, since }, time, dt);
 		}
 
 		/* ---- unknown ---- */
-		if ((T > 27.6 && T < 29.3) || homeward) {
-			const [cx, cy, cz] = U_POS;
-			const brk = smooth(seg(T, 28.14, 28.2));
-			const heal = smooth(seg(T, 28.58, 28.66));
-			const gap = brk * (1 - heal) * 0.48;
-			this.pipeA.position.set(cx - 1.925 - gap * 0.4, cy + 1.7, cz - 1.5);
-			this.pipeB.position.set(cx + 1.825 + gap * 0.4, cy + 1.7, cz - 1.5);
-			this.pipeA.scale.x = 1 - gap * 0.42;
-			this.pipeB.scale.x = 1 - gap * 0.42;
-			const q = outBack(seg(T, 28.2, 28.28), 2) * (1 - seg(T, 28.54, 28.6));
-			this.question.visible = q > 0.001;
-			this.question.scale.setScalar(Math.max(0.001, q));
-			// The loupe swings down over the changed line, holds while the verdict comes, then swings back up.
-			const look = outBack(seg(T, 28.3, 28.42), 1.2) * (1 - inOut(seg(T, 28.6, 28.7)));
-			this.loupe.rotation.z = lerp(LOUPE_REST, LOUPE_LOOK, look);
-			const v = outBack(seg(T, 28.5, 28.58), 2);
-			this.verdict.visible = v > 0.001;
-			this.verdict.scale.setScalar(Math.max(0.001, v));
-			this.levers.forEach((lever, i) => {
-				// All four are over before the words go, so a step that stops there sees every one thrown.
-				const a = 28.62 + i * 0.05;
-				lever.rotation.z = -0.5 + outBack(seg(T, a, a + 0.06), 2) * 1;
-			});
-		}
+		if ((T > 27.6 && T < 29.3) || homeward) this.lost.update(T, time);
 
 		/* ---- ten turns ---- */
 		const tenRest = T <= 28.6 ? 0 : T >= 30.3 && !homeward ? 1 : -1;
