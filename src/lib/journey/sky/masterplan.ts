@@ -53,6 +53,20 @@ export const ARCHIVE = { at: v(-7.2, 0, -5.6), w: 2.3, h: 3.0, d: 2.4 };
 /** Along its front, on the right: the steps a finished piece of work climbs (the story's own, in chapters/back.ts). */
 /** Brass posts at the desk's back corners, where the remote towers' cables come down. */
 export const POSTS = [v(-12.9, 0, -6.6), v(12.9, 0, -6.6)];
+/**
+ * A Persian rug under your laptop and the harness, as at home: its middle, its width and length (along z), and how thick
+ * its pile is. It keeps clear of the gates on its right and the easel on its left.
+ */
+export const RUG = { at: v(0, 0, 0.7), w: 5.2, l: 12, pile: 0.014 };
+/**
+ * How high the desk's floor is at a point, for what lies on it: on the rug, the top of its pile; just off it, falling
+ * to the desk, so a cable that leaves it drapes over its edge.
+ */
+export function deskFloor(x: number, z: number) {
+	const out = Math.max(Math.abs(x - RUG.at.x) - RUG.w / 2, Math.abs(z - RUG.at.z) - RUG.l / 2);
+	const k = THREE.MathUtils.clamp(1 - out / 0.1, 0, 1);
+	return RUG.pile * k * k * (3 - 2 * k);
+}
 
 /* ---------- the aqueduct and the internet ---------- */
 

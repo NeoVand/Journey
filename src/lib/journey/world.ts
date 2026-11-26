@@ -114,9 +114,9 @@ const LANE_AT = (() => {
 const BELT_TOP = 0.14;
 /**
  * A cable that lies on your desk: a smooth curve through its points overshoots a little between them, and would sink
- * into the desk's top there. Resampled with nowhere lower than lying on it.
+ * into the desk's top there. Resampled with nowhere lower than lying on it, or on the rug where it crosses it.
  */
-const lying = (c: THREE.Curve<THREE.Vector3>, r: number) => curve(c.getSpacedPoints(200).map((p) => [p.x, Math.max(p.y, r + 0.004), p.z] as V3));
+const lying = (c: THREE.Curve<THREE.Vector3>, r: number) => curve(c.getSpacedPoints(200).map((p) => [p.x, Math.max(p.y, r + 0.004 + P.deskFloor(p.x, p.z)), p.z] as V3));
 /** The reply's lane in the world, from the brainstem down to behind the harness's roof. */
 const DOWN_LANE = new THREE.CatmullRomCurve3(P.downLane(), false, 'centripetal');
 DOWN_LANE.arcLengthDivisions = 2000;

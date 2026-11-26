@@ -7,13 +7,14 @@ import { fitting, plinth } from '../kit/parts';
 import { LAPTOP_LEFT_PORTS, LEFT_PORT_R } from '../props/laptop';
 import { hazed, palette } from './palette';
 import { span } from './aqueduct';
+import { layRug } from './crafts';
 import * as P from './masterplan';
 
 /*
  * Your desk: where the agent works, on your laptop. A grand writing desk of glossy honey wood with a gold band round its
  * edge, standing on a cream base carried on arches like the aqueduct's, warmly lit. Everything on it is yours.
  *
- * Front middle, your laptop; behind it, wired into it, the harness: the program on your laptop that packs every request
+ * Front middle, your laptop, on a Persian rug as at home, a glass of tea beside it; behind it, wired into it, the harness: the program on your laptop that packs every request
  * and reads every reply, a butter-cream cabinet under a barrel roof with its four drawers in its face (what it packs:
  * instructions, environment, tools, conversation). The aqueduct's lanes leave from behind its roof.
  *
@@ -53,6 +54,7 @@ export class Desk {
 		this.easel.name = 'easel';
 		const b = new Batch();
 		this.furniture(b);
+		this.home(b);
 		this.leftWing(b);
 		this.archive(b);
 		this.posts(b);
@@ -74,6 +76,46 @@ export class Desk {
 				span(b, new THREE.Vector3(x0, y, z), new THREE.Vector3(x1, y, z), 1.6, pier, i === 2 ? 'both' : 'pier');
 			}
 		}
+	}
+
+	/**
+	 * Home: a hand-knotted rug under your laptop and the harness, madder red with an indigo medallion, and by your left
+	 * hand a glass of tea, an estekan on its saucer, on a little brass tray with two lumps of sugar.
+	 */
+	private home(b: Batch) {
+		const c = palette();
+		const R = P.RUG;
+		layRug(b, R.w, R.l, [R.at.x, 0, R.at.z], { pile: R.pile });
+		const y = R.pile + 0.001;
+		const [tx, tz] = [-1.95, 6.1];
+		b.add(new THREE.CylinderGeometry(0.42, 0.4, 0.03, 40), c.brass, { p: [tx, y + 0.015, tz] });
+		b.add(new THREE.TorusGeometry(0.415, 0.018, 6, 40), c.gold, { p: [tx, y + 0.03, tz], r: [Math.PI / 2, 0, 0] });
+		const [gx, gz] = [tx + 0.06, tz - 0.04];
+		const sy = y + 0.03;
+		b.add(new THREE.CylinderGeometry(0.2, 0.15, 0.03, 32), c.porcelain, { p: [gx, sy + 0.015, gz] });
+		b.add(new THREE.TorusGeometry(0.19, 0.01, 6, 32), c.gold, { p: [gx, sy + 0.03, gz], r: [Math.PI / 2, 0, 0] });
+		// The estekan: a slim glass, pinched at its waist, and the tea in it, the colour of a sunset.
+		const profile = [
+			[0, 0],
+			[0.11, 0],
+			[0.12, 0.04],
+			[0.11, 0.13],
+			[0.085, 0.24],
+			[0.095, 0.34],
+			[0.12, 0.45],
+			[0.125, 0.48]
+		].map(([r, h]) => new THREE.Vector2(r, h));
+		const gy = sy + 0.03;
+		b.add(new THREE.LatheGeometry(profile, 24), c.glass, { p: [gx, gy, gz] });
+		const tea = profile.filter((p) => p.y <= 0.4).map((p) => new THREE.Vector2(Math.max(0, p.x - 0.012), p.y + 0.012));
+		tea.push(new THREE.Vector2(0, tea[tea.length - 1].y));
+		b.add(new THREE.LatheGeometry(tea, 24), c.tea, { p: [gx, gy, gz] });
+		// Two lumps of sugar on the tray.
+		for (const [dx, dz, turn] of [
+			[-0.24, 0.16, 0.3],
+			[-0.12, 0.27, -0.4]
+		])
+			b.add(rbox(0.09, 0.08, 0.09, 0.015, 1), c.paper, { p: [tx + dx, y + 0.07, tz + dz], r: [0, turn, 0] });
 	}
 
 	/** The left wing: the easel and its page, the skills in a walnut shelf, the three local MCP servers, and your controls. */
@@ -322,8 +364,8 @@ export class Desk {
 
 	private pipe(b: Batch, pts: [number, number, number][], r: number) {
 		const curve = new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(...p)), false, 'catmullrom', 0.1);
-		// Where it lies on the desk it lies on it: never lower than its own radius over the top.
-		const laid = new THREE.CatmullRomCurve3(curve.getSpacedPoints(120).map((p) => p.setY(Math.max(p.y, r + 0.004))), false, 'centripetal');
+		// Where it lies on the desk it lies on it, or on the rug: never lower than its own radius over the top.
+		const laid = new THREE.CatmullRomCurve3(curve.getSpacedPoints(160).map((p) => p.setY(Math.max(p.y, r + 0.004 + P.deskFloor(p.x, p.z)))), false, 'centripetal');
 		b.add(new THREE.TubeGeometry(laid, 96, r, 10), palette().brass);
 	}
 }

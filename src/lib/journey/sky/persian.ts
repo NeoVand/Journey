@@ -22,14 +22,14 @@ export const TILE = {
 	green: '#2f915c'
 };
 
-function canvas(w: number, h: number) {
+export function canvas(w: number, h: number) {
 	const c = document.createElement('canvas');
 	c.width = w;
 	c.height = h;
 	return { c, g: c.getContext('2d')! };
 }
 
-function texture(c: HTMLCanvasElement, repeat = true) {
+export function texture(c: HTMLCanvasElement, repeat = true) {
 	const t = new THREE.CanvasTexture(c);
 	if (repeat) t.wrapS = t.wrapT = THREE.RepeatWrapping;
 	t.colorSpace = THREE.SRGBColorSpace;

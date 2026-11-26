@@ -44,6 +44,8 @@ function create() {
 		rose: glossy('#ef9f97', 0.36, 0.6),
 		terracotta: glossy('#d9765c', 0.42, 0.5),
 		ivory: glossy('#fbf3e2', 0.34, 0.7),
+		// tea in a glass, lit by the low sun
+		tea: new THREE.MeshStandardMaterial({ color: '#a8380f', emissive: '#8a2a00', emissiveIntensity: 0.5, roughness: 0.12 }),
 		glass: new THREE.MeshPhysicalMaterial({
 			color: '#e8f3ff',
 			roughness: 0.06,
