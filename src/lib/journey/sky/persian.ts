@@ -225,6 +225,120 @@ export function friezeTiles() {
 	return texture(c);
 }
 
+/**
+ * The front door's border: a turquoise band in white rules, cobalt stars with a rosette at their hearts between yellow
+ * lozenges with a red eye. Repeats along its length, two stars and two lozenges to a repeat.
+ */
+export function borderTiles() {
+	const W = 512;
+	const H = 128;
+	const { c, g } = canvas(W, H);
+	g.fillStyle = TILE.turquoise;
+	g.fillRect(0, 0, W, H);
+	g.fillStyle = TILE.white;
+	g.fillRect(0, 7, W, 7);
+	g.fillRect(0, H - 14, W, 7);
+	for (let i = 0; i < 4; i++) {
+		const x = (i + 0.5) * (W / 4);
+		if (i % 2 === 0) {
+			star(g, x, H / 2, H * 0.34);
+			g.fillStyle = TILE.cobalt;
+			g.fill();
+			glaze(g, x, H / 2, H * 0.34);
+			g.lineWidth = 4;
+			g.strokeStyle = TILE.white;
+			g.stroke();
+			rosette(g, x, H / 2, H * 0.17);
+		} else {
+			lozenge(g, x, H / 2, W / 16, H * 0.26);
+			g.fillStyle = TILE.yellow;
+			g.fill();
+			g.lineWidth = 3;
+			g.strokeStyle = TILE.white;
+			g.stroke();
+			g.fillStyle = TILE.red;
+			g.beginPath();
+			g.arc(x, H / 2, 7, 0, Math.PI * 2);
+			g.fill();
+		}
+	}
+	return texture(c);
+}
+
+const glazeOf = (opts: THREE.MeshPhysicalMaterialParameters) => new THREE.MeshPhysicalMaterial({ roughness: 0.22, clearcoat: 1, clearcoatRoughness: 0.1, ...opts });
+let glazes: ReturnType<typeof makeGlazes> | undefined;
+function makeGlazes() {
+	return {
+		field: glazeOf({ map: wallTiles() }),
+		dado: glazeOf({ map: dadoTiles() }),
+		frieze: glazeOf({ map: friezeTiles() }),
+		border: glazeOf({ map: borderTiles() }),
+		white: glazeOf({ color: TILE.white }),
+		turquoise: glazeOf({ color: TILE.turquoise })
+	};
+}
+/** The glazed tile every Persian place shares, made once: the hall's walls, the front door's frame and hood. */
+export const glazed = () => (glazes ??= makeGlazes());
+
+/**
+ * Gereh-chini: a lattice of dark walnut strips, eight-pointed stars and the crosses between them, a little coloured glass
+ * set in each star's heart. Drawn on nothing, so only the wood and the glass show. Two stars to a repeat, side by side,
+ * so the colours go round: turquoise, ruby, amber and cobalt.
+ */
+function gerehTiles() {
+	const S = 256;
+	const { c, g } = canvas(S * 2, S);
+	const R = (S / 2) * Math.SQRT1_2;
+	const stars: [number, number, string][] = [
+		[S / 2, S / 2, TILE.turquoise],
+		[S * 1.5, S / 2, TILE.red],
+		[S, 0, TILE.yellow],
+		[S, S, TILE.yellow],
+		[0, 0, '#2b5fd9'],
+		[S * 2, 0, '#2b5fd9'],
+		[0, S, '#2b5fd9'],
+		[S * 2, S, '#2b5fd9']
+	];
+	for (const [x, y, fill] of stars) {
+		star(g, x, y, R * 0.44, Math.PI / 8);
+		g.fillStyle = fill;
+		g.fill();
+		glaze(g, x, y, R * 0.44, 0.3);
+	}
+	g.strokeStyle = '#4e2f16';
+	g.lineJoin = 'round';
+	for (const [x, y] of stars) {
+		star(g, x, y, R);
+		g.lineWidth = S * 0.06;
+		g.stroke();
+		star(g, x, y, R * 0.44, Math.PI / 8);
+		g.lineWidth = S * 0.035;
+		g.stroke();
+	}
+	return texture(c);
+}
+
+let lattice: THREE.MeshStandardMaterial | undefined;
+/** The lattice's material: the wood solid, the gaps cut clean away, the glass a little lit. Made once. */
+export function latticeMaterial() {
+	if (lattice) return lattice;
+	const map = gerehTiles();
+	lattice = new THREE.MeshStandardMaterial({ map, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.42, emissive: '#ffffff', emissiveMap: map, emissiveIntensity: 0.22 });
+	return lattice;
+}
+
+/**
+ * A band of lattice, length by height, facing +Z: one row of whole stars along its middle and half stars cut by its
+ * edges, which its rails cover; a whole number of stars along it, so both its ends fall on a star's middle.
+ */
+export function latticeBand(length: number, height: number) {
+	const geo = new THREE.PlaneGeometry(length, height);
+	const stars = Math.max(2, Math.round(length / height));
+	const uv = geo.attributes.uv as THREE.BufferAttribute;
+	for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * (stars / 2), uv.getY(i));
+	return geo;
+}
+
 /** How tall a pointed arch's head is, for its width: a little more than a round arch's half, so it comes to a point. */
 export const ARCH_RISE = 0.74;
 
@@ -259,6 +373,21 @@ export function archFrame(w: number, h: number, t: number, rise = w * ARCH_RISE)
 	const out = outer.slice(0, -1);
 	const back = inner.slice(0, -1).reverse();
 	return new THREE.Shape([...out, ...back]);
+}
+
+/** Half a pointed arch's width at height y over its foot: the jambs' below the spring, the arcs' above it. */
+export function archHalfWidth(y: number, w: number, h: number, rise = w * ARCH_RISE) {
+	const spring = h - rise;
+	if (y <= spring) return w / 2;
+	if (y >= h) return 0;
+	const rho = w / 4 + (rise * rise) / w;
+	const cx = -w / 2 + rho;
+	return Math.max(0, Math.sqrt(rho * rho - (y - spring) ** 2) - cx);
+}
+
+/** A pointed arch's outline from its left foot, up, over and down to its right foot, as points. */
+export function archLine(w: number, h: number, rise = w * ARCH_RISE, divisions = 16) {
+	return pointedArch(w, h, rise).getPoints(divisions).slice(0, -1);
 }
 
 /** The same arch as a hole in something: a Path, wound the other way. */
@@ -455,8 +584,12 @@ export function rect(x0: number, y0: number, x1: number, y1: number) {
  * texture running along it, one repeat every `repeat`. Where the line turns sharply, as at an arch's point, the band
  * is mitred. Facing +Z, in the line's own plane.
  */
-export function ribbon(points: THREE.Vector2[], width: number, repeat: number) {
+export function ribbon(points: THREE.Vector2[], width: number, repeat: number, mirrored = false) {
 	const n = points.length;
+	let length = 0;
+	for (let i = 1; i < n; i++) length += points[i].distanceTo(points[i - 1]);
+	// Mirrored, it runs out from both ends to meet in the middle, so an arch's border is the same either side of its point.
+	const u = (along: number) => (mirrored && along > length / 2 ? length - along : along) / repeat;
 	const pos: number[] = [];
 	const uv: number[] = [];
 	const idx: number[] = [];
@@ -477,7 +610,7 @@ export function ribbon(points: THREE.Vector2[], width: number, repeat: number) {
 		const miter = width / Math.max(0.35, mid.dot(n1));
 		if (i > 0) along += p.distanceTo(prev);
 		pos.push(p.x, p.y, 0, p.x + mid.x * miter, p.y + mid.y * miter, 0);
-		uv.push(along / repeat, 0, along / repeat, 1);
+		uv.push(u(along), 0, u(along), 1);
 		if (i > 0) {
 			const a = (i - 1) * 2;
 			idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);

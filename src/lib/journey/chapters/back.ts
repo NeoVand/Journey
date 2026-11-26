@@ -19,6 +19,7 @@ import { callPath, reducerBehind, RETURN_REDUCER, returnPath } from '../cables';
 import { Desk } from '../sky/desk';
 import * as P from '../sky/masterplan';
 import { hazed, palette } from '../sky/palette';
+import { archFrame, archLine, glazed, latticeBand, latticeMaterial, pointedArch, ribbon } from '../sky/persian';
 import { bends } from '../kit/geometry';
 import type { Shot } from '../rig';
 
@@ -167,7 +168,7 @@ const SUMMARY_HALF = 1.3 * SUMMARY_SCALE;
 const SUMMARY_UP: V3 = [0, 0.19 + SUMMARY_HALF * Math.cos(SUMMARY_LEAN), -SUMMARY_HALF * Math.sin(SUMMARY_LEAN)];
 const S_MEM = { az: 16, el: 22, target: relW(M_POS, 0, 3.9, 1.4), radius: 6.9 * sOf(M_POS), ry: 5.2 * sOf(M_POS), wide: LEFT, tall: TALL };
 const S_UNK = { az: 12, el: 16, target: relW(U_POS, 0.2, 2.9, 0.2), radius: 6.6 * sOf(U_POS), ry: 4.6 * sOf(U_POS), wide: box(0.42, 0.06, 0.58, 0.9), tall: TALL };
-const S_TEN = { az: -10, el: 14, target: relW(R_POS, 0, 2.6, 0.6), radius: 9.2 * sOf(R_POS), ry: 4.2 * sOf(R_POS), wide: box(0.01, 0.42, 0.98, 0.56), tall: box(0, 0.06, 1, 0.3) };
+const S_TEN = { az: -10, el: 14, target: relW(R_POS, 2.3, 3.0, 0.4), radius: 10.8 * sOf(R_POS), ry: 4.8 * sOf(R_POS), wide: box(0.01, 0.42, 0.98, 0.56), tall: box(0, 0.06, 1, 0.3) };
 const S_FIN = { az: 9, el: 14, target: relW(F_POS, 0, 2.5, 0.8), radius: 10.8 * sOf(F_POS), ry: 3.6 * sOf(F_POS), wide: box(0.01, 0.33, 0.98, 0.49), tall: TALL };
 /** What the test monitor shows once the whole suite is green. */
 const PASSED = 99;
@@ -550,6 +551,8 @@ export class Back {
 	private gatePipe!: THREE.Mesh;
 	private cursor!: THREE.Group;
 	private cursorHome = { x: 0, step: 1 };
+	/** The ice house: its door, which shuts when the cache is switched off, and the ice dropping from each spout. */
+	private ice = { door: new THREE.Group(), drops: [] as THREE.Mesh[][], xs: [] as number[], spout: 0 };
 	private turn = 0;
 	private cacheOn = true;
 	/** 0 with the cache, 1 without. The reader's switch, so it runs on the clock rather than on the scroll. */
@@ -738,17 +741,42 @@ export class Back {
 		shade.position.set(WX, WY - 8, 0.4);
 		g.add(shade);
 
-		// Glass walls on steel posts.
+		// Glass walls held as an orosi holds its glass: walnut posts and rails, brass finials on the posts, and a band of
+		// lattice along the top of the back and sides and another along their feet, coloured glass in its stars (see
+		// sky/persian.ts). The panes between the bands are clear, so it still reads at a glance as a box of glass, and the
+		// front is left open, so nothing comes between you and what runs inside.
 		const W = 26;
 		const D = 11;
 		const H = 8;
 		const x0 = WX - W / 2;
 		const x1 = WX + W / 2;
+		const BAND = { top: 1.2, foot: 0.8 };
+		const pc = palette();
 		const f = new Batch();
-		for (const x of [x0, x1]) for (const z of [-D / 2, D / 2]) f.add(rbox(0.16, H, 0.16, 0.05, 2), m.steel, { p: [x, WY + H / 2, z] });
-		for (const y of [0.08, H]) {
-			for (const z of [-D / 2, D / 2]) f.add(rbox(W, 0.14, 0.14, 0.04, 2), m.steel, { p: [WX, WY + y, z] });
-			for (const x of [x0, x1]) f.add(rbox(0.14, 0.14, D, 0.04, 2), m.steel, { p: [x, WY + y, 0] });
+		const railTop = H - 0.05;
+		const railFoot = 0.13;
+		for (const x of [x0, x1])
+			for (const z of [-D / 2, D / 2]) {
+				f.add(rbox(0.3, H + 0.07, 0.3, 0.06, 1), pc.walnut, { p: [x, WY + (H + 0.07) / 2, z] });
+				f.add(new THREE.CylinderGeometry(0.17, 0.22, 0.12, 16), pc.brass, { p: [x, WY + H + 0.13, z] });
+				f.add(new THREE.SphereGeometry(0.21, 16, 12), pc.brass, { p: [x, WY + H + 0.38, z] });
+			}
+		for (const y of [railFoot, railTop]) {
+			for (const z of [-D / 2, D / 2]) f.add(rbox(W, 0.24, 0.24, 0.05, 1), pc.walnut, { p: [WX, WY + y, z] });
+			for (const x of [x0, x1]) f.add(rbox(0.24, 0.24, D, 0.05, 1), pc.walnut, { p: [x, WY + y, 0] });
+		}
+		// The bands, and the slimmer rails along their inner edges, on the back and the sides.
+		const lattice = latticeMaterial();
+		const bands: [number, number][] = [
+			[railTop - 0.12 - BAND.top / 2, BAND.top],
+			[railFoot + 0.12 + BAND.foot / 2, BAND.foot]
+		];
+		for (const [y, h] of bands) {
+			f.add(latticeBand(W - 0.3, h), lattice, { p: [WX, WY + y, -D / 2] });
+			for (const x of [x0, x1]) f.add(latticeBand(D - 0.3, h), lattice, { p: [x, WY + y, 0], r: [0, Math.PI / 2, 0] });
+			const edge = y > H / 2 ? y - h / 2 : y + h / 2;
+			f.add(rbox(W, 0.12, 0.14, 0.03, 1), pc.walnut, { p: [WX, WY + edge, -D / 2] });
+			for (const x of [x0, x1]) f.add(rbox(0.14, 0.12, D, 0.03, 1), pc.walnut, { p: [x, WY + edge, 0] });
 		}
 		this.frame = f.build('sandbox-frame');
 		g.add(this.frame);
@@ -1180,8 +1208,9 @@ export class Back {
 		const g = this.zone(28.6, 30.3, true, true, ...frameOf(R_POS));
 		const m = mats();
 		const [cx, cy, cz] = R_POS;
-		const isl = islandAt(22, 8.5);
-		isl.position.set(cx, cy, cz);
+		// Wider than the chart, to the right, where the ice house stands.
+		const isl = islandAt(26, 9);
+		isl.position.set(cx + 2, cy, cz);
 		g.add(isl);
 		this.pier(g, cx, cy, cz, R_POS);
 
@@ -1271,6 +1300,129 @@ export class Back {
 		this.cursor.position.set(cx + x0, cy + 0.803, cz + 1.531);
 		this.cursor.rotation.x = -0.5;
 		g.add(this.cursor);
+
+		this.buildIceHouse(g, cx + x0, P, barZ);
+	}
+
+	/**
+	 * The cache, as a yakhchal: the old Persian ice house, a tall cone of clay that kept winter's ice through the summer.
+	 * What was worked out once is kept cold here, and every turn after the first draws its green from it: a brass trough
+	 * runs from high on its flank over the bars, and ice drops from a spout into each bar as its turn is told. Switch the
+	 * cache off and its door swings shut. A block left out by the door is half melted, since what nobody comes back for
+	 * goes within minutes.
+	 */
+	private buildIceHouse(g: THREE.Object3D, firstX: number, P: number, barZ: number) {
+		const [, cy, cz] = R_POS;
+		const c = palette();
+		const t = glazed();
+		const at = { x: R_POS[0] + 10.6, z: cz - 0.6 };
+		const b = new Batch();
+		const DRUM = 2.05;
+		const FOOT = 0.3;
+		const CONE = { from: 1.0, to: 7.6, r: 2.0 };
+		const coneR = (y: number) => CONE.r * Math.pow(Math.max(0, 1 - (y - CONE.from) / (CONE.to - CONE.from)), 0.8);
+		// A porcelain plinth, a drum of the door's turquoise border tile between gold rings, and the cone over it.
+		b.add(new THREE.CylinderGeometry(DRUM + 0.2, DRUM + 0.3, FOOT, 48), c.porcelain, { p: [at.x, cy + FOOT / 2, at.z] });
+		const drum = new THREE.CylinderGeometry(DRUM, DRUM, CONE.from - FOOT, 48, 1, true);
+		const uv = drum.attributes.uv as THREE.BufferAttribute;
+		for (let i = 0; i < uv.count; i++) uv.setX(i, uv.getX(i) * 5);
+		b.add(drum, t.border, { p: [at.x, cy + (FOOT + CONE.from) / 2, at.z] });
+		for (const y of [FOOT + 0.02, CONE.from]) b.add(new THREE.TorusGeometry(DRUM + 0.01, 0.05, 6, 48), c.gold, { p: [at.x, cy + y, at.z], r: [Math.PI / 2, 0, 0] });
+		const profile: THREE.Vector2[] = [];
+		for (let i = 0; i <= 18; i++) {
+			const y = CONE.from + ((CONE.to - CONE.from) * i) / 18;
+			profile.push(new THREE.Vector2(Math.max(0.001, coneR(y)), y));
+		}
+		b.add(new THREE.LatheGeometry(profile, 48), c.cream, { p: [at.x, cy, at.z] });
+		for (const y of [2.4, 3.7, 4.9, 6.0]) b.add(new THREE.TorusGeometry(coneR(y) + 0.015, 0.04, 6, 48), c.gold, { p: [at.x, cy + y, at.z], r: [Math.PI / 2, 0, 0] });
+		b.add(new THREE.SphereGeometry(0.16, 16, 12), c.gold, { p: [at.x, cy + CONE.to + 0.05, at.z] });
+		b.add(new THREE.ConeGeometry(0.06, 0.4, 10), c.gold, { p: [at.x, cy + CONE.to + 0.38, at.z] });
+
+		// Its door: a porch of clay at the front, a pointed arch through it framed in tile and gold, the ice stacked inside.
+		const PORCH = { w: 1.5, h: 2.0, d: 1.1, door: 0.9, arch: 1.45 };
+		const front = at.z + DRUM + 0.4;
+		const porch = new THREE.Shape();
+		porch.moveTo(-PORCH.w / 2, 0);
+		for (const p of archLine(PORCH.door, PORCH.arch)) porch.lineTo(p.x, p.y);
+		porch.lineTo(PORCH.w / 2, 0);
+		porch.lineTo(PORCH.w / 2, PORCH.h);
+		porch.lineTo(-PORCH.w / 2, PORCH.h);
+		porch.closePath();
+		b.add(extrude(porch, PORCH.d, 0.03, 2, 12), c.cream, { p: [at.x, cy + FOOT, front - PORCH.d / 2] });
+		b.add(rbox(PORCH.w + 0.12, 0.1, PORCH.d + 0.06, 0.03, 2), c.gold, { p: [at.x, cy + FOOT + PORCH.h + 0.05, front - PORCH.d / 2] });
+		b.add(extrude(archFrame(PORCH.door, PORCH.arch, 0.05), 0.04, 0.01, 1, 12), c.gold, { p: [at.x, cy + FOOT, front + 0.01] });
+		const rim = archLine(PORCH.door + 0.1, PORCH.arch + 0.05, PORCH.door * 0.74 + 0.05, 20);
+		b.add(ribbon(rim, 0.13, 0.3, true), t.border, { p: [at.x, cy + FOOT, front + 0.004] });
+		b.add(rbox(PORCH.door, PORCH.arch, 0.04, 0.01, 1), c.midnight, { p: [at.x, cy + FOOT + PORCH.arch / 2, front - PORCH.d + 0.06] });
+		const ice = new THREE.MeshPhysicalMaterial({ color: '#b6f3d6', emissive: '#2fcf7d', emissiveIntensity: 0.28, roughness: 0.08, clearcoat: 1 });
+		const cube = sharedRbox(0.26, 0.26, 0.26, 0.05, 1);
+		for (const [x, y] of [
+			[-0.28, 0],
+			[0, 0],
+			[0.28, 0],
+			[-0.14, 1],
+			[0.14, 1],
+			[0, 2]
+		])
+			b.add(cube, ice, { p: [at.x + x, cy + FOOT + 0.13 + y * 0.27, front - PORCH.d + 0.35] });
+		// Left out by the door, half melted into a puddle.
+		b.add(sharedRbox(0.3, 0.3, 0.3, 0.1, 2).clone().scale(1.1, 0.5, 1.05), ice, { p: [at.x + 1.25, cy + 0.075, front + 0.45], r: [0, 0.4, 0] });
+		b.add(new THREE.CircleGeometry(0.42, 32).rotateX(-Math.PI / 2).scale(1.3, 1, 0.85), ice, { p: [at.x + 1.3, cy + 0.006, front + 0.5] });
+		const name = createSign('The cache', 0.3);
+		name.position.set(at.x, cy + FOOT + PORCH.h + 0.1 + 0.3 + grown(0.3), front - 0.16);
+		g.add(name);
+
+		// The door, a walnut leaf the arch's shape, hinged at the left jamb: open, it lies back against the porch.
+		const leaf = new Batch();
+		leaf.add(extrude(pointedArch(PORCH.door - 0.02, PORCH.arch - 0.01), 0.06, 0.012, 1, 12), c.walnut, { p: [PORCH.door / 2, 0, 0] });
+		leaf.add(new THREE.SphereGeometry(0.05, 10, 8), c.brass, { p: [PORCH.door - 0.14, 0.7, 0.05] });
+		this.ice.door.add(leaf.build('ice-door'));
+		this.ice.door.position.set(at.x - PORCH.door / 2, cy + FOOT, front + 0.05);
+		g.add(this.ice.door);
+
+		// The trough: a clay channel faced in the drum's tile, so it's plainly the ice house's, out of a brass hatch high on
+		// the cone's flank and along over the bars, kept ice lying in it; a spout under it over each bar but the first,
+		// which had nothing kept to draw on. Three slim brass columns carry it, standing in the gaps between bars.
+		const Y = cy + 6.55;
+		const CH = { h: 0.34, d: 0.46 };
+		const hatchX = at.x - coneR(Y - cy) + 0.08;
+		const leftX = firstX + P - 0.75;
+		const len = hatchX - leftX;
+		const mid = leftX + len / 2;
+		b.add(rbox(0.56, 0.56, 0.56, 0.06, 1), c.brass, { p: [hatchX + 0.12, Y + 0.06, barZ] });
+		b.add(rbox(len, CH.h, CH.d, 0.04, 1), c.cream, { p: [mid, Y, barZ] });
+		const face = new THREE.PlaneGeometry(len - 0.1, CH.h - 0.1);
+		const fuv = face.attributes.uv as THREE.BufferAttribute;
+		const repeats = Math.round((len - 0.1) / ((CH.h - 0.1) * 4));
+		for (let i = 0; i < fuv.count; i++) fuv.setX(i, fuv.getX(i) * repeats);
+		b.add(face, t.border, { p: [mid, Y, barZ + CH.d / 2 + 0.004] });
+		for (const s of [-1, 1]) b.add(rbox(len, 0.05, 0.06, 0.02, 1), c.brass, { p: [mid, Y + CH.h / 2 + 0.02, barZ + s * (CH.d / 2 - 0.03)] });
+		for (const x of [1.2, 3.0, 4.6, 6.9, 9.3, 11.0, 13.1]) {
+			if (leftX + x > hatchX - 0.4) continue;
+			b.add(cube, ice, { p: [leftX + x, Y + CH.h / 2 + 0.06, barZ], r: [0, x * 0.7, 0] });
+		}
+		for (let i = 1; i < 10; i++) {
+			const x = firstX + i * P;
+			b.add(new THREE.CylinderGeometry(0.13, 0.06, 0.24, 16, 1, true), c.brass, { p: [x, Y - CH.h / 2 - 0.12, barZ] });
+			this.ice.xs.push(x);
+			const drops: THREE.Mesh[] = [];
+			for (let j = 0; j < 3; j++) {
+				const d = new THREE.Mesh(sharedRbox(0.16, 0.16, 0.16, 0.04, 1), ice);
+				d.visible = false;
+				g.add(d);
+				drops.push(d);
+			}
+			this.ice.drops.push(drops);
+		}
+		for (const i of [2.5, 5.5, 8.5]) {
+			const x = firstX + i * P;
+			const top = Y - CH.h / 2;
+			b.add(new THREE.CylinderGeometry(0.06, 0.075, top - 0.08 - (cy + 0.24), 12), c.brass, { p: [x, (top - 0.08 + cy + 0.24) / 2, barZ] });
+			b.add(new THREE.CylinderGeometry(0.16, 0.09, 0.1, 16), c.brass, { p: [x, top - 0.05, barZ] });
+			b.add(new THREE.CylinderGeometry(0.13, 0.13, 0.04, 16), c.brass, { p: [x, cy + 0.26, barZ] });
+		}
+		this.ice.spout = Y - CH.h / 2 - 0.26;
+		g.add(b.build('ice-house'));
 	}
 
 	setTurn(i: number) {
@@ -2194,7 +2346,22 @@ export class Back {
 				const top = R_POS[1] + 0.24 + uc.h * k + un.h * kn + TAG_RISE;
 				this.tags[i * 2].position.y = top;
 				this.tags[i * 2 + 1].position.y = top;
+				// While its green grows, ice drops into it from the spout over it, out of the ice house.
+				if (i === 0) return;
+				// It stops before the new work goes on top.
+				const pour = seg(T, a, a + 0.05);
+				const flowing = pour > 0 && pour < 1 && off < 0.5;
+				const floor = R_POS[1] + 0.24 + green;
+				this.ice.drops[i - 1].forEach((d, j) => {
+					const f = (pour * 4 + j / 3) % 1;
+					const y = lerp(this.ice.spout, floor, f);
+					d.visible = flowing && y > floor + 0.1;
+					d.position.set(this.ice.xs[i - 1], y, bar.position.z);
+					d.rotation.set(f * 2.1 + j, f * 1.3, 0);
+				});
 			});
+			// Without the cache, the ice house's door swings shut.
+			this.ice.door.rotation.y = lerp(-2.6, 0, smooth(this.cacheOff));
 			const reveal = seg(T, 29.14, 29.2);
 			const key = this.turn * 2 + (this.cacheOn ? 0 : 1);
 			if (key !== this.tagKey) {
