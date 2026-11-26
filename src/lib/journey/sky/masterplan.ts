@@ -8,8 +8,8 @@ import { CROWN as HARNESS_CROWN, HD, HW } from '../props/harness';
  * Height is distance from you. Your desk is at the bottom and the front. From the back of the harness a white aqueduct
  * climbs away in one gentle S, carrying the token's two lanes side by side: the request going up on the left, in amber,
  * and the reply coming down on the right, in pearl. Relay masts stand beside it: the internet. At its high end, on a
- * broad platform carried by its tallest arches, stands the provider: a jade gatehouse straddling both lanes (the front
- * door), a rose-tiled hall behind it (the tokenizer beside the left lane, the detokenizer beside the right), and a round
+ * broad platform carried by its tallest arches, stands the provider: a jade palace gate straddling both lanes (the front
+ * door), a hall laid with carpets behind it (the tokenizer beside the left lane, the press beside the right), and a round
  * midnight-blue tower full of chips (the data center). There the lanes turn upwards and climb a shaft up the tower's
  * middle, seen through a tall glass slot in its front, and go into the model's brainstem from below: tokens in and
  * tokens out. The brain stands on the tower's roof in a ring of golden petals. The foundry, where the model was made,
@@ -53,6 +53,20 @@ export const ARCHIVE = { at: v(-7.2, 0, -5.6), w: 2.3, h: 3.0, d: 2.4 };
 /** Along its front, on the right: the steps a finished piece of work climbs (the story's own, in chapters/back.ts). */
 /** Brass posts at the desk's back corners, where the remote towers' cables come down. */
 export const POSTS = [v(-12.9, 0, -6.6), v(12.9, 0, -6.6)];
+/**
+ * A Persian rug under your laptop and the harness, as at home: its middle, its width and length (along z), and how thick
+ * its pile is. It keeps clear of the gates on its right and the easel on its left.
+ */
+export const RUG = { at: v(0, 0, 0.7), w: 5.2, l: 12, pile: 0.014 };
+/**
+ * How high the desk's floor is at a point, for what lies on it: on the rug, the top of its pile; just off it, falling
+ * to the desk, so a cable that leaves it drapes over its edge.
+ */
+export function deskFloor(x: number, z: number) {
+	const out = Math.max(Math.abs(x - RUG.at.x) - RUG.w / 2, Math.abs(z - RUG.at.z) - RUG.l / 2);
+	const k = THREE.MathUtils.clamp(1 - out / 0.1, 0, 1);
+	return RUG.pile * k * k * (3 - 2 * k);
+}
 
 /* ---------- the aqueduct and the internet ---------- */
 
@@ -93,7 +107,7 @@ export const MASTS = [
 
 /** The gatehouse: the provider's front door, jade enamel and brass, straddling both lanes. */
 export const GATEHOUSE = { at: v(0, PLATFORM_Y, back(1.6)), w: 13.6, h: 5.6, d: 4.0, door: { w: 5.2, h: 4.8 } };
-/** The hall behind it: rose-tiled walls under a glass vault, the tokenizer down its left side, the detokenizer down its right. */
+/** The hall behind it: painted tile walls, carpets on its floor, a mirror wall at its end, the tokenizer down its left side. */
 export const HALL = { from: back(3.7), to: back(END), w: 15, wall: 4.2, vault: 3.6 };
 export const TOKENIZER = { x: -3.9, from: back(5.4), to: back(END - 1.8) };
 export const DETOKENIZER = { x: 3.9, from: back(5.4), to: back(END - 1.8) };

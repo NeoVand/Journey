@@ -19,7 +19,8 @@ import { callPath, reducerBehind, RETURN_REDUCER, returnPath } from '../cables';
 import { Desk } from '../sky/desk';
 import * as P from '../sky/masterplan';
 import { hazed, palette } from '../sky/palette';
-import { archFrame, archLine, glazed, latticeBand, latticeMaterial, pointedArch, ribbon } from '../sky/persian';
+import { archFrame, archLine, latticeBand, latticeMaterial, pointedArch, ribbon } from '../sky/persian';
+import { painted } from '../sky/crafts';
 import { bends } from '../kit/geometry';
 import type { Shot } from '../rig';
 
@@ -1314,19 +1315,19 @@ export class Back {
 	private buildIceHouse(g: THREE.Object3D, firstX: number, P: number, barZ: number) {
 		const [, cy, cz] = R_POS;
 		const c = palette();
-		const t = glazed();
+		const t = painted();
 		const at = { x: R_POS[0] + 10.6, z: cz - 0.6 };
 		const b = new Batch();
 		const DRUM = 2.05;
 		const FOOT = 0.3;
 		const CONE = { from: 1.0, to: 7.6, r: 2.0 };
 		const coneR = (y: number) => CONE.r * Math.pow(Math.max(0, 1 - (y - CONE.from) / (CONE.to - CONE.from)), 0.8);
-		// A porcelain plinth, a drum of the door's turquoise border tile between gold rings, and the cone over it.
+		// A porcelain plinth, a drum of painted tile, roses and a nightingale, between gold rings, and the cone over it.
 		b.add(new THREE.CylinderGeometry(DRUM + 0.2, DRUM + 0.3, FOOT, 48), c.porcelain, { p: [at.x, cy + FOOT / 2, at.z] });
 		const drum = new THREE.CylinderGeometry(DRUM, DRUM, CONE.from - FOOT, 48, 1, true);
 		const uv = drum.attributes.uv as THREE.BufferAttribute;
-		for (let i = 0; i < uv.count; i++) uv.setX(i, uv.getX(i) * 5);
-		b.add(drum, t.border, { p: [at.x, cy + (FOOT + CONE.from) / 2, at.z] });
+		for (let i = 0; i < uv.count; i++) uv.setX(i, uv.getX(i) * 3);
+		b.add(drum, t.frieze, { p: [at.x, cy + (FOOT + CONE.from) / 2, at.z] });
 		for (const y of [FOOT + 0.02, CONE.from]) b.add(new THREE.TorusGeometry(DRUM + 0.01, 0.05, 6, 48), c.gold, { p: [at.x, cy + y, at.z], r: [Math.PI / 2, 0, 0] });
 		const profile: THREE.Vector2[] = [];
 		for (let i = 0; i <= 18; i++) {
@@ -1352,7 +1353,7 @@ export class Back {
 		b.add(rbox(PORCH.w + 0.12, 0.1, PORCH.d + 0.06, 0.03, 2), c.gold, { p: [at.x, cy + FOOT + PORCH.h + 0.05, front - PORCH.d / 2] });
 		b.add(extrude(archFrame(PORCH.door, PORCH.arch, 0.05), 0.04, 0.01, 1, 12), c.gold, { p: [at.x, cy + FOOT, front + 0.01] });
 		const rim = archLine(PORCH.door + 0.1, PORCH.arch + 0.05, PORCH.door * 0.74 + 0.05, 20);
-		b.add(ribbon(rim, 0.13, 0.3, true), t.border, { p: [at.x, cy + FOOT, front + 0.004] });
+		b.add(ribbon(rim, 0.13, 0.52, true), t.band, { p: [at.x, cy + FOOT, front + 0.004] });
 		b.add(rbox(PORCH.door, PORCH.arch, 0.04, 0.01, 1), c.midnight, { p: [at.x, cy + FOOT + PORCH.arch / 2, front - PORCH.d + 0.06] });
 		const ice = new THREE.MeshPhysicalMaterial({ color: '#b6f3d6', emissive: '#2fcf7d', emissiveIntensity: 0.28, roughness: 0.08, clearcoat: 1 });
 		const cube = sharedRbox(0.26, 0.26, 0.26, 0.05, 1);
@@ -1393,9 +1394,9 @@ export class Back {
 		b.add(rbox(len, CH.h, CH.d, 0.04, 1), c.cream, { p: [mid, Y, barZ] });
 		const face = new THREE.PlaneGeometry(len - 0.1, CH.h - 0.1);
 		const fuv = face.attributes.uv as THREE.BufferAttribute;
-		const repeats = Math.round((len - 0.1) / ((CH.h - 0.1) * 4));
+		const repeats = Math.round((len - 0.1) / ((CH.h - 0.1) * 6.4));
 		for (let i = 0; i < fuv.count; i++) fuv.setX(i, fuv.getX(i) * repeats);
-		b.add(face, t.border, { p: [mid, Y, barZ + CH.d / 2 + 0.004] });
+		b.add(face, t.frieze, { p: [mid, Y, barZ + CH.d / 2 + 0.004] });
 		for (const s of [-1, 1]) b.add(rbox(len, 0.05, 0.06, 0.02, 1), c.brass, { p: [mid, Y + CH.h / 2 + 0.02, barZ + s * (CH.d / 2 - 0.03)] });
 		for (const x of [1.2, 3.0, 4.6, 6.9, 9.3, 11.0, 13.1]) {
 			if (leftX + x > hatchX - 0.4) continue;

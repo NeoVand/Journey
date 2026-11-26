@@ -114,9 +114,9 @@ const LANE_AT = (() => {
 const BELT_TOP = 0.14;
 /**
  * A cable that lies on your desk: a smooth curve through its points overshoots a little between them, and would sink
- * into the desk's top there. Resampled with nowhere lower than lying on it.
+ * into the desk's top there. Resampled with nowhere lower than lying on it, or on the rug where it crosses it.
  */
-const lying = (c: THREE.Curve<THREE.Vector3>, r: number) => curve(c.getSpacedPoints(200).map((p) => [p.x, Math.max(p.y, r + 0.004), p.z] as V3));
+const lying = (c: THREE.Curve<THREE.Vector3>, r: number) => curve(c.getSpacedPoints(200).map((p) => [p.x, Math.max(p.y, r + 0.004 + P.deskFloor(p.x, p.z)), p.z] as V3));
 /** The reply's lane in the world, from the brainstem down to behind the harness's roof. */
 const DOWN_LANE = new THREE.CatmullRomCurve3(P.downLane(), false, 'centripetal');
 DOWN_LANE.arcLengthDivisions = 2000;
@@ -299,7 +299,7 @@ const SHOTS: Shot[] = [
 	riding(4.46, 3.0, -12, 18),
 	riding(4.64, 3.3, 58, 14),
 	...hold(5, 5.64, DOOR, { az: 25 }),
-	// Up over the gatehouse's corner tower and its pishtaq, not through them, on the way in to the tokenizer.
+	// Up over the gatehouse's windcatcher and its talar, not through them, on the way in to the tokenizer.
 	{ T: 5.8, az: 40, el: 58, target: [-0.6, P.PLATFORM_Y + 1.6, P.DOOR_Z - 3.2] as V3, radius: 4.4, wide: box(0.05, 0.46, 0.9, 0.5), tall: box(0, 0.1, 1, 0.42) },
 	{ T: 6, ...turned({ ...CUT, target: [C_X - 0.3, ISLAND_C_Y + 0.9, 0.9] }) },
 	{ T: 6.16, ...turned({ ...CUT, target: [C_X - 0.3, ISLAND_C_Y + 0.9, 0.9] }) },
