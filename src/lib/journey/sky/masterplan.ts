@@ -197,11 +197,15 @@ export const PROVING = { at: v(19, 10, back(10.4)), r: 6.2, observatory: v(21.2,
 
 /* ---------- the horizon ---------- */
 
-/** Other companies' MCP servers: small towers floating on the horizon, each in its own colours. */
+/**
+ * Other companies' MCP servers: small towers floating on the horizon, each in its own colours. Each stands where its
+ * cable hangs clear to your desk: the lilac out past the foundry's front, not behind it, and the sea-green out past the
+ * proving ground's side, so neither cable runs through a deck.
+ */
 export const REMOTE = [
-	{ at: v(-27, 19, -41), tint: '#b9a2e8', name: 'lilac' },
+	{ at: v(-33, 19, -30), tint: '#b9a2e8', name: 'lilac' },
 	{ at: v(-15, 22, -55), tint: '#f29a8c', name: 'coral' },
-	{ at: v(26, 20, -48), tint: '#7fd3b5', name: 'sea-green' }
+	{ at: v(30, 20, -30), tint: '#7fd3b5', name: 'sea-green' }
 ];
 /** Their cables: each hangs down to a post on your desk; the sea-green one also runs to the provider's tower, which can call it itself. */
 export const REMOTE_CABLES: { from: number; to: THREE.Vector3 }[] = [

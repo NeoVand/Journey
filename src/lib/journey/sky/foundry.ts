@@ -118,12 +118,14 @@ export class Foundry {
 		}
 
 		// The rail up to the tower's roof, from the deck's provider side, on slender piers of its own: it climbs too steeply
-		// for arches, so each pier carries it on a brass saddle.
+		// for arches, so each pier carries it on a brass saddle. It leaps off the deck's corner over the coral server's
+		// cable, which hangs just under its lower stretch, so the first pier stands past that; the last stands clear of the
+		// provider's platform, whose edge the rail crosses a little higher, and from there it reaches the roof alone.
 		this.rail = new THREE.CatmullRomCurve3(P.FOUNDRY_RAIL.map((p) => new THREE.Vector3(...p)), false, 'centripetal');
 		const rail = ground;
 		rail.add(sweep(this.rail, [[-0.75, 0], [0.75, 0], [0.75, -0.35], [-0.75, -0.35]], 80), c.porcelain);
 		for (const s of [-1, 1]) rail.add(sweep(this.rail, [[s * 0.45 - 0.05, 0.12], [s * 0.45 + 0.05, 0.12], [s * 0.45 + 0.05, 0], [s * 0.45 - 0.05, 0]], 80), c.brass);
-		for (const u of [0.14, 0.32, 0.5, 0.68, 0.85]) {
+		for (const u of [0.35, 0.49, 0.63, 0.77]) {
 			const p = this.rail.getPointAt(u);
 			const t = this.rail.getTangentAt(u);
 			const yaw = Math.atan2(-t.z, t.x);
@@ -141,8 +143,9 @@ export class Foundry {
 		// The carriage: glass on a brass chassis, the finished model in it, small and glowing.
 		const car = new Batch();
 		const capsule = new THREE.CapsuleGeometry(0.7, 1.4, 8, 24).rotateZ(Math.PI / 2);
-		car.add(rbox(2.4, 0.26, 1.2, 0.08), c.brass, { p: [0, 0.3, 0] });
-		for (const dx of [-0.8, 0.8]) car.add(new THREE.CylinderGeometry(0.16, 0.16, 1.1, 14), c.iron, { p: [dx, 0.14, 0], r: [Math.PI / 2, 0, 0] });
+		// The chassis rides on four iron wheels, each standing on one of the rail's two brass strips.
+		car.add(rbox(2.4, 0.26, 1.2, 0.08), c.brass, { p: [0, 0.4, 0] });
+		for (const dx of [-0.8, 0.8]) for (const s of [-1, 1]) car.add(new THREE.CylinderGeometry(0.16, 0.16, 0.08, 16), c.iron, { p: [dx, 0.29, s * 0.45], r: [Math.PI / 2, 0, 0] });
 		car.add(capsule, c.glass, { p: [0, 1.15, 0] });
 		car.add(new THREE.TorusGeometry(0.72, 0.05, 8, 32), c.brass, { p: [0, 1.15, 0], r: [0, Math.PI / 2, 0] });
 		const brain = new THREE.SphereGeometry(0.48, 28, 14).scale(1.25, 0.8, 0.95);
