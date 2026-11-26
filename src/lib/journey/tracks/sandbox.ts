@@ -364,28 +364,28 @@ export class SandboxStage {
 		const frame = new Batch();
 		for (const x of [G0, G1])
 			for (const z of [GZ0, GZ1]) {
-				frame.add(rbox(0.18, GH, 0.18, 0.04, 2), wood, { p: [x, GH / 2, z] });
+				frame.add(rbox(0.18, GH, 0.18, 0.04, 1), wood, { p: [x, GH / 2, z] });
 				frame.add(new THREE.CylinderGeometry(0.1, 0.13, 0.08, 14), pc.brass, { p: [x, GH + 0.1, z] });
 				frame.add(new THREE.SphereGeometry(0.12, 14, 10), pc.brass, { p: [x, GH + 0.25, z] });
 			}
 		for (const y of [0.07, GH]) {
-			for (const z of [GZ0, GZ1]) frame.add(rbox(G1 - G0, 0.12, 0.12, 0.03, 2), wood, { p: [(G0 + G1) / 2, y, z] });
-			frame.add(rbox(0.12, 0.12, GZ1 - GZ0, 0.03, 2), wood, { p: [G1, y, 0] });
+			for (const z of [GZ0, GZ1]) frame.add(rbox(G1 - G0, 0.12, 0.12, 0.03, 1), wood, { p: [(G0 + G1) / 2, y, z] });
+			frame.add(rbox(0.12, 0.12, GZ1 - GZ0, 0.03, 1), wood, { p: [G1, y, 0] });
 			// On the left the bottom bar stops either side of the slot, so the rail runs in under nothing.
-			if (y > 1) frame.add(rbox(0.12, 0.12, GZ1 - GZ0, 0.03, 2), wood, { p: [G0, y, 0] });
+			if (y > 1) frame.add(rbox(0.12, 0.12, GZ1 - GZ0, 0.03, 1), wood, { p: [G0, y, 0] });
 			else
 				for (const [z0, z1] of [
 					[GZ0, RAIL_Z - SLOT_HALF],
 					[RAIL_Z + SLOT_HALF, GZ1]
 				])
-					frame.add(rbox(0.12, 0.12, z1 - z0, 0.03, 2), wood, { p: [G0, y, (z0 + z1) / 2] });
+					frame.add(rbox(0.12, 0.12, z1 - z0, 0.03, 1), wood, { p: [G0, y, (z0 + z1) / 2] });
 		}
 		// The slot the rail comes in through: a walnut frame round a hole in the left wall.
-		frame.add(rbox(0.16, 0.12, SLOT_HALF * 2 + 0.16, 0.03, 2), wood, { p: [G0, SLOT_H, RAIL_Z] });
-		for (const z of [RAIL_Z - SLOT_HALF, RAIL_Z + SLOT_HALF]) frame.add(rbox(0.16, SLOT_H, 0.12, 0.03, 2), wood, { p: [G0, SLOT_H / 2, z] });
+		frame.add(rbox(0.16, 0.12, SLOT_HALF * 2 + 0.16, 0.03, 1), wood, { p: [G0, SLOT_H, RAIL_Z] });
+		for (const z of [RAIL_Z - SLOT_HALF, RAIL_Z + SLOT_HALF]) frame.add(rbox(0.16, SLOT_H, 0.12, 0.03, 1), wood, { p: [G0, SLOT_H / 2, z] });
 		// The proxy's door in the back wall.
-		frame.add(rbox(1.3, 0.12, 0.2, 0.03, 2), wood, { p: [PROXY_X, 1.9, GZ0] });
-		for (const x of [PROXY_X - 0.6, PROXY_X + 0.6]) frame.add(rbox(0.12, 1.9, 0.2, 0.03, 2), wood, { p: [x, 0.95, GZ0] });
+		frame.add(rbox(1.3, 0.12, 0.2, 0.03, 1), wood, { p: [PROXY_X, 1.9, GZ0] });
+		for (const x of [PROXY_X - 0.6, PROXY_X + 0.6]) frame.add(rbox(0.12, 1.9, 0.2, 0.03, 1), wood, { p: [x, 0.95, GZ0] });
 		// The lattice: a band under the top rail of the back and both sides, and one over the foot, which leaves the
 		// slot and the proxy's door clear; a slim rail along each band's inner edge.
 		const lattice = new Batch();
@@ -411,13 +411,13 @@ export class SandboxStage {
 				: [[GZ0, GZ1]];
 			for (const [a, b] of backSpans) {
 				lattice.add(latticeBand(b - a - 0.16, h), lm, { p: [(a + b) / 2, y, GZ0] });
-				frame.add(rbox(b - a, 0.08, 0.1, 0.02, 2), wood, { p: [(a + b) / 2, edge, GZ0] });
+				frame.add(rbox(b - a, 0.08, 0.1, 0.02, 1), wood, { p: [(a + b) / 2, edge, GZ0] });
 			}
 			lattice.add(latticeBand(GZ1 - GZ0 - 0.16, h), lm, { p: [G1, y, 0], r: [0, Math.PI / 2, 0] });
-			frame.add(rbox(0.1, 0.08, GZ1 - GZ0, 0.02, 2), wood, { p: [G1, edge, 0] });
+			frame.add(rbox(0.1, 0.08, GZ1 - GZ0, 0.02, 1), wood, { p: [G1, edge, 0] });
 			for (const [a, b] of leftSpans) {
 				lattice.add(latticeBand(b - a - 0.16, h), lm, { p: [G0, y, (a + b) / 2], r: [0, Math.PI / 2, 0] });
-				frame.add(rbox(0.1, 0.08, b - a, 0.02, 2), wood, { p: [G0, edge, (a + b) / 2] });
+				frame.add(rbox(0.1, 0.08, b - a, 0.02, 1), wood, { p: [G0, edge, (a + b) / 2] });
 			}
 		}
 		g.add(frame.build('glass-frame'));

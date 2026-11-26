@@ -71,7 +71,7 @@ function arch(w: number, spring: number, segments = 32): [number, number][] {
 
 /** A niche's head: the back half of a dome, turned inside out so it's seen from within, as a niche is. */
 function niche(r: number) {
-	const g = new THREE.SphereGeometry(r, 14, 6, Math.PI, Math.PI, 0, Math.PI / 2).scale(1, NICHE, 1);
+	const g = new THREE.SphereGeometry(r, 10, 4, Math.PI, Math.PI, 0, Math.PI / 2).scale(1, NICHE, 1);
 	const idx = g.index!.array;
 	const flipped: number[] = [];
 	for (let i = 0; i < idx.length; i += 3) flipped.push(idx[i], idx[i + 2], idx[i + 1]);
@@ -143,7 +143,7 @@ export class Gatehouse {
 		// Behind, where the hall sees it, the arch keeps its bank-door brass: a thick band round it, studded with rivets.
 		b.add(extrude(archFrame(DOOR.w, DOOR.h, 0.32, DOOR.rise), 0.14, 0.03, 2, 16), c.brass, { p: [0, 0, -D / 2 - 0.05] });
 		for (const p of pointedArch(DOOR.w + 0.32, DOOR.h + 0.16, DOOR.rise + 0.16).getSpacedPoints(36))
-			if (p.y > 0.5) b.add(new THREE.SphereGeometry(0.065, 10, 8), c.gold, { p: [p.x, p.y, -D / 2 - 0.13] });
+			if (p.y > 0.5) b.add(new THREE.SphereGeometry(0.065, 8, 5), c.gold, { p: [p.x, p.y, -D / 2 - 0.13] });
 		// The tunnel's lining: brass ribs round the inside of the arch, through the gatehouse's depth behind the hood.
 		for (const z of [-1.25, -0.1]) b.add(extrude(archFrame(DOOR.w - 0.16, DOOR.h - 0.08, 0.08, DOOR.rise - 0.08), 0.12, 0.02, 1, 16), c.brass, { p: [0, 0, z] });
 
@@ -304,8 +304,8 @@ export class Gatehouse {
 		for (let k = 0; k < 3; k++) {
 			const lo = ys[k];
 			const ye = lo + 0.06;
-			b.add(rbox(half(lo) * 2, 0.06, zs[k + 1] - zs[k], 0.012), t.turquoise, { p: [0, lo + 0.03, (zs[k] + zs[k + 1]) / 2] });
-			b.add(rbox(half(lo) * 2, 0.05, 0.04, 0.01), c.gold, { p: [0, lo + 0.035, zs[k + 1] + 0.02] });
+			b.add(rbox(half(lo) * 2, 0.06, zs[k + 1] - zs[k], 0.012, 1), t.turquoise, { p: [0, lo + 0.03, (zs[k] + zs[k + 1]) / 2] });
+			b.add(rbox(half(lo) * 2, 0.05, 0.04, 0.01, 1), c.gold, { p: [0, lo + 0.035, zs[k + 1] + 0.02] });
 			const n = HOOD.cells[k];
 			const step = (2 * half((ye + ys[k + 1]) / 2) - 0.1) / n;
 			let r = Math.min((ys[k + 1] - ye - 0.035) / NICHE, step / 2 - 0.035);
@@ -328,7 +328,7 @@ export class Gatehouse {
 				hole.closePath();
 				plate.holes.push(hole);
 				b.add(niche(r), t.turquoise, { p: [cx, ye, HOOD.z[k]] });
-				b.add(new THREE.TorusGeometry(r + 0.012, 0.016, 4, 16, Math.PI).scale(1, NICHE, 1), c.gold, { p: [cx, ye, HOOD.z[k]] });
+				b.add(new THREE.TorusGeometry(r + 0.012, 0.016, 3, 12, Math.PI).scale(1, NICHE, 1), c.gold, { p: [cx, ye, HOOD.z[k]] });
 			}
 			b.add(new THREE.ShapeGeometry(plate, 8), t.white, { p: [0, 0, HOOD.z[k]] });
 		}

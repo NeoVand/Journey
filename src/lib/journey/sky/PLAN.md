@@ -177,3 +177,20 @@ The user's list after riding the whole tour, and what each became.
   own (plan, word stream, running process, a copy of the file). Pressable.
 - Verified: types, lint, svelte-check, unit, collision and overlap scans on every changed scene, 27 of 27 e2e on the
   GPU, phone geometry 97.2 MB.
+
+## More Persian (2026-11-26, branch `persian`)
+
+The user picked three of nine suggestions; concepts in the main checkout's `concepts/persian-r1/` (door-2 with
+door-1's hood, sandbox-2, ice-2). The rule kept: tile and jewel enamel on the provider's side, warm woodcraft on yours.
+- The front door is an iwan: a pointed arch in a jade pishtaq faced in the hall's tile (one shared set of glazes,
+  `glazed()` in persian.ts), a gold rim and mirrored frieze round the arch, a turquoise border whose repeat goes a
+  whole number of times up each side and across, the star field set out from the arch's middle. Over the tumblers, a
+  muqarnas of three tiers of gold-rimmed niches. The rose windows moved onto the towers. The camera's climb over the
+  door is a little steeper (S at T 5.8).
+- The sandbox's glass is held in walnut, gereh-chini lattice bands (coloured glass in the stars) along the top and
+  foot of the back and sides; the front stays open. The trip's stage matches, leaving the slot and the proxy's door
+  clear; Copilot's ghost sandbox has no lattice. `static/trips/sandbox.webp` remade.
+- The cache is a yakhchal on the ten-turns island: a clay cone over a tiled drum, ice stacked in its porch, a tiled
+  channel from its flank over the bars with a spout over each bar but the first. Ice drops into a bar while its green
+  grows; switch the cache off and its door swings shut. A block by the door is half melted.
+- Phone geometry 98.2 MB after trimming small detail (rivets, niches, rounded boxes at one segment).
