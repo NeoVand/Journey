@@ -15,8 +15,8 @@ import * as P from './masterplan';
  * palace. Long walls of painted tile, a rose spray on each turquoise tile over a dado of white tulips on cobalt, a frieze
  * of roses and nightingales along their tops, sash windows of coloured glass in walnut let right through them and brass
  * sconces between, a gold cresting along their tops, and no roof: a court open to the sky, so the work inside can be
- * watched from above. Its brick floor is laid with carpets, a great medallion carpet down the middle, the machines
- * standing on it, and a runner along each wall. At its far end a wall of mirror work glitters, the lanes going through
+ * watched from above. Its brick floor is laid with carpets, a plain gabbeh down the middle, the machines standing on
+ * it, and a runner along each wall. At its far end a wall of mirror work glitters, the lanes going through
  * it into the tower under a gold lintel, a wide sash window over them.
  *
  * Beside the request's lane, on the left, the tokenizer as it was built and kept: the chat template lays the request out
@@ -92,9 +92,12 @@ export class Hall {
 			for (let i = 0; i < pos.count; i++) uv.setXY(i, pos.getX(i) / SET.floor, (H.from - pos.getZ(i)) / SET.floor);
 		}
 		b.add(floorGeo, floor);
-		// The carpets on it: the great one down the middle, under the machines, and a blue runner along each wall.
+		// The carpets on it: down the middle, under the machines, a plain gabbeh, quiet so the tokens on the belt read, its
+		// few figures kept off the lanes; and a blue runner along each wall.
 		const carpetL = LEN - 2 * CARPET.margin;
-		layRug(b, CARPET.w, carpetL, [0, 0.02, MID], { seed: 13 });
+		const lane = (x: number) => 0.5 + x / CARPET.w;
+		const clear = [lane(-P.HALL_LANE - 0.9), lane(-P.HALL_LANE + 0.9), lane(P.HALL_LANE - 0.9), lane(P.HALL_LANE + 0.9)];
+		layRug(b, CARPET.w, carpetL, [0, 0.02, MID], { seed: 13, gabbeh: true, clear });
 		for (const s of [-1, 1]) layRug(b, CARPET.runner, carpetL, [s * CARPET.runnerX, 0.02, MID], { design: RUGS.blue, seed: 4 });
 
 		// The two long walls, with five real windows each: a sandstone core with the windows cut through it, tiled faces in
@@ -139,7 +142,7 @@ export class Hall {
 			// Laid so each face looks out of the wall: the inner one towards the lanes, the outer one to the sky.
 			for (const f of [-1, 1]) {
 				const inner = f === -s;
-				for (const [geo, mat] of faces(inner ? stop : -LEN / 2, LEN / 2, f > 0)) b.add(geo, mat, { p: [x + f * (THICK / 2 + 0.005), 0, MID], r: [0, (f * Math.PI) / 2, 0] });
+				for (const [geo, mat] of faces(inner ? stop : -LEN / 2, LEN / 2, f > 0)) b.add(geo, mat, { p: [x + f * (THICK / 2 + 0.01), 0, MID], r: [0, (f * Math.PI) / 2, 0] });
 				if (inner) b.add(rbox(0.05, H.wall - 0.24, 0.2, 0.02, 1), c.brass, { p: [x + f * (THICK / 2 + 0.03), 0.24 + (H.wall - 0.24) / 2, MID + stop + 0.06] });
 			}
 			b.add(rbox(THICK + 0.16, 0.24, LEN + 0.1, 0.06), c.brass, { p: [x, 0.12, MID] });
@@ -150,9 +153,9 @@ export class Hall {
 				for (const f of [-1, 1]) {
 					const fx = x + f * (THICK / 2 + 0.03);
 					b.add(frameGeo, c.walnut, { p: [fx, WIN.y, z], r: [0, (f * Math.PI) / 2, 0] });
-					b.add(border, band, { p: [x + f * (THICK / 2 + 0.009), WIN.y, z], r: [0, (f * Math.PI) / 2, 0] });
+					b.add(border, band, { p: [x + f * (THICK / 2 + 0.025), WIN.y, z], r: [0, (f * Math.PI) / 2, 0] });
 					// A sandstone sill under it.
-					b.add(rbox(0.16, 0.07, WIN.w + 0.6, 0.02, 1), stone, { p: [x + f * (THICK / 2 + 0.06), WIN.y - 0.035, z] });
+					b.add(rbox(0.16, 0.07, WIN.w + 0.6, 0.02, 1), stone, { p: [x + f * (THICK / 2 + 0.06), WIN.y - 0.045, z] });
 				}
 				// A brass sconce on the inner face, between this window and the next.
 				if (i < 4) {

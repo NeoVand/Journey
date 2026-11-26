@@ -410,6 +410,119 @@ function speckle(g: G, W: number, H: number, rnd: () => number) {
 	}
 }
 
+/**
+ * A gabbeh: the tribal rug of the Qashqai, thick and plain, its field one colour that shifts a little from row to row as
+ * the dye lots changed (abrash), a simple border, and a few small figures: cypress trees, a pair of goats, little
+ * diamonds. Quiet, so whatever stands on it reads. `clear` lists the bands across its width (as fractions, from its left
+ * edge, in pairs) where no figure goes, such as under the lanes.
+ */
+export function gabbehFace(w: number, l: number, d: RugDesign = RUGS.red, seed = 3, clear: number[] = []) {
+	const W = Math.min(512, Math.round((1536 * w) / l));
+	const H = Math.round((W * l) / w);
+	const { c, g } = canvas(W, H);
+	const u = W / w;
+	const rnd = seeded(seed);
+	// The field, row by row, each band of rows a little lighter or darker than the last.
+	const base = new THREE.Color(d.field);
+	let y = 0;
+	while (y < H) {
+		const band = (0.25 + rnd() * 0.9) * u;
+		const k = (rnd() - 0.5) * 0.12;
+		g.fillStyle = `#${base
+			.clone()
+			.offsetHSL(0, 0, k)
+			.getHexString()}`;
+		g.fillRect(0, y, W, band + 1);
+		y += band;
+	}
+	// The border: an ivory band with a zigzag in the medallion's colour, a saffron line inside it.
+	const bw = 0.32 * u;
+	const line = 0.05 * u;
+	ring(g, 0, 0, W, H, bw, (len) => {
+		g.fillStyle = d.ivory;
+		g.fillRect(0, 0, len, bw);
+		g.strokeStyle = d.medallion;
+		g.lineWidth = bw * 0.14;
+		g.lineJoin = 'miter';
+		g.beginPath();
+		const n = Math.round(len / (bw * 0.9));
+		for (let i = 0; i <= n; i++) g.lineTo((i / n) * len, i % 2 ? bw * 0.28 : bw * 0.72);
+		g.stroke();
+	});
+	ring(g, bw, bw, W - bw, H - bw, line, (len) => {
+		g.fillStyle = d.accent;
+		g.fillRect(0, 0, len, line);
+	});
+	// The figures: kept to the field's outer parts and its ends, away from what stands on it.
+	const free = (fx: number) => !clear.some((_, i) => i % 2 === 0 && fx > clear[i] && fx < clear[i + 1]);
+	const cypress = (x: number, y: number, h: number) => {
+		g.fillStyle = WOOL.leaf;
+		for (let k = 0; k < 3; k++) {
+			g.beginPath();
+			g.moveTo(x, y - h + k * h * 0.28);
+			g.lineTo(x + h * (0.18 + k * 0.06), y - h * 0.45 + k * h * 0.28);
+			g.lineTo(x - h * (0.18 + k * 0.06), y - h * 0.45 + k * h * 0.28);
+			g.closePath();
+			g.fill();
+		}
+		g.fillStyle = '#6b4a2b';
+		g.fillRect(x - h * 0.04, y - h * 0.18, h * 0.08, h * 0.18);
+	};
+	const goat = (x: number, y: number, s: number, flip: number) => {
+		g.save();
+		g.translate(x, y);
+		g.scale(s * flip, s);
+		g.fillStyle = d.ivory;
+		g.fillRect(-0.5, -0.35, 1, 0.35);
+		g.fillRect(0.38, -0.62, 0.24, 0.32);
+		g.fillRect(-0.45, 0, 0.1, 0.3);
+		g.fillRect(-0.2, 0, 0.1, 0.3);
+		g.fillRect(0.15, 0, 0.1, 0.3);
+		g.fillRect(0.38, 0, 0.1, 0.3);
+		g.strokeStyle = d.ivory;
+		g.lineWidth = 0.07;
+		g.beginPath();
+		g.moveTo(0.45, -0.6);
+		g.quadraticCurveTo(0.3, -0.95, 0.1, -0.8);
+		g.stroke();
+		g.restore();
+	};
+	const diamond = (x: number, y: number, r: number, fill: string) => {
+		g.beginPath();
+		g.moveTo(x, y - r);
+		g.lineTo(x + r * 0.7, y);
+		g.lineTo(x, y + r);
+		g.lineTo(x - r * 0.7, y);
+		g.closePath();
+		g.fillStyle = fill;
+		g.fill();
+	};
+	const inner = bw + line;
+	const span = W - 2 * inner;
+	// A row of cypresses along each end, and a pair of goats facing each other, then diamonds scattered on the sides.
+	for (const end of [1, -1]) {
+		const ey = end > 0 ? inner + 1.0 * u : H - inner - 0.35 * u;
+		const n = Math.max(3, Math.round(span / (0.9 * u)));
+		for (let i = 0; i < n; i++) {
+			const fx = (i + 0.5) / n;
+			if (free(fx)) cypress(inner + fx * span, ey, 0.6 * u);
+		}
+	}
+	for (let k = 0; k < 40; k++) {
+		const fx = 0.05 + rnd() * 0.9;
+		if (!free(fx)) continue;
+		const fy = 0.12 + rnd() * 0.76;
+		diamond(inner + fx * span, inner + fy * (H - 2 * inner), 0.09 * u, [d.ivory, d.accent, d.medallion][k % 3]);
+	}
+	const gx = clear.length ? (clear[0] / 2) * span + inner : W * 0.25;
+	goat(gx - 0.35 * u, H * 0.42, 0.55 * u, 1);
+	goat(gx + 0.35 * u, H * 0.42, 0.55 * u, -1);
+	goat(W - gx - 0.35 * u, H * 0.6, 0.55 * u, 1);
+	goat(W - gx + 0.35 * u, H * 0.6, 0.55 * u, -1);
+	speckle(g, W, H, rnd);
+	return texture(c, false);
+}
+
 /** Wool fringe: knotted warp ends, ivory, drawn on nothing so only the threads show. Repeats along its length. */
 function fringeFace() {
 	const W = 256;
@@ -437,13 +550,20 @@ const rugMats = new Map<string, { face: THREE.Material; back: THREE.Material }>(
  * Lays a carpet: its face on a thin slab of pile, the fringe out of each short end. Its middle at `at`, its foot on the
  * floor there, its length along z, turned by `turn` about the vertical.
  */
-export function layRug(b: Batch, w: number, l: number, at: [number, number, number], { turn = 0, design = RUGS.red, seed = 7, pile = 0.014 } = {}) {
+export function layRug(
+	b: Batch,
+	w: number,
+	l: number,
+	at: [number, number, number],
+	{ turn = 0, design = RUGS.red, seed = 7, pile = 0.014, gabbeh = false, clear = [] as number[] } = {}
+) {
 	const d = design;
-	const key = `${w}x${l}:${d.field}:${seed}`;
+	const key = `${w}x${l}:${d.field}:${seed}:${gabbeh}`;
 	let mats = rugMats.get(key);
 	if (!mats) {
+		const map = gabbeh ? gabbehFace(w, l, d, seed, clear) : rugFace(w, l, d, seed);
 		mats = {
-			face: new THREE.MeshPhysicalMaterial({ map: rugFace(w, l, d, seed), roughness: 0.92, sheen: 0.25, sheenRoughness: 0.6, sheenColor: '#ff9d8a' }),
+			face: new THREE.MeshPhysicalMaterial({ map, roughness: 0.92, sheen: 0.25, sheenRoughness: 0.6, sheenColor: '#ff9d8a' }),
 			back: new THREE.MeshStandardMaterial({ color: d.border, roughness: 0.9 })
 		};
 		rugMats.set(key, mats);
