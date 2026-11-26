@@ -4,7 +4,7 @@
  * notice: a call let through, a ring for you, a "no".
  */
 import * as THREE from 'three';
-import { BENCHES, CHUTE, DOCK, GATE_X, GATE_Z, HOOK_PORT, PAD, RAIL_WEST_Z, ROOM_AT, skillAt, SUB, TRAY_Z, TUBE } from '../tracks/room/layout';
+import { BENCHES, CHUTE, DOCK, GATE_PAD, GATE_X, GATE_Z, HOOK_PORT, RAIL_WEST_Z, ROOM_AT, skillAt, SUB, TRAY_Z, TUBE } from '../tracks/room/layout';
 import { cartAt, CART, CARDS, COMPACT, NESTS, RAIL_LEN, RAIL_PATH, REREAD, RESULTS, RIDES, slotX, TURNS } from '../tracks/room/turns';
 import type { Bed, Cue, Heard, Where } from './conductor';
 import { chime, key, low, note, porcelain, tick, whoosh } from './synth';
@@ -13,10 +13,11 @@ import { chime, key, low, note, porcelain, tick, whoosh } from './synth';
 const at = (x: number, y: number, z: number): Where => [x + ROOM_AT.x, y + ROOM_AT.y, z + ROOM_AT.z];
 const TUBE_FOOT = at(TUBE.x, 0.5, TUBE.z);
 const TUBE_TOP = at(TUBE.x, 6.5, TUBE.z);
-const PRESS = at(DOCK.x, 0.5, DOCK.z);
+const READER = at(DOCK.x, 0.5, DOCK.z);
 const CHUTE_TOP = at((CHUTE.x0 + CHUTE.x1) / 2, 5.5, (CHUTE.z0 + CHUTE.z1) / 2);
 const CHUTE_FOOT = at((CHUTE.x0 + CHUTE.x1) / 2, 1, (CHUTE.z0 + CHUTE.z1) / 2);
-const PADS = at(PAD.x1 - 0.3, 0.3, PAD.z0 + 0.2);
+/** The pad behind the gate, where cards pop up and a refusal lands. */
+const PADS = at(GATE_PAD.x1 - 0.3, 0.3, GATE_PAD.z0 + 0.2);
 const GATE = at(GATE_X, 1.0, GATE_Z);
 const BELL = at(GATE_X, 1.5, GATE_Z);
 const HOOK = at(HOOK_PORT[0], HOOK_PORT[1], HOOK_PORT[2]);
@@ -57,10 +58,10 @@ export function insideTheRoom(): { cues: Cue[]; beds: Bed[] } {
 	for (const turn of TURNS) {
 		const s = turn.send;
 		const quick = turn.pace < 0.5;
-		// The copy: out to the press and loaded, back, and up the tube with a soft pop; down again, empty.
+		// The copy: out to the reader and loaded, back, and up the tube with a soft pop; down again, empty.
 		cue(s.out, 'servo', TUBE_FOOT, { gain: 0.4, rate: 1.2, minor: quick });
-		cue(s.dock, 'latch', PRESS, { gain: 0.45, rate: 1.1 });
-		if (!quick) for (let k = 0; k < 6; k++) cue(s.dock + ((s.loaded - s.dock) * k) / 6, tick(1.5), PRESS, { gain: 0.25, minor: true });
+		cue(s.dock, 'latch', READER, { gain: 0.45, rate: 1.1 });
+		if (!quick) for (let k = 0; k < 6; k++) cue(s.dock + ((s.loaded - s.dock) * k) / 6, tick(1.5), READER, { gain: 0.25, minor: true });
 		cue(s.home + (s.gone - s.home) * 0.3, 'tube', TUBE_FOOT, { gain: quick ? 0.45 : 0.7 });
 		cue(s.home + (s.gone - s.home) * 0.35, whoosh(0.6, 2400), TUBE_TOP, { gain: 0.3, minor: quick });
 		cue(s.down, whoosh(0.7, 1300), TUBE_TOP, { gain: 0.2, minor: true });

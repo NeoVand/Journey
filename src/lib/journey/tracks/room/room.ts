@@ -7,7 +7,7 @@ import { clamp, inOut, lerp } from '../../kit/math';
 import { drawIcon, font, Surface } from '../../kit/print';
 import { buildBenches, buildLedge, buildRail, Cart } from './acts';
 import { buildHooks, Gate, printed, Screen } from './checks';
-import { BACK_Z, D, LIP, PAD, ROOM_AT, SHELF, SIDE_X, SIGN, SKILL_SCALE, skillAt, SKILLS, SUB, TRAY, TRAY_Z, W, WALL_H, WALL_T } from './layout';
+import { BACK_Z, D, GATE_PAD, LIP, PAD, ROOM_AT, SHELF, SIDE_X, SIGN, SKILL_SCALE, skillAt, SKILLS, SUB, TRAY, TRAY_Z, W, WALL_H, WALL_T } from './layout';
 import { roomSign } from './signs';
 import { buildChute, buildTube, Capsule } from './loop';
 import { SubRoom } from './subagent';
@@ -203,13 +203,17 @@ export class HarnessRoom {
 		tray.add(rbox(len, 0.12, 0.12, 0.04, 2), m.porcelain, { p: [cx, TRAY.base + 0.06, TRAY.z1 - 0.08] });
 		tray.add(rbox(len, 0.12, 0.16, 0.04, 2), m.porcelain, { p: [cx, TRAY.base + 0.06, TRAY.z0 + 0.1] });
 		tray.add(rbox(0.12, 0.12, TRAY.z1 - TRAY.z0, 0.04, 2), m.porcelain, { p: [TRAY.x0 + 0.08, TRAY.base + 0.06, TRAY_Z] });
-		// The lip: a low rail along the front, where new tiles slide to the open end.
-		tray.add(rbox(len + 1.35, 0.06, LIP.z1 - LIP.z0, 0.025, 2), m.creamDeep, { p: [cx - 0.67, LIP.y, (LIP.z0 + LIP.z1) / 2] });
-		tray.add(rbox(len + 1.35, 0.04, 0.03, 0.01, 2), m.gold, { p: [cx - 0.67, LIP.y + 0.04, LIP.z1 - 0.01] });
-		// The pad at the lip's start, where the chute lets the reply down.
-		tray.add(rbox(PAD.x1 - PAD.x0, PAD.y, PAD.z1 - PAD.z0, 0.06, 3), m.creamLight, { p: [(PAD.x0 + PAD.x1) / 2, PAD.y / 2, (PAD.z0 + PAD.z1) / 2] });
+		// The lip: a low rail along the front from pad to pad, past the press, where new tiles slide to the open end.
+		const lipLen = LIP.x1 - LIP.x0;
+		const lipX = (LIP.x0 + LIP.x1) / 2;
+		tray.add(rbox(lipLen, 0.06, LIP.z1 - LIP.z0, 0.025, 2), m.creamDeep, { p: [lipX, LIP.y, (LIP.z0 + LIP.z1) / 2] });
+		tray.add(rbox(lipLen, 0.04, 0.03, 0.01, 2), m.gold, { p: [lipX, LIP.y + 0.04, LIP.z1 - 0.01] });
+		// The pads at its ends: behind the gate, where calls are printed and a refusal lands; and past the press, where
+		// the chute lets the reply down.
+		for (const pad of [GATE_PAD, PAD])
+			tray.add(rbox(pad.x1 - pad.x0, pad.y, pad.z1 - pad.z0, 0.06, 3), m.creamLight, { p: [(pad.x0 + pad.x1) / 2, pad.y / 2, (pad.z0 + pad.z1) / 2] });
 		this.group.add(tray.build('tray'));
-		shadowOn(this.group, cx + 0.3, 0, TRAY_Z, len + 1.4, 1.6, 0.38);
+		shadowOn(this.group, lipX, 0, TRAY_Z, lipLen + 0.2, 1.6, 0.38);
 
 		// The ruler along the front rim: a tick per slot, a longer one every quarter of the window.
 		const ruler = plate(len - 0.2, 0.1, (c, pw, ph) => {

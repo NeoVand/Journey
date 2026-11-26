@@ -26,7 +26,9 @@ const shot = (az: number, el: number, target: [number, number, number], radius: 
 
 /** The whole room: the loop, the gate, the benches and the subagent. */
 const ROOM = shot(16, 38, [0.75, 1.7, -0.3], 9.2, 6.1, { tallRadius: 9.0, tallRy: 7.0 });
-/** The back wall: the drawers, the shelf and the tray's start, where the request is packed. */
+/** The back-left corner, where the request is packed: the tube, the reader behind the tray's start, and the drawers. */
+const PACK = shot(28, 30, [-4.0, 1.7, -4.7], 3.6, 2.6, { tallRadius: 3.8, tallRy: 3.2 });
+/** The back wall: the drawers, the shelf and the tray's start. */
 const BACK = shot(6, 18, [-0.6, 2.45, -4.4], 4.6, 3.05, { tallRadius: 4.8, tallRy: 3.6 });
 /** The gate, close, from the open side: its lamps, its bell, the dial and rules, your screen and your hooks. */
 const GATE = shot(38, 18, [-5.1, 1.2, -1.7], 2.5, 1.75, { tallRadius: 2.6, tallRy: 2.2 });
@@ -56,6 +58,7 @@ function layer(n: number) {
 
 const turn = (n: number) => TURNS[n - 1];
 const deny = turn(5).cards.find((k) => k.call.verdict === 'deny')!;
+const skill = turn(4).cards.find((k) => k.call.where === 'skill')!;
 const nest = (n: number) => NESTS[n - 1];
 const report = RESULTS.find((r) => r.span === 2)!;
 
@@ -75,8 +78,11 @@ export const ROOM_SHOTS: Shot[] = [
 	{ T: 0, ...ROOM },
 	{ T: 0.86, ...ROOM, az: 19 },
 	{ T: 1.84, ...ROOM, az: 12 },
-	// Card 3: the back wall, before your answer arrives and the request is packed again.
-	{ T: 1.93, ...BACK },
+	// Card 3: the back-left corner as your answer arrives, the request is packed again and the capsule comes back down
+	// empty; then along the back wall to the shelf, before the call for a skill goes up to it.
+	{ T: 1.93, ...PACK },
+	{ T: turn(4).send.rest + 0.03, ...PACK, az: 24 },
+	{ T: skill.into! - 0.05, ...BACK },
 	{ T: 2.84, ...BACK, az: 2 },
 	// Card 4: the gate while it checks; then out to the benches and back with the results.
 	{ T: 2.94, ...GATE },
@@ -113,8 +119,8 @@ const stop = (target: [number, number, number], az: number, el: number, radius: 
  * round the room the way the words do, so each glides on to the next.
  */
 export const TOUR: Record<string, Pose> = {
-	tube: stop([5.9, 5.0, -5.4], -26, 2, 2.2, 2.7),
-	chute: stop([-6.4, 3.8, -4.6], 34, 4, 2.1, 2.6),
+	tube: stop([-6.0, 4.7, -5.0], 20, 6, 2.6, 3.1),
+	chute: stop([6.0, 4.1, -5.1], -18, 6, 2.5, 3.0),
 	screen: stop([-7.0, 2.45, -1.35], 70, 6, 1.25, 1.6),
 	lip: stop([-4.3, 0.55, -2.5], 16, 26, 1.5, 1.9),
 	tiles: stop([-3.75, 0.5, -3.35], 8, 34, 0.85, 1.1),

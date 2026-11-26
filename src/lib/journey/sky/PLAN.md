@@ -233,9 +233,31 @@ a quiet red gabbeh lies under the tokenizer in place of the medallion carpet (th
   capsule's cradle); the chute at the back-right, the reply's lane ending just behind its funnel and the reply's words
   dropping in (the stream's hatch). The lanes reach the deck on spurs (P.spur, built in aqueduct.ts); the deck now starts
   at z -9.6 on a pier of its own.
-- The room inside still has its tube back-right and chute back-left, the mirror of the lanes outside: the window's
-  picture is framed on the back wall's middle so the corners don't show. Mirroring the room's loop is a follow-up.
+- The room inside had its tube back-right and chute back-left, the mirror of the lanes outside: mirrored since (see
+  "The room's loop, mirrored" below).
 - Moved: the easel to (-6.4, -1.4), the rug to the laptop only. Retuned: ASSEMBLY, the page's flight (3.78), the home
   shots onto the chute, 19.13 and 19.86, the call card (out by the calls port, across to the riser), the "From the
   provider" sign, the finale's harness sign, the MCP trip's drawer shots.
 - Phone: geometry 97.9 MB of 100, textures 276 MB of 280.
+
+## The room's loop, mirrored (2026-11-26)
+
+The room inside the harness now agrees with the lanes outside: up on the left, down on the right.
+
+- tracks/room/layout.ts: TUBE in the back-left corner (x -6.4), its door facing the tray (loop.ts REST_YAW). The capsule
+  runs east along the back wall and round into READER, a block behind the tray's start under the drawers, where it is
+  loaded (DOCK). The press keeps its housing at the tray's end, as the end stop. CHUTE in the back-right corner; its
+  slide curves down the wall and round to the left onto PAD, now at the lip's right end past the press. The lip runs
+  from pad to pad (LIP.x0, LIP.x1).
+- The tray still fills left to right. The reply's tiles ride left from REPLY_LIP_X; your prompt and a refusal ride right
+  (PROMPT_LIP_X, REFUSAL_LIP_X). GATE_PAD, behind the gate, is where each call's card pops up as the call comes down
+  (same timing as before) and where a refused card is thrown back to (THROWN in play.ts): the words say "thrown back out
+  onto the pad, and slides into the tray".
+- The longer ride left made card 2's last reply land after its stop, so card 2's two quick turns run at pace 0.35 (was
+  0.38). tray.spec.ts checks every card ends in time.
+- Signs: "To the model" on the left wall in front of the tube, "From the model" high on the back wall beside the chute.
+  Sound: the reader and the gate's pad (sound/room.ts). The subagent's small rooms mirrored the same way.
+- Cameras: card 3 opens on the back-left corner (PACK: tube, reader, drawers) while the request is packed and the
+  capsule comes back empty, then moves along to the shelf (BACK) before the skill is fetched. TOUR's tube and chute
+  stops mirrored and retuned. Narration direction names poses only, so nothing there changed.
+
