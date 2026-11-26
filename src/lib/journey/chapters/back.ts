@@ -126,7 +126,7 @@ const T_S = TOOLS.s;
 const HX = P.HARNESS.at.x;
 const HZ = P.HARNESS.at.z;
 const HTOP = P.HARNESS.h;
-/** The reply's lane comes home behind the harness's roof: its capsule's resting place there. */
+/** The reply's lane comes home over the harness's chute: its capsule's resting place there. */
 const DOWN_LANE = new THREE.CatmullRomCurve3(P.downLane(), false, 'centripetal');
 const HOME_CRADLE = DOWN_LANE.getPointAt(1 - 0.9 / DOWN_LANE.getLength());
 
@@ -178,13 +178,13 @@ const S_WHOLE = { az: 14, el: 9, target: [-4, 12, -20] as V3, radius: 34, ry: 22
 const S_END = { az: 22, el: 12, target: [HX - 0.4, 2.4, 1.0] as V3, radius: 7.2, ry: 6.4, wide: box(0.4, 0.02, 0.61, 0.94), tall: box(0, 0.05, 1, 0.42) };
 
 export const BACK_SHOTS: Shot[] = [
-	// Close over the harness's roof as the reply's capsules get home and open one by one (see sky/stream.ts), then back
-	// to the whole harness as the last of the text goes in.
-	{ T: 19.13, ...S_HATCH, az: 22, el: 18, target: [HX + 0.7, HTOP + 0.4, HZ - 1.6], radius: 3.6, ry: 2.8 },
+	// Close over the chute as the reply's capsules get home and open one by one and their words drop in (see
+	// sky/stream.ts), then back to the whole harness as the last of the text goes in.
+	{ T: 19.13, ...S_HATCH, az: 24, el: 20, target: [P.CHUTE_MOUTH.x - 0.4, P.CHUTE_MOUTH.y - 0.6, P.CHUTE_MOUTH.z - 0.5], radius: 3.4, ry: 2.8 },
 	{ T: 19.3, ...S_HATCH },
 	{ T: 19.64, ...S_HATCH, az: 14 },
 	// Up over your desk and across to the gates, in front of the harness but well clear of its face.
-	{ T: 19.86, az: 6, el: 30, target: [HX + 2.6, 2.2, HZ + 0.6] as V3, radius: 3.4, ry: 2.4, wide: box(0.3, 0.06, 0.66, 0.88), tall: TALL },
+	{ T: 19.86, az: -4, el: 30, target: [HX + P.HARNESS.w / 2 + 0.7, 2.2, HZ + 0.9] as V3, radius: 3.4, ry: 2.4, wide: box(0.3, 0.06, 0.66, 0.88), tall: TALL },
 	// Close enough to read every board: the first call's way to the gate that stops it, the refusal, then along
 	// with the second call, gate by gate.
 	{ T: 20.04, ...S_GATES },
@@ -641,10 +641,11 @@ export class Back {
 		const fromSky = createSign('From the provider', 0.24);
 		// Its left end stays on its arm: a phone's bigger sign grows to the right, away from the tube.
 		const armY = HOME_CRADLE.y + 0.9;
-		fromSky.position.set(P.DECK_W / 2 + 1.25 + grown(signWidth(fromSky) / SIGN_PHONE / 2), armY, HOME_CRADLE.z);
+		// Beside the reply's lane as it comes home to the chute, on its outer side, clear of what rides it.
+		fromSky.position.set(HOME_CRADLE.x + 2.23 + grown(signWidth(fromSky) / SIGN_PHONE / 2), armY, HOME_CRADLE.z);
 		g.add(fromSky);
 		const fromArm = new Batch();
-		fromArm.add(rbox(0.9, 0.05, 0.05, 0.02, 1), m.steelSoft, { p: [P.DECK_W / 2 + 0.45, armY, HOME_CRADLE.z] });
+		fromArm.add(rbox(0.9, 0.05, 0.05, 0.02, 1), m.steelSoft, { p: [HOME_CRADLE.x + 1.43, armY, HOME_CRADLE.z] });
 		const arm = fromArm.build('from-arm');
 		g.add(arm);
 		this.fromSign = [fromSky, arm];
@@ -1899,15 +1900,16 @@ export class Back {
 			const go = inOut(seg(T, 19.68, 20.02));
 			this.carrier.visible = pop > 0 && go < 1;
 			if (this.carrier.visible) {
-				// It appears beside the harness, in the clear in front of its right flank, then leaves along the pipe.
-				this.a.set(HX + lerp(2.4, 3.1, Math.min(1, pop)), lerp(3.2, 3.3, Math.min(1, pop)), HZ + lerp(1.6, 1.7, Math.min(1, pop)));
+				// It comes out of the harness's right flank by the calls' port, into the clear over the gap beside the gates,
+				// then rides the pipe out to the gates' dock.
+				const port = this.gatePath.getPointAt(0, this.a2);
+				// A wide card: far enough out that its near edge stays clear of the harness's wall, and over the gates.
+				this.a.set(port.x + lerp(1.35, 1.4, Math.min(1, pop)), port.y + lerp(0.9, 1.25, Math.min(1, pop)), port.z + lerp(0.5, 0.8, Math.min(1, pop)));
 				this.carrier.position.copy(this.a);
 				if (go > 0) {
-					// Round the machine's right side and behind it, under the aqueduct that leaves from behind its roof, and
-					// down onto the pipe behind it, riding high enough to clear it.
-					// Where the pipe has come down off the harness's back and runs level along your desk: a card that wide,
-					// joining it while it still slopes down, would hang over the slope.
-					const JOIN = 6.2 / this.gatePath.getLength();
+					// Across over the gap between the harness and the gates, onto the pipe where it comes up into the dock's
+					// riser, riding high enough to clear it, and down with it into the dock.
+					const JOIN = 1 - 0.6 / this.gatePath.getLength();
 					// Lifted off the pipe square to it, not straight up: where it drops steeply to the gates, straight up would
 					// put the card back against it.
 					const at = Math.max(go, JOIN);
@@ -1922,8 +1924,8 @@ export class Back {
 						const k = inOut(go / JOIN);
 						const u = 1 - k;
 						const [ax, ay, az] = [this.a.x, this.a.y, this.a.z];
-						const [c1x, c1y, c1z] = [HX + 3.7, 3.2, HZ - 1.4];
-						const [c2x, c2y, c2z] = [HX + 3.2, 2.6, HZ - 4.4];
+						const [c1x, c1y, c1z] = [ax, ay + 0.25, az - 0.3];
+						const [c2x, c2y, c2z] = [this.b.x + 0.15, this.b.y + 0.5, this.b.z];
 						this.carrier.position.set(
 							u * u * u * ax + 3 * u * u * k * c1x + 3 * u * k * k * c2x + k * k * k * this.b.x,
 							u * u * u * ay + 3 * u * u * k * c1y + 3 * u * k * k * c2y + k * k * k * this.b.y,

@@ -14,7 +14,7 @@ import { McpServer, MCP_W } from './props/mcp';
 import { Brain, STEM_LANE } from './props/brain';
 import { SkillShelf } from './props/skills';
 import { Poker } from './poke';
-import { Harness, HD, HW, PORT_KEYS_Z, PORT_MCP_Z, PORT_Y } from './props/harness';
+import { Harness, HD, HH, HW, PORT_KEYS_X, PORT_KEYS_Y, PORT_MCP_Z, PORT_Y } from './props/harness';
 import { RequestDoc, SLOT_Y, Strip } from './props/request';
 import { createBelt, createChatTemplate, Gantry, GANTRY_REAR, SafetyArch, Tile, TILE_D, TILE_H } from './props/tokenizer';
 import { HARNESSES, PROMPT, TOKENS, TRACK_AT, TRACKS, type HarnessId, type TrackId } from './content';
@@ -209,7 +209,7 @@ const hold = (from: number, to: number, shot: Omit<Shot, 'T'>, drift: Partial<Om
 /** The whole world from out in the sky, desk to brain, the title in the open sky beside it: then down to your laptop. */
 const HERO = { az: 16, el: 13, target: [-1, 10, -15] as V3, radius: 37, wide: box(0.4, 0.02, 0.61, 0.94), tall: box(0, 0.42, 1, 0.56) };
 const LAPTOP = { az: -2, el: 14, target: [0.087, 1.12, P.LAPTOP.at.z - 0.13] as V3, radius: 2.3, wide: box(0.42, 0.1, 0.56, 0.84), tall: box(0.02, 0.08, 0.96, 0.5) };
-const ASSEMBLY = { az: 20, el: 17, target: [-2.5, 2.4, -1.5] as V3, radius: 5.6, ry: 4.3, wide: box(0.0, 0.14, 0.58, 0.86), tall: box(0.02, 0.07, 0.96, 0.46) };
+const ASSEMBLY = { az: 20, el: 17, target: [-2.9, 2.5, -1.8] as V3, radius: 6.1, ry: 4.5, wide: box(0.0, 0.14, 0.58, 0.86), tall: box(0.02, 0.07, 0.96, 0.46) };
 const REQUEST = { az: 4, el: 7, target: [DOC_POS.x, DOC_POS.y + 0.03, DOC_POS.z + 0.05] as V3, radius: 2.05, wide: box(0.12, 0.08, 0.46, 0.86), tall: box(0.05, 0.07, 0.9, 0.5) };
 /** Over the capsule as it rides the aqueduct, from behind and to the left: the lane leading on to the provider. */
 /** The camera keeps the capsule where the shot puts it, all the way, rather than catching up with it at each shot. */
@@ -264,7 +264,7 @@ const homeShot = (T: number, az: number, el: number, radius: number, ry = radius
 /**
  * Home: out of the brainstem's seat, and down the column in the shaft, lit, seen through the tower's slot; the whole hall
  * from high over the door as the text rides out of the tower's foot to the press; then down over the gatehouse to the
- * first capsule coming out of the door, and along the aqueduct with the string of them, to the harness's roof.
+ * first capsule coming out of the door, and along the aqueduct with the string of them, to the harness's chute.
  */
 const HOME_SHOTS: Shot[] = [
 	{ T: HOME.from, ...OUT_OF },
@@ -274,24 +274,26 @@ const HOME_SHOTS: Shot[] = [
 	{ T: HOME.from + 0.022, ...HALL_RUN },
 	{ T: HOME.from + 0.043, ...HALL_RUN, az: 44, target: [1.1, 8.8, -29.5] },
 	// Over the gatehouse, high, until it's lined up with the door; then down in front of it, waiting at the door for
-	// the first capsule to come out. Coming down any sooner, it would swing through the corner tower.
-	{ T: HOME.from + 0.0455, az: 28, el: 50, target: [0.7, 9.6, P.DOOR_Z - 0.6], radius: 4.6, ry: 3.4, wide: WHOLE, tall: WHOLE_TALL },
+	// the first capsule to come out. Coming down any sooner, or from further round, it would swing past a windcatcher.
+	{ T: HOME.from + 0.0455, az: 14, el: 54, target: [0.7, 9.6, P.DOOR_Z - 0.6], radius: 4.6, ry: 3.4, wide: WHOLE, tall: WHOLE_TALL },
 	{ T: HOME.from + 0.048, az: 26, el: 22, target: [0.7, 9.2, P.DOOR_Z], radius: 4, ry: 3, wide: WHOLE, tall: WHOLE_TALL },
 	// Down the aqueduct with the first capsule, looking up the lane at it as it comes: the masts stand either side of
 	// the deck, so from here none of them comes between.
 	homeShot(HOME.from + 0.054, 22, 24, 3.8),
-	homeShot(HOME.from + 0.06, 6, 22, 3.8),
+	homeShot(HOME.from + 0.06, -4, 22, 3.8),
 	homeShot(HOME.from + 0.072, -2, 20, 3.8),
 	homeShot(HOME.from + 0.084, 8, 20, 3.6),
 	homeShot(HOME.from + 0.092, 26, 22, 3.2),
-	{ T: HOME.arrive, az: 30, el: 24, target: [0.7, 6.4, -5.2], radius: 2.6, ry: 2.2, wide: WHOLE, tall: WHOLE_TALL }
+	{ T: HOME.arrive, az: 30, el: 24, target: [P.CHUTE_MOUTH.x - 0.3, P.CHUTE_MOUTH.y + 0.1, P.CHUTE_MOUTH.z - 0.8], radius: 2.6, ry: 2.2, wide: WHOLE, tall: WHOLE_TALL }
 ];
 
 const SHOTS: Shot[] = [
 	...hold(0, 0.5, HERO),
 	...hold(1, 1.6, LAPTOP),
-	...hold(2, 2.74, ASSEMBLY, { az: 17, radius: 5.5, ry: 4.2 }),
+	...hold(2, 2.74, ASSEMBLY, { az: 17, radius: 6.0, ry: 4.4 }),
 	...hold(3, 3.58, REQUEST, { az: 8 }),
+	// Back and up with the page as it flies from the easel to the capsule waiting on the tube's top, both in the picture.
+	{ T: 3.78, az: 14, el: 16, target: [(DOC_POS.x + P.TUBE_MOUTH.x) / 2, (DOC_POS.y + P.TUBE_MOUTH.y) / 2 + 0.6, (DOC_POS.z + P.TUBE_MOUTH.z) / 2 - 0.4] as V3, radius: 4.2, ry: 3.6, wide: box(0.12, 0.08, 0.46, 0.86), tall: box(0.05, 0.07, 0.9, 0.5) },
 	// Over the capsule as it rides, always on the side away from the mast it's passing, so no mast comes between: the
 	// first stands on the left, the second on the right, the third on the left by the door.
 	riding(4.0, 2.3, 20, 16),
@@ -356,7 +358,7 @@ export class World {
 	private mcpTrack!: McpTrack;
 	private mcpLead!: THREE.Curve<THREE.Vector3>;
 	private mcpHit = hitBox(1.5, 1.5, 1.3);
-	private harnessHit = hitBox(2.9, 3.9, 2.4);
+	private harnessHit = hitBox(HW + 0.2, HH + 0.7, HD + 0.2);
 	/**
 	 * Inside a trip's own place: once the reader has dropped in, through the harness's roof or into the sandbox's glass,
 	 * the world shows that place instead of everything else. arrive is the drop from above, 0 to 1, which the page plays.
@@ -543,11 +545,12 @@ export class World {
 			flow: this.flowWorld,
 			beltU: (BELT_END - SLOT_X) / this.flowLen,
 			stream: new PartOf(DOWN_LANE, 0, 1 - CRADLE_S / reply),
-			hatch: [HARNESS_POS.x, P.HARNESS.h - 0.2, HARNESS_POS.z],
+			hatch: [P.CHUTE_MOUTH.x, P.CHUTE_MOUTH.y - 0.3, P.CHUTE_MOUTH.z],
 			...this.back.finaleRoute,
 			signs: [
 				[P.LAPTOP.at.x - 2.2, 2.6, P.LAPTOP.at.z],
-				[HARNESS_POS.x - 3.0, P.HARNESS.h + 1.0, HARNESS_POS.z],
+				// Over the easel, beside the harness's roof rather than on it.
+				[HARNESS_POS.x - P.HARNESS.w / 2 - 0.9, P.HARNESS.h + 1.1, HARNESS_POS.z + 0.6],
 				signAt(capsuleAt(4.62), -3.4, 3.4),
 				tok(TEMPLATE_X + 6, ISLAND_C_Y + 4.2, LINE_Z),
 				[SHAFT_X - 7.5, SEAT_Y + 3, TZ],
@@ -590,7 +593,7 @@ export class World {
 			])
 		};
 		this.mcpHit.position.copy(P.LOCAL_MCP[2]).setY(0.7);
-		this.harnessHit.position.set(HARNESS_POS.x, 2.0 * HS, HARNESS_POS.z);
+		this.harnessHit.position.set(HARNESS_POS.x, ((HH + 0.7) / 2) * HS, HARNESS_POS.z);
 		this.harnessHit.scale.setScalar(HS);
 		this.root.add(this.mcpHit, this.harnessHit);
 		this.setHarness('claude');
@@ -627,8 +630,9 @@ export class World {
 				seal: HOME_AT.seal,
 				home: HOME_AT.home,
 				belt: BELT_TOP,
-				hatch: new THREE.Vector3(HARNESS_POS.x, P.HARNESS.h + 0.3, HARNESS_POS.z),
-				arc: 1.8
+				// Down the chute: the reply's words drop into its funnel.
+				hatch: P.CHUTE_MOUTH.clone().setY(P.CHUTE_MOUTH.y - 0.1),
+				arc: 0.9
 			},
 			SLIP_TEXT
 		);
@@ -772,12 +776,15 @@ export class World {
 		this.root.updateMatrixWorld(true);
 		const harnessPort = (x: number, z: number) => this.harness.group.localToWorld(new THREE.Vector3(x, PORT_Y, z)).toArray() as V3;
 
-		// The request's way out of the harness: over its roof to the capsule's cradle, then the aqueduct's lane to the
-		// template. Nothing is drawn for it: the capsule rides it.
+		// The request's way out of the harness: up its tube to the capsule's cradle on the lane, then the aqueduct's lane to
+		// the template. Nothing is drawn for it: the capsule rides it.
 		const cradle = capsuleAt(4.0);
+		const mouth = P.TUBE_MOUTH;
 		this.routeOut = curve([
 			[HARNESS_POS.x, 2.2 * HS, HARNESS_POS.z],
-			[HARNESS_POS.x - 0.3, P.HARNESS.h + 0.4, HARNESS_POS.z - 0.6],
+			[mouth.x + 0.3, 1.2 * HS, mouth.z + 0.6],
+			[mouth.x, 2.4 * HS, mouth.z],
+			[mouth.x, mouth.y - 0.4, mouth.z],
 			[cradle[0], cradle[1] + 0.4, cradle[2]]
 		]);
 		this.downCurve = new PartOf(UP_LANE, CRADLE_S / LANE_AT.len, LANE_AT.template / LANE_AT.len);
@@ -785,17 +792,16 @@ export class World {
 		// The MCP server's lead, from its port across the desk to the harness's left flank.
 		const lead0 = this.mcp.group.localToWorld(new THREE.Vector3(MCP_W / 2, 0.9, -0.22)).toArray() as V3;
 		const lead1 = harnessPort(-HW / 2, PORT_MCP_Z);
-		// Along the desk in front of the easel, past the corner of its brass foot, and back to the harness's flank.
-		const clear = P.EASEL.at.x + 2.35;
+		// Along the desk in front of the easel, into the gap between the easel's brass foot and the harness, and into its flank.
+		const clear = P.HARNESS.at.x - P.HARNESS.w / 2 - 0.3;
 		const lead = lying(curve([
 			...leaving(lead0, [1, 0, 0], 0.042),
 			[lead0[0] + 0.45, 0.28, lead0[2] - 0.05],
 			[lead0[0] + 0.9, 0.045, lead0[2] - 0.2],
 			[clear - 0.6, 0.045, 0.3],
-			[clear, 0.045, -0.4],
-			[clear + 0.15, 0.045, lead1[2] + 0.9],
-			[lead1[0] - 0.7, 0.06, lead1[2] + 0.05],
-			[lead1[0] - 0.32, 0.25, lead1[2]],
+			[clear, 0.045, -0.3],
+			[clear, 0.045, lead1[2] + 0.5],
+			[lead1[0] - 0.36, 0.2, lead1[2]],
 			...leaving(lead1, [-1, 0, 0], 0.042).reverse()
 		]), 0.042);
 		this.mcpLead = lead;
@@ -825,19 +831,19 @@ export class World {
 		tread.position.set(SLOT_X + beltLen / 2, BELT_Y + 0.0015, LINE_Z);
 		this.tokenizer.add(tread);
 
-		// Laptop to harness: a plain cable, the keystrokes are not special yet. Out of the laptop's side, along the desk,
-		// into the harness's right flank.
+		// Laptop to harness: a plain cable, the keystrokes are not special yet. Out of the laptop's side, back across the rug,
+		// and into the harness's front under its drawers.
 		const laptopTurn = this.laptop.group.rotation;
 		const plug = new THREE.Vector3(...LAPTOP_PORT).applyEuler(laptopTurn).add(this.laptop.group.position);
 		const away = new THREE.Vector3(1, 0, 0).applyEuler(laptopTurn);
-		const keys = harnessPort(HW / 2, PORT_KEYS_Z);
+		const keys = this.harness.group.localToWorld(new THREE.Vector3(PORT_KEYS_X, PORT_KEYS_Y, HD / 2)).toArray() as V3;
 		const cable = lying(curve([
 			...leaving([plug.x, plug.y, plug.z], [away.x, away.y, away.z], 0.04),
-			[plug.x + 0.5, 0.04, plug.z - 0.4],
-			[keys[0] + 0.5, 0.04, lerp(plug.z, keys[2], 0.5)],
-			[keys[0] + 0.55, 0.04, keys[2] + 0.5],
-			[keys[0] + 0.42, 0.22, keys[2] + 0.05],
-			...leaving(keys, [1, 0, 0], 0.04).reverse()
+			[plug.x + 0.45, 0.04, plug.z - 0.35],
+			[keys[0], 0.04, lerp(plug.z, keys[2], 0.5)],
+			[keys[0], 0.04, keys[2] + 0.55],
+			[keys[0], 0.15, keys[2] + 0.2],
+			...leaving(keys, [0, 0, 1], 0.04).reverse()
 		]), 0.04);
 		this.routeCable = cable;
 		const cm = new THREE.Mesh(new THREE.TubeGeometry(cable, 80, 0.04, 10), m.rubber);
@@ -1566,14 +1572,16 @@ export class World {
 	}
 
 	/** Bezier-with-lift flight from where a slip is to where it is going. */
-	private fly(strip: THREE.Mesh, from: THREE.Vector3, qFrom: THREE.Quaternion, to: THREE.Vector3, qTo: THREE.Quaternion, k: number, lift: number) {
+	private fly(strip: THREE.Mesh, from: THREE.Vector3, qFrom: THREE.Quaternion, to: THREE.Vector3, qTo: THREE.Quaternion, k: number, lift: number, out = 0) {
 		const e = inOut(k);
 		const ctrl = this.v3.copy(from).lerp(to, 0.5);
 		ctrl.y = Math.max(from.y, to.y) + lift;
 		const a = (1 - e) * (1 - e);
 		const b = 2 * (1 - e) * e;
 		const c = e * e;
-		strip.position.set(a * from.x + b * ctrl.x + c * to.x, a * from.y + b * ctrl.y + c * to.y, a * from.z + b * ctrl.z + c * to.z);
+		// Bowed out towards you by `out` on the way, none at either end, so it leaves and arrives as it would have.
+		const bow = out * Math.sin(Math.PI * e) ** 2;
+		strip.position.set(a * from.x + b * ctrl.x + c * to.x, a * from.y + b * ctrl.y + c * to.y, a * from.z + b * ctrl.z + c * to.z + bow);
 		strip.quaternion.slerpQuaternions(qFrom, qTo, e);
 		// A little flutter in the air, none at either end.
 		strip.rotateZ(Math.sin(k * Math.PI * 2) * 0.1 * Math.sin(k * Math.PI));
@@ -1714,7 +1722,8 @@ export class World {
 				m.position.copy(slot);
 				m.quaternion.copy(this.qB);
 			} else {
-				this.fly(m, inDrawer.clone(), this.qA, slot.clone(), this.qB, k, 0.9);
+				// Out in front of the harness's face as it goes across to the easel, clear of its window.
+				this.fly(m, inDrawer.clone(), this.qA, slot.clone(), this.qB, k, 0.9, 1.1);
 			}
 		});
 	}
