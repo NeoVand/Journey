@@ -113,7 +113,8 @@ export class Hall {
 			[face(pierced(...BANDS.field), 1.3, 1.3, BANDS.field[0]), field],
 			[face(band(...BANDS.top), 1.2, 0.3, BANDS.top[0]), frieze]
 		];
-		const frameGeo = extrude(archFrame(WIN.w, WIN.h, 0.11), 0.06, 0.015, 2, 10);
+		// Flat-edged: twenty of them, seen from across the court, where a bevel can't be seen but costs its weight.
+		const frameGeo = new THREE.ExtrudeGeometry(archFrame(WIN.w, WIN.h, 0.11), { depth: 0.06, bevelEnabled: false }).translate(0, 0, -0.03);
 		const pane = fitted(pointedArch(WIN.w, WIN.h));
 		const panes = new Batch();
 		for (const s of [-1, 1]) {
@@ -179,7 +180,7 @@ export class Hall {
 		// A rose window over the arch, cut right through, the tower seen through its clear glass.
 		end.holes.push(new THREE.Path().absarc(0, H.wall + 1.2, 0.9, 0, Math.PI * 2, true));
 		// Tiled like the long walls' field: the extruder lays its face's texture one unit to a repeat.
-		const endWall = extrude(end, 0.5, 0.06, 2, 24);
+		const endWall = extrude(end, 0.5, 0.06, 1, 14);
 		const uv = endWall.attributes.uv;
 		for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) / 1.3, uv.getY(i) / 1.3);
 		b.add(endWall, field, { p: [0, 0, H.to + 0.3] });
