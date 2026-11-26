@@ -935,3 +935,23 @@ function makePaints() {
 }
 /** The painted tile every palace room shares, made once. */
 export const painted = () => (paints ??= makePaints());
+
+const panels = new Map<string, THREE.Material>();
+/** A painted tile panel's material (see gulPanel), made once for each shape and each way round. */
+export function panelOf(aspect: number, seed = 5, flip = 1) {
+	const key = `${aspect.toFixed(3)}:${seed}:${flip}`;
+	let m = panels.get(key);
+	if (!m) panels.set(key, (m = glazeOf(gulPanel(aspect, seed, flip))));
+	return m;
+}
+
+let brick: THREE.MeshStandardMaterial | undefined;
+/** Brick, as the floor's, for a building's footing: lay its UVs one repeat to every 1.7 metres. */
+export const brickWork = () => (brick ??= new THREE.MeshStandardMaterial({ map: brickFloor(), roughness: 0.78 }));
+
+/** A faceted shaft: a cylinder with flat faces, each catching the light its own way, as a mirror-clad column's do. */
+export function facetedShaft(rTop: number, rBottom: number, h: number, sides = 8) {
+	const geo = new THREE.CylinderGeometry(rTop, rBottom, h, sides, 1, true).toNonIndexed();
+	geo.computeVertexNormals();
+	return geo;
+}

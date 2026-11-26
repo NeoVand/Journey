@@ -8,8 +8,8 @@ import { CROWN as HARNESS_CROWN, HD, HW } from '../props/harness';
  * Height is distance from you. Your desk is at the bottom and the front. From the back of the harness a white aqueduct
  * climbs away in one gentle S, carrying the token's two lanes side by side: the request going up on the left, in amber,
  * and the reply coming down on the right, in pearl. Relay masts stand beside it: the internet. At its high end, on a
- * broad platform carried by its tallest arches, stands the provider: a jade gatehouse straddling both lanes (the front
- * door), a rose-tiled hall behind it (the tokenizer beside the left lane, the detokenizer beside the right), and a round
+ * broad platform carried by its tallest arches, stands the provider: a jade palace gate straddling both lanes (the front
+ * door), a hall laid with carpets behind it (the tokenizer beside the left lane, the press beside the right), and a round
  * midnight-blue tower full of chips (the data center). There the lanes turn upwards and climb a shaft up the tower's
  * middle, seen through a tall glass slot in its front, and go into the model's brainstem from below: tokens in and
  * tokens out. The brain stands on the tower's roof in a ring of golden petals. The foundry, where the model was made,
@@ -107,7 +107,7 @@ export const MASTS = [
 
 /** The gatehouse: the provider's front door, jade enamel and brass, straddling both lanes. */
 export const GATEHOUSE = { at: v(0, PLATFORM_Y, back(1.6)), w: 13.6, h: 5.6, d: 4.0, door: { w: 5.2, h: 4.8 } };
-/** The hall behind it: rose-tiled walls under a glass vault, the tokenizer down its left side, the detokenizer down its right. */
+/** The hall behind it: painted tile walls, carpets on its floor, a mirror wall at its end, the tokenizer down its left side. */
 export const HALL = { from: back(3.7), to: back(END), w: 15, wall: 4.2, vault: 3.6 };
 export const TOKENIZER = { x: -3.9, from: back(5.4), to: back(END - 1.8) };
 export const DETOKENIZER = { x: 3.9, from: back(5.4), to: back(END - 1.8) };
