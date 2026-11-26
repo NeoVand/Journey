@@ -27,6 +27,7 @@ import { CABINET_ROOF, MemoryStage, MEMORY_AT, MEMORY_SHOTS, MEMORY_SKY } from '
 import { PlansStage, PLANS_AT, PLANS_SHOTS, PLANS_SKY, SCREEN_ROOF } from './tracks/plans';
 import { hitAround, hitBox } from './poke';
 import { MEMORIES } from './chapters/memory';
+import { CONTROL_TIPS } from './chapters/lost';
 import { Visits } from './visit';
 import { MiniMap } from './minimap';
 import { Voyage, type Flight } from './voyage';
@@ -968,6 +969,8 @@ export class World {
 			sound: 'drawer',
 			tip: (i) => (i === 6 ? 'Model parameters: locked' : `Open: ${MEMORIES[i].name}`)
 		});
+		// Your four controls, where the answer gets lost: each does its one thing when pressed.
+		this.poker.add({ targets: this.back.lost.controls, when: (T) => T > 28.04 && T < 28.96, press: (i) => this.back.lost.press(i), sound: 'drawer', tip: (i) => CONTROL_TIPS[i] });
 		// And each inside trip's way in, while the story is beside it: the glass, the memory cabinet, the laptop's screen.
 		const near = (id: TrackId) => (T: number) => T >= (TRACK_AT[id].nearFrom ?? -Infinity) && T < TRACK_AT[id].nearBefore;
 		const ways: [TrackId, THREE.Object3D | undefined][] = [
