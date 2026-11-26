@@ -82,7 +82,7 @@ export class Gatehouse {
 		for (const sz of [-1, 1]) b.add(rbox(W + 0.5, 0.26, 0.4, 0.06, 1), c.brass, { p: [0, WALL + 0.13, bz + sz * (depth / 2 + 0.05)] });
 		for (const sx of [-1, 1]) b.add(rbox(0.4, 0.26, depth + 0.5, 0.06, 1), c.brass, { p: [sx * (W / 2 + 0.05), WALL + 0.13, bz] });
 		b.add(rbox(3.2, 0.2, 1.3, 0.05, 1), c.brass, { p: [0, WALL + 0.1, bz - 0.1] });
-		glass.add(fitted(rect(-1.45, -0.5, 1.45, 0.5)), stainedGlass(orosi(2.9, 0.15), true), { p: [0, WALL + 0.205, bz - 0.1], r: [-Math.PI / 2, 0, 0] });
+		glass.add(fitted(rect(-1.45, -0.5, 1.45, 0.5)), stainedGlass(orosi(2.9, 0.15), true), { p: [0, WALL + 0.215, bz - 0.1], r: [-Math.PI / 2, 0, 0] });
 
 		// Behind, where the hall sees it, the door keeps its bank-door brass: a thick band round it, studded with rivets.
 		const band = new THREE.Shape([
@@ -105,7 +105,9 @@ export class Gatehouse {
 
 		this.doorway(b, glass);
 		this.talar(b);
-		for (const s of [-1, 1]) this.badgir(b, glass, s);
+		// One glass for both windcatchers' windows.
+		const towerGlass = stainedGlass(orosi(0.9 / 1.9, 0.5), true);
+		for (const s of [-1, 1]) this.badgir(b, glass, s, towerGlass);
 
 		// The rail across the talar that carries the tumblers, its ends seated in the columns.
 		const railY = TUMBLER.y + TUMBLER.r + 0.18;
@@ -182,7 +184,7 @@ export class Gatehouse {
 		// Over it, a sash window of coloured glass in a walnut frame, the lintel under it.
 		const sash = { w: DOOR.w - 0.4, h: 0.85, y: DOOR.h + 0.42 };
 		b.add(rbox(sash.w + 0.28, sash.h + 0.28, 0.12, 0.03, 1), c.walnut, { p: [0, sash.y + sash.h / 2, z + 0.02] });
-		glass.add(fitted(rect(-sash.w / 2, 0, sash.w / 2, sash.h)), stainedGlass(orosi(sash.w / sash.h, 0.42 / (sash.w / sash.h)), true), { p: [0, sash.y, z + 0.085] });
+		glass.add(fitted(rect(-sash.w / 2, 0, sash.w / 2, sash.h)), stainedGlass(orosi(sash.w / sash.h, 0.42 / (sash.w / sash.h)), true), { p: [0, sash.y, z + 0.095] });
 		for (const s of [-1, 1]) b.add(rbox(0.05, sash.h, 0.06, 0.01, 1), c.walnut, { p: [(s * sash.w) / 6, sash.y + sash.h / 2, z + 0.1] });
 		// Either side, a panel of painted tile in a brass frame: a rose bush and its nightingale, singing towards the door.
 		const pw = W / 2 - 0.5 - (DOOR.w / 2 + 0.4);
@@ -261,7 +263,7 @@ export class Gatehouse {
 	 * A windcatcher at a front corner: a square jade tower to the roof, a sash window in its face, and over the roof its
 	 * cream head, open on every side in tall vents between fins, under a flat cap with a brass edge.
 	 */
-	private badgir(b: Batch, glass: Batch, s: number) {
+	private badgir(b: Batch, glass: Batch, s: number, towerGlass: THREE.Material) {
 		const c = palette();
 		const { half, h, vents } = BADGIR;
 		const x = s * BADGIR.x;
@@ -274,7 +276,7 @@ export class Gatehouse {
 		const face = z + half;
 		const win = { w: 0.9, h: 1.9, y: 1.3 };
 		b.add(rbox(win.w + 0.22, win.h + 0.22, 0.1, 0.03, 1), c.walnut, { p: [x, win.y + win.h / 2, face + 0.01] });
-		glass.add(fitted(rect(-win.w / 2, 0, win.w / 2, win.h)), stainedGlass(orosi(win.w / win.h, 0.5), true), { p: [x, win.y, face + 0.065] });
+		glass.add(fitted(rect(-win.w / 2, 0, win.w / 2, win.h)), towerGlass, { p: [x, win.y, face + 0.075] });
 		const ph = 1.35;
 		b.add(rbox(win.w + 0.22, ph + 0.14, 0.08, 0.03, 1), c.brass, { p: [x, win.y + win.h + 0.45 + ph / 2, face + 0.01] });
 		b.add(fitted(rect(-win.w / 2 - 0.04, 0, win.w / 2 + 0.04, ph)), panelOf((win.w + 0.08) / ph, s < 0 ? 12 : 15, -s), { p: [x, win.y + win.h + 0.45, face + 0.055] });

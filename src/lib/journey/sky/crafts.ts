@@ -249,8 +249,9 @@ export const RUGS: Record<'red' | 'blue', RugDesign> = {
  * quarter medallions in its corners, and boteh between.
  */
 export function rugFace(w: number, l: number, d: RugDesign = RUGS.red, seed = 7) {
-	// Never taller than a phone will take: a long runner is drawn narrower.
-	const W = Math.min(768, Math.round((2048 * w) / l));
+	// Drawn at about a hundred pixels to the metre, and never taller than 1536: a phone has only so much room for
+	// textures, and a long runner is drawn narrower.
+	const W = Math.min(512, Math.round((1536 * w) / l));
 	const H = Math.round((W * l) / w);
 	const { c, g } = canvas(W, H);
 	const u = W / w;
@@ -729,6 +730,12 @@ export function gulPanel(aspect = 0.6, seed = 5, flip = 1) {
 	const W = 384;
 	const H = Math.round(W / aspect);
 	const { c, g } = canvas(W, H);
+	const small = () => {
+		// Drawn large, kept small: two thirds the size, to spare a phone's memory.
+		const out = canvas(256, Math.round(256 / aspect));
+		out.g.drawImage(c, 0, 0, out.c.width, out.c.height);
+		return texture(out.c, false);
+	};
 	const rnd = seeded(seed);
 	g.fillStyle = PAINT.turquoise;
 	g.fillRect(0, 0, W, H);
@@ -791,7 +798,7 @@ export function gulPanel(aspect = 0.6, seed = 5, flip = 1) {
 	// The nightingale, on the right-hand branch.
 	bird(g, mx + W * 0.07, H * 0.47, W * 0.32);
 	g.restore();
-	return texture(c, false);
+	return small();
 }
 
 /** A frieze of painted tile: a scroll of roses along a cream band, a nightingale in every repeat, cobalt rules. */
@@ -902,7 +909,7 @@ export function tulipTiles() {
 
 /** A floor of square bricks, as a Persian house's courtyard is paved: warm terracotta in pale joints, each a little its own shade. */
 export function brickFloor() {
-	const S = 512;
+	const S = 256;
 	const { c, g } = canvas(S, S);
 	const rnd = seeded(21);
 	g.fillStyle = '#ead9b8';
@@ -913,7 +920,7 @@ export function brickFloor() {
 		for (let j = 0; j < n; j++) {
 			const k = Math.floor(rnd() * 26) - 13;
 			g.fillStyle = `rgb(${206 + k},${142 + k},${100 + k})`;
-			g.fillRect(i * b + 4, j * b + 4, b - 8, b - 8);
+			g.fillRect(i * b + 2, j * b + 2, b - 4, b - 4);
 		}
 	speckle(g, S, S, rnd);
 	return texture(c);

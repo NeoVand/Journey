@@ -194,3 +194,25 @@ door-1's hood, sandbox-2, ice-2). The rule kept: tile and jewel enamel on the pr
   channel from its flank over the bars with a spout over each bar but the first. Ice drops into a bar while its green
   grows; switch the cache off and its door swings shut. A block by the door is half melted.
 - Phone geometry 98.2 MB after trimming small detail (rivets, niches, rounded boxes at one segment).
+
+## Carpets and mirror work (2026-11-26, branch `carpets`)
+
+The user found the Persian pieces starting to look Islamic and religious rather than Persian, and asked for carpets and
+mirror work instead. Concepts in concepts/carpets-r1 (door, hall, desk). Rule from here: Persian life, not faith:
+carpets, aineh-kari, palace rooms, Qajar painted tile of flowers and birds, gardens; no domes, niche hoods, pishtaqs or
+star tile on the buildings.
+
+- sky/crafts.ts: hand-knotted rugs drawn to scale (medallion, quarter medallions, boteh, vine border; runners get a file
+  of small medallions), fringes, aineh-kari mirror work (a normal map tilts every piece; the red of its rough-and-metal
+  map gives each piece its own moment to glint, driven by `glint(time)`), painted panels and friezes of roses and
+  nightingales, flower and tulip wall tile, a brick floor, a faceted mirror shaft.
+- Your desk: a rug under the laptop and the harness (P.RUG), a glass of tea by your left hand. Cables crossing it lie on
+  it and drape over its edge (P.deskFloor).
+- The hall: flower tile and a rose frieze on the long walls, walnut sash windows, a brick floor laid with a medallion
+  carpet and two runners, and in place of the domed end wall and its rose window, a wall of mirror work with a gold
+  lintel and a wide sash window.
+- The front door: a palace gate. A talar on two mirror-clad columns with a coffered mirror ceiling, the tumblers on a
+  rail between the columns, the door's walnut leaves open under a sash window, painted panels over a brick footing,
+  windcatchers at the corners, a jade roof terrace with a skylight. No iwan, no domes, no cupola.
+- The ice house wears the rose frieze instead of star tile.
+- Phone: textures 274 MB of 280, geometry 97.4 MB of 100. Rug faces are drawn at most 512 wide and 1536 tall.
