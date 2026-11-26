@@ -19,6 +19,7 @@ import { callPath, reducerBehind, RETURN_REDUCER, returnPath } from '../cables';
 import { Desk } from '../sky/desk';
 import * as P from '../sky/masterplan';
 import { hazed, palette } from '../sky/palette';
+import { latticeBand, latticeMaterial } from '../sky/persian';
 import { bends } from '../kit/geometry';
 import type { Shot } from '../rig';
 
@@ -738,17 +739,42 @@ export class Back {
 		shade.position.set(WX, WY - 8, 0.4);
 		g.add(shade);
 
-		// Glass walls on steel posts.
+		// Glass walls held as an orosi holds its glass: walnut posts and rails, brass finials on the posts, and a band of
+		// lattice along the top of the back and sides and another along their feet, coloured glass in its stars (see
+		// sky/persian.ts). The panes between the bands are clear, so it still reads at a glance as a box of glass, and the
+		// front is left open, so nothing comes between you and what runs inside.
 		const W = 26;
 		const D = 11;
 		const H = 8;
 		const x0 = WX - W / 2;
 		const x1 = WX + W / 2;
+		const BAND = { top: 1.2, foot: 0.8 };
+		const pc = palette();
 		const f = new Batch();
-		for (const x of [x0, x1]) for (const z of [-D / 2, D / 2]) f.add(rbox(0.16, H, 0.16, 0.05, 2), m.steel, { p: [x, WY + H / 2, z] });
-		for (const y of [0.08, H]) {
-			for (const z of [-D / 2, D / 2]) f.add(rbox(W, 0.14, 0.14, 0.04, 2), m.steel, { p: [WX, WY + y, z] });
-			for (const x of [x0, x1]) f.add(rbox(0.14, 0.14, D, 0.04, 2), m.steel, { p: [x, WY + y, 0] });
+		const railTop = H - 0.05;
+		const railFoot = 0.13;
+		for (const x of [x0, x1])
+			for (const z of [-D / 2, D / 2]) {
+				f.add(rbox(0.3, H + 0.07, 0.3, 0.06, 2), pc.walnut, { p: [x, WY + (H + 0.07) / 2, z] });
+				f.add(new THREE.CylinderGeometry(0.17, 0.22, 0.12, 16), pc.brass, { p: [x, WY + H + 0.13, z] });
+				f.add(new THREE.SphereGeometry(0.21, 16, 12), pc.brass, { p: [x, WY + H + 0.38, z] });
+			}
+		for (const y of [railFoot, railTop]) {
+			for (const z of [-D / 2, D / 2]) f.add(rbox(W, 0.24, 0.24, 0.05, 2), pc.walnut, { p: [WX, WY + y, z] });
+			for (const x of [x0, x1]) f.add(rbox(0.24, 0.24, D, 0.05, 2), pc.walnut, { p: [x, WY + y, 0] });
+		}
+		// The bands, and the slimmer rails along their inner edges, on the back and the sides.
+		const lattice = latticeMaterial();
+		const bands: [number, number][] = [
+			[railTop - 0.12 - BAND.top / 2, BAND.top],
+			[railFoot + 0.12 + BAND.foot / 2, BAND.foot]
+		];
+		for (const [y, h] of bands) {
+			f.add(latticeBand(W - 0.3, h), lattice, { p: [WX, WY + y, -D / 2] });
+			for (const x of [x0, x1]) f.add(latticeBand(D - 0.3, h), lattice, { p: [x, WY + y, 0], r: [0, Math.PI / 2, 0] });
+			const edge = y > H / 2 ? y - h / 2 : y + h / 2;
+			f.add(rbox(W, 0.12, 0.14, 0.03, 2), pc.walnut, { p: [WX, WY + edge, -D / 2] });
+			for (const x of [x0, x1]) f.add(rbox(0.14, 0.12, D, 0.03, 2), pc.walnut, { p: [x, WY + edge, 0] });
 		}
 		this.frame = f.build('sandbox-frame');
 		g.add(this.frame);
