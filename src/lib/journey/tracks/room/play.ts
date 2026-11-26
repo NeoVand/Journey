@@ -5,8 +5,8 @@ import { clamp, inCubic, inOut, lerp, outCubic } from '../../kit/math';
 import { font, roundRectPath, Surface } from '../../kit/print';
 import { Cart } from './acts';
 import type { Gate, Screen } from './checks';
-import { BENCH, BENCHES, CAPSULE, CHUTE, LIP, PAD, RAIL_WEST_Z, SCREEN, SIDE_X, SKILL_SCALE, skillAt, SUB, TRAY, TRAY_Z, TUBE } from './layout';
-import type { Capsule } from './loop';
+import { BENCH, BENCHES, CAPSULE, CHUTE, GATE_PAD, LIP, RAIL_WEST_Z, SCREEN, SIDE_X, SKILL_SCALE, skillAt, SUB, TRAY, TRAY_Z, TUBE } from './layout';
+import { REST_YAW, type Capsule } from './loop';
 import type { SubRoom } from './subagent';
 import { TILE_COLOR, type TileKind } from './tiles';
 import { trayAt } from './tray';
@@ -14,12 +14,13 @@ import {
 	cartAt,
 	CARDS,
 	D,
-	LIP_X0,
 	NESTS,
 	PITCH,
 	PROMPT_LIP_X,
 	RAIL_LEN,
 	RAIL_PATH,
+	REFUSAL_LIP_X,
+	REPLY_LIP_X,
 	REREAD,
 	RIDES,
 	screenAt,
@@ -39,7 +40,7 @@ import {
  * state from one frame to the next, so the trip plays the same whichever way the reader goes, and from wherever.
  *
  * The capsule takes a copy up; the reply's tiles come down the chute and along the lip; each call is printed on a card
- * that boards the cart in the gate; the gate checks it (your hook, your rules, and you); the cart posts it into a
+ * behind the gate, and boards the cart in it; the gate checks it (your hook, your rules, and you); the cart posts it into a
  * bench, which sends it out along its wire to the real thing and back; and the cart tips the results into the tray.
  */
 
@@ -72,8 +73,13 @@ const CHUTE_X = (CHUTE.x0 + CHUTE.x1) / 2;
 const CHUTE_Z = (CHUTE.z0 + CHUTE.z1) / 2;
 const SKY = 10;
 const FOOT_Y = CHUTE.foot + TILE.h / 2;
-/** Where a call's card pops up on the pad, beside the way the tiles go, behind the gate. */
-const PRINT = new THREE.Vector3(-4.85, PAD.y, PAD.z0 + 0.15);
+/** How high a tile's middle rides over the slide's path at u along it: on its floor, rising just clear of it toward the
+ * bottom, where the slide bends round onto the pad. */
+const onSlide = (u: number) => 0.03 + TILE.h / 2 + 0.02 * clamp((u - 0.3) / 0.5);
+/** Where a call's card pops up, on the pad behind the gate. */
+const PRINT = new THREE.Vector3(-4.85, GATE_PAD.y, GATE_PAD.z0 + 0.15);
+/** Where a refused card lands, thrown back out of the gate onto its pad: a tile's middle, lying on it. */
+const THROWN = new THREE.Vector3(GATE_PAD.x0 + 0.5, GATE_PAD.y + 0.01 + TILE.h / 2, GATE_PAD.z0 + 0.29);
 const CARD = { w: 0.3, h: 0.4, d: 0.04 };
 /** Your prompt's way: out of your screen, over your hooks' cable, round the front of the gate, and onto the lip. */
 const PROMPT_WAY = new THREE.CatmullRomCurve3([
@@ -308,7 +314,7 @@ export class Play {
 			const slide = this.parts.chuteSlide;
 			if (k < 0.15) {
 				slide.getPointAt(0, this.a);
-				this.a.y += 0.03 + TILE.h / 2;
+				this.a.y += onSlide(0);
 				this.b.set(CHUTE_X, FOOT_Y, CHUTE_Z);
 				this.v.lerpVectors(this.b, this.a, inOut(k / 0.15));
 				this.tile(this.v, 0, f.kind);
@@ -319,31 +325,32 @@ export class Play {
 			slide.getPointAt(u, this.v);
 			slide.getTangentAt(u, tmpTan);
 			this.a.copy(UP).addScaledVector(tmpTan, -UP.dot(tmpTan)).normalize();
-			this.v.addScaledVector(this.a, 0.03 + TILE.h / 2);
+			this.v.addScaledVector(this.a, onSlide(u));
 			this.m4.lookAt(tmpTan, this.c.set(0, 0, 0), this.a);
 			this.q2.setFromRotationMatrix(this.m4);
 			this.tile(this.v, 0, f.kind, 1, this.q2);
 			return;
 		}
 		if (t < f.lip) {
-			this.stepOn((t - f.pad) / (f.lip - f.pad), f.kind);
+			this.parts.chuteSlide.getPointAt(1, this.a);
+			this.a.y += onSlide(1);
+			this.stepOn((t - f.pad) / (f.lip - f.pad), f.kind, this.a, REPLY_LIP_X);
 			return;
 		}
 		this.alongLip(t, f.lip, f.born - D.swing * p, f.born, f.slot, f.kind);
 	}
 
-	/** Off the slide's end, which points along the lip, and over onto the lip. */
-	private stepOn(k: number, kind: TileKind | THREE.Color) {
-		this.parts.chuteSlide.getPointAt(1, this.a);
-		this.a.y += 0.03 + TILE.h / 2;
-		this.b.set(LIP_X0 - 0.15, LIP_Y, this.a.z + 0.01);
-		this.c.set(LIP_X0, LIP_Y, LIP_Z);
+	/** Off a pad and over onto the lip at x, heading along it the way the pad's end points: in from the right end, out from the left. */
+	private stepOn(k: number, kind: TileKind | THREE.Color, from: THREE.Vector3, x: number) {
+		this.a.copy(from);
+		this.b.set(x + Math.sign(from.x - x) * 0.15, LIP_Y, from.z + 0.01);
+		this.c.set(x, LIP_Y, LIP_Z);
 		bezier(this.a, this.b, this.c, inOut(k), this.v);
 		this.tile(this.v, Math.PI / 2, kind);
 	}
 
 	/** Along the lip to the slot's x, maybe waiting there, then the swing in. */
-	private alongLip(t: number, lip: number, swing: number, born: number, slot: number, kind: TileKind, wait = swing, from = LIP_X0) {
+	private alongLip(t: number, lip: number, swing: number, born: number, slot: number, kind: TileKind, wait = swing, from = REPLY_LIP_X) {
 		const x = slotX(slot);
 		if (t < swing) {
 			const k = clamp((t - lip) / (wait - lip));
@@ -362,10 +369,10 @@ export class Play {
 				// Out of the glass end first, and round in front of the gate, like a sled.
 				PROMPT_WAY.getPointAt(inOut(k), this.v);
 				this.tile(this.v, Math.PI / 2, 'prompt', Math.min(1, k * 5));
-			} else this.stepOn(k, 'refusal');
+			} else this.stepOn(k, 'refusal', THROWN, REFUSAL_LIP_X);
 			return;
 		}
-		this.alongLip(t, r.lip, r.swing, r.born, r.slot, r.kind, r.wait, r.kind === 'prompt' ? PROMPT_LIP_X : LIP_X0);
+		this.alongLip(t, r.lip, r.swing, r.born, r.slot, r.kind, r.wait, r.kind === 'prompt' ? PROMPT_LIP_X : REFUSAL_LIP_X);
 	}
 
 	/* ---------- the calls' cards ---------- */
@@ -401,7 +408,7 @@ export class Play {
 		card.tint(0);
 		const rise = k.printed + D.print * p;
 		const hopFrom = k.aboard - D.hop * p;
-		// Up out of the pad, as the call goes by on its way to the tray.
+		// Up out of the pad behind the gate, as the call comes down the chute.
 		if (t < rise) {
 			g.position.set(PRINT.x, PRINT.y + CARD.h / 2 - (1 - outCubic((t - k.printed) / (rise - k.printed))) * CARD.h, PRINT.z);
 			return;
@@ -426,9 +433,7 @@ export class Play {
 			}
 			const f = clamp((t - k.out) / (D.deny * p));
 			this.deckPlace(k, k.out, this.a);
-			this.parts.chuteSlide.getPointAt(1, this.b);
-			this.b.y += 0.03 + TILE.h / 2;
-			hop(this.a, this.b, inOut(f), 0.7, g.position);
+			hop(this.a, THROWN, inOut(f), 0.7, g.position);
 			g.rotation.set(-Math.PI * inOut(f), Math.PI / 2 * inOut(f), 0);
 			card.tint(1, inOut(f));
 			return;
@@ -561,7 +566,7 @@ export class Play {
 		for (const w of this.parts.cart.wheels) w.rotation.y = -s / 0.085;
 	}
 
-	/* ---------- the capsule: a copy out to the press, back, and up; down again, empty ---------- */
+	/* ---------- the capsule: a copy out to the reader, back, and up; down again, empty ---------- */
 
 	private poseCapsule(t: number) {
 		const cap = this.parts.capsule;
@@ -572,7 +577,7 @@ export class Play {
 		const send = [...TURNS].reverse().find((x) => t >= x.send.out)?.send;
 		const rest = () => {
 			g.position.set(TUBE.x, CAPSULE.restY, TUBE.z);
-			g.rotation.set(0, 0, 0);
+			g.rotation.set(0, REST_YAW, 0);
 		};
 		if (!send || t >= send.rest) {
 			rest();
@@ -599,7 +604,7 @@ export class Play {
 			const k = (t - send.home) / (send.gone - send.home);
 			const stand = clamp(k / 0.3);
 			g.position.set(TUBE.x, CAPSULE.restY + Math.max(0, CAPSULE.len / 2 - CAPSULE.r) * inOut(stand) + inCubic(clamp((k - 0.3) / 0.7)) * 14, TUBE.z);
-			g.rotation.set(-(Math.PI / 2) * inOut(stand), 0, 0);
+			g.rotation.set(-(Math.PI / 2) * inOut(stand), REST_YAW, 0);
 			cap.load(tray, 1);
 			if (g.position.y > 12) g.scale.setScalar(clamp((15 - g.position.y) / 3));
 		} else if (t < send.down) {
@@ -609,7 +614,7 @@ export class Play {
 			const k = (t - send.down) / (send.rest - send.down);
 			const fall = clamp(k / 0.8);
 			g.position.set(TUBE.x, CAPSULE.restY + Math.max(0, CAPSULE.len / 2 - CAPSULE.r) + (1 - outCubic(fall)) * 13, TUBE.z);
-			g.rotation.set(-Math.PI / 2, 0, 0);
+			g.rotation.set(-Math.PI / 2, REST_YAW, 0);
 			if (k > 0.8) {
 				const lie = inOut((k - 0.8) / 0.2);
 				g.position.y = CAPSULE.restY + Math.max(0, CAPSULE.len / 2 - CAPSULE.r) * (1 - lie);

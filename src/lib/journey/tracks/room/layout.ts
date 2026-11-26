@@ -33,10 +33,12 @@ export const TRAY = { x0: -4.6, x1: 4.2, z0: -4.0, z1: -2.8, base: 0.36 };
 export const TRAY_Z = (TRAY.z0 + TRAY.z1) / 2;
 /** The press's housing behind the end stop. */
 export const HOUSING = { x0: TRAY.x1 + 0.08, x1: TRAY.x1 + 0.82, h: 0.66 };
-/** The lip, along the tray's front: where new tiles arrive from the left. */
-export const LIP = { z0: -2.72, z1: -2.5, y: 0.2 };
-/** The pad at the lip's start, where the reply comes down. Its top is at PAD.y. */
-export const PAD = { x0: -5.95, x1: -4.6, z0: -3.3, z1: -2.5, y: 0.14 };
+/** The pad behind the gate, at the lip's left end: each call's card pops up out of it, and a refused one lands on it. */
+export const GATE_PAD = { x0: -5.95, x1: -4.6, z0: -3.3, z1: -2.5, y: 0.14 };
+/** The pad at the lip's right end, past the press, where the chute's slide lets the reply down. Its top is at PAD.y. */
+export const PAD = { x0: 5.1, x1: 6.45, z0: -3.3, z1: -2.5, y: 0.14 };
+/** The lip, along the tray's front from pad to pad: the reply's tiles ride it from the right, your prompt from the left. */
+export const LIP = { x0: GATE_PAD.x0, x1: PAD.x1, z0: -2.72, z1: -2.5, y: 0.2 };
 /** The skill shelf, on the back wall right of the drawers: a name and a line each, until one is needed. */
 export const SHELF = { x0: 0.75, x1: 4.28, y: 2.0 };
 export const SKILLS = ['debugging', 'reviewing', 'migrating', 'testing', 'releasing'];
@@ -45,16 +47,18 @@ export const SKILL_SCALE = 1.4;
 /** Where a skill's card stands on the shelf, by its place in the row. */
 export const skillAt = (i: number) => new THREE.Vector3(SHELF.x0 + 0.32 * SKILL_SCALE + i * 0.47 * SKILL_SCALE, SHELF.y + 0.04, BACK_Z + 0.24);
 
-/* ---------- the loop: up in the back-right corner, down in the back-left ---------- */
+/* ---------- the loop: up in the back-left corner, down in the back-right, as the lanes outside run ---------- */
 
-/** The send tube: a pneumatic tube, floor to above the walls, standing in the back-right corner. */
-export const TUBE = { x: 6.4, z: -5.3, r: 0.6, top: 7.0, door: 0.95 };
-/** Where the capsule docks against the press's housing to be loaded with a copy of the tray. */
-export const DOCK = new THREE.Vector3(HOUSING.x1 + 0.42, 0.42, TRAY_Z);
+/** The send tube: a pneumatic tube, floor to above the walls, standing in the back-left corner. Its door faces the tray. */
+export const TUBE = { x: -6.4, z: -5.3, r: 0.6, top: 7.0, door: 0.95 };
 /** The capsule: a glass pill that carries the copy; it rests in the tube's foot. */
 export const CAPSULE = { len: 0.84, r: 0.2, restY: 0.42 };
-/** The reply chute, in the back-left corner: a glass shaft down the corner, and a slide from its foot to the pad. */
-export const CHUTE = { x0: -7.2, x1: -6.45, z0: -6.0, z1: -4.95, foot: 0.95, top: 6.7 };
+/** The reader: a block behind the tray's start, under the drawers, that the capsule docks against to be loaded. */
+export const READER = { x0: TRAY.x0 + 0.05, x1: TRAY.x0 + 0.75, z0: TRAY.z0 - 0.42, h: 0.56 };
+/** Where the capsule docks, its nose in the reader's socket, facing the tray. */
+export const DOCK = new THREE.Vector3((READER.x0 + READER.x1) / 2, CAPSULE.restY, READER.z0 - CAPSULE.len / 2 - 0.01);
+/** The reply chute, in the back-right corner: a glass shaft down the corner, and a slide from its foot to the pad. */
+export const CHUTE = { x0: 6.45, x1: 7.2, z0: -6.0, z1: -4.95, foot: 0.95, top: 6.7 };
 
 /* ---------- checks: the left, by you ---------- */
 

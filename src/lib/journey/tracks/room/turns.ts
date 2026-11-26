@@ -1,4 +1,4 @@
-import { BENCH, BENCHES, GATE, LAYERS, PAD, RAIL, railPath, TRAY } from './layout';
+import { BENCH, BENCHES, GATE, GATE_PAD, LAYERS, PAD, RAIL, railPath, TRAY } from './layout';
 import { KEPT, SLOTS, STANDING, type TileKind } from './tiles';
 
 /*
@@ -19,8 +19,10 @@ export const PITCH = (TRAY.x1 - 0.06 - SLOT_X0) / SLOTS;
 export const slotX = (slot: number) => SLOT_X0 + (slot + 0.5) * PITCH;
 /** A tile: a little narrower than its slot, standing as tall as the tray's rims, and as deep as the tray inside them. */
 export const TILE = { w: PITCH * 0.82, h: 0.26, d: 0.56 };
-/** Where tiles from the left get on the lip, just past the pad: from here they ride to the open end. */
-export const LIP_X0 = PAD.x1 - 0.25;
+/** Where the reply's tiles get on the lip, off the pad at its right end: from here they ride left to the open end. */
+export const REPLY_LIP_X = PAD.x0 + 0.25;
+/** Where a refused card gets on the lip, off the pad behind the gate: from here it rides right to the open end. */
+export const REFUSAL_LIP_X = GATE_PAD.x1 - 0.25;
 /** Your prompt comes round the front of the gate and gets on the lip past it, clear of the gate's legs. */
 export const PROMPT_LIP_X = GATE.x1 + 0.5;
 
@@ -52,9 +54,9 @@ export type Where = 0 | 1 | 2 | 'skill' | 'sub';
 export type Call = { tool: string; arg: string; where: Where; verdict: Verdict; results: number; span?: number; said?: string };
 type Spec = { at?: number; pace: number; words: string[]; calls: Call[]; stay?: boolean };
 
-/** A tile of the reply: down the chute's shaft, out of its foot and down the slide to the pad, then along the lip. */
+/** A tile of the reply: down the chute's shaft, out of its foot and down the slide to the pad, then left along the lip. */
 export type Fall = { kind: 'text' | 'call'; slot: number; fall: number; foot: number; pad: number; lip: number; born: number; pace: number };
-/** A tile that comes along the lip from the left on its own: your prompt from your screen, or the gate's "no". */
+/** A tile that comes along the lip from the left on its own: your prompt from your screen, or the gate's "no" off its pad. */
 export type Ride = { kind: 'prompt' | 'refusal'; slot: number; from: number; lip: number; wait: number; swing: number; born: number; pace: number };
 /** A result: out of a bench's slot, down from the shelf or out of the subagent; onto the cart; tipped in. */
 export type Result = { slot: number; span: number; ready: number; aboard: number; tip: number; born: number; place: number; pace: number };
@@ -63,7 +65,7 @@ export type CardRun = {
 	turn: number;
 	j: number;
 	n: number;
-	/** Pops up out of the pad as the call goes by, and hops through the gate's back onto the cart. */
+	/** Pops up out of the pad behind the gate as the call comes down, and hops through the gate's back onto the cart. */
 	printed: number;
 	aboard: number;
 	/** The hook runs, then the rules: a ring and your answer if it has to ask you. */
@@ -73,7 +75,7 @@ export type CardRun = {
 	answer?: number;
 	verdict: number;
 	settled: number;
-	/** Refused: thrown back out onto the pad, where it turns into the "no". */
+	/** Refused: thrown back out onto the pad behind the gate, where it turns into the "no". */
 	out?: number;
 	refusal?: Ride;
 	/** Where the cart stops for it, and when it goes in: into a bench's slot, up to the shelf, or through the door. */
@@ -148,7 +150,7 @@ let used = STANDING;
 let cartS = 0;
 let cartFree = 0;
 
-const ride = (dist: number, pace: number) => dist / Math.min(SPEED.lip / pace, SPEED.lipMax);
+const ride = (dist: number, pace: number) => Math.abs(dist) / Math.min(SPEED.lip / pace, SPEED.lipMax);
 function land(at: number, kind: TileKind, span = 1) {
 	const slot = used;
 	used += span;
@@ -209,14 +211,14 @@ function turn(spec: Spec) {
 	// The copy: out of the tube's foot to the press, loaded with the tray as it stands, back, and up.
 	const send: Send = { pace: p, copy: used, out: t, dock: (t += D.out * p), loaded: (t += D.load * p), home: (t += D.back * p), gone: (t += D.up * p), down: 0, rest: 0 };
 	t += D.think * p;
-	// The reply: words first, then calls, one tile each, down the chute and along the lip to the open end.
+	// The reply: words first, then calls, one tile each, down the chute and left along the lip to the open end.
 	const kinds = [...spec.words.map(() => 'text' as const), ...spec.calls.map(() => 'call' as const)];
 	const falls: Fall[] = kinds.map((kind, i) => {
 		const fall = t + i * D.gap * p;
 		const foot = fall + D.fall * p;
 		const pad = foot + D.slide * p;
 		const lip = pad + D.step * p;
-		const born = lip + ride(slotX(used) - LIP_X0, p) + D.swing * p;
+		const born = lip + ride(REPLY_LIP_X - slotX(used), p) + D.swing * p;
 		return { kind, slot: land(born, kind), fall, foot, pad, lip, born, pace: p };
 	});
 	// The empty capsule comes back down as the reply begins: the model kept nothing.
@@ -224,7 +226,7 @@ function turn(spec: Spec) {
 	send.rest = send.down + D.drop * p;
 	spec.words.forEach((line, i) => LOG_.push({ at: falls[i].pad, line }));
 
-	// Each call becomes a card on the pad, and hops through the gate's back onto the cart.
+	// Each call becomes a card, printed behind the gate as it comes down, and hops through the gate's back onto the cart.
 	const calls = falls.filter((f) => f.kind === 'call');
 	const cards: CardRun[] = [];
 	let boarded = cartFree;
@@ -336,7 +338,7 @@ function turn(spec: Spec) {
 		const from = k.out! + D.deny * p;
 		const lip = from + D.step * p;
 		const slot = used;
-		const wait = lip + ride(slotX(slot) - LIP_X0, p);
+		const wait = lip + ride(slotX(slot) - REFUSAL_LIP_X, p);
 		const swing = Math.max(wait, end + 0.004);
 		const born = swing + D.swing * p;
 		land(born, 'refusal');
@@ -356,8 +358,8 @@ prompt(PROMPT_AT, 'fix the flaky scheduler test');
 
 /** Card 2: one slow turn, one quicker, and a reply that asks for nothing: the loop stops. */
 turn({ at: 0.86, pace: 0.66, words: ['I’ll read the scheduler first.'], calls: [{ tool: 'Read', arg: 'scheduler.py', where: 0, verdict: 'allow', results: 2, said: 'Read 212 lines' }] });
-turn({ pace: 0.38, words: ['Now the test, twenty times.'], calls: [{ tool: 'Bash', arg: 'pytest -q --count 20', where: 1, verdict: 'allow', results: 1, said: '3 failed, 17 passed' }] });
-turn({ pace: 0.38, words: ['Found it: one lock, taken twice.', 'Shall I fix it?'], calls: [] });
+turn({ pace: 0.35, words: ['Now the test, twenty times.'], calls: [{ tool: 'Bash', arg: 'pytest -q --count 20', where: 1, verdict: 'allow', results: 1, said: '3 failed, 17 passed' }] });
+turn({ pace: 0.35, words: ['Found it: one lock, taken twice.', 'Shall I fix it?'], calls: [] });
 
 /** Card 3: you answer, the request is packed again, and the model asks for a skill. */
 const yes = prompt(1.93, 'yes, fix it');

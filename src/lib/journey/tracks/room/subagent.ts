@@ -149,9 +149,9 @@ export class SubRoom {
 		// The record's slot to the disk.
 		b.add(rbox(0.8 * k, 0.3 * k, Math.max(0.008, 0.06 * k), 0.03 * k, 2), m.recess, { p: [X(0.84), y0 + 1.35 * hk, rect.z0 + 0.01 * k] });
 
-		/* ---- the loop: the tube in the back-right corner, the chute in the back-left ---- */
+		/* ---- the loop: the tube in the back-left corner, the chute in the back-right, as in the big room ---- */
 		const tr = 0.6 * k;
-		const tubeX = rect.x1 - tr * 1.33;
+		const tubeX = rect.x0 + tr * 1.33;
 		const tubeZ = rect.z0 + tr * 1.17;
 		b.add(new THREE.CylinderGeometry(tr + 0.12 * k, tr + 0.14 * k, 0.2 * k, 32), m.creamLight, { p: [tubeX, y0 + 0.1 * k, tubeZ] });
 		for (const y of [0.95 * k, H, H * 1.15]) b.add(new THREE.CylinderGeometry(tr + 0.05 * k, tr + 0.05 * k, 0.1 * k, 32, 1, true), m.gold, { p: [tubeX, y0 + y, tubeZ] });
@@ -161,17 +161,20 @@ export class SubRoom {
 		this.pill.position.copy(this.pillAt);
 		this.group.add(this.pill);
 		const chute = { w: 0.75 * k, d: 1.05 * k };
-		b.add(rbox(chute.w, 0.95 * k, chute.d, 0.06 * k, 2), m.creamLight, { p: [rect.x0 + chute.w / 2, y0 + 0.475 * k, rect.z0 + chute.d / 2] });
+		const chuteX = rect.x1 - chute.w / 2;
+		b.add(rbox(chute.w, 0.95 * k, chute.d, 0.06 * k, 2), m.creamLight, { p: [chuteX, y0 + 0.475 * k, rect.z0 + chute.d / 2] });
 		// The two tiles of its reply, that come down its chute.
-		this.chuteAt = new THREE.Vector3(rect.x0 + chute.w / 2, y0 + 0.95 * k + 0.17 * k, rect.z0 + chute.d / 2);
+		this.chuteAt = new THREE.Vector3(chuteX, y0 + 0.95 * k + 0.17 * k, rect.z0 + chute.d / 2);
 		for (const kind of ['text', 'call'] as TileKind[]) {
 			const drop = new THREE.Mesh(rbox(0.14 * k * 1.6, 0.26 * k * 1.3, 0.56 * k, 0.03 * k, 2), tileMat(kind));
 			drop.visible = false;
 			this.drops.push(drop);
 			this.group.add(drop);
 		}
-		// The pad at the tray's start, where the reply lands.
-		b.add(rbox(1.35 * k, 0.14 * k, 0.8 * k, 0.05 * k, 2), m.creamLight, { p: [tx0 - 0.7 * k, y0 + 0.07 * k, Z(0.2)] });
+		// The pads: behind its gate at the tray's start, and past the press at its end, where the reply lands.
+		for (const x of [tx0 - 0.7 * k, tx0 + tw + 1.575 * k]) b.add(rbox(1.35 * k, 0.14 * k, 0.8 * k, 0.05 * k, 2), m.creamLight, { p: [x, y0 + 0.07 * k, Z(0.2)] });
+		// The reader behind the tray's start, that its capsule is loaded at.
+		b.add(rbox(0.7 * k, 0.56 * k, 0.42 * k, 0.06 * k, 2), m.creamLight, { p: [tx0 + 0.4 * k, y0 + 0.28 * k, tz - td / 2 - 0.21 * k] });
 
 		/* ---- checks: the gate, and your screen in the left wall ---- */
 		const gx = X(0.138);
@@ -218,7 +221,7 @@ export class SubRoom {
 		const tubeGlass = new THREE.Mesh(new THREE.CylinderGeometry(tr, tr, H * 1.15 - 0.2 * k, 32, 1, true), pane);
 		tubeGlass.position.set(tubeX, y0 + 0.2 * k + (H * 1.15 - 0.2 * k) / 2, tubeZ);
 		const shaft = new THREE.Mesh(new THREE.BoxGeometry(chute.w * 0.96, H * 1.1 - 0.95 * k, chute.d * 0.96), pane);
-		shaft.position.set(rect.x0 + chute.w / 2, y0 + 0.95 * k + (H * 1.1 - 0.95 * k) / 2, rect.z0 + chute.d / 2);
+		shaft.position.set(chuteX, y0 + 0.95 * k + (H * 1.1 - 0.95 * k) / 2, rect.z0 + chute.d / 2);
 		const cover = new THREE.Mesh(rbox(STANDING_TILES * pitch + 0.08 * k, tile.h + 0.14 * k, tile.d + 0.18 * k, 0.06 * k, 2), glass(0.24));
 		cover.position.set(tx0 + tw * 0.02 + (STANDING_TILES * pitch) / 2, y0 + hb + tile.h / 2 + 0.02 * k, tz);
 		tubeGlass.renderOrder = shaft.renderOrder = cover.renderOrder = 3;
