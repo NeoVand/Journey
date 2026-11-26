@@ -312,23 +312,41 @@ class Sampler {
 				c.strokeStyle = '#111a2e';
 				c.lineWidth = Math.min(7, 1 + span * 90);
 				c.stroke();
-				// A label goes where it fits: the bigger the slice, the bigger the word.
-				if (span > 0.09) {
+				// A label goes where it fits, kept inside its slice: along the radius, out by the rim, as big as the slice is
+				// wide at its inner end. A slice too thin for a readable word goes without; the odds beside it name it.
+				if (span > 0.05) {
 					c.save();
+					c.beginPath();
+					c.moveTo(cx, cy);
+					c.arc(cx, cy, cx, a, a + span);
+					c.closePath();
+					c.clip();
 					c.translate(cx, cy);
 					c.rotate(a + span / 2);
-					c.textAlign = 'right';
 					c.textBaseline = 'middle';
 					c.fillStyle = i === 1 ? '#ffffff' : color.ink;
-					c.font = `800 ${Math.round(Math.min(118, 60 + span * 40))}px ${font.display}`;
+					const text = LOGITS[i].text;
+					const outer = cx - 74;
 					// A lone "I" along the radius is only a dash, so it stands across the slice, in a face with serifs.
-					if (LOGITS[i].text.length === 1) {
-						c.font = `800 150px ${font.mono}`;
-						c.translate(cx - 130, 0);
+					const across = text.length === 1 && span * (outer - 60) > 120;
+					if (across) {
+						const size = Math.min(150, span * (outer - 60) * 0.7);
+						c.font = `800 ${Math.round(size)}px ${font.mono}`;
+						c.translate(outer - size * 0.5, 0);
 						c.rotate(Math.PI / 2);
 						c.textAlign = 'center';
-						c.fillText(LOGITS[i].text, 0, 0);
-					} else c.fillText(LOGITS[i].text, cx - 62, 0);
+						c.fillText(text, 0, 0);
+					} else {
+						c.textAlign = 'right';
+						let size = Math.min(118, 60 + span * 40);
+						for (; size >= 28; size -= 2) {
+							c.font = `800 ${Math.round(size)}px ${font.display}`;
+							const inner = outer - c.measureText(text).width;
+							// Its cap height has to fit the slice's width where the word starts, with room either side.
+							if (inner > 120 && size * 0.74 <= inner * span * 0.8) break;
+						}
+						if (size >= 28) c.fillText(text, outer, 0);
+					}
 					c.restore();
 				}
 				a += span;
