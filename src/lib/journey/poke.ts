@@ -9,7 +9,7 @@ interface Pokeable {
 	/** What it sounds like when pressed, by the name the sound score knows it by. */
 	sound?: string;
 	/** What pressing it does, said beside the pointer when it's over it: a side trip's name, say. */
-	tip?: string;
+	tip?: string | ((index: number) => string);
 }
 
 /** A simple shape to aim at, standing in for something too detailed to test every frame. */

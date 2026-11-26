@@ -6,6 +6,7 @@ import { archBlock, arcPoint, Card, hazard, islandAt, machine, panel, shadowOn, 
 import { drawPageIcon, font, Label, Surface, type IconData } from '../kit/print';
 import { FINALE_T } from './finale';
 import { gearShape } from '../props/brain';
+import { MemoryCabinet } from './memory';
 import { createSign, fitting, grown, SIGN_PHONE, signWidth, standSign } from '../kit/parts';
 import { bell, bounceDown, clamp, hash, inOut, lerp, outBack, outCubic, seg, smooth, spring } from '../kit/math';
 import { createCastShadow } from '../props/island';
@@ -171,7 +172,7 @@ const SUMMARY_SCALE = 0.82;
 const SUMMARY_LEAN = 0.1;
 const SUMMARY_HALF = 1.3 * SUMMARY_SCALE;
 const SUMMARY_UP: V3 = [0, 0.19 + SUMMARY_HALF * Math.cos(SUMMARY_LEAN), -SUMMARY_HALF * Math.sin(SUMMARY_LEAN)];
-const S_MEM = { az: -12, el: 9, target: relW(M_POS, 0, 3.9, 0), radius: 5.6 * sOf(M_POS), ry: 4.3 * sOf(M_POS), wide: LEFT, tall: TALL };
+const S_MEM = { az: 16, el: 22, target: relW(M_POS, 0, 3.9, 1.4), radius: 6.9 * sOf(M_POS), ry: 5.2 * sOf(M_POS), wide: LEFT, tall: TALL };
 const S_UNK = { az: 10, el: 20, target: relW(U_POS, 0, 1.9, 0.7), radius: 7.6 * sOf(U_POS), ry: 4.3 * sOf(U_POS), wide: box(0.42, 0.06, 0.58, 0.9), tall: TALL };
 const S_TEN = { az: -10, el: 14, target: relW(R_POS, 0, 2.6, 0.6), radius: 9.2 * sOf(R_POS), ry: 4.2 * sOf(R_POS), wide: box(0.01, 0.42, 0.98, 0.56), tall: box(0, 0.06, 1, 0.3) };
 const S_FIN = { az: 9, el: 14, target: relW(F_POS, 0, 2.5, 0.8), radius: 10.8 * sOf(F_POS), ry: 3.6 * sOf(F_POS), wide: box(0.01, 0.33, 0.98, 0.49), tall: TALL };
@@ -539,7 +540,8 @@ export class Back {
 	private slipTint = SLIPS.map((s) => new THREE.Color(SLIP_TINT[s.kind]));
 	private slipAmber = new THREE.Color(SLIP_TINT.summary);
 
-	private memDrawers: { group: THREE.Group; lamp: Lamp; z: number; x: number; out: number }[] = [];
+	/** The seven kinds of memory, as a cabinet of seven drawers: see memory.ts. */
+	memory = new MemoryCabinet();
 	/** The drawer a conversation is naming, and when (the clock's seconds): it slides out while it's named. */
 	private memNamed = { i: -1, at: 0 };
 	private memClock = 0;
@@ -1137,67 +1139,14 @@ export class Back {
 	/* ---- seven kinds of memory ---- */
 	private buildMemory() {
 		const g = this.zone(26.6, 28.3, true, true, ...frameOf(M_POS));
-		const m = mats();
 		const [cx, cy, cz] = M_POS;
 		const isl = islandAt(13, 8);
 		isl.position.set(cx, cy, cz);
 		g.add(isl);
 		this.pier(g, cx, cy, cz, M_POS);
-		const W = 9;
-		const RH = 0.98;
-		const ROWS = [
-			['Conversation history', 'The harness', 'The session, saved to disk'],
-			['Current model context', 'The harness', 'One request'],
-			['Continuation state', 'The provider', 'Days, by policy'],
-			['Inference cache', 'The cluster', 'Minutes to an hour'],
-			['Workspace', 'Your laptop', 'Separate from the conversation'],
-			['External state', 'Git hosts, MCP servers', 'May outlive the run'],
-			['Model parameters', 'The provider', 'Fixed']
-		];
-		const b = new Batch();
-		b.add(rbox(W + 0.4, RH * 7 + 0.5, 2.3, 0.14, 4), m.cream, { p: [cx, cy + 0.14 + (RH * 7 + 0.5) / 2, cz] });
-		b.add(rbox(W + 0.74, 0.14, 2.64, 0.05, 3), m.steelSoft, { p: [cx, cy + 0.07, cz] });
-		b.add(rbox(W + 0.04, RH * 7 + 0.14, 0.1, 0.02, 1), m.recess, { p: [cx, cy + 0.14 + (RH * 7 + 0.5) / 2, cz + 1.12] });
-		g.add(b.build('memory-cabinet'));
-		shadowOn(g, cx, cy, cz, W + 0.7, 2.6);
-		const front = extrude(roundedRect(W - 0.1, RH - 0.1, 0.09), 0.14, 0.03, 4, 10);
-		const hz = hazard(14);
-		ROWS.forEach((r, i) => {
-			const y = cy + 0.14 + RH * 7 + 0.18 - (i + 0.5) * RH;
-			const group = new THREE.Group();
-			const db = new Batch();
-			db.add(front, m.creamLight);
-			group.add(db.build('mem-front'));
-			const s = new Surface(1500, Math.round((1500 * (RH - 0.14)) / (W - 0.2)));
-			s.draw((c, w, h) => {
-				c.textBaseline = 'middle';
-				c.fillStyle = color.ink;
-				c.font = `700 ${h * 0.36}px ${font.display}`;
-				c.fillText(r[0], 34, h / 2);
-				c.fillStyle = '#33415c';
-				c.font = `600 ${h * 0.25}px ${font.sans}`;
-				c.fillText(r[1], w * 0.42, h / 2);
-				c.textAlign = 'right';
-				c.fillStyle = i === 6 ? '#c9261c' : '#5a6b85';
-				c.font = `${i === 6 ? 800 : 500} ${h * 0.25}px ${font.sans}`;
-				c.fillText(r[2], w - 78, h / 2);
-			});
-			const face = panel(W - 0.2, RH - 0.14, s);
-			face.position.z = 0.074;
-			group.add(face);
-			const lamp = new Lamp(sharedRbox(0.12, 0.12, 0.03, 0.04, 2), color.amber, 0.2);
-			lamp.mesh.position.set(W / 2 - 0.26, 0, 0.078);
-			group.add(lamp.mesh);
-			if (i === 6) {
-				const strip = new THREE.Mesh(new THREE.BoxGeometry(W - 0.3, 0.1, 0.02), hz);
-				strip.position.set(0, -RH / 2 + 0.1, 0.075);
-				group.add(strip);
-			}
-			const z = cz + 1.2;
-			group.position.set(cx, y, z);
-			g.add(group);
-			this.memDrawers.push({ group, lamp, z, x: cx, out: 0 });
-		});
+		this.memory.group.position.set(cx, cy, cz - 0.6);
+		g.add(this.memory.group);
+		shadowOn(g, cx, cy, cz - 0.6, 7.2, 3.4);
 	}
 
 	/* ---- unknown outcome ---- */
@@ -2308,20 +2257,7 @@ export class Back {
 			// A conversation names the drawers only on their own card; anywhere else they're as the story left them.
 			if (T < 27.05 || T > 28.1) this.memNamed.i = -1;
 			const since = time - this.memNamed.at;
-			this.memDrawers.forEach((dr, i) => {
-				const a = 27.12 + i * 0.1;
-				const k = outBack(seg(T, a, a + 0.08), 1.8);
-				const settle = 1 - smooth(seg(T, a + 0.1, a + 0.18));
-				const fixed = i === 6;
-				const named = this.memNamed.i === i;
-				dr.out += ((named && !fixed ? 1 : 0) - dr.out) * (1 - Math.exp(-dt * 9));
-				dr.group.position.z = dr.z + k * (fixed ? 0.05 : 0.26 + settle * 0.3) + dr.out * 0.9;
-				// The weights don't come out, whatever you do: named, the red drawer rattles in place and stays shut.
-				const rattle = named && fixed ? Math.sin(since * 42) * 0.07 * Math.max(0, 1 - since / 0.9) : 0;
-				dr.group.position.x = dr.x + rattle;
-				const flare = named ? Math.max(fixed ? 1.6 * (1 - since / 1.4) : 1, 0) : 0;
-				dr.lamp.mix(color.amber, fixed ? color.red : color.green, seg(T, a, a + 0.06), 0.2 + seg(T, a, a + 0.06) * 0.8 + flare * 0.8);
-			});
+			this.memory.update(T, { i: this.memNamed.i, since }, time, dt);
 		}
 
 		/* ---- unknown ---- */

@@ -26,6 +26,7 @@ import { GLASS_ROOF, SandboxStage, STAGE_AT, STAGE_SHOTS, STAGE_SKY } from './tr
 import { CABINET_ROOF, MemoryStage, MEMORY_AT, MEMORY_SHOTS, MEMORY_SKY } from './tracks/memory';
 import { PlansStage, PLANS_AT, PLANS_SHOTS, PLANS_SKY, SCREEN_ROOF } from './tracks/plans';
 import { hitAround, hitBox } from './poke';
+import { MEMORIES } from './chapters/memory';
 import { Visits } from './visit';
 import { MiniMap } from './minimap';
 import { Voyage, type Flight } from './voyage';
@@ -959,6 +960,14 @@ export class World {
 		this.poker.add({ targets: [this.mcpHit], when: (T) => T < 2.76, press: () => this.onTrack('mcp'), tip: tip('mcp') });
 		// So does the harness, until its drawers are the thing to press.
 		this.poker.add({ targets: [this.harnessHit], when: (T) => T < 2.02, press: () => this.onTrack('harness'), tip: tip('harness') });
+		// The memory cabinet's drawers open when pressed, as they do when the conversation names them.
+		this.poker.add({
+			targets: this.back.memory.fronts,
+			when: (T) => T > 27.0 && T < 28.0,
+			press: (i) => this.back.nameMemory(i),
+			sound: 'drawer',
+			tip: (i) => (i === 6 ? 'Model parameters: locked' : `Open: ${MEMORIES[i].name}`)
+		});
 		// And each inside trip's way in, while the story is beside it: the glass, the memory cabinet, the laptop's screen.
 		const near = (id: TrackId) => (T: number) => T >= (TRACK_AT[id].nearFrom ?? -Infinity) && T < TRACK_AT[id].nearBefore;
 		const ways: [TrackId, THREE.Object3D | undefined][] = [
@@ -1050,7 +1059,9 @@ export class World {
 	overAt(x: number, y: number): string | null {
 		if (this.trackId) return null;
 		const hit = this.poker.pick(this.lastT, x, y, this.stage.camera);
-		return hit ? (hit.p.tip ?? '') : null;
+		if (!hit) return null;
+		const tip = hit.p.tip;
+		return typeof tip === 'function' ? tip(hit.index) : (tip ?? '');
 	}
 
 	/**
