@@ -285,15 +285,15 @@ export class Aqueduct {
 	}
 }
 
+/** Every arch built, for the scripts that look for arches running into each other (see scripts/arches.mjs). */
+export const SPANS: { a: V3; e: V3; thick: number; piers: 'both' | 'pier' | 'none' }[] = [];
+(globalThis as { __spans?: typeof SPANS }).__spans = SPANS;
+
 /**
  * One arch between two points on the underside of a deck: a spandrel with a round arch through it and a cornice-like
  * edge, sheared to follow the deck's slope; round piers at its ends (as asked) that go down into the haze, with a gold
  * band where the arch springs; and a lamp hanging under its crown.
  */
-/** Every arch built, for the scripts that look for arches running into each other (see scripts/arches.mjs). */
-export const SPANS: { a: V3; e: V3; thick: number; piers: 'both' | 'pier' | 'none' }[] = [];
-(globalThis as { __spans?: typeof SPANS }).__spans = SPANS;
-
 export function span(b: Batch, a: THREE.Vector3, e: THREE.Vector3, thick: number, pier: THREE.Material, piers: 'both' | 'pier' | 'none') {
 	SPANS.push({ a: a.toArray() as V3, e: e.toArray() as V3, thick, piers });
 	const c = palette();
