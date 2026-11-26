@@ -299,8 +299,8 @@ const SHOTS: Shot[] = [
 	riding(4.46, 3.0, -12, 18),
 	riding(4.64, 3.3, 58, 14),
 	...hold(5, 5.64, DOOR, { az: 25 }),
-	// Up over the gatehouse's corner tower, not through it, on the way in to the tokenizer.
-	{ T: 5.8, az: 40, el: 46, target: [-0.6, P.PLATFORM_Y + 1.6, P.DOOR_Z - 3.2] as V3, radius: 4.4, wide: box(0.05, 0.46, 0.9, 0.5), tall: box(0, 0.1, 1, 0.42) },
+	// Up over the gatehouse's corner tower and its pishtaq, not through them, on the way in to the tokenizer.
+	{ T: 5.8, az: 40, el: 58, target: [-0.6, P.PLATFORM_Y + 1.6, P.DOOR_Z - 3.2] as V3, radius: 4.4, wide: box(0.05, 0.46, 0.9, 0.5), tall: box(0, 0.1, 1, 0.42) },
 	{ T: 6, ...turned({ ...CUT, target: [C_X - 0.3, ISLAND_C_Y + 0.9, 0.9] }) },
 	{ T: 6.16, ...turned({ ...CUT, target: [C_X - 0.3, ISLAND_C_Y + 0.9, 0.9] }) },
 	{ T: 6.56, ...turned({ ...CUT, target: [C_X + 7.1, ISLAND_C_Y + 0.9, 0.9], az: 7, tallTarget: [C_X + 8.2, C_TOP, 0.9] }) },

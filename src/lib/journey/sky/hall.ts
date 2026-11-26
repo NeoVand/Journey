@@ -6,7 +6,7 @@ import { Label } from '../kit/print';
 import { createBelt, createChatTemplate, Gantry, Tile, TILE_H } from '../props/tokenizer';
 import { TOKENS } from '../content';
 import { palette } from './palette';
-import { ARCH_RISE, archFrame, dadoTiles, fitted, floorTiles, friezeTiles, laid, orosi, pointedArch, pointedArchHole, rect, ribbon, roseWindow, stainedGlass, wallTiles } from './persian';
+import { ARCH_RISE, archFrame, fitted, floorTiles, glazed, laid, orosi, pointedArch, pointedArchHole, rect, ribbon, roseWindow, stainedGlass } from './persian';
 import * as P from './masterplan';
 
 /*
@@ -65,10 +65,7 @@ export class Hall {
 		// quarter of the windows' spacing, so a star sits on every window's centre; each band's edge falls on a line of
 		// the pattern's symmetry, so whatever it cuts it cuts in half; every window is framed by a border; the dado and
 		// friezes go a whole number of times along the wall. See persian.ts.
-		const glaze = (map: THREE.Texture) => new THREE.MeshPhysicalMaterial({ map, roughness: 0.22, clearcoat: 1, clearcoatRoughness: 0.1 });
-		const field = glaze(wallTiles());
-		const dado = glaze(dadoTiles());
-		const frieze = glaze(friezeTiles());
+		const { field, dado, frieze } = glazed();
 		const floor = new THREE.MeshPhysicalMaterial({ map: floorTiles(), roughness: 0.34, clearcoat: 0.7, clearcoatRoughness: 0.2 });
 		// What the walls are built of, seen in their tops and in the windows' reveals: a warm sandstone.
 		const stone = new THREE.MeshPhysicalMaterial({ color: '#e7d3aa', roughness: 0.62, clearcoat: 0.15 });
