@@ -301,6 +301,8 @@ const SHOTS: Shot[] = [
 	riding(4.0, 2.3, 20, 16),
 	riding(4.3, 2.8, 26, 15),
 	riding(4.46, 3.0, -12, 18),
+	// Still on the left until it has passed the second mast, which stands on the right.
+	riding(4.57, 3.1, -10, 18),
 	riding(4.64, 3.3, 58, 14),
 	...hold(5, 5.64, DOOR, { az: 25 }),
 	// Up over the gatehouse's windcatcher and its talar, not through them, on the way in to the tokenizer.

@@ -182,11 +182,14 @@ export const PLATFORM: [number, number][] = [
 
 /** The foundry, where the model was made: iron and copper, a furnace glowing, on its own arches to the left, higher up. */
 export const FOUNDRY = { at: v(-19, 11.5, back(10.4)), w: 10, d: 7.5 };
-/** The rail the finished model was carried up on: from the foundry, round behind the hall, up to the tower's roof. */
+/**
+ * The rail the finished model was carried up on: from the foundry, round behind the hall, up to the tower's roof,
+ * climbing evenly the whole way rather than flat and then sheer.
+ */
 export const FOUNDRY_RAIL: V3[] = [
 	[-14.6, 11.6, back(END - 6.7)],
-	[-12.6, 13.6, back(END + 2.3)],
-	[-10.4, 17.0, back(END + 9.3)],
+	[-12.6, 17.6, back(END + 2.3)],
+	[-10.4, 22.4, back(END + 9.3)],
 	[-6.6, ROOF_Y + 0.2, back(END + 11)]
 ];
 /** The proving ground, where agents are tested: a mint test course and a violet-domed observatory, on its own pier to the right. */

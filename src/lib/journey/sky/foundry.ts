@@ -117,12 +117,24 @@ export class Foundry {
 			for (const dx of [-0.42, 0.42]) b.add(new THREE.CylinderGeometry(0.12, 0.12, 0.84, 12), c.iron, { p: [x + dx, 0.2, 0], r: [Math.PI / 2, 0, 0] });
 		}
 
-		// The rail up to the tower's roof, from the deck's provider side, on light arches of its own.
+		// The rail up to the tower's roof, from the deck's provider side, on slender piers of its own: it climbs too steeply
+		// for arches, so each pier carries it on a brass saddle.
 		this.rail = new THREE.CatmullRomCurve3(P.FOUNDRY_RAIL.map((p) => new THREE.Vector3(...p)), false, 'centripetal');
 		const rail = ground;
 		rail.add(sweep(this.rail, [[-0.75, 0], [0.75, 0], [0.75, -0.35], [-0.75, -0.35]], 80), c.porcelain);
 		for (const s of [-1, 1]) rail.add(sweep(this.rail, [[s * 0.45 - 0.05, 0.12], [s * 0.45 + 0.05, 0.12], [s * 0.45 + 0.05, 0], [s * 0.45 - 0.05, 0]], 80), c.brass);
-		for (let i = 0; i < 3; i++) span(rail, this.rail.getPointAt(0.1 + i * 0.26).add(new THREE.Vector3(0, -0.35, 0)), this.rail.getPointAt(0.1 + (i + 1) * 0.26).add(new THREE.Vector3(0, -0.35, 0)), 1.1, pier, 'pier');
+		for (const u of [0.14, 0.32, 0.5, 0.68, 0.85]) {
+			const p = this.rail.getPointAt(u);
+			const t = this.rail.getTangentAt(u);
+			const yaw = Math.atan2(-t.z, t.x);
+			// The rail's underside, square to it, is a little less than its depth below its line where it climbs.
+			const top = p.y - 0.35 * Math.sqrt(1 - t.y * t.y) - 0.18;
+			const h = top - P.PIER_FOOT;
+			rail.add(new THREE.CylinderGeometry(0.3, 0.34, h, 24), pier, { p: [p.x, P.PIER_FOOT + h / 2, p.z] });
+			rail.add(new THREE.CylinderGeometry(0.38, 0.38, 0.12, 24), c.gold, { p: [p.x, top - 0.1, p.z] });
+			// The saddle: a brass block on the pier's head, its top sloped to the rail.
+			rail.add(rbox(0.9, 0.24, 1.2, 0.05, 1), c.brass, { p: [p.x, top + 0.06, p.z], r: [0, yaw, Math.atan(t.y / Math.hypot(t.x, t.z))] });
+		}
 		this.body.add(b.build('foundry'));
 		this.group.add(ground.build('foundry arches'));
 
