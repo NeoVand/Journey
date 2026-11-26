@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { hang, type Solid } from './kit/cable';
 import { low, TOOLS } from './layout';
-import { HD, PORT_BACK_X, PORT_BACK_Y } from './props/harness';
+import { HW, PORT_CALLS, PORT_RESULTS } from './props/harness';
 import * as P from './sky/masterplan';
 
 type V3 = [number, number, number];
@@ -53,8 +53,8 @@ const GATES: Solid = { min: low([-61, -16.5, -5.6]), max: low([-41, -13, 6.4]) }
 
 const H = P.HARNESS;
 const HARNESS: Solid = { min: [H.at.x - H.w / 2, 0, H.at.z - H.d / 2], max: [H.at.x + H.w / 2, H.h, H.at.z + H.d / 2] };
-/** The harness's two ports in its back: the results come in at the low one, the calls go out of the high one. */
-const backPort = (y: number): V3 => [H.at.x + PORT_BACK_X * H.scale, y * H.scale, H.at.z - (HD / 2) * H.scale];
+/** The harness's two ports in its right flank: the results come in at the low one, the calls go out of the high one. */
+const sidePort = (p: { y: number; z: number }): V3 => [H.at.x + (HW / 2) * H.scale, p.y * H.scale, H.at.z + p.z * H.scale];
 
 /**
  * Your tools are small on the desk, and the cables full size: each ends in a brass reducer that steps it down to the
@@ -69,18 +69,19 @@ export const reducerBehind = (fitting: V3): V3 => [fitting[0], fitting[1], fitti
 
 let returnCable: THREE.CatmullRomCurve3 | null = null;
 /**
- * The green cable, harness end first: out of the harness's back, down onto your desk, along behind your tools to the
- * far end of the workshop, round it, up onto its island, and level through the sandbox wall's gland into the hopper.
+ * The green cable, harness end first: out of the harness's right flank, down onto your desk, back along behind your
+ * tools to the far end of the workshop, round it, up onto its island, and level through the sandbox wall's gland into
+ * the hopper.
  */
 export function returnPath() {
 	const end = RETURN_REDUCER;
+	const port = sidePort(PORT_RESULTS);
 	return (returnCable ??= hang({
-		from: { at: backPort(PORT_BACK_Y), out: [0, 0, -1] },
+		from: { at: port, out: [1, 0, 0] },
 		to: { at: end, out: [1, 0, 0] },
 		via: [
-			{ at: [H.at.x - 0.9, 0.12, H.at.z - H.d / 2 - 0.8], slack: 1.06 },
-			{ at: [H.at.x - 0.2, 0.12, -5.9], slack: 1.01 },
-			{ at: [3.2, 0.12, -5.9], slack: 1.01 },
+			{ at: [port[0] + 0.45, 0.12, port[2] - 0.5], slack: 1.06 },
+			{ at: [port[0] + 0.55, 0.12, -4.6], slack: 1.01 },
 			{ at: [13.0, 0.12, -4.4], slack: 1.01 },
 			{ at: [13.8, 0.12, end[2] - 0.6], slack: 1.02 },
 			{ at: [end[0] + 0.7, 0.13, end[2]], slack: 1.01 }
@@ -92,15 +93,15 @@ export function returnPath() {
 	}));
 }
 
-/** The calls' cable: out of the harness's back, down onto your desk, along behind it, and up into the riser on the gates' dock. */
+/** The calls' cable: out of the harness's right flank, down onto your desk beside it, back, and up into the riser on the gates' dock from behind. */
 export function callPath(dock: V3) {
+	const port = sidePort(PORT_CALLS);
 	return hang({
-		from: { at: backPort(3.2), out: [0, 0, -1] },
+		from: { at: port, out: [1, 0, 0] },
 		to: { at: dock, out: [0, 0, -1] },
 		via: [
-			{ at: [H.at.x + 0.6, 0.09, H.at.z - H.d / 2 - 0.9], slack: 1.08 },
-			{ at: [2.4, 0.09, -4.7], slack: 1.01 },
-			{ at: [dock[0], 0.09, dock[2] - 1.7], slack: 1.04 }
+			{ at: [port[0] + 0.32, 0.09, port[2] - 0.4], slack: 1.06 },
+			{ at: [dock[0] - 0.2, 0.09, dock[2] - 1.2], slack: 1.04 }
 		],
 		r: 0.09,
 		slack: 1.017,

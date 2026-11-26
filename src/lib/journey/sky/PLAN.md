@@ -216,3 +216,26 @@ star tile on the buildings.
   windcatchers at the corners, a jade roof terrace with a skylight. No iwan, no domes, no cupola.
 - The ice house wears the rose frieze instead of star tile.
 - Phone: textures 274 MB of 280, geometry 97.4 MB of 100. Rug faces are drawn at most 512 wide and 1536 tall.
+
+## The harness, grown (2026-11-26, branch `harness`)
+
+The user found the harness far too small for how important it is, when the room inside it (the side trip) is so much
+bigger. Concepts in concepts/harness-r2. Also on this branch: the hall windows' borders no longer fight the tile, and
+a quiet red gabbeh lies under the tokenizer in place of the medallion carpet (the user didn't like it).
+
+- props/harness.ts: HW 4.5 by HD 3.6 (was 2.7 by 2.2), the same height, at HS 1.3, placed at (-0.55, 0, -3.0) so the
+  gates keep room on its right. Front: the four drawers (DRAWER_X 1.0) and a window into the room, a picture baked by
+  scripts/harness-window.mjs into static/harness/room.webp (re-run it when the room changes). Left flank: your screen,
+  the MCP lead's port under it. Front: the laptop's port (PORT_KEYS_X/Y, low, clear of the lowest drawer). Right flank:
+  PORT_CALLS (orange, to the gates' riser) and PORT_RESULTS (green, from the sandbox), so cables.ts no longer goes round
+  the back.
+- The loop's ends outside: the send tube at the back-left corner, the request's lane starting just behind its top (the
+  capsule's cradle); the chute at the back-right, the reply's lane ending just behind its funnel and the reply's words
+  dropping in (the stream's hatch). The lanes reach the deck on spurs (P.spur, built in aqueduct.ts); the deck now starts
+  at z -9.6 on a pier of its own.
+- The room inside still has its tube back-right and chute back-left, the mirror of the lanes outside: the window's
+  picture is framed on the back wall's middle so the corners don't show. Mirroring the room's loop is a follow-up.
+- Moved: the easel to (-6.4, -1.4), the rug to the laptop only. Retuned: ASSEMBLY, the page's flight (3.78), the home
+  shots onto the chute, 19.13 and 19.86, the call card (out by the calls port, across to the riser), the "From the
+  provider" sign, the finale's harness sign, the MCP trip's drawer shots.
+- Phone: geometry 97.9 MB of 100, textures 276 MB of 280.

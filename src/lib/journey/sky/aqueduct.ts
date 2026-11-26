@@ -34,9 +34,9 @@ const HALF = 1.75;
 const SLAB = 0.55;
 /** The lanes' belts: their half width and the height of their tops over the deck. The kerbs stand at their edges. */
 const BELT = { half: 0.55, top: 0.4 };
-/** How far along the aqueduct (0 to 1) its first pier stands, clear of the desk, and how many arches it has. */
-const FIRST = 0.2;
-const ARCHES = 5;
+/** How far along the aqueduct (0 to 1) its first pier stands, under the deck's start behind the desk, and how many arches it has. */
+const FIRST = 0;
+const ARCHES = 6;
 /** The masts: how far along each stands, which side, how far out from the middle line, and how tall. */
 // Three, and none in the last stretch before the door, so the door is seen clear along the deck.
 export const MASTS = [
@@ -83,6 +83,7 @@ export class Aqueduct {
 		const pier = hazed(c.porcelain);
 		const b = new Batch();
 		this.deck(b);
+		this.spurs(b);
 		// Each arch brings the pier at its own start; the last one's far end is the platform's.
 		for (let i = 0; i < ARCHES; i++) {
 			const a = along(FIRST + ((1 - FIRST) * i) / ARCHES).p;
@@ -95,9 +96,45 @@ export class Aqueduct {
 	}
 
 	/**
+	 * The lanes' spurs, between the deck's start and the harness: each lane on a narrow porcelain track of its own, its
+	 * belt between brass kerbs, turning out to its corner: the request's from the tube's top, where its belt rounds a brass
+	 * roller, the reply's to over the chute's funnel, where its belt rounds another and what it carries drops in.
+	 */
+	private spurs(b: Batch) {
+		const c = palette();
+		for (const s of [-1, 1] as const) {
+			const curve = new THREE.CatmullRomCurve3(P.spur(s), false, 'centripetal');
+			const swept = (profile: [number, number][], mat: THREE.Material) => {
+				b.add(sweep(curve, profile, 48, true), mat);
+				b.add(cap(curve, profile, 0), mat);
+			};
+			// The lane's curve is where what rides it sits: the track's top is 0.35 under it, as the deck's is.
+			const top = -0.35;
+			swept([[-0.75, top], [0.75, top], [0.75, top - 0.32], [-0.75, top - 0.32]], c.porcelain);
+			swept([[-0.8, top - 0.32], [0.8, top - 0.32], [0.8, top - 0.42], [0.66, top - 0.52], [-0.66, top - 0.52], [-0.8, top - 0.42]], c.porcelainShade);
+			for (const k of [-1, 1]) swept([[k * 0.755, top - 0.1], [k * 0.78, top - 0.1], [k * 0.78, top - 0.18], [k * 0.755, top - 0.18]], c.gold);
+			swept([[-BELT.half, top + BELT.top], [BELT.half, top + BELT.top], [BELT.half, top], [-BELT.half, top]], c.iron);
+			for (const k of [-1, 1]) {
+				const kx = k * (BELT.half + 0.05);
+				swept([[kx - 0.06, top + BELT.top + 0.12], [kx + 0.06, top + BELT.top + 0.12], [kx + 0.06, top], [kx - 0.06, top]], c.brass);
+			}
+			// The roller at the harness end, and its hubs.
+			const end = frameAt(curve, 0);
+			const toSide = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), end.side);
+			const at = (a: number, h: number) => end.p.clone().addScaledVector(end.side, a).addScaledVector(end.up, h);
+			const roller = new THREE.CylinderGeometry(BELT.top / 2, BELT.top / 2, BELT.half * 2, 24).applyQuaternion(toSide);
+			b.add(roller.translate(...at(0, top + BELT.top / 2).toArray()), c.iron);
+			for (const k of [-1, 1]) {
+				const hub = new THREE.CylinderGeometry(0.12, 0.12, 0.05, 20).applyQuaternion(toSide);
+				b.add(hub.translate(...at(k * (BELT.half + 0.115), top + BELT.top / 2).toArray()), c.gold);
+			}
+		}
+	}
+
+	/**
 	 * The deck: its slab and cornice, the lanes' belts and kerbs, the divider between them, rounded rails at its edges.
-	 * Where it begins, behind the harness's roof, every part of it is closed off, each belt turns over a brass roller,
-	 * and a brass plate is bolted across the slab's end.
+	 * Where it begins, behind your desk, the lanes go on off it onto their spurs; the slab's end is closed with a brass
+	 * plate.
 	 */
 	private deck(b: Batch) {
 		const c = palette();
@@ -132,20 +169,9 @@ export class Aqueduct {
 		// The divider between the lanes, porcelain with a brass cap.
 		swept([[-0.08, 0.5], [0.08, 0.5], [0.08, 0], [-0.08, 0]], c.porcelain);
 		swept([[-0.05, 0.54], [0.05, 0.54], [0.05, 0.5], [-0.05, 0.5]], c.brass);
-		// Where the deck begins: each belt rounds a brass roller between its kerbs, with a hub at each end, and a brass
-		// plate is bolted across the slab's end under them.
+		// Where the deck begins, a brass plate is bolted across the slab's end, under the lanes going on onto their spurs.
 		const start = frameAt(curve, 0);
-		const toSide = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), start.side);
 		const at = (a: number, h: number, back = 0) => start.p.clone().addScaledVector(start.side, a).addScaledVector(start.up, h).addScaledVector(start.t, -back);
-		for (const s of [-1, 1]) {
-			const x = s * P.LANE;
-			const roller = new THREE.CylinderGeometry(BELT.top / 2, BELT.top / 2, BELT.half * 2, 24).applyQuaternion(toSide);
-			b.add(roller.translate(...at(x, BELT.top / 2).toArray()), c.iron);
-			for (const k of [-1, 1]) {
-				const hub = new THREE.CylinderGeometry(0.12, 0.12, 0.05, 20).applyQuaternion(toSide);
-				b.add(hub.translate(...at(x + k * (BELT.half + 0.115), BELT.top / 2).toArray()), c.gold);
-			}
-		}
 		const plate = rbox(HALF * 2 - 0.3, SLAB - 0.16, 0.05, 0.02, 2);
 		plate.applyQuaternion(new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(start.side, start.up, start.t)));
 		b.add(plate.translate(...at(0, -SLAB / 2, 0.02).toArray()), c.brass);

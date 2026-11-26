@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { STEM_FOOT, STEM_LANE } from '../props/brain';
 import { STEM } from '../brain/stem';
-import { CROWN as HARNESS_CROWN, HD, HW } from '../props/harness';
+import { CHUTE, CHUTE_TOP, CROWN as HARNESS_CROWN, HD, HW, TUBE, TUBE_TOP } from '../props/harness';
 
 /*
  * ---------- Desk to sky, built as an aqueduct: the masterplan ----------
@@ -33,13 +33,20 @@ export const DESK = { at: v(0, 0, 0), w: 28, d: 15, top: 0.5, corner: 3.6 };
 /** Your laptop, at the front middle, facing you. */
 export const LAPTOP = { at: v(0, 0, 4.4) };
 /**
- * The harness: the program running on your laptop that packs every request and reads every reply. Both lanes start and
- * end in it. It is the story's own machine, its drawers and all, a little larger than it was built.
+ * The harness: the program running on your laptop that packs every request and reads every reply, and the biggest thing
+ * on your desk. Both lanes start and end in it: the request's goes up its tube, the reply's comes down its chute. It is
+ * the story's own machine, its drawers and all, a little larger than it was built. A little left of the middle, so the
+ * gates on its right have room.
  */
 const HS = 1.3;
-export const HARNESS = { at: v(0, 0, -2.6), scale: HS, w: (HW + 0.34) * HS, h: HARNESS_CROWN * HS, d: (HD + 0.34) * HS };
+export const HARNESS = { at: v(-0.55, 0, -3.0), scale: HS, w: (HW + 0.34) * HS, h: HARNESS_CROWN * HS, d: (HD + 0.34) * HS };
+/** A point of the harness's own drawing, in the world. */
+const inHarness = (x: number, y: number, z: number) => v(HARNESS.at.x + x * HS, HARNESS.at.y + y * HS, HARNESS.at.z + z * HS);
+/** The tube's top, where the request's lane begins, and the top of the chute's funnel, where the reply's ends. */
+export const TUBE_MOUTH = inHarness(TUBE.x, TUBE_TOP, TUBE.z);
+export const CHUTE_MOUTH = inHarness(CHUTE.x, CHUTE_TOP + 0.4, CHUTE.z);
 /** The left wing: what the harness packs. The easel with the request page, the shelf of skills, the local MCP servers. */
-export const EASEL = { at: v(-5.2, 0, -1.9) };
+export const EASEL = { at: v(-6.4, 0, -1.4) };
 export const SKILLS = { at: v(-10.6, 0, -4.4) };
 export const LOCAL_MCP = [v(-11.4, 0, 0.9), v(-9.7, 0, 0.9), v(-8.0, 0, 0.9)];
 /** Your controls, near your hand: steer, cancel, terminate, roll back. */
@@ -54,10 +61,10 @@ export const ARCHIVE = { at: v(-7.2, 0, -5.6), w: 2.3, h: 3.0, d: 2.4 };
 /** Brass posts at the desk's back corners, where the remote towers' cables come down. */
 export const POSTS = [v(-12.9, 0, -6.6), v(12.9, 0, -6.6)];
 /**
- * A Persian rug under your laptop and the harness, as at home: its middle, its width and length (along z), and how thick
- * its pile is. It keeps clear of the gates on its right and the easel on its left.
+ * A Persian rug under your laptop, as at home, from the harness's front to near the desk's edge: its middle, its width and
+ * length (along z), and how thick its pile is.
  */
-export const RUG = { at: v(0, 0, 0.7), w: 5.2, l: 12, pile: 0.014 };
+export const RUG = { at: v(0, 0, 3.2), w: 5.2, l: 7.0, pile: 0.014 };
 /**
  * How high the desk's floor is at a point, for what lies on it: on the rug, the top of its pile; just off it, falling
  * to the desk, so a cable that leaves it drapes over its edge.
@@ -84,17 +91,38 @@ export const back = (dz: number) => DOOR_Z - dz;
 /** How far back from the door the hall's end wall stands: the tokenizer's belt, as it was built, fits the hall from end to end. */
 const END = 3.7 + 17.5;
 /**
- * The aqueduct's middle line, from the back of the harness to the gatehouse's door: out level off the harness's roof,
- * then one gentle S, climbing all the way.
+ * The aqueduct's middle line, from just behind your desk to the gatehouse's door: out straight, then one gentle S,
+ * climbing. Its deck begins on a pier of its own a little behind the desk, where the two lanes come onto it: the
+ * request's from the harness's tube, the reply's going off it to the harness's chute.
  */
 export const AQUEDUCT: V3[] = [
-	[0, HARNESS.h + 0.2, HARNESS.at.z - HARNESS.d / 2 - 0.4],
-	[0, HARNESS.h + 0.4, -6.8],
-	[-2.0, 5.7, -10.4],
-	[0.5, 6.8, -14.0],
-	[1.0, 7.6, -17.2],
+	[HARNESS.at.x, 6.95, -9.6],
+	[HARNESS.at.x - 0.2, 6.9, -11.0],
+	[-1.7, 6.9, -13.0],
+	[0.6, 7.3, -15.4],
+	[1.0, 7.7, -17.4],
 	[0, PLATFORM_Y, DOOR_Z]
 ];
+/**
+ * The lanes off the deck's start, each on a short spur of its own: the request's from just behind the tube's top, where
+ * what comes up the tube steps out onto it, the reply's to just behind the chute's funnel, where what it carries drops
+ * off its end into the funnel; each turning gently out to its corner. Harness end first, as (x, z): their height is the
+ * lane's.
+ */
+const SPUR: Record<-1 | 1, [number, number][]> = {
+	[-1]: [
+		[TUBE_MOUTH.x, TUBE_MOUTH.z - 0.5],
+		[TUBE_MOUTH.x + 0.02, TUBE_MOUTH.z - 1.2],
+		[TUBE_MOUTH.x + 0.95, -8.0],
+		[HARNESS.at.x - 0.85, -8.95]
+	],
+	[1]: [
+		[CHUTE_MOUTH.x, CHUTE_MOUTH.z - 0.6],
+		[CHUTE_MOUTH.x, CHUTE_MOUTH.z - 1.25],
+		[CHUTE_MOUTH.x - 0.4, -8.0],
+		[HARNESS.at.x + 0.6, -8.95]
+	]
+};
 /** Where the aqueduct's arches stand: their piers go down out of sight into the haze. */
 export const PIER_FOOT = -16;
 /** Relay masts beside the aqueduct, each on a round pier of its own: the internet's routers. */
@@ -190,6 +218,10 @@ export const REMOTE_CABLES: { from: number; to: THREE.Vector3 }[] = [
 function lane(side: -1 | 1): THREE.Vector3[] {
 	const along = new THREE.CatmullRomCurve3(AQUEDUCT.map((p) => v(...p)), false, 'centripetal');
 	const pts: THREE.Vector3[] = [];
+	// The spur, from the harness to the deck: level, at the deck's start's height.
+	const start = along.getPointAt(0).y + 0.35;
+	const mouth = side < 0 ? TUBE_MOUTH.y + 0.1 : CHUTE_MOUTH.y + 0.28;
+	SPUR[side].forEach(([x, z], i, all) => pts.push(v(x, THREE.MathUtils.lerp(mouth, start, Math.min(1, i / (all.length - 1)) ** 0.5), z)));
 	for (let i = 0; i <= 24; i++) {
 		const u = i / 24;
 		const p = along.getPointAt(u);
@@ -207,6 +239,8 @@ function lane(side: -1 | 1): THREE.Vector3[] {
 	return pts;
 }
 
+/** A lane's spur, harness end first, through to where it comes onto the deck: the track the aqueduct builds for it. */
+export const spur = (side: -1 | 1) => lane(side).slice(0, SPUR[side].length + 1);
 /** The request's lane, from the harness up to the brainstem, on the left. */
 export const upLane = () => lane(-1);
 /** The reply's lane, from the brainstem down to the harness, on the right. */

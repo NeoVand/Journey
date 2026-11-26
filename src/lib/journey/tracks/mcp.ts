@@ -3,7 +3,7 @@ import { Card } from '../kit/machines';
 import { color } from '../kit/materials';
 import { bell, inOut, lerp, outBack, seg, smooth } from '../kit/math';
 import { font } from '../kit/print';
-import type { Harness } from '../props/harness';
+import { DRAWER_X, HD, type Harness } from '../props/harness';
 import type { McpServer } from '../props/mcp';
 import type { Shot } from '../rig';
 import * as P from '../sky/masterplan';
@@ -26,10 +26,11 @@ const H = P.HARNESS;
 const ISLAND: Omit<Shot, 'T'> = { az: 10, el: 22, target: [(SV.x + H.at.x) / 2, 1.0, -0.6], radius: 5.0, ry: 2.4, wide: WIDE, tall: TALL, tallRadius: 5.2, tallRy: 2.8 };
 const SERVER: Omit<Shot, 'T'> = { az: 12, el: 38, target: [SV.x - 0.02, 0.8, SV.z + 0.78], radius: 0.66, ry: 0.52, wide: WIDE, tall: TALL };
 const CABLE: Omit<Shot, 'T'> = { az: 14, el: 30, target: [P.EASEL.at.x + 1.4, 0.35, 0.0], radius: 3.0, ry: 1.4, wide: WIDE, tall: TALL };
-/** The harness's drawers, as large as it stands on your desk. */
-const front = H.at.z + 1.73 * H.scale;
-const TOOLS_DRAWER: Omit<Shot, 'T'> = { az: 10, el: 34, target: [H.at.x, 1.4 * H.scale, front], radius: 1.08 * H.scale, ry: 0.8 * H.scale, wide: WIDE, tall: TALL };
-const TALK_DRAWER: Omit<Shot, 'T'> = { az: 10, el: 34, target: [H.at.x, 0.8 * H.scale, front], radius: 1.08 * H.scale, ry: 0.8 * H.scale, wide: WIDE, tall: TALL };
+/** The harness's drawers, right of its window, as large as it stands on your desk. */
+const front = H.at.z + (HD / 2 - 0.07) * H.scale;
+const drawers = H.at.x + DRAWER_X * H.scale;
+const TOOLS_DRAWER: Omit<Shot, 'T'> = { az: 10, el: 34, target: [drawers, 1.4 * H.scale, front], radius: 1.08 * H.scale, ry: 0.8 * H.scale, wide: WIDE, tall: TALL };
+const TALK_DRAWER: Omit<Shot, 'T'> = { az: 10, el: 34, target: [drawers, 0.8 * H.scale, front], radius: 1.08 * H.scale, ry: 0.8 * H.scale, wide: WIDE, tall: TALL };
 /** One of the server's drawers, open, at the height it sits. */
 const TRAY = (y: number): Omit<Shot, 'T'> => ({ az: 12, el: 36, target: [SV.x - 0.02, Math.max(0.62, y + 0.14), SV.z + 0.82], radius: 0.62, ry: 0.5, wide: WIDE, tall: TALL });
 

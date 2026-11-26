@@ -40,7 +40,7 @@ const DOOR = { w: 4.6, h: 3.9 };
 /** The talar: where its back wall (the gatehouse's front) stands, its columns' line, and its roof's foot and top. */
 const TALAR = { back: 0.4, cols: D / 2 - 0.25, x: 2.75, r: 0.16, foot: 0.3, beam: 5.25, roof: 5.6, top: WALL + 0.26 };
 /** The windcatchers at the front corners: how far out, how far forward, how wide, how tall, and their vents. */
-const BADGIR = { x: W / 2 + 0.85, z: D / 2 - 0.9, half: 1.2, h: 7.9, vents: [6.0, 7.45] };
+const BADGIR = { x: W / 2 + 0.85, z: D / 2 - 0.9, half: 1.2, h: 7.2, vents: [5.95, 6.85] };
 /** The tumblers' row, on a rail between the columns: how high, how far apart, how big, and how far forward. */
 const TUMBLER = { y: 3.2, gap: 0.96, r: 0.27, len: 0.6, z: TALAR.cols - 0.05 };
 
