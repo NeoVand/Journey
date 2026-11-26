@@ -97,6 +97,8 @@ class Moved extends THREE.Curve<THREE.Vector3> {
 /** Where the tokens climb: the request's lane up the shaft and the glass pedestal, and the brainstem's seat at its top. */
 const SHAFT_X = -STEM_LANE;
 const SEAT_Y = P.SEAT_Y;
+/** How far under the brainstem's seat the glass pedestal's chrome cap begins: the lanes inside it run up to there. */
+const CAP_UNDER = 0.24;
 /** The request's lane in the world, from behind the harness's roof to the brainstem: the capsule rides its first part. */
 const UP_LANE = new THREE.CatmullRomCurve3(P.upLane(), false, 'centripetal');
 UP_LANE.arcLengthDivisions = 2000;
@@ -136,8 +138,8 @@ const HOME_AT = (() => {
 		if (foot === len && p.y < P.PLATFORM_Y + 0.4) foot = (i / n) * len;
 		if (seal === len && p.z >= P.SEALER.z) seal = (i / n) * len;
 	}
-	// The reply's glass column begins this far under the seat: the text appears at its top, clear of the brainstem.
-	return { len, top: 1.8, foot, seal, home: len - CRADLE_S };
+	// The reply's glass column begins this far under the seat, at the pedestal's cap: the text appears at its top, out of the brain.
+	return { len, top: CAP_UNDER + 0.05, foot, seal, home: len - CRADLE_S };
 })();
 /** The stream on its way home, once it's built: the camera follows its first piece. */
 let homeStream: HomeStream | null = null;
@@ -701,8 +703,9 @@ export class World {
 		const y = BELT_Y + TILE_H / 2;
 		const z = LINE_Z;
 		const [mid] = inTokenizer(SHAFT_X, 0, TZ + P.RAIL_CLEAR);
-		// They end inside the glass pedestal, just under the socket the brainstem's plug sits in: drawn up into it.
-		const [, top, zIn] = inTokenizer(SHAFT_X, SEAT_Y - 1.75, TZ + P.RAIL_CLEAR);
+		// They climb the glass pedestal all the way to its chrome cap, the socket the brainstem's plug sits in, and are drawn
+		// up into it: into the brain.
+		const [, top, zIn] = inTokenizer(SHAFT_X, SEAT_Y - 0.05, TZ + P.RAIL_CLEAR);
 		const bend = 1.0;
 		const stepAt = mid - bend - 2.0;
 		const flow = bends([[SLOT_X, y, z], [stepAt - 1.4, y, z], [stepAt, y, zIn], [mid, y, zIn], [mid, top, zIn]], [2.4, 2.4, bend]);
@@ -719,9 +722,9 @@ export class World {
 		this.safetyS = SAFETY_X - SLOT_X;
 
 		// The lift: warm clear glass from just past the arch, through the end wall and into the tower, up its shaft to the
-		// roof and on up inside the pedestal to the seat.
+		// roof and on up inside the pedestal to the underside of its cap.
 		const mouth = (SAFETY_X + 0.75 - SLOT_X) / this.flowLen;
-		const tube = new PartOf(flow, mouth, (this.flowLen - 0.25) / this.flowLen);
+		const tube = new PartOf(flow, mouth, (this.flowLen - (CAP_UNDER - 0.05)) / this.flowLen);
 		const glass = new THREE.Mesh(
 			new THREE.TubeGeometry(tube, Math.ceil(tube.getLength() / 0.07), LIFT_R, 28),
 			new THREE.MeshPhysicalMaterial({ color: '#ffb466', transparent: true, opacity: 0.34, roughness: 0.08, clearcoat: 1, depthWrite: false, side: THREE.DoubleSide })
@@ -900,7 +903,7 @@ export class World {
 		this.root.add(this.brain.group);
 		const x = -SHAFT_X;
 		const z = TZ + P.RAIL_CLEAR;
-		const stream = new THREE.LineCurve3(new THREE.Vector3(x, SEAT_Y - 1.75, z), new THREE.Vector3(x, P.PLATFORM_Y + 1.7, z));
+		const stream = new THREE.LineCurve3(new THREE.Vector3(x, SEAT_Y - CAP_UNDER, z), new THREE.Vector3(x, P.PLATFORM_Y + 1.7, z));
 		this.stream = stream;
 		const glass = new THREE.Mesh(
 			new THREE.TubeGeometry(stream, 2, LIFT_R, 28),
