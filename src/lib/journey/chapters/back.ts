@@ -1067,10 +1067,12 @@ export class Back {
 		// Just narrower than the gap between the posts, so it slides down between them.
 		pb.add(rbox(2.96, 0.3, 3.5, 0.06, 3), m.cobalt, { p: [0, 0, 0] });
 		this.press.add(pb.build('press'));
-		this.ram = RAM_R.slice(1).map((r) => {
+		// Each stage starts tucked up in the sleeve, as it is with the plate at home, until the chapter moves it.
+		const home = RAM_SLEEVE - (4 + 0.15);
+		this.ram = RAM_R.slice(1).map((r, i, all) => {
 			const stage = new THREE.Mesh(new THREE.CylinderGeometry(r, r, RAM_STAGE, 24), m.steel);
 			stage.castShadow = true;
-			stage.position.set(bx, 0, cz);
+			stage.position.set(bx, cy + RAM_SLEEVE - (home * (i + 1)) / all.length + RAM_STAGE / 2, cz);
 			g.add(stage);
 			return stage;
 		});

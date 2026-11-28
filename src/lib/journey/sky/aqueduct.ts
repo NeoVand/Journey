@@ -36,7 +36,7 @@ const SLAB = 0.55;
 const BELT = { half: 0.55, top: 0.4 };
 /** How far along the aqueduct (0 to 1) its first pier stands, under the deck's start behind the desk, and how many arches it has. */
 const FIRST = 0;
-const ARCHES = 6;
+const ARCHES = 4;
 /** The masts: how far along each stands, which side, how far out from the middle line, and how tall. */
 // Three, and none in the last stretch before the door, so the door is seen clear along the deck.
 export const MASTS = [
@@ -84,11 +84,12 @@ export class Aqueduct {
 		const b = new Batch();
 		this.deck(b);
 		this.spurs(b);
-		// Each arch brings the pier at its own start; the last one's far end is the platform's.
+		// Each arch brings the pier at its own start; the last one's far end is the platform's. They bend with the deck, so
+		// where it turns no arch cuts the corner and none leaves a gap.
 		for (let i = 0; i < ARCHES; i++) {
-			const a = along(FIRST + ((1 - FIRST) * i) / ARCHES).p;
-			const e = along(FIRST + ((1 - FIRST) * (i + 1)) / ARCHES).p;
-			span(b, a.clone().setY(a.y - SLAB - 0.3), e.clone().setY(e.y - SLAB - 0.3), HALF * 1.5, pier, 'pier');
+			const u0 = FIRST + ((1 - FIRST) * i) / ARCHES;
+			const u1 = FIRST + ((1 - FIRST) * (i + 1)) / ARCHES;
+			curvedSpan(b, AQUEDUCT_CURVE, u0, u1, SLAB + 0.3, HALF * 1.5, pier, 'pier');
 		}
 		this.masts(b, pier);
 		this.platform(b, pier);
@@ -262,8 +263,13 @@ export class Aqueduct {
 				span(b, a, e, 2.4, pier, i === 2 ? 'both' : 'pier');
 			}
 		}
-		// Across the front, between the two sides' first piers.
-		span(b, v(-7.6, Y, z0), v(7.6, Y, z0), 2.4, pier, 'none');
+		// Across the front, between the two sides' first piers: three arches, their piers clear of the aqueduct's last.
+		for (const [x0, x1] of [
+			[-7.6, -2.6],
+			[-2.6, 2.6],
+			[2.6, 7.6]
+		])
+			span(b, v(x0, Y, z0), v(x1, Y, z0), 2.4, pier, x0 === -7.6 ? 'none' : 'pier');
 	}
 
 	/** The readers flare as a capsule passes under them. cargo: where each piece on the lanes is now. */
@@ -279,12 +285,17 @@ export class Aqueduct {
 	}
 }
 
+/** Every arch built, for the scripts that look for arches running into each other (see scripts/arches.mjs). */
+export const SPANS: { a: V3; e: V3; thick: number; piers: 'both' | 'pier' | 'none' }[] = [];
+(globalThis as { __spans?: typeof SPANS }).__spans = SPANS;
+
 /**
  * One arch between two points on the underside of a deck: a spandrel with a round arch through it and a cornice-like
  * edge, sheared to follow the deck's slope; round piers at its ends (as asked) that go down into the haze, with a gold
  * band where the arch springs; and a lamp hanging under its crown.
  */
 export function span(b: Batch, a: THREE.Vector3, e: THREE.Vector3, thick: number, pier: THREE.Material, piers: 'both' | 'pier' | 'none') {
+	SPANS.push({ a: a.toArray() as V3, e: e.toArray() as V3, thick, piers });
 	const c = palette();
 	const flat = v(e.x - a.x, 0, e.z - a.z);
 	const L = flat.length();
@@ -326,5 +337,89 @@ export function span(b: Batch, a: THREE.Vector3, e: THREE.Vector3, thick: number
 		b.add(new THREE.CylinderGeometry(pr, pr * 1.04, h, 32), pier, { p: at });
 		b.add(new THREE.CylinderGeometry(pr + 0.08, pr + 0.08, 0.18, 32), c.gold, { p: [p.x, top + 0.02, p.z] });
 		b.add(new THREE.CylinderGeometry(pr + 0.16, pr + 0.04, 0.3, 32), c.porcelain, { p: [p.x, top + 0.24, p.z] });
+	}
+}
+
+/**
+ * An arch under a curving deck, between two places along its curve, `below` under it: its spandrel wall bends with the
+ * deck, so where the deck turns no wall cuts across the corner and none leaves a gap. The arch is round as you go along
+ * it, with a gold band round its face on both sides and a lamp under its crown; a round pier at its start (and its end,
+ * for 'both') goes down into the haze.
+ */
+export function curvedSpan(b: Batch, curve: THREE.Curve<THREE.Vector3>, u0: number, u1: number, below: number, thick: number, pier: THREE.Material, piers: 'both' | 'pier' | 'none') {
+	const c = palette();
+	const Ls = (u1 - u0) * curve.getLength();
+	const pr = Math.min(0.75, Ls * 0.11);
+	const r = Ls / 2 - pr;
+	const D = r + 0.5;
+	const n = Math.max(24, Math.ceil(Ls / 0.1));
+	type Ring = { p: THREE.Vector3; side: THREE.Vector3; top: number; low: number; x: number };
+	const rings: Ring[] = [];
+	for (let i = 0; i <= n; i++) {
+		const k = i / n;
+		const u = u0 + (u1 - u0) * k;
+		const p = curve.getPointAt(u);
+		const t = curve.getTangentAt(u);
+		const side = v(-t.z, 0, t.x).normalize();
+		const top = p.y - below;
+		const x = (k - 0.5) * Ls;
+		const low = Math.abs(x) < r ? top - D + Math.sqrt(r * r - x * x) : top - D;
+		rings.push({ p, side, top, low, x });
+	}
+	const at = (q: Ring, w: number, y: number) => [q.p.x + q.side.x * w, y, q.p.z + q.side.z * w];
+	/** A strip of quads between two edges that run the length of the arch. */
+	const strip = (edge: (q: Ring) => [number[], number[]]) => {
+		const pos: number[] = [];
+		const idx: number[] = [];
+		rings.forEach((q, i) => {
+			const [a, e] = edge(q);
+			pos.push(...a, ...e);
+			if (i > 0) {
+				const j = (i - 1) * 2;
+				idx.push(j, j + 2, j + 1, j + 1, j + 2, j + 3);
+			}
+		});
+		const g = new THREE.BufferGeometry();
+		g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+		g.setIndex(idx);
+		g.computeVertexNormals();
+		return g;
+	};
+	const h = thick / 2;
+	// Its two faces, its underside (the arch and the springings), and its top, under the deck.
+	b.add(strip((q) => [at(q, h, q.low), at(q, h, q.top)]), pier);
+	b.add(strip((q) => [at(q, -h, q.top), at(q, -h, q.low)]), pier);
+	b.add(strip((q) => [at(q, -h, q.low), at(q, h, q.low)]), pier);
+	b.add(strip((q) => [at(q, h, q.top), at(q, -h, q.top)]), pier);
+	// Its ends, where the piers stand.
+	for (const [q, f] of [
+		[rings[0], 1],
+		[rings[n], -1]
+	] as [Ring, number][]) {
+		const g = new THREE.BufferGeometry();
+		g.setAttribute('position', new THREE.Float32BufferAttribute([...at(q, -h, q.low), ...at(q, h, q.low), ...at(q, h, q.top), ...at(q, -h, q.top)], 3));
+		g.setIndex(f > 0 ? [0, 2, 1, 0, 3, 2] : [0, 1, 2, 0, 2, 3]);
+		g.computeVertexNormals();
+		b.add(g, pier);
+	}
+	// The archivolt: a gold band round the arch's face on both sides.
+	const face = rings.filter((q) => Math.abs(q.x) < r);
+	for (const w of [h + 0.02, -h - 0.02]) {
+		const line = new THREE.CatmullRomCurve3(face.map((q) => v(...(at(q, w, q.low) as V3))));
+		b.add(new THREE.TubeGeometry(line, face.length, 0.05, 8), c.gold);
+	}
+	// The lamp under the crown: a little gold dome and its glow.
+	const mid = rings[Math.round(n / 2)];
+	const crown = mid.low - 0.05;
+	b.add(new THREE.SphereGeometry(0.22, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), c.gold, { p: [mid.p.x, crown - 0.22, mid.p.z] });
+	b.add(new THREE.SphereGeometry(0.15, 16, 10), c.amberWindow, { p: [mid.p.x, crown - 0.26, mid.p.z] });
+	b.add(new THREE.CylinderGeometry(0.02, 0.02, 0.2, 6), c.gold, { p: [mid.p.x, crown - 0.1, mid.p.z] });
+	const ends = piers === 'both' ? [rings[0], rings[n]] : piers === 'pier' ? [rings[0]] : [];
+	for (const q of ends) {
+		const top = q.top - D;
+		const ph = top - P.PIER_FOOT;
+		b.add(new THREE.CylinderGeometry(pr, pr * 1.04, ph, 32), pier, { p: [q.p.x, P.PIER_FOOT + ph / 2, q.p.z] });
+		b.add(new THREE.CylinderGeometry(pr + 0.08, pr + 0.08, 0.18, 32), c.gold, { p: [q.p.x, top + 0.02, q.p.z] });
+		b.add(new THREE.CylinderGeometry(pr + 0.16, pr + 0.04, 0.3, 32), c.porcelain, { p: [q.p.x, top + 0.24, q.p.z] });
 	}
 }

@@ -117,20 +117,35 @@ export class Foundry {
 			for (const dx of [-0.42, 0.42]) b.add(new THREE.CylinderGeometry(0.12, 0.12, 0.84, 12), c.iron, { p: [x + dx, 0.2, 0], r: [Math.PI / 2, 0, 0] });
 		}
 
-		// The rail up to the tower's roof, from the deck's provider side, on light arches of its own.
+		// The rail up to the tower's roof, from the deck's provider side, on slender piers of its own: it climbs too steeply
+		// for arches, so each pier carries it on a brass saddle. It leaps off the deck's corner over the coral server's
+		// cable, which hangs just under its lower stretch, so the first pier stands past that; the last stands clear of the
+		// provider's platform, whose edge the rail crosses a little higher, and from there it reaches the roof alone.
 		this.rail = new THREE.CatmullRomCurve3(P.FOUNDRY_RAIL.map((p) => new THREE.Vector3(...p)), false, 'centripetal');
 		const rail = ground;
 		rail.add(sweep(this.rail, [[-0.75, 0], [0.75, 0], [0.75, -0.35], [-0.75, -0.35]], 80), c.porcelain);
 		for (const s of [-1, 1]) rail.add(sweep(this.rail, [[s * 0.45 - 0.05, 0.12], [s * 0.45 + 0.05, 0.12], [s * 0.45 + 0.05, 0], [s * 0.45 - 0.05, 0]], 80), c.brass);
-		for (let i = 0; i < 3; i++) span(rail, this.rail.getPointAt(0.1 + i * 0.26).add(new THREE.Vector3(0, -0.35, 0)), this.rail.getPointAt(0.1 + (i + 1) * 0.26).add(new THREE.Vector3(0, -0.35, 0)), 1.1, pier, 'pier');
+		for (const u of [0.35, 0.49, 0.63, 0.77]) {
+			const p = this.rail.getPointAt(u);
+			const t = this.rail.getTangentAt(u);
+			const yaw = Math.atan2(-t.z, t.x);
+			// The rail's underside, square to it, is a little less than its depth below its line where it climbs.
+			const top = p.y - 0.35 * Math.sqrt(1 - t.y * t.y) - 0.18;
+			const h = top - P.PIER_FOOT;
+			rail.add(new THREE.CylinderGeometry(0.3, 0.34, h, 24), pier, { p: [p.x, P.PIER_FOOT + h / 2, p.z] });
+			rail.add(new THREE.CylinderGeometry(0.38, 0.38, 0.12, 24), c.gold, { p: [p.x, top - 0.1, p.z] });
+			// The saddle: a brass block on the pier's head, its top sloped to the rail.
+			rail.add(rbox(0.9, 0.24, 1.2, 0.05, 1), c.brass, { p: [p.x, top + 0.06, p.z], r: [0, yaw, Math.atan(t.y / Math.hypot(t.x, t.z))] });
+		}
 		this.body.add(b.build('foundry'));
 		this.group.add(ground.build('foundry arches'));
 
 		// The carriage: glass on a brass chassis, the finished model in it, small and glowing.
 		const car = new Batch();
 		const capsule = new THREE.CapsuleGeometry(0.7, 1.4, 8, 24).rotateZ(Math.PI / 2);
-		car.add(rbox(2.4, 0.26, 1.2, 0.08), c.brass, { p: [0, 0.3, 0] });
-		for (const dx of [-0.8, 0.8]) car.add(new THREE.CylinderGeometry(0.16, 0.16, 1.1, 14), c.iron, { p: [dx, 0.14, 0], r: [Math.PI / 2, 0, 0] });
+		// The chassis rides on four iron wheels, each standing on one of the rail's two brass strips.
+		car.add(rbox(2.4, 0.26, 1.2, 0.08), c.brass, { p: [0, 0.4, 0] });
+		for (const dx of [-0.8, 0.8]) for (const s of [-1, 1]) car.add(new THREE.CylinderGeometry(0.16, 0.16, 0.08, 16), c.iron, { p: [dx, 0.29, s * 0.45], r: [Math.PI / 2, 0, 0] });
 		car.add(capsule, c.glass, { p: [0, 1.15, 0] });
 		car.add(new THREE.TorusGeometry(0.72, 0.05, 8, 32), c.brass, { p: [0, 1.15, 0], r: [0, Math.PI / 2, 0] });
 		const brain = new THREE.SphereGeometry(0.48, 28, 14).scale(1.25, 0.8, 0.95);

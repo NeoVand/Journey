@@ -261,3 +261,24 @@ The room inside the harness now agrees with the lanes outside: up on the left, d
   capsule comes back empty, then moves along to the shelf (BACK) before the skill is fetched. TOUR's tube and chute
   stops mirrored and retuned. Narration direction names poses only, so nothing there changed.
 
+
+## Tidy: nothing through anything (2026-11-26, branch `tidy`)
+
+The tokens now climb the brain's glass pedestal all the way into its cap (world.ts CAP_UNDER), and the sky's structures
+no longer cut into each other.
+
+- The aqueduct's arches follow its S-curve (aqueduct.ts curvedSpan), four of them, instead of straight spans that cut
+  wedges out of each other under the bend. The platform's long front arch is three, so the aqueduct's piers no longer
+  stand inside one. A riding keyframe at 4.57 keeps the camera clear of the second mast on the shorter deck.
+- The foundry rail (masterplan FOUNDRY_RAIL) climbs evenly on four slim piers with brass saddles (foundry.ts), not
+  arches pulled off its curve. It leaps off the deck's corner over the coral server's cable, which hangs just under its
+  lower stretch; the last pier stands clear of the provider's platform. The carriage stands on wheels on the rail's
+  strips.
+- The lilac and sea-green remote servers moved (masterplan REMOTE) to where their cables hang clear: the lilac's ran
+  through the foundry deck, the sea-green's through the proving ground.
+- The compaction press's ram starts tucked in its sleeve, not 10 m down inside the island's pier.
+- New checks: scripts/arches.mjs (spans that run into each other, from the SPANS registry), scripts/plumb.mjs (a line
+  up every pier from its foot; anything it crosses before its own head) and scripts/hangs.mjs (the remote servers'
+  cables walked every 10 cm; MOVE tries a tower elsewhere). overlap.mjs misses all three: a thin pier through a slab or
+  a cable through a deck is a sliver of its surface.
+- Phone: geometry 97 MB of 100, textures 276 MB of 280.
